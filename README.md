@@ -79,6 +79,18 @@ Linux/macOS:
 
 Then launch the terminal host you want to use.
 
+## Recommended: start with the Dashboard
+
+For a new game or app, the recommended entry point is [`dashboard.html`](dashboard.html). Open it locally after setup: the Dashboard is the control center for creating or opening projects and for seeing what to do next.
+
+1. Open `dashboard.html` in your browser.
+2. Choose **EN** or **RU** in the Dashboard.
+3. Create a new game/app or select an existing project.
+4. Follow the current Forge phase and the recommended next action.
+5. Launch Claude Code, Codex or GigaChat with the profile you want and continue through the same 9-phase workflow.
+
+The terminal remains the execution environment; the Dashboard is the recommended starting point and navigation layer for project status, agent profiles, phase progress and next steps.
+
 ## Main commands
 
 Claude Code:
@@ -234,6 +246,7 @@ dashboard.html    local Forge dashboard
 - [RELEASE_NOTES_v4.68.2.md](RELEASE_NOTES_v4.68.2.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
+- [ROADMAP.md](ROADMAP.md) — public development direction
 - [SUPPORT.md](SUPPORT.md) — voluntary personal support for the original author
 
 ## Security and privacy
