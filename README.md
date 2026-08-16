@@ -241,10 +241,14 @@ Public source must never contain workspace secrets, personal projects or local `
 
 ## License
 
-A repository license has not been selected yet. Until one is added, normal copyright rules apply.
+Project Forge is licensed under the [Apache License 2.0](LICENSE).
+
+Attribution information is provided in [NOTICE](NOTICE) and should be preserved with distributions as required by the license.
 
 ---
 
-Project Forge is developed by [Rodrik Studio](https://rodrik.dev).
+Project Forge is developed by [Rodrik Studio](https://rodrik.dev) / Rodrik LTD.
+
+Original author: **Aleksandr Krasnokutskiy**.
 
 Project Forge is an independent project. Claude, Codex, GigaChat, GigaCode and the listed distribution platforms are products/services of their respective owners.
