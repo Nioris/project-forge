@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest an improvement to Project Forge
+title: "[Feature] "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What workflow is currently difficult or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior you would like to add or change.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Forge core / phases
+        - Claude Code adapter
+        - OpenAI Codex adapter
+        - GigaChat API agent
+        - GigaCode CLI adapter
+        - AI Studio
+        - Dashboard
+        - Platform integration
+        - Updater / sync
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Do not include API keys, tokens or private project data.
