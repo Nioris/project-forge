@@ -1,10 +1,10 @@
-name: Bootstrap Project Forge Source
+name: Import Project Forge Source
 
 on:
   push:
     branches: [main]
     paths:
-      - '.bootstrap/READY'
+      - 'project-forge-v4.68.1-github-source.zip'
 
 permissions:
   contents: write
@@ -16,13 +16,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Reconstruct source archive
+      - name: Extract reviewed source archive
         shell: bash
         run: |
           set -euo pipefail
-          cat .bootstrap/payload-*.b64 | base64 -d > /tmp/project-forge-source.tar.xz
+          rm -rf /tmp/project-forge-source
           mkdir -p /tmp/project-forge-source
-          tar -xJf /tmp/project-forge-source.tar.xz -C /tmp/project-forge-source
+          unzip -q project-forge-v4.68.1-github-source.zip -d /tmp/project-forge-source
       - name: Replace bootstrap payload with source tree
         shell: bash
         run: |
