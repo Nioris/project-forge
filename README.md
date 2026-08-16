@@ -245,4 +245,6 @@ A repository license has not been selected yet. Until one is added, normal copyr
 
 ---
 
+Project Forge is developed by [Rodrik Studio](https://rodrik.dev).
+
 Project Forge is an independent project. Claude, Codex, GigaChat, GigaCode and the listed distribution platforms are products/services of their respective owners.
