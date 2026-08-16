@@ -245,4 +245,6 @@ dashboard.html    локальный Dashboard
 
 ---
 
+Project Forge разрабатывается [Rodrik Studio](https://rodrik.dev).
+
 Project Forge — независимый проект. Claude, Codex, GigaChat, GigaCode и перечисленные платформы принадлежат их соответствующим владельцам.
