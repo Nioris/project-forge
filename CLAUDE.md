@@ -1,4 +1,4 @@
-# Project Forge v4.68.1 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.6 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -462,22 +462,20 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
-## v4.68.1 changelog (terminal API profiles + GigaChat coding agent)
+## v4.68.6 changelog (GitHub/GitVerse publication convergence)
 
-Forge adds explicit billing/auth profiles without changing the 9-phase engine. Claude Code can now launch through the existing subscription auth or an Anthropic API profile; Codex can launch through ChatGPT auth or an isolated OpenAI API profile. Central secrets live outside projects in `forge-data/secrets/`. Claude API uses `apiKeyHelper`; Codex API uses isolated `CODEX_HOME` + stdin `codex login --with-api-key`, so switching API mode does not overwrite the normal ChatGPT profile.
+The local-first release branch was rebased onto the concurrent public `main` update that adds `.github/workflows/sync-gitverse.yml`. The workflow is now part of the canonical tree and generated MANIFEST instead of being accidentally deleted or omitted by a later local publication.
 
-`scripts/gigachat-agent.mjs` adds a real terminal coding agent over the official GigaChat API custom-function flow: project file/search/edit tools, canonical Forge skill loading, phase-aware status, git diff, and optional shell execution in `--full` mode. Dashboard cards expose Claude Full / Claude API / Codex Full / Codex API / GigaChat API; the GigaCode bridge remains dormant/experimental until an actual CLI executable is available. `check-api-terminal-profiles.mjs` release-gates these surfaces offline. Full design: `docs/API-TERMINAL-PROFILES-4.68.1.md`.
+No engine runtime, sibling payload, phase, skill, agent or platform behavior changes in this patch. v4.68.6 is the final convergence release: verified local sources, release ZIP, Universal installation, sibling fleet and the GitHub publication branch share one versioned state.
 
-## v4.68.0 changelog (Universal Agent Runtime + GigaChat provider)
+## v4.68.5 changelog (UTF-8 MANIFEST preservation on Windows)
 
-Forge now has a host-neutral `FORGE.md` contract for the canonical nine phases, state priority, workspace discipline, generic skill execution and DoD. Claude stays canonical; Codex keeps its generated adapter; `adapters/agents.json` + `scripts/forge-agent.mjs` add a small runtime bridge for additional terminal agents. Managed sibling sync now includes `FORGE.md` and `.gitverse/pr_rules/`.
+The first complete v4.68.4 fleet pass exposed a Windows PowerShell 5.1 encoding trap: `MANIFEST.txt` is UTF-8 without BOM, while `Get-Content` defaulted to the active ANSI code page. The Cyrillic path `СПРАВОЧНИК-КОМАНД.md` therefore failed membership comparison, was removed from the engine, and the managed payload dropped from 424 to 423 files. The final drift gate stopped the updater, but sibling sync had already propagated the temporary absence.
 
-GigaCode support is explicitly **experimental**: GitVerse rules are shipped, but Forge never invents undocumented permission flags; CLI discovery can be overridden with `FORGE_GIGACODE_CLI`. AI Studio config moves to schema 2 and adds direct GigaChat `text2image`/`text2model3d` helpers with provenance, dry-run, external secrets and TLS verification preserved. No Phase 10 and no silent OpenRouter fallback. `check-universal-agent-runtime.mjs` release-gates the new surfaces. Full design: `docs/UNIVERSAL-AGENT-RUNTIME-4.68.0.md`.
+`upgrade.ps1` now reads MANIFEST with `-LiteralPath` and explicit `-Encoding UTF8`. `check-update-surface.mjs` release-gates that exact contract. Re-extracting v4.68.5 restores the command reference before cleanup; the subsequent 424-file sibling sync restores it across the fleet.
 
-## v4.67.1 changelog (canonical 9-phase status + machine phase markers)
+## v4.68.4 changelog (reliable Windows one-click update)
 
-Field use of `$status` exposed the retired pseudo-pipeline (`Занесено / Геймдизайн / Арт / Мобайл / SDK / Локализация / Релиз`) even though Forge now has 9 canonical phases. It found the STOP-point but mixed health lanes with phases.
+A real in-place update on Windows exposed two gaps that static source checks missed: the generic updater could stop during `Expand-Archive`, and LF-only/non-ASCII `upgrade.bat` could be misparsed by `cmd.exe` while still returning a misleading zero exit code. Sibling sync never ran in that state.
 
-`/status` now uses the canonical 1..9 phase model, reports CURRENT + STOP-point + AI Studio + Project Health, and explicitly distinguishes `not_reached` from defects. A read-only Node snapshot helper gathers lightweight artifact/code facts without starting browser/runtime/release tests. New `wiki/phases/phase-N.json` machine markers are authoritative when present; legacy projects fall back conservatively to artifacts. All nine phase skills now write `start/block/complete` markers through the shipped helper.
-
-Project `CLAUDE.md` is no longer a mutable progress source. New projects put changing state in `wiki/_current.md` and `wiki/phases/`; `/status` ignores stale boilerplate such as `Just created` when facts show later work. A regression test proves stale CLAUDE text cannot roll a project backward and downstream SDK evidence cannot skip an earlier phase gate.
+The external updater now prefers the built-in Windows `tar.exe` path used by the proven version-specific updater, with a quiet fail-fast `Expand-Archive` fallback. `upgrade.bat` is ASCII-safe, has a non-mutating `/selftest`, and all shipped batch files are CRLF-normalized through `.gitattributes`. `check-bat-encoding.mjs` rejects bare LF, while `check-update-surface.mjs` gates tar extraction, CRLF and the real `cmd.exe` self-test on Windows.

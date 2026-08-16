@@ -4465,6 +4465,32 @@ AI Studio is a **cross-phase capability, not Phase 10**. The canonical chain rem
 
 New projects get `.forge-ai.json`, Style Bible/prompt/generated/AI/QA paths. Interactive native image generation is preferred when available; `scripts/openai-image.mjs` adds an optional direct GPT Image 2 batch path. Generated Codex discovery descriptions are compacted without shortening canonical `SKILL.md` bodies. Full design: `docs/AI-STUDIO-4.67.0.md`.
 
+## v4.67.1 changelog (canonical 9-phase status + machine phase markers)
+
+Field use of `$status` exposed the retired pseudo-pipeline (`Занесено / Геймдизайн / Арт / Мобайл / SDK / Локализация / Релиз`) even though Forge now has 9 canonical phases. It found the STOP-point but mixed health lanes with phases.
+
+`/status` now uses the canonical 1..9 phase model, reports CURRENT + STOP-point + AI Studio + Project Health, and explicitly distinguishes `not_reached` from defects. A read-only Node snapshot helper gathers lightweight artifact/code facts without starting browser/runtime/release tests. New `wiki/phases/phase-N.json` machine markers are authoritative when present; legacy projects fall back conservatively to artifacts. All nine phase skills now write `start/block/complete` markers through the shipped helper.
+
+Project `CLAUDE.md` is no longer a mutable progress source. New projects put changing state in `wiki/_current.md` and `wiki/phases/`; `/status` ignores stale boilerplate such as `Just created` when facts show later work. A regression test proves stale CLAUDE text cannot roll a project backward and downstream SDK evidence cannot skip an earlier phase gate.
+
+## v4.68.0 changelog (Universal Agent Runtime + GigaChat provider)
+
+Forge now has a host-neutral `FORGE.md` contract for the canonical nine phases, state priority, workspace discipline, generic skill execution and DoD. Claude stays canonical; Codex keeps its generated adapter; `adapters/agents.json` + `scripts/forge-agent.mjs` add a small runtime bridge for additional terminal agents. Managed sibling sync now includes `FORGE.md` and `.gitverse/pr_rules/`.
+
+GigaCode support is explicitly **experimental**: GitVerse rules are shipped, but Forge never invents undocumented permission flags; CLI discovery can be overridden with `FORGE_GIGACODE_CLI`. AI Studio config moves to schema 2 and adds direct GigaChat `text2image`/`text2model3d` helpers with provenance, dry-run, external secrets and TLS verification preserved. No Phase 10 and no silent OpenRouter fallback. `check-universal-agent-runtime.mjs` release-gates the new surfaces. Full design: `docs/UNIVERSAL-AGENT-RUNTIME-4.68.0.md`.
+
+## v4.68.1 changelog (terminal API profiles + GigaChat coding agent)
+
+Forge adds explicit billing/auth profiles without changing the 9-phase engine. Claude Code can now launch through the existing subscription auth or an Anthropic API profile; Codex can launch through ChatGPT auth or an isolated OpenAI API profile. Central secrets live outside projects in `forge-data/secrets/`. Claude API uses `apiKeyHelper`; Codex API uses isolated `CODEX_HOME` + stdin `codex login --with-api-key`, so switching API mode does not overwrite the normal ChatGPT profile.
+
+`scripts/gigachat-agent.mjs` adds a real terminal coding agent over the official GigaChat API custom-function flow: project file/search/edit tools, canonical Forge skill loading, phase-aware status, git diff, and optional shell execution in `--full` mode. Dashboard cards expose Claude Full / Claude API / Codex Full / Codex API / GigaChat API; the GigaCode bridge remains dormant/experimental until an actual CLI executable is available. `check-api-terminal-profiles.mjs` release-gates these surfaces offline. Full design: `docs/API-TERMINAL-PROFILES-4.68.1.md`.
+
+## v4.68.3 changelog (release consistency + bilingual public surface)
+
+The public repository changes made after v4.68.2 are now closed as a real patch release instead of remaining unversioned on `main`. The intentional EN/RU Dashboard controls are accepted into the structural baseline, public README files expose the canonical nine platform IDs, and all versioned engine surfaces converge on v4.68.3.
+
+`scripts/bump-version.mjs` now targets the known display locations by their shape rather than assuming every file already matches `plugin.json`. This lets the release tool repair partial/stale bumps, updates the English and Russian public-version markers, and still avoids historical changelog sections. Runtime behavior and managed sibling payload semantics remain unchanged from v4.68.1.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

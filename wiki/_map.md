@@ -49,8 +49,12 @@
 
 ## Current Status
 
-### Version: v4.68.1 (latest released)
+### Version: v4.68.6 (latest released)
 
+- 2026-08-16: **v4.68.6** — rebased the verified local-first release onto the concurrent GitHub/GitVerse mirror workflow and included that automation in the canonical MANIFEST.
+- 2026-08-16: **v4.68.5** — Windows PowerShell reads UTF-8 MANIFEST explicitly, preserving Cyrillic managed paths and restoring the full 424-file sibling payload.
+- 2026-08-16: **v4.68.4** — reliable Windows one-click update: tar-first extraction, fail-fast fallback, ASCII/CRLF-safe batch entrypoints, `.gitattributes`, and a real `cmd.exe` self-test gate.
+- 2026-08-16: **v4.68.3** — release-consistency patch: completed the bilingual Dashboard publication, aligned all generated/versioned surfaces, hardened partial-bump repair, and restored public README platform completeness.
 - 2026-08-14: **v4.68.1** — terminal API profiles: Claude subscription/API, Codex ChatGPT/API with isolated auth, Forge-owned GigaChat terminal agent, centralized `forge-data/secrets/`, and dedicated Dashboard buttons; GigaCode CLI bridge remains optional/dormant.
 - 2026-08-14: **v4.68.0** — Universal Agent Runtime: host-neutral `FORGE.md`, adapter registry/launcher, managed GitVerse rules and experimental GigaCode bridge; AI Studio schema 2 adds direct GigaChat `text2image` + `text2model3d` providers inside the existing 9 phases.
 - 2026-08-14: **v4.67.1** — `/status` rebuilt around the canonical 9 phases: machine `wiki/phases/phase-N.json` markers + conservative artifact fallback, CURRENT/STOP-point, AI Studio and Project Health; future-phase absence is `not reached`, not FAIL. All phase skills write start/block/complete markers. New project CLAUDE no longer stores mutable `Just created` state; state lives in wiki/_current + wiki/phases.

@@ -73,12 +73,8 @@ if (!targetVersion) {
   process.exit(2);
 }
 
-if (targetVersion === currentVersion) {
-  console.log(`Already at ${targetVersion}.`);
-  process.exit(0);
-}
-
-console.log(`Bumping ${currentVersion} → ${targetVersion}${DRY ? ' (DRY RUN)' : ''}\n`);
+const sameVersion = targetVersion === currentVersion;
+console.log(`${sameVersion ? 'Normalizing' : `Bumping ${currentVersion} →`} ${targetVersion}${DRY ? ' (DRY RUN)' : ''}\n`);
 
 // Targeted replacements only. Each rule: { file, find pattern, replace template, description }
 const RULES = [
@@ -98,77 +94,102 @@ const RULES = [
   // CLAUDE.md top display heading only — historical changelog headers remain untouched
   {
     file: 'CLAUDE.md',
-    find: new RegExp(`^# Project Forge v${escapeReg(currentVersion)} — Multi-Platform Project Bootstrapper`, 'm'),
+    find: /^# Project Forge v\d+\.\d+\.\d+ — Multi-Platform Project Bootstrapper/m,
     replace: `# Project Forge v${targetVersion} — Multi-Platform Project Bootstrapper`,
     desc: 'CLAUDE.md top version heading',
   },
   // setup.sh banner
   {
     file: 'setup.sh',
-    find: new RegExp(`PROJECT FORGE v${escapeReg(currentVersion)}`),
+    find: /PROJECT FORGE v\d+\.\d+\.\d+/,
     replace: `PROJECT FORGE v${targetVersion}`,
     desc: 'setup.sh banner',
   },
   // setup.ps1 banner
   {
     file: 'setup.ps1',
-    find: new RegExp(`PROJECT FORGE v${escapeReg(currentVersion)}`),
+    find: /PROJECT FORGE v\d+\.\d+\.\d+/,
     replace: `PROJECT FORGE v${targetVersion}`,
     desc: 'setup.ps1 banner',
   },
   // README.md title — only top heading, not changelog references
   {
     file: 'README.md',
-    find: new RegExp(`^# Project Forge v${escapeReg(currentVersion)}`, 'm'),
+    find: /^# Project Forge v\d+\.\d+\.\d+/m,
     replace: `# Project Forge v${targetVersion}`,
     desc: 'README.md title heading',
   },
   // README.md Quick start section heading
   {
     file: 'README.md',
-    find: new RegExp(`## 🚀 Quick start \\(v${escapeReg(currentVersion)}\\)`),
+    find: /## 🚀 Quick start \(v\d+\.\d+\.\d+\)/,
     replace: `## 🚀 Quick start (v${targetVersion})`,
     desc: 'README.md Quick start heading',
   },
   // README.md Standard workflow heading
   {
     file: 'README.md',
-    find: new RegExp(`## Стандартные workflow \\(v${escapeReg(currentVersion)}\\)`),
+    find: /## Стандартные workflow \(v\d+\.\d+\.\d+\)/,
     replace: `## Стандартные workflow (v${targetVersion})`,
     desc: 'README.md Workflow heading',
   },
   // README zip filename example в Quick start
   {
     file: 'README.md',
-    find: new RegExp(`project-forge-v${escapeReg(currentVersion)}\\.zip`, 'g'),
+    find: /project-forge-v\d+\.\d+\.\d+\.zip/g,
     replace: `project-forge-v${targetVersion}.zip`,
     desc: 'README.md zip filename examples',
     allowMultiple: true,
   },
+  // Public repository README format (English + Russian)
+  {
+    file: 'README.md',
+    find: /^\*\*Current public version:\*\* `v\d+\.\d+\.\d+`$/m,
+    replace: `**Current public version:** \`v${targetVersion}\``,
+    desc: 'README.md public version marker',
+  },
+  {
+    file: 'README.md',
+    find: /^`v\d+\.\d+\.\d+` keeps separate normal-account and API profiles\.$/m,
+    replace: `\`v${targetVersion}\` keeps separate normal-account and API profiles.`,
+    desc: 'README.md terminal launcher version',
+  },
+  {
+    file: 'README_RU.md',
+    find: /^\*\*Текущая публичная версия:\*\* `v\d+\.\d+\.\d+`$/m,
+    replace: `**Текущая публичная версия:** \`v${targetVersion}\``,
+    desc: 'README_RU.md public version marker',
+  },
+  {
+    file: 'README_RU.md',
+    find: /^В `v\d+\.\d+\.\d+` обычная авторизация и API-профили остаются разделены\.$/m,
+    replace: `В \`v${targetVersion}\` обычная авторизация и API-профили остаются разделены.`,
+    desc: 'README_RU.md terminal launcher version',
+  },
   // СПРАВОЧНИК-КОМАНД.md title version
   {
     file: 'СПРАВОЧНИК-КОМАНД.md',
-    find: new RegExp(`^# Project Forge v${escapeReg(currentVersion)} — справочник команд`, 'm'),
+    find: /^# Project Forge v\d+\.\d+\.\d+ — справочник команд/m,
     replace: `# Project Forge v${targetVersion} — справочник команд`,
     desc: 'СПРАВОЧНИК-КОМАНД.md title version',
   },
   // GUIDE.md banner only (top, не examples)
   {
     file: 'GUIDE.md',
-    find: new RegExp(`^# Project Forge v${escapeReg(currentVersion)}`, 'm'),
+    find: /^# Project Forge v\d+\.\d+\.\d+/m,
     replace: `# Project Forge v${targetVersion}`,
     desc: 'GUIDE.md title heading',
   },
   // dashboard.html version display
   {
     file: 'dashboard.html',
-    find: new RegExp(`Dashboard · v${escapeReg(currentVersion)}`, 'g'),
+    find: /Dashboard · v\d+\.\d+\.\d+/g,
     replace: `Dashboard · v${targetVersion}`,
     desc: 'dashboard.html header version display',
   },
   {
     file: 'dashboard.html',
-    find: new RegExp(`Quick start \\(v${escapeReg(currentVersion)}\\)`, 'g'),
+    find: /Quick start \(v\d+\.\d+\.\d+\)/g,
     replace: `Quick start (v${targetVersion})`,
     desc: 'dashboard.html quick-start version',
     allowMultiple: true,
@@ -176,7 +197,7 @@ const RULES = [
   // wiki/_map.md "latest released" pointer (single line)
   {
     file: 'wiki/_map.md',
-    find: new RegExp(`### Version: v${escapeReg(currentVersion)} \\(latest released\\)`),
+    find: /### Version: v\d+\.\d+\.\d+ \(latest released\)/,
     replace: `### Version: v${targetVersion} (latest released)`,
     desc: 'wiki/_map.md latest release pointer',
   },

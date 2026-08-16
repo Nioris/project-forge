@@ -107,7 +107,12 @@ if exist "%PROJ%\scripts\backup-data.mjs" (
 
 REM --- Extract. ---
 echo [2/6] Extracting package...
-powershell.exe -NoProfile -Command "Expand-Archive -LiteralPath '!ZIP!' -DestinationPath '%PROJ%' -Force"
+where tar.exe >nul 2>nul
+if not errorlevel 1 (
+  tar.exe -xf "!ZIP!" -C "%PROJ%"
+) else (
+  powershell.exe -NoProfile -Command "$ProgressPreference='SilentlyContinue';$ErrorActionPreference='Stop';Expand-Archive -LiteralPath '!ZIP!' -DestinationPath '%PROJ%' -Force"
+)
 if errorlevel 1 (
   echo [X] Extract failed.
   goto :fail

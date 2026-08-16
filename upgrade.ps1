@@ -73,7 +73,9 @@ if (-not (Test-Path $ManifestPath)) {
     Write-Host "      MANIFEST.txt not found - skipping (older version?)" -ForegroundColor DarkGray
 } else {
     $ExpectedFiles = [System.Collections.Generic.HashSet[string]]::new()
-    Get-Content $ManifestPath | ForEach-Object {
+    # Windows PowerShell 5.1 defaults UTF-8-without-BOM text to the active ANSI
+    # code page. MANIFEST contains Cyrillic paths, so encoding must be explicit.
+    Get-Content -LiteralPath $ManifestPath -Encoding UTF8 | ForEach-Object {
         $line = $_.Trim()
         if ($line.Length -gt 0) {
             $null = $ExpectedFiles.Add($line.Replace('/', '\'))

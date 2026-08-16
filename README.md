@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.2`
+**Current public version:** `v4.68.6`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -33,6 +33,20 @@ It provides:
 - AI Studio workflows for prompt compilation, images, 3D, art direction and visual QA;
 - platform integrations and release checks;
 - dashboard, fleet sync, upgrade and managed-file drift validation.
+
+## Release targets
+
+| Canonical ID | Platform |
+|---|---|
+| `yandex` | Yandex Games |
+| `vk` | VK Mini Apps |
+| `telegram` | Telegram Mini App |
+| `ok` | OK.ru |
+| `max` | MAX messenger |
+| `rustore` | RuStore |
+| `web` | self-hosted HTTPS/PWA |
+| `steam` | Steam |
+| `vkplay` | VK Play |
 
 ## The 9 phases
 
@@ -125,7 +139,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.2` keeps separate normal-account and API profiles.
+`v4.68.6` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription

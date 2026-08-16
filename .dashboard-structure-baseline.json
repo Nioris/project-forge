@@ -1,20 +1,21 @@
 {
-  "captured_at": "2026-08-14T18:28:04.949Z",
-  "dashboard_size_bytes": 125277,
-  "fingerprint": "e5461db9e86ba96a",
+  "captured_at": "2026-08-16T19:14:18.580Z",
+  "dashboard_size_bytes": 136293,
+  "fingerprint": "b502d448dcf9ecd6",
   "summary": {
-    "total_significant_elements": 468,
+    "total_significant_elements": 471,
     "by_tag": {
-      "div": 394,
+      "div": 396,
       "select": 2,
       "button": 57,
       "input": 9,
       "label": 1,
       "textarea": 3,
       "section": 1,
-      "h2": 1
+      "h2": 1,
+      "aside": 1
     },
-    "by_id_count": 32,
+    "by_id_count": 34,
     "handler_count": 95,
     "elements_with_position_styles": 4
   },
@@ -5398,6 +5399,35 @@
       "handlers": [
         "onclick"
       ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "forge-lang-switch",
+      "classes": [],
+      "role": "group",
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "aside",
+      "id": "forge-start-guide",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "forge-guide-body"
+      ],
+      "role": null,
+      "handlers": [],
       "position_styles": [],
       "type": null
     }

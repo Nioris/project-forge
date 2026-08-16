@@ -28,6 +28,7 @@
  *     3. When depth > 0 (inside a block), checks line for non-ASCII bytes
  *     4. Comments (`::` or `REM`) are ignored even inside blocks
  *     5. Strings inside `"..."` are checked (cmd.exe parses these too)
+ *     6. Rejects bare LF line endings; shipped Windows entrypoints use CRLF
  *
  *  Usage:
  *    node scripts/check-bat-encoding.mjs              # scan all .bat in repo
@@ -78,6 +79,15 @@ function scanFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split(/\r?\n/);
   const violations = [];
+
+  if (/(?<!\r)\n/.test(content)) {
+    violations.push({
+      file: path.relative(ROOT, filePath).replace(/\\/g, '/'),
+      line: 1,
+      snippet: 'Bare LF line endings detected; convert the batch file to CRLF.',
+      chars: ['LF_ONLY'],
+    });
+  }
 
   let depth = 0;
 
@@ -254,14 +264,14 @@ if (JSON_MODE) {
 
 // Human output
 if (allViolations.length === 0) {
-  console.log(`✓ All ${batFiles.length} .bat file(s) clean — no non-ASCII inside () blocks.`);
+  console.log(`✓ All ${batFiles.length} .bat file(s) clean — CRLF and no non-ASCII inside () blocks.`);
   for (const fr of fileResults) {
     console.log(`  ✓ ${fr.file}`);
   }
   process.exit(0);
 }
 
-console.log(`✗ ${allViolations.length} non-ASCII character(s) inside () blocks:\n`);
+console.log(`✗ ${allViolations.length} batch encoding/line-ending issue(s):\n`);
 for (const v of allViolations.slice(0, 30)) {
   console.log(`  ${v.file}:${v.line}  ${v.chars.join(' ')}`);
   console.log(`    ${v.snippet}`);
@@ -283,4 +293,5 @@ console.log('  Russian text  →  English equivalent (or move outside () block)'
 console.log('');
 console.log('OUTSIDE () blocks (e.g., echo statements at top level), non-ASCII');
 console.log('is OK provided "chcp 65001" was set first.');
+console.log('All shipped .bat files must use CRLF line endings.');
 process.exit(1);
