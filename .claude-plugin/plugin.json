@@ -3,8 +3,10 @@
   "version": "4.68.1",
   "description": "Multi-platform game/app bootstrapper with 9-phase Forge core, Claude/Codex subscription + API terminal profiles, GigaChat terminal agent, AI Studio, managed sibling sync and release gates.",
   "author": {
-    "name": "Project Forge contributors"
+    "name": "Aleksandr Krasnokutskiy / Rodrik LTD",
+    "url": "https://rodrik.dev"
   },
+  "license": "Apache-2.0",
   "keywords": [
     "gamedev",
     "yandex-games",
