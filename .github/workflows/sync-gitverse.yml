@@ -1,0 +1,48 @@
+name: Sync GitVerse mirror
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+  delete:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-gitverse
+  cancel-in-progress: true
+
+env:
+  GITVERSE_TOKEN: ${{ secrets.GITVERSE_TOKEN }}
+  GITVERSE_REPOSITORY: AlexKras/project-forge
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check GitVerse token
+        if: env.GITVERSE_TOKEN == ''
+        run: echo "GITVERSE_TOKEN is not configured; GitVerse sync is skipped."
+
+      - name: Mirror branches and tags to GitVerse
+        if: env.GITVERSE_TOKEN != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git init --bare mirror.git
+          git -C mirror.git remote add github "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -C mirror.git remote add gitverse "https://${GITVERSE_TOKEN}@gitverse.ru/${GITVERSE_REPOSITORY}.git"
+
+          git -C mirror.git fetch --prune github \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+          git -C mirror.git push --force --prune gitverse \
+            '+refs/heads/*:refs/heads/*'
+          git -C mirror.git push --force gitverse \
+            '+refs/tags/*:refs/tags/*'
