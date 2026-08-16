@@ -2,30 +2,37 @@
 
 **Terminal-first multi-agent runtime for building, testing and releasing games and apps.**
 
-Project Forge keeps one project workflow and lets different AI agents work through the same rules, phases, state and verification gates.
+[Русская версия](README_RU.md)
 
-**Current release:** `v4.68.1`
+Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
+
+**Current public version:** `v4.68.1`
 
 | Host | Auth modes | Status |
 |---|---|---|
-| Claude Code | subscription / Anthropic API | stable |
-| OpenAI Codex | ChatGPT / OpenAI API | stable |
+| Claude Code | account/subscription · Anthropic API | stable |
+| OpenAI Codex | ChatGPT · OpenAI API | stable |
 | GigaChat | API through Forge terminal agent | supported |
-| GigaCode CLI | local CLI | experimental / dormant until executable is available |
+| GigaCode CLI | local CLI adapter | experimental / dormant until an executable is available |
 
-> Project Forge is terminal-first. IDE integration is optional and is not required for the core workflow.
+> Forge is terminal-first. An IDE is optional; the core workflow does not depend on one.
 
-## What Forge gives you
+## Why Project Forge
 
-- **9 canonical phases** from analysis to live operation.
-- **141 canonical skills** with generated Codex adapters.
-- **21 canonical subagents** for specialized work.
-- One shared project state, STOP-points and phase markers for all hosts.
-- Claude Code and Codex launch profiles for both normal account auth and API auth.
-- A Forge-owned GigaChat terminal coding agent with controlled project tools.
-- AI Studio workflows for prompts, image generation, visual QA and asset provenance.
-- Platform integration and release checks for Yandex Games, VK Mini Apps, Telegram Mini Apps, OK, MAX, RuStore, Web, Steam and VK Play.
-- Dashboard, project sync, upgrade flow and managed-file drift checks.
+Forge is not another chat UI. It is a project runtime around terminal agents.
+
+It provides:
+
+- **9 canonical phases** from analysis to live operation;
+- **141 canonical skills** plus generated Codex discovery adapters;
+- **21 specialized subagents**;
+- shared phase markers, STOP-points and project state across supported hosts;
+- native Claude Code and Codex launch profiles;
+- optional API profiles for Anthropic and OpenAI;
+- a Forge-owned GigaChat terminal agent;
+- AI Studio workflows for prompt compilation, images, 3D, art direction and visual QA;
+- platform integrations and release checks;
+- dashboard, fleet sync, upgrade and managed-file drift validation.
 
 ## The 9 phases
 
@@ -41,25 +48,22 @@ Project Forge keeps one project workflow and lets different AI agents work throu
 9  Live
 ```
 
-Forge does not create extra pseudo-phases for SDK work, localization or AI generation. Those capabilities live inside the appropriate canonical phase.
+SDK integration, localization, AI generation and other capabilities live inside these phases instead of creating extra pseudo-phases.
 
 ## Quick start
 
-### Requirements
+Requirements:
 
 - Node.js 18+
 - Git
-- At least one supported terminal host: Claude Code or OpenAI Codex
-- Optional API credentials for Anthropic, OpenAI or GigaChat
+- at least one supported terminal host
 
-### Clone
+Clone:
 
 ```bash
 git clone https://github.com/Nioris/project-forge.git
 cd project-forge
 ```
-
-### Setup
 
 Windows:
 
@@ -75,9 +79,9 @@ Linux/macOS:
 
 Then launch the terminal host you want to use.
 
-## Main workflows
+## Main commands
 
-Claude Code syntax:
+Claude Code:
 
 ```text
 /game
@@ -87,7 +91,7 @@ Claude Code syntax:
 /status
 ```
 
-Codex syntax:
+Codex:
 
 ```text
 $game
@@ -97,7 +101,7 @@ $continue
 $status
 ```
 
-Typical examples:
+Examples:
 
 ```text
 /do redesign the game UI
@@ -107,11 +111,9 @@ Typical examples:
 /status
 ```
 
-The host reads project state and routes work through the appropriate Forge skill instead of requiring you to remember the whole skill catalog.
+## Terminal launcher
 
-## Terminal agent launcher
-
-Forge `v4.68.1` adds separate account/API profiles:
+`v4.68.1` supports separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -120,24 +122,24 @@ node scripts/forge-agent.mjs launch claude --full --project ../my-game
 # Claude — Anthropic API
 node scripts/forge-agent.mjs launch claude --profile api --full --project ../my-game
 
-# Codex — existing ChatGPT auth
+# Codex — existing ChatGPT authentication
 node scripts/forge-agent.mjs launch codex --full --project ../my-game
 
 # Codex — isolated OpenAI API profile
 node scripts/forge-agent.mjs launch codex --profile api --full --project ../my-game
 
-# GigaChat — Forge terminal agent through official API
+# GigaChat — Forge terminal agent through API
 node scripts/forge-agent.mjs launch gigachat --profile api --full --project ../my-game
 
 # Inspect installed hosts
 node scripts/forge-agent.mjs doctor
 ```
 
-GigaCode remains an experimental adapter. Forge does not pretend that a CLI exists locally when no executable is installed.
+GigaCode remains an experimental adapter. Forge does not fake CLI availability when no executable is installed.
 
 ## API keys and secrets
 
-**No API keys are included in this repository.**
+**No real API keys, tokens or local credentials belong in this repository.**
 
 Recommended workspace layout:
 
@@ -160,13 +162,13 @@ node scripts/forge-secrets.mjs status
 
 The repository `.gitignore` excludes `forge-data/`, `secrets/`, `*.key`, `.env`, provider key files, backups and other local state.
 
-If a real credential is ever committed, revoke/rotate it first and then remove it from Git history. See [SECURITY.md](SECURITY.md).
+If a credential is ever committed, revoke or rotate it first and then remove it from Git history. See [SECURITY.md](SECURITY.md).
 
 ## Universal Agent Runtime
 
-The agent-neutral contract lives in [FORGE.md](FORGE.md).
+The provider-neutral contract lives in [FORGE.md](FORGE.md).
 
-Canonical sources:
+Important paths:
 
 ```text
 FORGE.md                shared runtime contract
@@ -179,11 +181,11 @@ adapters/agents.json    terminal host registry
 scripts/forge-agent.mjs launcher / doctor / skill bridge
 ```
 
-Claude and Codex keep their native integrations, while generic terminal agents can use `FORGE.md` plus the canonical skill files without duplicating the entire Forge catalog for every provider.
+Claude and Codex keep their native integrations. Generic terminal agents can use `FORGE.md` plus canonical skill files without duplicating the full catalog for every provider.
 
 ## AI Studio
 
-AI Studio is part of the normal 9-phase lifecycle, not a separate phase.
+AI Studio is part of the same 9-phase lifecycle.
 
 Core workflows:
 
@@ -196,17 +198,15 @@ Core workflows:
 
 Codex uses the equivalent `$...` syntax.
 
-Direct provider helpers are available for unattended/batch work, including OpenAI image generation and GigaChat image/3D backends. Secrets stay outside project repositories.
+Direct provider helpers support unattended/batch work, including OpenAI image generation and GigaChat image/3D backends. Secrets stay outside project repositories.
 
-More details: [docs/AI-STUDIO-4.67.0.md](docs/AI-STUDIO-4.67.0.md).
+See [docs/AI-STUDIO-4.67.0.md](docs/AI-STUDIO-4.67.0.md).
 
-## Platforms
+## Supported release targets
 
-Forge includes platform-specific integration and release tooling for:
+Forge contains integration and validation tooling for:
 
 `Yandex Games` · `VK Mini Apps` · `Telegram Mini Apps` · `OK` · `MAX` · `RuStore` · `Web` · `Steam` · `VK Play`
-
-Platform release gates are intended to catch critical integration problems before submission.
 
 ## Repository map
 
@@ -214,8 +214,8 @@ Platform release gates are intended to catch critical integration problems befor
 .claude/          canonical Claude skills, agents and hooks
 .codex/           Codex adapter
 .agents/          generated Codex skill discovery
-adapters/         host registry
-scripts/          Forge runtime, sync, checks and provider helpers
+adapters/         terminal host registry
+scripts/          runtime, sync, checks and provider helpers
 platforms/        platform integrations and validators
 templates/        project templates
 schemas/          Forge configuration schemas
@@ -233,18 +233,15 @@ dashboard.html    local Forge dashboard
 - [FORGE.md](FORGE.md) — universal runtime contract
 - [RELEASE_NOTES_v4.68.1.md](RELEASE_NOTES_v4.68.1.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 
-## Updating an existing Forge workspace
+## Security and privacy
 
-For a managed Windows workspace, use the external updater described in the guide/release notes. The safe updater path is designed to preserve sibling projects and local `forge-data` state while validating managed-file drift after the upgrade.
+Public source must never contain workspace secrets, personal projects or local `forge-data` state. Example credentials in documentation must be obvious placeholders only.
 
-For source installations, use normal Git workflows and run the relevant Forge sync/check scripts after changing canonical skills, agents or adapters.
+## License
 
-## Contributing
-
-Contributions are welcome. Keep provider credentials and local project state out of commits, and keep canonical/generated Forge layers in sync.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+A repository license has not been selected yet. Until one is added, normal copyright rules apply.
 
 ---
 
