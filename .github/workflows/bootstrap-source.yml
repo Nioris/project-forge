@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .bootstrap/part-*.b64 | base64 -d > /tmp/project-forge-source.tar.xz
+          cat .bootstrap/payload-*.b64 | base64 -d > /tmp/project-forge-source.tar.xz
           mkdir -p /tmp/project-forge-source
           tar -xJf /tmp/project-forge-source.tar.xz -C /tmp/project-forge-source
       - name: Replace bootstrap payload with source tree
