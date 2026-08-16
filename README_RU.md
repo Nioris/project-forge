@@ -241,10 +241,14 @@ dashboard.html    локальный Dashboard
 
 ## Лицензия
 
-Лицензия репозитория пока не выбрана. До добавления лицензии действуют обычные правила авторского права.
+Project Forge распространяется по лицензии [Apache License 2.0](LICENSE).
+
+Информация об авторстве и attribution находится в [NOTICE](NOTICE) и должна сохраняться при распространении в соответствии с условиями лицензии.
 
 ---
 
-Project Forge разрабатывается [Rodrik Studio](https://rodrik.dev).
+Project Forge разрабатывается [Rodrik Studio](https://rodrik.dev) / Rodrik LTD.
+
+Оригинальный автор: **Aleksandr Krasnokutskiy**.
 
 Project Forge — независимый проект. Claude, Codex, GigaChat, GigaCode и перечисленные платформы принадлежат их соответствующим владельцам.
