@@ -1,5 +1,6 @@
 name: Publish v4.68.2
 
+# One-shot publisher; removed after the release is created.
 on:
   push:
     branches:
