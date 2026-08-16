@@ -234,6 +234,7 @@ dashboard.html    local Forge dashboard
 - [RELEASE_NOTES_v4.68.2.md](RELEASE_NOTES_v4.68.2.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
+- [SUPPORT.md](SUPPORT.md) — voluntary personal support for the original author
 
 ## Security and privacy
 
