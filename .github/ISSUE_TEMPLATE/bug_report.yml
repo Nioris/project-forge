@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a reproducible Project Forge problem
+title: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Do not include API keys, tokens, `.env` contents or other credentials.
+  - type: input
+    id: version
+    attributes:
+      label: Forge version
+      placeholder: "4.68.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Terminal host
+      options:
+        - Claude Code
+        - OpenAI Codex
+        - GigaChat API agent
+        - GigaCode CLI adapter
+        - Host-independent / Forge core
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11 / macOS / Linux"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Run ...
+        2. Execute ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Remove secrets, tokens, usernames and private project data before posting.
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed API keys, tokens and other credentials from this report.
+          required: true
