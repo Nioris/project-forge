@@ -234,6 +234,7 @@ dashboard.html    локальный Dashboard
 - [RELEASE_NOTES_v4.68.2.md](RELEASE_NOTES_v4.68.2.md) — изменения текущей версии
 - [SECURITY.md](SECURITY.md) — правила по секретам и безопасности
 - [CONTRIBUTING.md](CONTRIBUTING.md) — правила contribution
+- [SUPPORT.md](SUPPORT.md) — добровольная личная поддержка оригинального автора
 
 ## Безопасность
 
