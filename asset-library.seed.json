@@ -1,0 +1,32 @@
+{
+  "format": "forge-asset-library",
+  "version": 1,
+  "updated": "2026-07-31",
+  "_note": "ОБРАЗЕЦ. Твоя библиотека живёт в asset-library.json рядом — этот файл её НЕ трогает. Движок при обновлении перезаписывает только seed, пользовательский asset-library.json остаётся.",
+  "sources": [
+    {
+      "name": "Synty POLYGON (Unity-паки)",
+      "path": "<ПУТЬ_К_БИБЛИОТЕКЕ>",
+      "desc": "Купленная библиотека .unitypackage: низкополигональные персонажи и окружение (город, зомби, спецназ, фэнтези). Извлекается в glb для web через Blender.",
+      "tags": [
+        "lowpoly",
+        "3d",
+        "персонажи",
+        "окружение",
+        "synty"
+      ],
+      "kind": "unity",
+      "lic": "paid",
+      "licdate": "2026-07-31",
+      "notes": "Каталог: <ПУТЬ_К_UNITY_HARVEST>/catalog.json — искать по assets[].path, архивы НЕ вскрывать.\nПересборка каталога: node unity-index.mjs \"<ПУТЬ_К_БИБЛИОТЕКЕ>\" --out catalog.json\nИзвлечение: node unity-extract.mjs <пак> ./work --only \"*.fbx,*.png\"\nСодержимое FBX: blender --background --python fbx_split.py -- --fbx <файл> --list\nЭкспорт по маске: blender --background --python fbx_split.py -- --fbx <файл> --out ./glb --filter \"Zombie_Biker*\"\nОптимизация: gltf-transform optimize in.glb out.glb --compress draco --texture-compress webp\n\nОсобенности: один атлас 1024 на пак (варианты _A/_B/_C, хватает одного); анимаций в мешевых паках НЕТ, только скелет — брать Mixamo и ретаргетить; скелет единый по всем пакам, ретаргет делается один раз; вложенный URP_ExtractMe.unitypackage для web бесполезен.\n\nНЕ тащить в проект: .prefab .unity .mat .shader .controller .meta. Никогда не распаковывать библиотеку целиком (десятки гигабайт). Конвертация только через Blender (assimp/FBX2glTF ломают скининг).",
+      "use": "3d",
+      "rating": 0,
+      "verdict": ""
+    }
+  ],
+  "_schema": {
+    "use": "2d | 3d | any — для каких игр годится (3D можно рендерить в спрайты → any)",
+    "rating": "0-5, оценка качества по опыту; Forge предпочитает ≥4 и не берёт ≤2 без явной причины",
+    "verdict": "короткая заметка об опыте использования"
+  }
+}

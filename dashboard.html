@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Forge Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f0f;--bg2:#1a1a1a;--bg3:#242424;--text:#e5e5e5;--text2:#999;--text3:#666;--accent:#3b82f6;--accent2:#2563eb;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7;--teal:#14b8a6;--border:#2a2a2a;--radius:10px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.header h1{font-size:20px;font-weight:600}
+.header h1 span{color:var(--accent);font-weight:400}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.btn:hover{background:var(--bg3);border-color:#444}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-accent:hover{background:var(--accent2)}
+.btn-warn{background:#3a2410;border-color:#7a4a1a;color:#f6a65e}
+.btn-warn:hover{background:#4a3015;border-color:#a06020}
+.btn-sm{padding:5px 10px;font-size:12px}
+.stats{display:flex;gap:12px;padding:16px 24px;flex-wrap:wrap}
+.stat{background:var(--bg2);border-radius:var(--radius);padding:12px 16px;min-width:100px}
+.stat-num{font-size:22px;font-weight:600}
+.stat-label{font-size:12px;color:var(--text2);margin-top:2px}
+.filters{padding:8px 24px 16px;display:flex;gap:8px;flex-wrap:wrap}
+.filters.status-filters{padding:4px 24px 12px}
+.filter-row-label{padding:8px 24px 0;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit}
+.filter-btn-empty{opacity:.4}
+.desc-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:auto;user-select:none}
+.desc-toggle input{cursor:pointer}
+.filter-btn:hover{border-color:#555;color:var(--text)}
+.filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.search{padding:0 24px 12px}
+.search input{width:100%;max-width:400px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px;font-family:inherit;outline:none}
+.sort-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sort-label{font-size:12px;color:var(--text3)}
+.sort-bar select{padding:6px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+.sort-bar select:hover{border-color:var(--accent)}
+.search input:focus{border-color:var(--accent)}
+.search input::placeholder{color:var(--text3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;padding:0 24px 24px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;transition:border-color .15s;position:relative}
+.card:hover{border-color:#444}
+.card-title{font-size:15px;font-weight:600;line-height:1.3}
+.card-path{font-size:11px;color:var(--text3);margin-top:3px;font-family:monospace;word-break:break-all}
+.card-cover{width:calc(100% + 32px);margin:-16px -16px 12px -16px;height:140px;background:var(--bg);background-size:cover;background-position:center;border-radius:var(--radius) var(--radius) 0 0;position:relative;overflow:hidden}
+.card-cover-empty{display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:48px;background:linear-gradient(135deg,var(--bg2),var(--bg))}
+.card-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.card-badges{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0}
+.badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500}
+.badge-new{background:#1e3a5f;color:#60a5fa}
+.badge-dev{background:#1c2f1c;color:#4ade80}
+.badge-polish{background:#2d1f14;color:#fbbf24}
+.badge-build{background:#2a1a3e;color:#c084fc}
+.badge-review{background:#2d1810;color:#fb923c}
+.badge-published{background:#052e16;color:#22c55e}
+.badge-frozen{background:#1a2438;color:#7dd3fc;opacity:.85}
+.badge-rustore{background:#1a2332;color:#60a5fa}
+.badge-yandex{background:#2d2010;color:#fbbf24}
+.badge-web{background:#1a2a2a;color:#5eead4}
+.badge-vk{background:#1e2a3a;color:#7e95cf}
+.badge-telegram{background:#1a2940;color:#7cb1f0}
+.badge-ok{background:#3a2a1a;color:#f6a65e}
+.badge-max{background:#2a1a3a;color:#bb8fee}
+.badge-steam{background:#1a2030;color:#66c0f4}
+.badge-vkplay{background:#1a3030;color:#5fcab8}
+.badge-game{background:#2a1a2a;color:#e879f9}
+.badge-app{background:#1a2a1a;color:#86efac}
+.badge-orient{background:#1a2028;color:#c4b5fd}
+.badge-controls{background:#1a2520;color:#6ee7b7}
+.card-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.card-menu{position:absolute;top:8px;right:8px;z-index:5}
+.card-menu button{background:rgba(0,0,0,0.55);border:none;color:#fff;cursor:pointer;font-size:18px;padding:4px 10px;border-radius:6px;backdrop-filter:blur(4px);line-height:1}
+.card-menu button:hover{background:rgba(0,0,0,0.8);color:#fff}
+.card-specs{display:flex;gap:12px;margin:6px 0;font-size:11px;color:var(--text3)}
+.card-specs span{display:flex;align-items:center;gap:3px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:18px;font-weight:600;margin-bottom:16px}
+.modal label{display:block;font-size:13px;color:var(--text2);margin:12px 0 6px}
+.modal input,.modal select,.modal textarea{width:100%;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;font-family:inherit;outline:none}
+.modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--accent)}
+.modal textarea{resize:vertical;min-height:60px}
+.modal-actions{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+.modal .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.modal .chip{padding:5px 12px;border-radius:16px;border:1px solid var(--border);font-size:12px;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit;transition:all .15s}
+.modal .chip.selected{background:var(--accent);border-color:var(--accent);color:#fff}
+.modal .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:var(--radius);font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.4);transition:transform .3s cubic-bezier(0.34,1.56,0.64,1);z-index:200;border:1px solid #333}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.empty{text-align:center;padding:60px 24px;color:var(--text3)}
+.empty h3{font-size:16px;color:var(--text2);margin-bottom:8px}
+.hidden{display:none!important}
+.help-panel{display:none;padding:0 24px 24px}
+.help-panel.open{display:block}
+.cleaner-panel{display:none;padding:0 24px 20px}
+.cleaner-panel.open{display:block}
+.cleaner-panel textarea{width:100%;min-height:100px;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;outline:none;line-height:1.6}
+.cleaner-panel textarea:focus{border-color:var(--accent)}
+.cleaner-panel textarea::placeholder{color:var(--text3)}
+.cleaner-result{margin-top:10px;padding:12px 14px;border-radius:var(--radius);background:var(--bg3);border:1px solid var(--border);font-size:13px;font-family:var(--font-mono,'Consolas','Monaco',monospace);color:var(--green);line-height:1.5;white-space:pre-wrap;word-break:break-word;min-height:40px;cursor:pointer;position:relative;transition:border-color .2s}
+.cleaner-result:hover{border-color:var(--accent)}
+.cleaner-result:empty::before{content:'← Результат появится здесь';color:var(--text3);font-family:inherit;font-style:normal}
+.cleaner-result .copied-flash{position:absolute;inset:0;background:rgba(34,197,94,0.1);border-radius:var(--radius);pointer-events:none;animation:flashGreen .4s ease-out forwards}
+@keyframes flashGreen{0%{opacity:1}100%{opacity:0}}
+.cleaner-bar{display:flex;gap:8px;margin-top:8px;align-items:center}
+.cleaner-hint{font-size:11px;color:var(--text3);flex:1}
+.notes-panel{display:none;padding:0 24px 20px}
+.notes-panel.open{display:block}
+.notes-add-bar{display:flex;gap:8px;margin-bottom:12px}
+.notes-add-bar textarea{flex:1;min-height:60px;padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;outline:none;line-height:1.5}
+.notes-add-bar textarea:focus{border-color:var(--accent)}
+.notes-add-bar textarea::placeholder{color:var(--text3)}
+.notes-add-bar .btn{align-self:flex-end}
+.note-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;position:relative}
+.note-item:hover{border-color:var(--accent)}
+.note-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.note-text[contenteditable="true"]{outline:none;border-bottom:1px dashed var(--accent)}
+.note-meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--text3)}
+.note-actions{display:flex;gap:6px}
+.note-actions button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:4px}
+.note-actions button:hover{color:var(--text);background:var(--bg3)}
+.note-actions button.del:hover{color:var(--red)}
+.notes-empty{text-align:center;padding:30px;color:var(--text3);font-size:13px}
+.help-section{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.help-toggle{width:100%;padding:14px 16px;background:none;border:none;color:var(--text);font-size:14px;font-weight:600;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit}
+.help-toggle:hover{background:var(--bg3)}
+.help-toggle .arrow{color:var(--text3);transition:transform .2s;font-size:12px}
+.help-toggle.open .arrow{transform:rotate(90deg)}
+.help-content{display:none;padding:0 16px 16px;font-size:13px;line-height:1.7;color:var(--text2)}
+.help-content.open{display:block}
+.help-content h4{color:var(--text);font-size:13px;margin:14px 0 6px;font-weight:600}
+.help-content h4:first-child{margin-top:0}
+.help-content code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px;color:var(--accent);font-family:'Consolas','Monaco',monospace}
+.help-content .cmd-row{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
+.help-content .cmd-row:last-child{border-bottom:none}
+.help-content .cmd-name{min-width:160px;color:var(--accent);font-family:monospace;font-size:12px;flex-shrink:0}
+.help-content .cmd-desc{color:var(--text2);font-size:12px}
+.help-content .tip{background:var(--bg3);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;border-radius:0 6px 6px 0;font-size:12px}
+.help-content .tip.warn{border-left-color:var(--amber)}
+.help-content .tip.good{border-left-color:var(--green)}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Project Forge <span>Dashboard · v4.68.1</span></h1>
+  <div class="header-actions">
+    <select id="agentModeSelect" class="btn" onchange="setAgentMode(this.value)" title="Как показывать Forge-команды в подсказках: Claude slash skills или Codex $skills">
+      <option value="claude">Claude Code</option>
+      <option value="codex">Codex</option>
+    </select>
+    <button class="btn" onclick="changeForgePath()" title="Путь к Project-forge — используется в готовых промптах">📂 Путь к Forge</button>
+    <button class="btn" onclick="changeProjectsRoot()" title="Папка где создаются новые проекты. По умолчанию — родительская папка Forge.">📁 Папка проектов</button>
+    <button class="btn" onclick="fixAllProjectPaths()" title="Исправить пути проектов, которые содержат /project-forge/ (проекты должны быть СОСЕДЯМИ template, не внутри)">🔧 Fix paths</button>
+    <button class="btn" onclick="window.open('asset-library.html','_blank')">📦 Библиотека ассетов</button>
+    <button class="btn" onclick="exportData()">Экспорт JSON</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn" onclick="toggleCleaner()" id="cleanerBtn">Очистка текста</button>
+    <button class="btn" onclick="toggleNotes()" id="notesBtn">Заметки</button>
+    <button class="btn" onclick="toggleHelp()" id="helpBtn">Справка</button>
+    <button class="btn btn-accent" onclick="showAddModal()">+ Новый проект</button>
+  </div>
+</div>
+<div class="stats" id="stats"></div>
+<div class="search"><input type="text" placeholder="Поиск проектов..." id="searchInput" oninput="render()"></div>
+<div class="sort-bar" id="sortBar">
+  <span class="sort-label">Сортировка:</span>
+  <select id="sortSelect" onchange="changeSort(this.value)">
+    <option value="date_desc">Новые сверху</option>
+    <option value="date_asc">Старые сверху</option>
+    <option value="name">По имени (А-Я)</option>
+    <option value="status">По статусу</option>
+  </select>
+  <label class="desc-toggle"><input type="checkbox" id="descToggle" onchange="toggleDescriptions(this.checked)"> Показывать описания</label>
+</div>
+<div class="filter-row-label">Статусы (можно выбрать несколько):</div>
+<div class="filters status-filters" id="statusFilters"></div>
+<div class="filter-row-label">Тип и платформы:</div>
+<div class="filters" id="filters"></div>
+<div class="grid" id="grid"></div>
+<div class="empty hidden" id="empty"><h3>Проектов пока нет</h3><p>Нажми "+ Новый проект" чтобы добавить</p></div>
+<div class="cleaner-panel" id="cleanerPanel">
+  <textarea id="cleanerInput" placeholder="Вставь сюда текст от Claude/советника с форматированием (звёздочки, бэктики, markdown)..." oninput="cleanText()"></textarea>
+  <div class="cleaner-bar">
+    <button class="btn btn-sm btn-accent" onclick="copyClean()">Копировать одной строкой</button>
+    <button class="btn btn-sm" onclick="saveAsPrompt()">Сохранить как prompt.md</button>
+    <button class="btn btn-sm" onclick="document.getElementById('cleanerInput').value='';cleanText()">Очистить</button>
+    <span class="cleaner-hint">Лайфхак: в терминале нажми Ctrl+G — откроется Блокнот, вставляй текст любой длины</span>
+  </div>
+  <div class="cleaner-result" id="cleanerResult" onclick="copyClean()"></div>
+</div>
+
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-add-bar">
+    <textarea id="noteInput" placeholder="Напиши заметку..." rows="2"></textarea>
+    <button class="btn btn-accent" onclick="addNote()">Добавить</button>
+  </div>
+  <div id="notesList"></div>
+</div>
+
+<div class="help-panel" id="helpPanel">
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">⭐ Quick start (v4.68.1) — 3 команды на всё <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Главные команды (используй их в 99% случаев)</h4>
+    <div class="tip good">Переключатель в шапке меняет Forge-команды: Claude Code использует <code>/skill</code>, Codex — <code>$skill</code>. В Codex <code>/status</code>, <code>/plan</code>, <code>/review</code> — нативные команды Codex; Forge-варианты: <code>$status</code>, <code>$plan</code>, <code>$review</code>.</div>
+    <div class="tip good"><b>AI Studio 4.67 встроен в те же 9 фаз:</b> Ф2 — briefs/prompt packs, Ф3 — phase-aware studio agents, Ф4 — Image Studio + Art Director, Ф7 — Visual QA, Ф9 — creative A/B. Отдельной Ф10 нет.</div>
+    <div class="cmd-row"><span class="cmd-name">/game [идея/path/действие]</span><span class="cmd-desc">⭐ Игровой проект. Smart router auto-detects: new / analyze / continue / UI redesign / release</span></div>
+    <div class="cmd-row"><span class="cmd-name">/app [идея/path/действие]</span><span class="cmd-desc">⭐ Приложение. Smart router auto-detects, читает категорию (health/finance/SaaS/etc)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/continue</span><span class="cmd-desc">Resume с того места, где остановились (читает wiki/_current.md)</span></div>
+    <h4>Примеры использования</h4>
+    <div class="cmd-row"><span class="cmd-name">/game tower defense с зомби</span><span class="cmd-desc">→ создаёт новый игровой проект</span></div>
+    <div class="cmd-row"><span class="cmd-name">/app habit tracker для бегунов</span><span class="cmd-desc">→ создаёт health/wellness app</span></div>
+    <div class="cmd-row"><span class="cmd-name">/game</span><span class="cmd-desc">→ читает контекст текущего проекта, решает что делать (analyze / continue / redesign)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/game redesign UI</span><span class="cmd-desc">→ запускает /ui-pipeline на текущем проекте</span></div>
+    <div class="cmd-row"><span class="cmd-name">/app deploy to production</span><span class="cmd-desc">→ запускает соответствующий release flow</span></div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Все доступные skills (для power users) — 141 canonical / 144 Codex<span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Управление проектом</h4>
+    <div class="cmd-row"><span class="cmd-name">/start {описание}</span><span class="cmd-desc">Создать проект с нуля. Auto-research конкурентов через /research-references как Phase 0 (v4.10.14+)</span></div>
+    <div class="cmd-row"><span class="cmd-name">./new-project.bat &lt;имя&gt; --type game|app</span><span class="cmd-desc">Создать project sibling: сразу Claude + Codex runtime и .forge-managed.json. new-game/new-app — wrappers</span></div>
+    <div class="cmd-row"><span class="cmd-name">./sync.bat</span><span class="cmd-desc">Канонический managed sync ВСЕХ sibling projects: обновляет только Forge-owned файлы, пользовательские custom skills сохраняет</span></div>
+    <div class="cmd-row"><span class="cmd-name">./upgrade.bat</span><span class="cmd-desc">После ручной распаковки ZIP: cleanup + regenerate AGENTS/Codex/dashboard. Затем ./sync.bat</span></div>
+    <div class="cmd-row"><span class="cmd-name">../update-forge.bat</span><span class="cmd-desc">⭐ One-click update всей базы: внешний BAT рядом с project-forge выбирает max semver ZIP → backup → upgrade → sync всех проектов → gates</span></div>
+    <div class="cmd-row"><span class="cmd-name">/continue</span><span class="cmd-desc">Продолжить с того места где остановились (читает CONTEXT.md)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/status</span><span class="cmd-desc">9 фаз: CURRENT/STOP-point + AI Studio + Project Health по machine markers и артефактам</span></div>
+    <div class="cmd-row"><span class="cmd-name">/plan</span><span class="cmd-desc">Дорожная карта разработки</span></div>
+    <div class="cmd-row"><span class="cmd-name">/review</span><span class="cmd-desc">Аудит качества кода: комментарии, архитектура, баги</span></div>
+    <div class="cmd-row"><span class="cmd-name">/doc</span><span class="cmd-desc">Обновить документацию (CONTEXT, ARCHITECTURE, README)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/handoff</span><span class="cmd-desc">Сохранить контекст для следующей сессии</span></div>
+    <h4>v4.5+ оркестраторы — стандартизованные workflow</h4>
+    <div class="cmd-row"><span class="cmd-name">/deepen-game</span><span class="cmd-desc">Расширить готовую игру (research → gap analysis → plan → execute)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-ready</span><span class="cmd-desc">Pre-release checklist (read-only, red/yellow/green per platform)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/choose-backend-stack</span><span class="cmd-desc">4 вопроса → 1 из 5 канонических стеков (A/B/C/D/E)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/research-references</span><span class="cmd-desc">Изучить конкурентов через web/image search → wiki/research/. Auto-зовётся из /start, /new-project, /analyze-game</span></div>
+    <div class="cmd-row"><span class="cmd-name">/find-or-make-skill</span><span class="cmd-desc">Discovery chain для specialized skill: local → Anthropic → community → create</span></div>
+    <div class="cmd-row"><span class="cmd-name">/anon-auth-sync</span><span class="cmd-desc">Анонимная auth + E2E cloud sync (5-word phrase). Универсальный паттерн для PWA/Capacitor</span></div>
+    <h4>AI Studio 4.67 — phase-aware production</h4>
+    <div class="cmd-row"><span class="cmd-name">/studio &lt;цель&gt;</span><span class="cmd-desc">Director: делит цель на независимые design/code/art/QA lanes, но не перескакивает через STOP-гейты текущей фазы</span></div>
+    <div class="cmd-row"><span class="cmd-name">/prompt-compiler &lt;asset&gt;</span><span class="cmd-desc">GDD + STYLE-BIBLE + target frame → reproducible JSON prompt pack в assets/prompts/</span></div>
+    <div class="cmd-row"><span class="cmd-name">/image-studio &lt;asset&gt;</span><span class="cmd-desc">Codex-native ImageGen по умолчанию; optional OpenAI API batch → candidates → Art Director → approved → provenance</span></div>
+    <div class="cmd-row"><span class="cmd-name">/visual-qa [scope]</span><span class="cmd-desc">Реальные screenshots/viewport/читабельность/overlap; Computer Use в Codex, когда доступен</span></div>
+    <div class="tip">Переключатель Claude/Codex автоматически показывает эти команды как <code>/...</code> или <code>$...</code>. Секреты не кладутся в <code>.forge-ai.json</code>; unattended API batch использует central <code>forge-data/secrets/openai.key</code>; legacy <code>.openai_key</code> поддерживается.</div>
+    <h4>Полировка</h4>
+    <div class="cmd-row"><span class="cmd-name">/improve</span><span class="cmd-desc">Полная полировка ИГРЫ: визуал, геймплей, звук, мобилка, polish</span></div>
+    <div class="cmd-row"><span class="cmd-name">/polish-app</span><span class="cmd-desc">Полная полировка ПРИЛОЖЕНИЯ: UX, данные, уведомления, тема</span></div>
+    <div class="cmd-row"><span class="cmd-name">/visual-upgrade</span><span class="cmd-desc">Только графика: палитры, градиенты, glow, частицы</span></div>
+    <div class="cmd-row"><span class="cmd-name">/sound-design</span><span class="cmd-desc">Только звук: 12 SFX + фоновая музыка (Web Audio API)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/game-design</span><span class="cmd-desc">Только геймплей: core loop, juice, difficulty, retention</span></div>
+    <div class="cmd-row"><span class="cmd-name">/level-design</span><span class="cmd-desc">Только уровни: генераторы для 10 жанров</span></div>
+    <div class="cmd-row"><span class="cmd-name">/mobile-adapt</span><span class="cmd-desc">Только мобилка: тач-управление, ориентация по жанру</span></div>
+    <h4>Сборка и релиз — pre-release check</h4>
+    <div class="cmd-row"><span class="cmd-name">/release-ready</span><span class="cmd-desc">Pre-release checklist (red/yellow/green per platform — БЕЗ сборки)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/credentials-check</span><span class="cmd-desc">Глубокая проверка keystore, API keys, env vars</span></div>
+    <h4>Сборка и релиз — конвертация в Android</h4>
+    <div class="cmd-row"><span class="cmd-name">/convert</span><span class="cmd-desc">HTML5 → Android APK через Capacitor</span></div>
+    <div class="cmd-row"><span class="cmd-name">/build-apk</span><span class="cmd-desc">Собрать APK (Capacitor уже настроен)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/twa-wrap</span><span class="cmd-desc">PWA → Android через Trusted Web Activity</span></div>
+    <h4>Сборка и релиз — все 7 платформ</h4>
+    <div class="cmd-row"><span class="cmd-name">/release-all</span><span class="cmd-desc">Сборка для всех 7 платформ через Agent Teams (parallel)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-yandex</span><span class="cmd-desc">Яндекс Игры: SDK + 13 языков + vertical+horizontal+all ZIPs</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-vk</span><span class="cmd-desc">VK Mini Apps: Bridge integration + 3 validators</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-telegram</span><span class="cmd-desc">Telegram Mini App: WebApp + HTTPS + 5 validators + runtime test</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-ok</span><span class="cmd-desc">Одноклассники (OK.ru): API_callback + FAPI</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-max</span><span class="cmd-desc">MAX мессенджер: MaxSDK + 5 validators + URL ≤1024 chars</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-rustore</span><span class="cmd-desc">RuStore: AAB + Pay SDK + receipt validation + privacy</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-web</span><span class="cmd-desc">Self-hosted web: Dockerfile + nginx + Let's Encrypt</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-steam</span><span class="cmd-desc">Steam: Electron + steamworks.js → SteamPipe upload (Steam Direct fee $100)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-vkplay</span><span class="cmd-desc">VK Play (vkplay.ru): iframe + signed auth + payment webhook (НЕ путать с /release-vk!)</span></div>
+    <h4>Сборка и релиз — store-listing + метаданные</h4>
+    <div class="cmd-row"><span class="cmd-name">/fill-yandex</span><span class="cmd-desc">Заполнить store listing для Яндекс Игр (description ≥120, screenshots, icon)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/fill-vk</span><span class="cmd-desc">Заполнить store listing для VK Mini Apps</span></div>
+    <div class="cmd-row"><span class="cmd-name">/fill-rustore</span><span class="cmd-desc">Заполнить store listing для RuStore</span></div>
+    <div class="cmd-row"><span class="cmd-name">/fill-steam</span><span class="cmd-desc">Steam Store page: short ≤300 + long описание, tags ≤10, screenshots 1280×720+, system reqs, pricing</span></div>
+    <div class="cmd-row"><span class="cmd-name">/fill-vkplay</span><span class="cmd-desc">VK Play Game card на developers.vkplay.ru: название RU+EN, описание ≥150/≤4000, иконка 1024×1024, категория, age rating</span></div>
+    <div class="cmd-row"><span class="cmd-name">/rustore-publish</span><span class="cmd-desc">RuStore polishing: AAB + IAP + Pay SDK + receipt validation</span></div>
+    <div class="cmd-row"><span class="cmd-name">/store-listing</span><span class="cmd-desc">Универсальное store listing (тексты, скриншоты, ASO)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/promo-screens</span><span class="cmd-desc">Сгенерировать промо-скриншоты для всех платформ</span></div>
+    <h4>Сборка и релиз — деплой и backend</h4>
+    <div class="cmd-row"><span class="cmd-name">/deploy</span><span class="cmd-desc">Деплой на веб-сервер: Docker + Nginx + SSL</span></div>
+    <div class="cmd-row"><span class="cmd-name">/choose-backend-stack</span><span class="cmd-desc">4 вопроса → 1 из 5 канонических стеков</span></div>
+    <div class="cmd-row"><span class="cmd-name">/server-detect</span><span class="cmd-desc">Определить нужен ли проекту сервер</span></div>
+    <h4>Расширение forge</h4>
+    <div class="cmd-row"><span class="cmd-name">/find-or-make-skill</span><span class="cmd-desc">Discovery chain: local → Anthropic → community → создать</span></div>
+    <div class="cmd-row"><span class="cmd-name">/learn-sdk {название}</span><span class="cmd-desc">Изучить новый SDK и создать скил навсегда</span></div>
+    <div class="cmd-row"><span class="cmd-name">/add-pipeline {описание}</span><span class="cmd-desc">Добавить новый процесс/workflow навсегда</span></div>
+    <div class="cmd-row"><span class="cmd-name">/write-skill {описание}</span><span class="cmd-desc">Создать скил вручную</span></div>
+    <h4>Помощники</h4>
+    <div class="cmd-row"><span class="cmd-name">/advisor</span><span class="cmd-desc">Режим советчика: опиши своими словами, получи правильный промпт</span></div>
+    <div class="cmd-row"><span class="cmd-name">/team build</span><span class="cmd-desc">3 параллельных агента: архитектор + разработчик + QA</span></div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Лайфхаки и советы <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Экономия лимитов</h4>
+    <div class="tip good">Используй <code>Shift+Tab</code> для режима планирования перед большими задачами. Claude продумает план без лишних токенов.</div>
+    <div class="tip good">Команда <code>/compact</code> сжимает историю когда контекст раздулся. Экономит промпты.</div>
+    <div class="tip good">Для рутинных задач переключи модель: <code>/model</code> и выбери Sonnet (дешевле). Opus оставь для архитектуры.</div>
+    <div class="tip warn">Не пиши 10 задач в одном промпте. Лучше 3 конкретных чем 10 расплывчатых.</div>
+    <div class="tip">Создай <code>.claudeignore</code> в проекте: туда node_modules/, dist/, *.lock - Claude не будет их сканировать.</div>
+
+    <h4>Ошибки при сборке</h4>
+    <div class="tip warn">Claude использует версии SDK из обучающих данных (устаревшие!). Если ошибка — НЕ давай ему городить костыли. Скажи: "Посмотри в интернете актуальную версию этого SDK и обнови"</div>
+    <div class="tip good">Перед сборкой полезно сказать: "Проверь через веб-поиск актуальные версии Capacitor, Gradle Plugin и всех SDK"</div>
+
+    <h4>Формулировка промптов</h4>
+    <div class="tip good" style="border-left-color:#22c55e;font-weight:500">Длинный промпт? Нажми <code>Ctrl+G</code> в терминале — откроется Блокнот. Вставь текст любой длины, сохрани (Ctrl+S), закрой. Текст отправится в Claude автоматически. Лучший способ!</div>
+    <div class="tip good">Промпт ОДНОЙ СТРОКОЙ. Claude Code плохо принимает многострочные вставки.</div>
+    <div class="tip good">Если длинный промпт - создай файл <code>prompt.md</code> в проекте и напиши Claude: "Прочитай prompt.md и выполни"</div>
+    <div class="tip good">Всегда пиши на русском - иначе Claude переключится на английский.</div>
+    <div class="tip">Используй <code>/advisor</code> - опиши задачу своими словами, получи готовый промпт.</div>
+    <div class="tip warn">Не пиши "сделай хорошо". Пиши конкретно: "исправь утечку watchPosition в высотомере, добавь clearWatch при уходе с таба".</div>
+
+    <h4>Аудит и отладка</h4>
+    <div class="tip good">Перед сборкой всегда проси аудит: "Сделай полный аудит на ошибки и фейковый функционал, формат: КРИТИЧНО/ВАЖНО/МЕЛОЧЬ, не исправляй - только отчёт"</div>
+    <div class="tip good">После аудита: "Исправь все критичные и важные проблемы из аудита" - он помнит список.</div>
+    <div class="tip">Если баг от пользователя: "Пользователь пишет: [точная цитата]. Найди причину и исправь."</div>
+    <div class="tip">Если модератор отклонил: "Модерация отклонила. Причина: [точная цитата]. Исправь."</div>
+
+    <h4>Параллельная работа</h4>
+    <div class="tip good">Пока Claude думает в одном терминале (2-10 мин) - переключись на другой проект.</div>
+    <div class="tip">Открытый терминал в простое = 0 токенов. Можно держать 10 вкладок.</div>
+    <div class="tip warn">Все терминалы едят из одного пула лимитов. На Pro хватит на 1-2 активных, на Max 20x на 5-8.</div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Когда что использовать <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Новый проект (статус "Новый")</h4>
+    <div class="tip">1. На карточке проекта: <b>Claude Full / Codex Full</b> используют текущую подписочную авторизацию; <b>Claude API / Codex API</b> — централизованные API-профили; <b>GigaChat API</b> — терминальный Forge-агент; <b>GigaCode CLI</b> остаётся dormant, пока официальный executable недоступен.</div>
+    <div class="tip">2. <code>./new-project.bat имя --type game</code> — создать проект, затем <code>/phase-1-analyze .</code> (Claude) / <code>$phase-1-analyze .</code> (Codex) в его папке</div>
+    <div class="tip good">v4.5+ автоматом запустится <code>/research-references</code> — изучит 3-5 конкурентов через web/image search. Покажет summary → подтверди направление</div>
+    <div class="tip good">Затем автоматом <code>/find-or-make-skill</code> для специализированных компетенций (физика, audio, анимация и т.д.)</div>
+    <div class="tip">3. Только после research → planning, кодирование</div>
+    <div class="tip">Хочешь без research (для прототипа): добавь "skip research" / "без research"</div>
+
+    <h4>Доработка функционала (статус "В разработке")</h4>
+    <div class="tip">Приложение: <code>/polish-app</code> - UX, поиск, фильтры, уведомления, тёмная тема</div>
+    <div class="tip">Игра: <code>/improve</code> - визуал, звук, геймплей, уровни, мобилка</div>
+    <div class="tip good"><code>/deepen-game</code> (v4.5+) - расширить готовую игру через research → gap analysis → plan → execute с stop'ами</div>
+    <div class="tip">Точечно: "Прочитай скил app-ux-polish и добавь empty states" или "Прочитай скил sound-design и добавь звуки"</div>
+
+    <h4>Backend / сервер (если нужен)</h4>
+    <div class="tip good"><code>/choose-backend-stack</code> - 4 вопроса → 1 из 5 канонических стеков (A: Node+SQLite+Timeweb, B: Node+PostgreSQL, C: Cloudflare Workers, D: Docker, E: Яндекс Cloud Functions)</div>
+    <div class="tip">Reference код для Stack A уже в <code>.claude/skills/rustore-publish/reference/</code></div>
+
+    <h4>Перед сборкой (статус "Полировка")</h4>
+    <div class="tip good"><code>/release-ready &lt;platform&gt;</code> (v4.5+) - read-only checklist red/yellow/green per platform. Покажет конкретные blocker'ы и какие skills для фикса</div>
+    <div class="tip">1. Аудит: "Сделай полный аудит на ошибки, фейковый функционал, утечки. Только отчёт."</div>
+    <div class="tip">2. Исправления: "Исправь все критичные и важные из аудита"</div>
+    <div class="tip">3. <code>/release-ready</code> снова → когда GREEN → следующий шаг</div>
+
+    <h4>Сборка (статус "Сборка")</h4>
+    <div class="tip">RuStore: <code>/convert</code> - спросит ключи, соберёт APK</div>
+    <div class="tip">Яндекс Игры: <code>/release-yandex</code> - SDK + 13 языков + 3 билда</div>
+    <div class="tip"><code>/release-all</code> - все 7 платформ через Agent Teams parallel mode</div>
+    <div class="tip">Web: <code>/deploy</code> - Docker + Nginx + SSL</div>
+    <div class="tip warn">Без ключей можно собрать debug APK: "Собери debug APK без рекламы и аналитики"</div>
+
+    <h4>Правки от модераторов (статус "На модерации")</h4>
+    <div class="tip">Вставь точную причину отказа: "Модерация RuStore отклонила. Причина: [цитата]. Исправь и пересобери APK."</div>
+    <div class="tip">Для Яндекс: "Прочитай скил yandex-sdk-integration секция 8 причин отказа. Проверь по каждому пункту."</div>
+
+    <h4>Добавить новый SDK навсегда</h4>
+    <div class="tip"><code>/learn-sdk VK Ads SDK</code> - изучит, создаст скил, добавит в credentials-check. Все проекты получат доступ.</div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Публикация в RuStore (приложения) <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Пошаговый план</h4>
+    <div class="tip">1. Разработка и полировка: <code>/polish-app</code> или точечно через скилы</div>
+    <div class="tip">2. Аудит: "Сделай полный аудит на ошибки и фейковый функционал, только отчёт"</div>
+    <div class="tip">3. Исправления: "Исправь все критичные и важные из аудита"</div>
+    <div class="tip">4. Конвертация: <code>/convert</code> — Claude спросит ключи, соберёт APK</div>
+    <div class="tip">5. Описание: <code>/fill-rustore</code> — SEO-описание, категория, теги, changelog</div>
+    <div class="tip">6. Арт: <code>/art-prompts</code> — иконка и баннер. <code>/promo-screens</code> — промо-карточки с текстом</div>
+    <div class="tip">7. Публикация: загрузить APK + графику + описание в console.rustore.ru</div>
+
+    <h4>Подпись и ключи (Claude спросит и проведёт по шагам)</h4>
+    <div class="tip warn">Keystore — формат ОБЯЗАТЕЛЬНО PKCS12 (не JKS!). Claude сгенерирует если нет</div>
+    <div class="tip">pepk.jar — скачать из RuStore Console → Приложение → Подпись</div>
+    <div class="tip">Encryption key — скопировать там же (длинная hex-строка 0000...)</div>
+    <div class="tip good">Claude создаст StoreData/SIGNING_CREDENTIALS.md с ВСЕМИ паролями, alias, командами. Не потеряются</div>
+    <div class="tip good">Claude создаст pepk.txt с готовой командой — подставь encryption key и запусти</div>
+    <div class="tip">Yandex Ads Block ID — partner.yandex.ru (баннер, interstitial, rewarded)</div>
+    <div class="tip">AppMetrica API Key — appmetrica.yandex.ru</div>
+    <div class="tip good">Без ключей можно собрать debug APK: "Собери debug APK без рекламы и аналитики"</div>
+
+    <h4>Файлы для загрузки в RuStore Console</h4>
+    <div class="tip">pepk_out.zip → Console → Подпись (зашифрованный приватный ключ)</div>
+    <div class="tip">upload_cert.pem → Console → Подпись (публичный сертификат)</div>
+    <div class="tip">app-release.aab → Console → Релизы (подписанная сборка)</div>
+
+    <h4>Что создаётся в StoreData/</h4>
+    <div class="tip">RUSTORE_LISTING.md — название, описание, теги, ключевики, changelog</div>
+    <div class="tip warn">SIGNING_CREDENTIALS.md — пароли, alias, encryption key, pepk команда (НЕ в git!)</div>
+    <div class="tip">SIGNING_GUIDE.md — инструкция подписи: keystore → pepk → cert → gradle</div>
+    <div class="tip">ART_PROMPTS.md — промпты для иконки 512x512, баннера 1024x500</div>
+    <div class="tip">PUBLISH_GUIDE.md — пошаговая инструкция публикации</div>
+    <div class="tip">PROMO_SCREENS.md — промпты для промо-карточек с текстом (для ChatGPT)</div>
+    <div class="tip">PRIVACY_POLICY.md — политика конфиденциальности (обязательна!)</div>
+
+    <h4>Графика для RuStore</h4>
+    <div class="tip">Иконка: 512x512 PNG, без прозрачности, читается на 48px</div>
+    <div class="tip">Feature Graphic: 1024x500 PNG/JPG</div>
+    <div class="tip">Скриншоты: 1080x1920, минимум 2 шт, первый — уникальная фича</div>
+
+    <h4>Частые причины отказа</h4>
+    <div class="tip warn">Нет политики конфиденциальности — обязательна, хотя бы на GitHub Pages</div>
+    <div class="tip warn">Краш при запуске — протестируй APK на реальном устройстве</div>
+    <div class="tip warn">Стандартная иконка Capacitor — Claude забывает заменить. Проверь mipmap-* папки!</div>
+    <div class="tip warn">Устаревшие SDK — Claude использует версии из памяти (2024). Если ошибка при сборке — пусть проверит актуальную версию через поиск, а не городит костыли!</div>
+    <div class="tip warn">Декларация разрешений — RuStore требует обоснование для камеры, микрофона, GPS (до 1500 символов каждое)</div>
+    <div class="tip good">docs/BUILD_KNOWLEDGE.md — накопленная база знаний: актуальные версии SDK, Capacitor pitfalls, подпись. Claude обязан читать перед сборкой</div>
+    <div class="tip warn">Скриншоты не соответствуют приложению</div>
+    <div class="tip warn">Элементы интерфейса слишком мелкие — touch targets минимум 48px</div>
+
+    <h4>Готовые промпты</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай скил fill-rustore и заполни карточку для RuStore. Создай все файлы в StoreData/.')">&#128203; Заполнить карточку RuStore</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай скилы fill-rustore и art-prompts. Подготовь полный пакет для RuStore: описание с ключевиками + промпты для иконки и баннера. Всё в StoreData/.')">&#128203; Полный пакет RuStore (описание + арт)</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай скил promo-screens и создай промо-скриншоты для RuStore. 5-8 карточек с текстом на русском, первая — уникальная фича. Промпты для ChatGPT готовые к копированию. Всё в StoreData/PROMO_SCREENS.md.')">&#128203; Промо-скриншоты с текстом (для ChatGPT)</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Запусти /convert - конвертация в Android APK для RuStore. Начни с credentials-check. Ключи пока не готовы - собери debug APK.')">&#128203; Собрать debug APK</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Модерация RuStore отклонила. Причина: [ВСТАВЬ ПРИЧИНУ]. Исправь и пересобери APK.')">&#128203; Исправить отказ модерации</div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Публикация в Яндекс Играх (игры) <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Пошаговый план</h4>
+    <div class="tip">1. Полировка: <code>/improve</code> — визуал, геймплей, звук, мобилка</div>
+    <div class="tip">2. SDK: <code>/release-yandex</code> или "Прочитай скил yandex-sdk-integration"</div>
+    <div class="tip">3. Локализация: <code>/localize</code> — 13 языков порциями с верификацией</div>
+    <div class="tip">4. Тестирование: <code>/test-game</code> — автотесты + 6 ручных проверок</div>
+    <div class="tip">5. Описание: <code>/fill-yandex</code> — 13 JSON + SETUP_GUIDE + rodrik</div>
+    <div class="tip">6. Арт: <code>/art-prompts</code> — иконка, обложка. <code>/promo-screens</code> — промо-карточки с текстом</div>
+    <div class="tip">7. Сборка: 3 ZIP в Release/ (release, debug, marketing)</div>
+    <div class="tip">8. Загрузка: release ZIP + описание + графика в games.yandex.ru/console</div>
+
+    <h4>Три обязательных билда</h4>
+    <div class="tip good">Release — чистый билд для модерации. БЕЗ дебаг-панели и читов</div>
+    <div class="tip">Debug — с debugcheck.js (Ctrl+Shift+2 x3). Для проверки SDK перед отправкой</div>
+    <div class="tip">Marketing — с cheats.js (Ctrl+Shift+9). Для скриншотов: прокачка, смена языка кнопкой L</div>
+
+    <h4>SDK фичи (что настроить)</h4>
+    <div class="tip">LoadingAPI.ready() — вызвать ПОСЛЕ отрисовки UI + загрузки шрифтов</div>
+    <div class="tip">Сохранения — заменить ВСЕ localStorage на player.setData/getData</div>
+    <div class="tip">Реклама — interstitial между уровнями (cooldown 60 сек), rewarded за бонусы</div>
+    <div class="tip">Лидерборды — создать в консоли, имена только латиница без спецсимволов</div>
+    <div class="tip">Покупки (IAP) — consumePurchase ПОСЛЕ начисления товара</div>
+    <div class="tip warn">Звук — ОБЯЗАТЕЛЬНО глушить при рекламе (onOpen → suspend, onClose → resume)</div>
+
+    <h4>Локализация — 13 языков</h4>
+    <div class="tip">RU, EN, ES, TR, PT, AR, ID, FR, JA, IT, DE, HI, ZH</div>
+    <div class="tip warn">var _lang (НЕ let!) — иначе YG скриншотер не сможет переключать язык</div>
+    <div class="tip warn">detectLang() ПЕРЕД LoadingAPI.ready() — модерация проверяет</div>
+    <div class="tip warn">setLang() должен перерисовать ТЕКУЩИЙ экран — иначе смесь языков</div>
+    <div class="tip">Делать порциями по 3-4 языка, verify-i18n между каждой порцией</div>
+    <div class="tip">Fallback: be/kk/uk/uz → ru, остальные → en</div>
+
+    <h4>Верификация (запускать ПЕРЕД отправкой)</h4>
+    <div class="tip warn">bash scripts/verify.sh src/ — SDK, структура, звук, реклама. 0 FAIL обязательно!</div>
+    <div class="tip warn">node scripts/verify-i18n.mjs src/ — ключи, языки, кириллица. 0 FAIL!</div>
+    <div class="tip">node scripts/smoke-test.mjs src/ — запуск без крашей</div>
+    <div class="tip warn">НИКОГДА не публиковать с FAIL. Модерация = 3-5 рабочих дней. Отказ = неделя потери</div>
+
+    <h4>Что создаётся в StoreData/</h4>
+    <div class="tip">store-listing.md — основное описание RU</div>
+    <div class="tip">store-listing-{lang}.json — 13 файлов (RU, EN, ES, TR, PT, AR, ID, FR, JA, IT, DE, HI, ZH)</div>
+    <div class="tip">SETUP_GUIDE.md — лидерборды, IAP товары, точки рекламы</div>
+    <div class="tip">{NAME}-art-prompts.md — промпты для иконки и обложки</div>
+    <div class="tip">rodrik-import.json — импорт в трекер проектов</div>
+    <div class="tip">PROMO_SCREENS.md — промпты для промо-карточек с текстом (для ChatGPT)</div>
+
+    <h4>Графика для Яндекс Игр</h4>
+    <div class="tip">Иконка: 512x512 PNG, без прозрачности</div>
+    <div class="tip">Обложка: 800x470 PNG — 70%+ геймплей, название игры НА обложке</div>
+    <div class="tip">Скриншоты: 16:9, минимум 3 шт, реальный геймплей</div>
+    <div class="tip warn">Название в игре ДОЛЖНО совпадать с названием в описании (п. 5.1.3)</div>
+
+    <h4>Топ-8 причин отказа модерации</h4>
+    <div class="tip warn">п. 8.2.3 — Интерфейс не переведён на заявленные языки</div>
+    <div class="tip warn">п. 4.4 — Неправильно настроена реклама (звук при показе, нет паузы)</div>
+    <div class="tip warn">п. 1.14 — Ошибки, зависания, вылеты</div>
+    <div class="tip warn">п. 5.1.3 — Название в игре не совпадает с описанием</div>
+    <div class="tip warn">п. 2.7 — Неправильный возрастной рейтинг</div>
+    <div class="tip warn">п. 1.10.1 — UI обрезается на мобилке</div>
+    <div class="tip warn">п. 1.15 — Недоработки мешающие играть</div>
+    <div class="tip warn">п. 3.6 — Копия другой игры из каталога</div>
+
+    <h4>Готовые промпты</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай скил fill-yandex и заполни карточку для Яндекс Игр. Создай все файлы в StoreData/.')">&#128203; Заполнить карточку Яндекс</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай скилы fill-yandex и art-prompts. Подготовь полный пакет для Яндекс Игр: 13 JSON + SETUP_GUIDE + промпты для иконки 512x512 и обложки 800x470. Всё в StoreData/.')">&#128203; Полный пакет Яндекс (описание + арт)</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай скил promo-screens и создай промо-скриншоты для Яндекс Игр. 5-8 горизонтальных карточек 16:9 с текстом, первая — уникальная механика. Промпты для ChatGPT. Всё в StoreData/PROMO_SCREENS.md.')">&#128203; Промо-скриншоты с текстом (для ChatGPT)</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай скилы yandex-sdk-integration, debugcheck-enhance, monetization-design. Прочитай templates/html5/. Запусти полный пайплайн: SDK, 13 языков, реклама, верификация, потом собери 3 ZIP в Release/: release, debug (с дебаг-панелью), marketing (с читами).')">&#128203; Полный пайплайн + 3 билда</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Запусти /localize — пошаговая локализация на 13 языков. Делай порциями по 3-4 языка, после каждой порции запускай node scripts/verify-i18n.mjs.')">&#128203; Локализация 13 языков</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Запусти /test-game — полное тестирование: verify.sh + verify-i18n + smoke-test + 6 ручных проверок. Если всё PASS — собери 3 ZIP.')">&#128203; Тестирование + сборка</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Модерация Яндекс Игр отклонила. Причины: [ВСТАВЬ ПРИЧИНЫ]. Прочитай скил fix-moderation и исправь. После исправлений запусти verify.sh и verify-i18n.mjs.')">&#128203; Исправить отказ модерации</div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Справочник скилов (55 команд) <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+
+    <h4>Управление проектом</h4>
+    <div class="cmd-row"><span class="cmd-name">/start {идея}</span><span class="cmd-desc">Создать проект с нуля по описанию. Выберет жанровые скилы, создаст каркас</span></div>
+    <div class="cmd-row"><span class="cmd-name">/continue</span><span class="cmd-desc">Продолжить с прошлой сессии — читает CONTEXT.md</span></div>
+    <div class="cmd-row"><span class="cmd-name">/status</span><span class="cmd-desc">9 фаз по фактам: current phase, STOP-point, AI Studio, health; future absence ≠ defect</span></div>
+    <div class="cmd-row"><span class="cmd-name">/plan</span><span class="cmd-desc">Дорожная карта разработки с приоритетами</span></div>
+    <div class="cmd-row"><span class="cmd-name">/review</span><span class="cmd-desc">Аудит кода: комментарии, архитектура, баги, мёртвый код</span></div>
+    <div class="cmd-row"><span class="cmd-name">/doc all</span><span class="cmd-desc">Обновить документацию: CONTEXT, ARCHITECTURE, README</span></div>
+    <div class="cmd-row"><span class="cmd-name">/handoff</span><span class="cmd-desc">Сохранить контекст для следующей сессии</span></div>
+    <div class="cmd-row"><span class="cmd-name">./new-project.bat &lt;имя&gt; --type game|app</span><span class="cmd-desc">Создать новый проект (каркас + раздача движка)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/team build</span><span class="cmd-desc">Запустить 3 параллельных агента: архитектор + разработчик + QA</span></div>
+
+    <h4>Полировка приложений</h4>
+    <div class="cmd-row"><span class="cmd-name">/polish-app</span><span class="cmd-desc">Полный пайплайн из 6 фаз: аудит → UX → данные → уведомления → настройки → финал</span></div>
+    <div class="cmd-row"><span class="cmd-name">/app-ux-polish</span><span class="cmd-desc">7 состояний экрана, empty states, undo-тосты, валидация, pull-to-refresh, swipe-to-delete</span></div>
+    <div class="cmd-row"><span class="cmd-name">/app-data-flow</span><span class="cmd-desc">Поиск с подсветкой, фильтры, сортировка, статистика, virtual scroll</span></div>
+    <div class="cmd-row"><span class="cmd-name">/app-notifications</span><span class="cmd-desc">Тосты, напоминания, notification center, badge</span></div>
+    <div class="cmd-row"><span class="cmd-name">/app-settings</span><span class="cmd-desc">Тёмная/светлая/auto тема, preferences, export/import данных</span></div>
+
+    <h4>Полировка игр</h4>
+    <div class="cmd-row"><span class="cmd-name">/improve</span><span class="cmd-desc">Полный пайплайн: visual-upgrade → game-design → level-design → sound → mobile → polish</span></div>
+    <div class="cmd-row"><span class="cmd-name">/visual-upgrade</span><span class="cmd-desc">Палитры по жанру, градиенты, glow, частицы, параллакс, floating numbers (455 строк)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/game-design</span><span class="cmd-desc">Core loop, juice (shake/hitstop/slowmo), difficulty curve, retention hooks</span></div>
+    <div class="cmd-row"><span class="cmd-name">/level-design</span><span class="cmd-desc">Генераторы уровней для 10 жанров, прогрессия, боссы, breather-волны (592 строки)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/sound-design</span><span class="cmd-desc">12 процедурных SFX + фоновая музыка через Web Audio API, pitch variation</span></div>
+    <div class="cmd-row"><span class="cmd-name">/mobile-adapt</span><span class="cmd-desc">Ориентация по жанру, тач-управление, джойстики, виртуальные кнопки</span></div>
+    <div class="cmd-row"><span class="cmd-name">/mobile-game-ui</span><span class="cmd-desc">Макс 4-5 кнопок, radial wheel, полноэкранные панели, font sizes</span></div>
+    <div class="cmd-row"><span class="cmd-name">/game-polish</span><span class="cmd-desc">Загрузочный экран, splash, переходы, онбординг, difficulty balance</span></div>
+    <div class="cmd-row"><span class="cmd-name">/monetization-design</span><span class="cmd-desc">Карта размещения рекламы, rewarded hooks, IAP каталог</span></div>
+
+    <h4>Яндекс Игры — полный пайплайн</h4>
+    <div class="cmd-row"><span class="cmd-name">/release-yandex</span><span class="cmd-desc">Полный пайплайн: полировка → SDK → локализация → тест → 3 билда</span></div>
+    <div class="cmd-row"><span class="cmd-name">/full-pipeline</span><span class="cmd-desc">3-фазный пайплайн с обязательными остановками между фазами (310 строк)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/yandex-sdk-integration</span><span class="cmd-desc">SDK init, lifecycle, saves, ads, leaderboards, purchases, dev-mode (458 строк)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/vk-sdk-integration</span><span class="cmd-desc">VK Bridge init, VKWebAppInit, payments, leaderboards для VK Mini Apps</span></div>
+    <div class="cmd-row"><span class="cmd-name">/gate</span><span class="cmd-desc">Только pre-submit validators (быстрая проверка без full release-ready)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/localize</span><span class="cmd-desc">Пошаговая локализация 13 языков: t()/td(), setLang(), onLangChange(), verify (466 строк)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/test-game</span><span class="cmd-desc">Автотесты (verify.sh + verify-i18n + smoke) + 6 ручных проверок, авто-сборка при PASS</span></div>
+    <div class="cmd-row"><span class="cmd-name">/debugcheck-enhance</span><span class="cmd-desc">Дебаг-панель: runtime проверки SDK, timing, overflow, ad behavior (522 строки)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/analyze-game</span><span class="cmd-desc">Глубокий анализ: архитектура, точки паузы, rewarded hooks, сохранения, звук, строки</span></div>
+    <div class="cmd-row"><span class="cmd-name">/fix-moderation</span><span class="cmd-desc">Разбор замечаний модерации: КОД vs КОНСОЛЬ, карта типичных причин</span></div>
+    <div class="cmd-row"><span class="cmd-name">/reprocess</span><span class="cmd-desc">Переобработка выпущенной игры через новые скилы: распаковка → аудит → фикс → пересборка</span></div>
+
+    <h4>Сборка Android (RuStore)</h4>
+    <div class="cmd-row"><span class="cmd-name">/convert</span><span class="cmd-desc">HTML → Android APK: анализ → мобильный аудит → Capacitor/TWA → сборка</span></div>
+    <div class="cmd-row"><span class="cmd-name">/convert-all</span><span class="cmd-desc">Конвертировать ВСЕ проекты из input/ в APK разом</span></div>
+    <div class="cmd-row"><span class="cmd-name">/build-apk</span><span class="cmd-desc">Собрать APK (когда Capacitor уже настроен)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/rebuild</span><span class="cmd-desc">Пересобрать существующий проект после изменений</span></div>
+    <div class="cmd-row"><span class="cmd-name">/credentials-check</span><span class="cmd-desc">Проверка ключей + подпись PKCS12: keystore, pepk, cert, Yandex Ads, AppMetrica. Сохраняет всё в SIGNING_CREDENTIALS.md</span></div>
+    <div class="cmd-row"><span class="cmd-name">/capacitor-wrap</span><span class="cmd-desc">Обёртка через Capacitor: init, add android, sync, permissions</span></div>
+    <div class="cmd-row"><span class="cmd-name">/twa-wrap</span><span class="cmd-desc">Обёртка через TWA (Trusted Web Activity) для PWA с хостингом</span></div>
+    <div class="cmd-row"><span class="cmd-name">/mobile-ready</span><span class="cmd-desc">Аудит мобильной готовности: touch targets, responsive, orientation, safe area</span></div>
+    <div class="cmd-row"><span class="cmd-name">/analyze-project</span><span class="cmd-desc">Анализ типа проекта: HTML5 / PWA / Canvas / Unity WebGL, зависимости</span></div>
+    <div class="cmd-row"><span class="cmd-name">/server-detect</span><span class="cmd-desc">Проверка серверных зависимостей: API calls, WebSocket, CORS</span></div>
+    <div class="cmd-row"><span class="cmd-name">/pwa-convert</span><span class="cmd-desc">Конвертация в PWA: manifest.json + service worker</span></div>
+
+    <h4>Монетизация и аналитика</h4>
+    <div class="cmd-row"><span class="cmd-name">/yandex-ads</span><span class="cmd-desc">Интеграция Yandex Mobile Ads: banner, interstitial, rewarded (220 строк)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/mytracker</span><span class="cmd-desc">Интеграция MyTracker: установки, сессии, retention, кастомные события</span></div>
+    <div class="cmd-row"><span class="cmd-name">/monetization-strategy</span><span class="cmd-desc">Стратегия монетизации: какие форматы, где размещать, баланс</span></div>
+    <div class="cmd-row"><span class="cmd-name">/rustore-publish</span><span class="cmd-desc">Подготовка метаданных RuStore: описание, скриншоты, категория</span></div>
+
+    <h4>Описания и арт для магазинов</h4>
+    <div class="cmd-row"><span class="cmd-name">/fill-rustore</span><span class="cmd-desc">Карточка RuStore: SEO-описание, категория из списка, 5 тегов, changelog. В StoreData/</span></div>
+    <div class="cmd-row"><span class="cmd-name">/fill-yandex</span><span class="cmd-desc">Карточка Яндекс: 13 JSON + SETUP_GUIDE + rodrik. В StoreData/</span></div>
+    <div class="cmd-row"><span class="cmd-name">/store-listing</span><span class="cmd-desc">SEO-описание общее: ключевики, ASO-оптимизация, структура текста</span></div>
+    <div class="cmd-row"><span class="cmd-name">/art-prompts</span><span class="cmd-desc">Промпты для AI-арта: иконка, баннер, обложка — Midjourney/DALL-E/Кандинский</span></div>
+    <div class="cmd-row"><span class="cmd-name">/promo-screens</span><span class="cmd-desc">Промо-карточки для магазина С ТЕКСТОМ: готовые промпты для ChatGPT, 5-8 карточек</span></div>
+
+    <h4>Деплой и инфраструктура</h4>
+    <div class="cmd-row"><span class="cmd-name">/deploy</span><span class="cmd-desc">Деплой на сервер: Dockerfile + Nginx + SSL + CI/CD</span></div>
+
+    <h4>Советчики (не делают работу, только формулируют промпт)</h4>
+    <div class="cmd-row"><span class="cmd-name">/advisor</span><span class="cmd-desc">Общий советчик: опиши задачу своими словами → получи правильный промпт одной строкой</span></div>
+    <div class="cmd-row"><span class="cmd-name">/fix-ui</span><span class="cmd-desc">UI/UX советчик: "кнопки мелкие", "всё съезжает" → конкретный промпт с размерами и скилами</span></div>
+
+    <h4>Расширение forge (мета-скилы)</h4>
+    <div class="cmd-row"><span class="cmd-name">/learn-sdk {SDK}</span><span class="cmd-desc">Изучить новый SDK: веб-поиск → документация → создать скил навсегда для всех проектов</span></div>
+    <div class="cmd-row"><span class="cmd-name">/add-pipeline {описание}</span><span class="cmd-desc">Добавить новый процесс/workflow: исследовать → создать скил + скрипты + шаблоны</span></div>
+    <div class="cmd-row"><span class="cmd-name">/write-skill {описание}</span><span class="cmd-desc">Создать скил вручную по описанию (когда сам знаешь что нужно)</span></div>
+
+    <h4>Библиотека знаний (skills/ — автоподключаются по жанру)</h4>
+    <div class="tip">Игры: shooter, platformer, puzzle, racing, roguelike, runner, idle-clicker, tower-defense, survival, strategy, fighting, cardgame, rhythm, sandbox, simulation, sports (16 жанров)</div>
+    <div class="tip">Приложения: productivity, finance, health, education, social, tools, utility, deepapp-systems (8 типов)</div>
+    <div class="tip">Стек: sveltekit, tailwind, dexie-offline, pocketbase, leaflet-maps, photo-media, web-push, ai-integration, security, seo-russian, performance, testing, yookassa-payments, deploy-vps, capacitor-rustore (15 технологий)</div>
+    <div class="tip">PWA: sveltekit-pwa, tailwind-mobile, dexie-offline, pocketbase, auth-vk, gamification, ai-photo, content-catalog, deploy-timeweb, yandex-s3, yukassa-payments, web-push, offline-maps, regional-calendar, seo-content, ai-integration, capacitor-rustore (17 скилов с references/)</div>
+    <div class="tip good">Claude загружает нужные скилы автоматически по типу/жанру проекта при /start</div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Горячие клавиши Claude Code <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <div class="cmd-row"><span class="cmd-name">Ctrl+G</span><span class="cmd-desc">Открыть Блокнот для длинного промпта (лучший способ вставки!)</span></div>
+    <div class="cmd-row"><span class="cmd-name">Shift+Tab</span><span class="cmd-desc">Переключить режим план/код</span></div>
+    <div class="cmd-row"><span class="cmd-name">Ctrl+C</span><span class="cmd-desc">Прервать текущую генерацию</span></div>
+    <div class="cmd-row"><span class="cmd-name">Ctrl+O</span><span class="cmd-desc">Развернуть/свернуть детали</span></div>
+    <div class="cmd-row"><span class="cmd-name">/compact</span><span class="cmd-desc">Сжать историю (экономия контекста)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/model</span><span class="cmd-desc">Переключить модель (Opus/Sonnet)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/clear</span><span class="cmd-desc">Очистить контекст (начать заново)</span></div>
+    <div class="cmd-row"><span class="cmd-name">/exit</span><span class="cmd-desc">Выйти из Claude Code</span></div>
+    <h4>Windows Terminal</h4>
+    <div class="cmd-row"><span class="cmd-name">Ctrl+Shift+T</span><span class="cmd-desc">Новая вкладка</span></div>
+    <div class="cmd-row"><span class="cmd-name">Ctrl+Tab</span><span class="cmd-desc">Следующая вкладка</span></div>
+    <div class="cmd-row"><span class="cmd-name">Ctrl+Alt+1-9</span><span class="cmd-desc">Перейти к вкладке по номеру</span></div>
+    <div class="cmd-row"><span class="cmd-name">Ctrl+Shift+W</span><span class="cmd-desc">Закрыть вкладку</span></div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Решение проблем <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Удалил папку проекта — не создаётся заново</h4>
+    <div class="tip warn">Ошибка: "A branch named 'project/xxx' already exists" — ветка осталась в git</div>
+    <div class="tip" style="cursor:pointer" onclick="copySyncCommand('worktree-prune')">&#128203; Починить: очистить мёртвую ветку (замени ИМЯ_ПРОЕКТА)</div>
+    <div class="tip">После этого создавай заново: <code>./new-project.bat имя --type game</code></div>
+
+    <h4>Hook error: JSON validation failed / Bash hook error</h4>
+    <div class="tip">В актуальном Forge Windows hooks запускаются прямыми Node launchers. Не удаляй hooks: сначала выполни <code>node scripts/check-codex-compat.mjs</code>, затем <code>./sync.bat</code> и перезапусти Codex-сессию.</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('./sync.bat')">&#128203; Синхронизировать managed Claude+Codex runtime</div>
+
+    <h4>Ошибка сборки — устаревший SDK</h4>
+    <div class="tip warn">Claude использует версии из памяти (2024). НЕ давай ему городить костыли!</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Посмотри в интернете актуальную версию этого SDK и обнови зависимости. Не городи костыли вокруг багов старой версии.')">&#128203; Скажи: обнови SDK</div>
+
+    <h4>PowerShell: && не работает</h4>
+    <div class="tip">PowerShell: subscription-кнопки Claude/Codex остаются как раньше. API-кнопки и GigaChat идут через <code>scripts/forge-agent.mjs</code>. Ключи лежат вне проектов в <code>forge-data/secrets/</code>; GigaCode CLI необязателен.</div>
+
+    <h4>Многострочный текст не вставляется в терминал</h4>
+    <div class="tip good">Нажми <code>Ctrl+G</code> — откроется Блокнот. Вставь любой текст, сохрани, закрой. Отправится автоматически.</div>
+
+    <h4>Скилы не обновились в проектах</h4>
+    <div class="tip" style="cursor:pointer" onclick="copySyncCommand('bat')">&#128203; Запусти sync.bat — синхронизирует управляемый Claude+Codex runtime во все проекты и удалит только устаревшие Forge-managed файлы (v4.3.2+)</div>
+    <div class="tip" style="cursor:pointer" onclick="copySyncCommand('ps1-dry')">&#128203; Или sync.bat --dry — предпросмотр что будет скопировано</div>
+
+    <h4>ANDROID_HOME не найден</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('[System.Environment]::SetEnvironmentVariable(\"ANDROID_HOME\", \"$env:LOCALAPPDATA\\Android\\Sdk\", \"User\")')">&#128203; Установить ANDROID_HOME (перезапусти терминал после)</div>
+
+    <h4>Стандартная иконка Capacitor в билде</h4>
+    <div class="tip">Claude забывает заменить иконку. Проверь: <code>android/app/src/main/res/mipmap-*/ic_launcher.png</code></div>
+    <div class="tip">Скажи: "Замени стандартную иконку Capacitor на мою. Файл: [путь]. Сгенерируй все размеры для mipmap."</div>
+  </div>
+</div>
+
+<div class="help-section">
+  <button class="help-toggle" onclick="toggleSection(this)">Готовые промпты на все случаи <span class="arrow">&#9654;</span></button>
+  <div class="help-content">
+    <h4>Аудит</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Сделай полный аудит приложения: пройди по каждому модулю, найди баги, утечки памяти, нерабочий функционал, фейковые фичи. Формат: [КРИТИЧНО/ВАЖНО/МЕЛОЧЬ] Модуль - Проблема - Решение. Не исправляй - только отчёт.')">&#128203; Полный аудит на ошибки (нажми чтобы скопировать)</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Исправь все критичные и важные проблемы из аудита. Мелочи пока не трогай.')">&#128203; Исправить всё из аудита</div>
+
+    <h4>Полировка</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Запусти /polish-app - полная полировка приложения: UX, данные, уведомления, настройки.')">&#128203; Полировка приложения</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Запусти /improve - полная полировка игры: визуал, геймплей, звук, мобилка.')">&#128203; Полировка игры</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Для каждого действия требующего permission - перед системным запросом покажи модальное окно с объяснением зачем нужен доступ и кнопкой ОК. Если отказал - показать как включить в настройках.')">&#128203; Красивые запросы разрешений</div>
+
+    <h4>Сборка</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Запусти /convert для сборки под RuStore. Начни с credentials-check. Ключи пока не готовы - собери debug APK без рекламы и аналитики.')">&#128203; Сборка debug APK (без ключей)</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Перед сборкой проверь через веб-поиск актуальные версии: Capacitor (npm), Android Gradle Plugin, Yandex Ads SDK, AppMetrica SDK. Обнови все устаревшие зависимости в package.json и build.gradle. Потом собери.')">&#128203; Проверить и обновить версии SDK</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Запусти /release-yandex - полный пайплайн Яндекс Игр: SDK, 13 языков, реклама, верификация, 3 билда.')">&#128203; Яндекс Игры полный пайплайн</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('ANDROID_HOME установлен: %LOCALAPPDATA%\\Android\\Sdk. Продолжи сборку APK.')">&#128203; SDK найден, продолжи сборку</div>
+
+    <h4>Баги и модерация</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Модерация отклонила. Причина: [ВСТАВЬ ПРИЧИНУ]. Исправь проблему и пересобери.')">&#128203; Правка после отказа модерации</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Пользователь сообщил баг: [ОПИШИ БАГ]. Найди причину, исправь, проверь что не сломал другой функционал.')">&#128203; Исправить баг от пользователя</div>
+
+    <h4>Управление</h4>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Прочитай CONTEXT.md и продолжи с того места где остановились.')">&#128203; Продолжить работу</div>
+    <div class="tip" style="cursor:pointer" onclick="copyCmd('Обнови CONTEXT.md актуальным состоянием проекта и запиши /handoff.')">&#128203; Сохранить и закончить сессию</div>
+  </div>
+</div>
+
+</div>
+
+<section id="phasesPanel" style="max-width:1200px;margin:28px auto;padding:0 20px">
+<h2 style="font-size:15px;letter-spacing:.08em;opacity:.85">🏭 КОНВЕЙЕР ФАЗ <span id="phVer" style="opacity:.5;font-weight:400"></span></h2>
+<div id="phasesBody"></div>
+</section>
+<div class="toast" id="toast"></div>
+<div class="modal-overlay hidden" id="modalOverlay"><div class="modal" id="modal"></div></div>
+<script>
+/* FORGE_META_START — generated by scripts/sync-dashboard-meta.mjs */
+var FORGE_META={"version":"4.68.1","canonicalSkills":141,"codexSkills":144,"routerSkills":3,"skillNames":["3d-perf","add-pipeline","advisor","analyze-game","analyze-project","anon-auth-sync","app","app-data-flow","app-data-model","app-notifications","app-onboarding-flow","app-permissions","app-search","app-settings","app-ux-polish","appmetrica-integration","art-direction","art-prompts","asset-generation","asset-library","asset-scan","audit-requirements","auto-release","autopilot","build-apk","bundle-libs","business-app-foundation","capacitor-wrap","choose-backend-stack","continue","convert","convert-all","credentials-check","debugcheck-enhance","deepen-game","deploy","design-pipeline","do","doc","education-foundation","fill-rustore","fill-steam","fill-vk","fill-vkplay","fill-yandex","finance-app-foundation","find-or-make-skill","find-skill","find-skills","fix-moderation","fix-ui","full-pipeline","gacha-meta","game","game-design","game-polish","game-tutorial","gameplay-balance","gate","grilling","handoff","health-app-foundation","i18n-foundation","image-studio","improve","info-hierarchy","layout-system","learn-sdk","level-design","localize","mcp-server","mobile-adapt","mobile-game-ui","mobile-ready","monetization-design","monetization-strategy","multiplayer","mvp-to-yandex","mytracker","new-project","phase-1-analyze","phase-2-design","phase-3-construct","phase-4-visual","phase-5-tech","phase-6-listing","phase-7-test","phase-8-release","phase-9-live","pipeline","pixel-art","pixel-art-pipeline","plan","polish-app","port","procedural-geo","product-metrics","promo-screens","prompt-compiler","pwa-convert","rebuild","release-all","release-max","release-ok","release-ready","release-rustore","release-steam","release-telegram","release-vk","release-vkplay","release-web","release-yandex","reprocess","research-references","review","rustore-publish","saas-foundation","screen-flow","seasonal-event","server-detect","shader-fx","social-foundation","sound-design","start","status","steam-sdk-integration","store-creatives","store-listing","studio","subscription-design","team","test-game","three-setup","twa-wrap","ui-pipeline","ui-review","visual-qa","visual-style","visual-upgrade","vk-sdk-integration","vkplay-sdk-integration","write-skill","yandex-ads","yandex-sdk-integration"]};
+/* FORGE_META_END */
+var FORGE_AGENT_MODE=localStorage.getItem('forge_agent_mode')||'claude';
+function setAgentMode(mode){
+  FORGE_AGENT_MODE=mode==='codex'?'codex':'claude';
+  localStorage.setItem('forge_agent_mode',FORGE_AGENT_MODE);
+  var sel=document.getElementById('agentModeSelect'); if(sel)sel.value=FORGE_AGENT_MODE;
+  applyAgentMode();
+}
+function applyAgentMode(){
+  if(typeof FORGE_META==='undefined')return;
+  var names=new Set(FORGE_META.skillNames||[]);
+  document.querySelectorAll('.cmd-name').forEach(function(el){
+    if(!el.dataset.forgeCmdOriginal)el.dataset.forgeCmdOriginal=el.textContent;
+    var src=el.dataset.forgeCmdOriginal;
+    var m=src.match(/^\/([a-z0-9][a-z0-9-]*)(.*)$/i);
+    if(!m||!names.has(m[1])){el.textContent=src;return;}
+    el.textContent=(FORGE_AGENT_MODE==='codex'?'$':'/')+m[1]+m[2];
+  });
+}
+var STATUSES=[
+  {id:'new',label:'Новый',css:'badge-new'},
+  {id:'dev',label:'В разработке',css:'badge-dev'},
+  {id:'polish',label:'Полировка',css:'badge-polish'},
+  {id:'build',label:'Сборка',css:'badge-build'},
+  {id:'review',label:'На модерации',css:'badge-review'},
+  {id:'published',label:'Опубликован',css:'badge-published'},
+  {id:'frozen',label:'Заморожен',css:'badge-frozen'}
+];
+var PLATFORMS=[
+  {id:'yandex',label:'Яндекс Игры',css:'badge-yandex'},
+  {id:'rustore',label:'RuStore',css:'badge-rustore'},
+  {id:'vk',label:'VK Mini Apps',css:'badge-vk'},
+  {id:'telegram',label:'Telegram',css:'badge-telegram'},
+  {id:'ok',label:'OK.ru',css:'badge-ok'},
+  {id:'max',label:'MAX',css:'badge-max'},
+  {id:'steam',label:'Steam',css:'badge-steam'},
+  {id:'vkplay',label:'VK Play',css:'badge-vkplay'},
+  {id:'web',label:'Web',css:'badge-web'}
+];
+var TYPES=[
+  {id:'game',label:'Игра',css:'badge-game'},
+  {id:'app',label:'Приложение',css:'badge-app'}
+];
+var ORIENTATIONS=[
+  {id:'portrait',label:'Вертикально'},
+  {id:'landscape',label:'Горизонтально'},
+  {id:'both',label:'Оба'}
+];
+var CONTROLS=[
+  {id:'touch',label:'Только тач'},
+  {id:'desktop',label:'Только десктоп'},
+  {id:'both',label:'Тач + десктоп'}
+];
+
+// v4.9.5: localStorage schema migrations.
+// Lesson #21 → Invariant #7 — UI migrations must self-heal localStorage,
+// never assume data shape from prior version is current.
+//
+// To add a new migration: bump SCHEMA_VERSION, add case in migrateProject().
+// Migration runs ONCE per stored project on page load, idempotent.
+//
+// Schema changes log:
+//   v1 (initial): {name, path, description, type, status, platforms[], orientation, controls, minScreen, notes}
+//   v2 (v4.7.0): + image field
+//   v3 (v4.7.x): + status values expanded
+//   v4 (v4.7.x): + 'vkplay' platform ID (was missing)
+//   v5 (v4.9.5): + 'frozen' status; legacy normalizations point at real STATUSES enum
+
+var SCHEMA_VERSION = 5;
+var KNOWN_PLATFORMS = ['yandex','vk','telegram','ok','max','rustore','web','steam','vkplay'];
+var KNOWN_STATUSES = ['new','dev','polish','build','review','published','frozen'];
+
+function migrateProject(p) {
+  var migrated = false;
+
+  // v1 → v2: add image field
+  if (p.image === undefined) { p.image = ''; migrated = true; }
+
+  // Legacy status normalizations (v4.7-era values that never existed на UI)
+  // → map to nearest current STATUS so users don't lose data on update.
+  var legacyStatusMap = {
+    'wip': 'dev',
+    'in_progress': 'dev',
+    'finished': 'published',
+    'done': 'published',
+    'archived': 'frozen'
+  };
+  if (legacyStatusMap[p.status]) {
+    p.status = legacyStatusMap[p.status];
+    migrated = true;
+  }
+  // Unknown status → fall back to 'new' (last resort, after legacy map)
+  if (KNOWN_STATUSES.indexOf(p.status) < 0) {
+    if (p.status) console.warn('[migration] unknown status', p.status, 'in', p.name, '- defaulting to new');
+    p.status = 'new';
+    migrated = true;
+  }
+
+  // Defensive: clean unknown platform IDs from list
+  if (Array.isArray(p.platforms)) {
+    var cleaned = p.platforms.filter(function(pl){ return KNOWN_PLATFORMS.indexOf(pl) >= 0; });
+    if (cleaned.length !== p.platforms.length) {
+      console.warn('[migration] dropped unknown platforms from', p.name);
+      p.platforms = cleaned;
+      migrated = true;
+    }
+  } else {
+    p.platforms = []; migrated = true;
+  }
+
+  // Defensive: ensure required string fields exist (avoid undefined causing "" || default issues)
+  ['name','path','description','type','orientation','controls','minScreen','notes'].forEach(function(field){
+    if (p[field] === undefined) { p[field] = ''; migrated = true; }
+  });
+
+  // Default type if missing or unknown
+  if (p.type !== 'app' && p.type !== 'game') { p.type = 'app'; migrated = true; }
+
+  // Schema version stamp
+  if (p._schemaVersion !== SCHEMA_VERSION) {
+    p._schemaVersion = SCHEMA_VERSION;
+    migrated = true;
+  }
+
+  return migrated;
+}
+
+function migrateAllProjects(rawProjects) {
+  if (!Array.isArray(rawProjects)) return { projects: [], changed: false };
+  var migratedCount = 0, droppedCount = 0;
+  var result = [];
+  for (var i = 0; i < rawProjects.length; i++) {
+    var p = rawProjects[i];
+    if (!p || typeof p !== 'object' || !p.name) { droppedCount++; continue; }
+    if (migrateProject(p)) migratedCount++;
+    result.push(p);
+  }
+  if (migratedCount > 0 || droppedCount > 0) {
+    console.log('[migration] schema v' + SCHEMA_VERSION +
+      ' applied to ' + migratedCount + ' projects' +
+      (droppedCount ? ' (dropped ' + droppedCount + ' invalid entries)' : ''));
+  }
+  return { projects: result, changed: migratedCount > 0 || droppedCount > 0, migratedCount: migratedCount, droppedCount: droppedCount };
+}
+
+var _migration = migrateAllProjects(JSON.parse(localStorage.getItem('forge_projects')||'[]'));
+var projects = _migration.projects;
+// Persist ONLY if migration actually changed something (avoid unnecessary writes)
+if (_migration.changed) {
+  localStorage.setItem('forge_projects', JSON.stringify(projects));
+  // Defer toast until after DOM ready (toast() uses #toast element)
+  setTimeout(function(){
+    if (typeof toast === 'function') {
+      var msg = 'Данные обновлены до v' + SCHEMA_VERSION + ' (' + _migration.migratedCount + ' проектов';
+      if (_migration.droppedCount) msg += ', ' + _migration.droppedCount + ' битых удалено';
+      msg += ')';
+      toast(msg);
+    }
+  }, 500);
+}
+var activeFilter='all';
+// v4.9.5: status filters multi-select. Empty Set = "show all statuses".
+// Persists in localStorage.
+var activeStatuses = new Set(JSON.parse(localStorage.getItem('forge_active_statuses')||'[]'));
+// v4.9.5: card description toggle. Default = show.
+var showDescriptions = localStorage.getItem('forge_show_desc') !== '0';
+function toggleStatus(id){
+  if(activeStatuses.has(id)) activeStatuses.delete(id);
+  else activeStatuses.add(id);
+  localStorage.setItem('forge_active_statuses', JSON.stringify([...activeStatuses]));
+  render();
+}
+function clearStatuses(){
+  activeStatuses.clear();
+  localStorage.setItem('forge_active_statuses', '[]');
+  render();
+}
+function toggleDescriptions(checked){
+  showDescriptions = !!checked;
+  localStorage.setItem('forge_show_desc', showDescriptions ? '1' : '0');
+  render();
+}
+// v4.9.5: sort order — saved across sessions. Options: 'date_desc' (new first), 'date_asc' (old first), 'name', 'status'
+var sortBy=localStorage.getItem('forge_sort')||'date_desc';
+
+// v4.9.5: Forge path is configurable. Default uses what user typed in setting.
+// First-time users get a prompt to set the path. Used in all "copy command" / quick-prompts.
+var FORGE_PATH = localStorage.getItem('forge_path') || '';
+var PROJECTS_ROOT = localStorage.getItem('forge_projects_root') || '';
+
+// v4.9.6: heal broken PROJECTS_ROOT inherited from old buggy versions.
+// If projects_root contains "/project-forge/" or "/Project-forge" segment,
+// it's pointing INSIDE forge folder (wrong) — re-derive from forge path.
+if (PROJECTS_ROOT && /[\\/](project-forge|Project-forge)([\\/]|$)/i.test(PROJECTS_ROOT)) {
+  console.warn('[migration] PROJECTS_ROOT was pointing inside forge folder, re-deriving from FORGE_PATH');
+  // (deriveProjectsRoot defined below — use it after definition)
+  PROJECTS_ROOT = '';  // force re-derive on first getForgePath() call
+  localStorage.setItem('forge_projects_root', '');
+}
+
+// v4.9.6: derive projects root reliably — strip last folder of Forge path
+// AND strip /project-forge or /Project-forge segment if present.
+// Some users had old PROJECTS_ROOT value pointing INSIDE forge folder due to old bug.
+function deriveProjectsRoot(forgePath) {
+  if (!forgePath) return '';
+  var sep = forgePath.indexOf('\\') >= 0 ? '\\' : '/';
+  var parts = forgePath.split(sep).filter(Boolean);
+  // Pop last segment (which should be the forge folder itself: "project-forge", "Forge", etc.)
+  parts.pop();
+  var root = parts.join(sep);
+  // Re-add leading slash if Unix-like path was absolute
+  if (forgePath.startsWith('/')) root = '/' + root;
+  // Re-add drive root for Windows (C:\ → "C:" after split, becomes "C:" join, need ":\")
+  if (/^[A-Za-z]:$/.test(parts[0])) {
+    // Windows drive root case — split kept "F:" but lost separator
+    root = parts.join(sep);
+  }
+  return root;
+}
+
+function getForgePath(){
+  if (!FORGE_PATH) {
+    // v4.9.6: use \n (single backslash → real newline) для multi-line prompt
+    var path = prompt(
+      'Укажи путь к Project-forge\n' +
+      '(например F:\\ProjectForgeUniversal\\project-forge ' +
+      'или ~/projects/project-forge):'
+    );
+    if (path) {
+      FORGE_PATH = path.trim();
+      PROJECTS_ROOT = deriveProjectsRoot(FORGE_PATH);
+      localStorage.setItem('forge_path', FORGE_PATH);
+      localStorage.setItem('forge_projects_root', PROJECTS_ROOT);
+      toast('Путь сохранён: ' + FORGE_PATH);
+    }
+  }
+  return FORGE_PATH;
+}
+
+function getProjectsRoot(){
+  if (!PROJECTS_ROOT) getForgePath();
+  return PROJECTS_ROOT;
+}
+
+function changeForgePath(){
+  var current = FORGE_PATH || '(не задан)';
+  var currentRoot = PROJECTS_ROOT || '(не задан)';
+  // Real newlines via single-escaped \n (the HTML script parses '\n' as literal newline char)
+  var path = prompt(
+    'Текущий путь к Forge: ' + current + '\n' +
+    'Текущая папка для проектов: ' + currentRoot + '\n\n' +
+    'Новый путь к Forge folder (проекты будут в родительской папке):',
+    FORGE_PATH
+  );
+  if (path !== null) {
+    FORGE_PATH = path.trim();
+    PROJECTS_ROOT = deriveProjectsRoot(FORGE_PATH);
+    localStorage.setItem('forge_path', FORGE_PATH);
+    localStorage.setItem('forge_projects_root', PROJECTS_ROOT);
+    toast('Forge: ' + FORGE_PATH + ' · Проекты в: ' + PROJECTS_ROOT);
+    render();
+  }
+}
+
+// v4.9.6: separately editable projects root.
+// Use case: Forge on C:, but projects on F:; or symlinked Forge.
+function changeProjectsRoot(){
+  var current = PROJECTS_ROOT || '(не задан)';
+  var path = prompt(
+    'Текущая папка для проектов: ' + current + '\n\n' +
+    'Это папка где dashboard будет создавать новые проекты.\n' +
+    'По умолчанию = родительская папка Forge.\n' +
+    'Можешь указать любую другую (например D:\\Games):',
+    PROJECTS_ROOT
+  );
+  if (path !== null) {
+    PROJECTS_ROOT = path.trim().replace(/[\\/]+$/, '');  // strip trailing slash
+    localStorage.setItem('forge_projects_root', PROJECTS_ROOT);
+    toast('Папка проектов: ' + PROJECTS_ROOT);
+    render();
+  }
+}
+
+// v4.9.6: heal — if FORGE_PATH set but PROJECTS_ROOT empty (or was just cleared
+// by migration above), derive it now.
+if (FORGE_PATH && !PROJECTS_ROOT) {
+  PROJECTS_ROOT = deriveProjectsRoot(FORGE_PATH);
+  if (PROJECTS_ROOT) {
+    localStorage.setItem('forge_projects_root', PROJECTS_ROOT);
+    console.log('[init] PROJECTS_ROOT auto-derived:', PROJECTS_ROOT);
+  }
+}
+
+function save(){localStorage.setItem('forge_projects',JSON.stringify(projects))}
+
+// v4.9.5: persist sort order across sessions
+function changeSort(value){
+  sortBy = value;
+  localStorage.setItem('forge_sort', value);
+  render();
+}
+
+// v4.9.6: fix project paths that accidentally include /project-forge/ segment.
+// Projects must be SIBLINGS of the template, not nested inside it.
+function fixProjectPath(idx){
+  var p = projects[idx];
+  if (!p || !p.path) return;
+  var newPath = p.path.replace(/\\/g, '/').replace(/\/[Pp]roject-?[Ff]orge\/(?=[^/])/g, '/');
+  // Restore Windows backslashes if original had them
+  if (p.path.indexOf('\\') >= 0) newPath = newPath.replace(/\//g, '\\');
+  if (newPath === p.path) {
+    toast('Путь уже корректный');
+    return;
+  }
+  if (confirm('Заменить путь?\n\nБыло:\n' + p.path + '\n\nСтанет:\n' + newPath)) {
+    p.path = newPath;
+    save();
+    render();
+    toast('Путь обновлён: ' + newPath);
+  }
+}
+
+// v4.9.6: scan all projects, batch-fix any with /project-forge/ in path
+function fixAllProjectPaths(){
+  var changed = 0;
+  projects.forEach(function(p){
+    if (!p.path) return;
+    var newPath = p.path.replace(/\\/g, '/').replace(/\/[Pp]roject-?[Ff]orge\/(?=[^/])/g, '/');
+    if (p.path.indexOf('\\') >= 0) newPath = newPath.replace(/\//g, '\\');
+    if (newPath !== p.path) {
+      p.path = newPath;
+      changed++;
+    }
+  });
+  if (changed > 0) {
+    save();
+    render();
+    toast('Исправлено путей: ' + changed);
+  } else {
+    toast('Все пути корректные — менять нечего');
+  }
+}
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2500)}
+
+function copyCmd(cmd){navigator.clipboard.writeText(cmd).then(function(){toast('Скопировано! Вставь в терминал.')})}
+
+function normalizedProjectPath(raw){
+  var cleanPath=(raw||'').replace(/\\/g,'/');
+  return cleanPath.replace(/\/[Pp]roject-?[Ff]orge\/(?=[^/])/g,'/');
+}
+
+function projectLaunchCommand(p,agent){
+  var cleanPath=normalizedProjectPath(p&&p.path);
+  var psPath="'"+cleanPath.replace(/'/g,"''")+"'";
+  var fp=(getForgePath()||'F:/ProjectForgeUniversal/project-forge').replace(/\\/g,'/');
+  var runner="'"+(fp+'/scripts/forge-agent.mjs').replace(/'/g,"''")+"'";
+  if(agent==='codex') return 'codex -C '+psPath+' -a never -s danger-full-access --dangerously-bypass-hook-trust';
+  if(agent==='claude-api') return 'node '+runner+' launch claude --profile api --full --project '+psPath;
+  if(agent==='codex-api') return 'node '+runner+' launch codex --profile api --full --project '+psPath;
+  if(agent==='gigachat') return 'node '+runner+' launch gigachat --profile api --full --project '+psPath;
+  if(agent==='gigacode') return 'node '+runner+' launch gigacode --project '+psPath;
+  return 'Set-Location -LiteralPath '+psPath+'; cf';
+}
+
+function copyProjectLaunch(index,agent){
+  copyCmd(projectLaunchCommand(projects[index],agent));
+}
+
+function copySyncCommand(variant){
+  var fp = getForgePath() || 'F:\\ProjectForgeUniversal\\Project-forge';
+  // Normalize to backslash for Windows commands
+  fp = fp.replace(/\//g, '\\');
+  var cmd;
+  if (variant === 'bat')        cmd = fp + '/sync.bat';
+  else if (variant === 'ps1-dry') cmd = fp + '\\sync.bat --dry';
+  else if (variant === 'ps1')     cmd = fp + '\\sync.bat';
+  else if (variant === 'worktree-prune') cmd = 'cd ' + fp.replace(/\\/g,'/') + '; git worktree prune; git branch -D project/ИМЯ_ПРОЕКТА';
+  copyCmd(cmd);
+}
+
+function specsText(p){
+  var parts=[];
+  if(p.orientation){var o=ORIENTATIONS.find(function(x){return x.id===p.orientation});if(o)parts.push('Ориентация: '+o.label.toLowerCase())}
+  if(p.controls){var c=CONTROLS.find(function(x){return x.id===p.controls});if(c)parts.push('Управление: '+c.label.toLowerCase())}
+  if(p.minScreen)parts.push('Мин. экран: '+p.minScreen);
+  return parts.join('. ');
+}
+
+function specsForPrompt(p){
+  var parts=[];
+  if(p.orientation){
+    var labels={portrait:'только вертикальная (portrait)',landscape:'только горизонтальная (landscape)',both:'вертикальная и горизонтальная (оба режима)'};
+    parts.push('Ориентация экрана: '+labels[p.orientation]);
+  }
+  if(p.controls){
+    var labels={touch:'только тач (мобильное управление)',desktop:'только десктоп (клавиатура+мышь)',both:'тач + десктоп (оба варианта управления)'};
+    parts.push('Управление: '+labels[p.controls]);
+  }
+  if(p.minScreen)parts.push('Минимальный экран: '+p.minScreen);
+  return parts.length>0?' '+parts.join('. ')+'.':'';
+}
+
+function getInitPrompt(p){
+  var desc=p.description||p.name;
+  var t=p.type==='game'?'игра':'приложение';
+  var platforms=(p.platforms||[]).join(', ');
+
+  // v4.9.5: Two prompt types depending on project state.
+  // status === 'new'  → /start with research + skill discovery (no code yet)
+  // status === any other (dev, polish, build, mod) → /analyze-* on existing code
+  var isFresh = p.status === 'new';
+
+  if(isFresh){
+    // Fresh project — /start auto-runs Phase 0a research + 0b skill discovery.
+    // Don't enumerate skills — let Claude discover what's needed via /find-or-make-skill.
+    return '/start ' + p.name + ': ' + desc
+      + (platforms ? '. Платформы: ' + platforms : '')
+      + (p.type ? '. Тип: ' + t : '');
+  }
+
+  // Existing code path — Claude analyzes what's there
+  // /analyze-game and /analyze-project (v4.4+) automatically run
+  // /research-references as Phase 0 and /find-or-make-skill in Phase 0b.
+  var orchestrator = p.type==='game' ? '/analyze-game' : '/analyze-project';
+
+  var specs=specsForPrompt(p);
+  var platformContext='';
+  if(p.platforms.indexOf('rustore')>=0)  platformContext+=' Целевая платформа: RuStore.';
+  if(p.platforms.indexOf('yandex')>=0)   platformContext+=' Целевая платформа: Яндекс Игры.';
+  if(p.platforms.indexOf('vk')>=0)       platformContext+=' Целевая платформа: VK Mini Apps.';
+  if(p.platforms.indexOf('telegram')>=0) platformContext+=' Целевая платформа: Telegram Mini App.';
+  if(p.platforms.indexOf('ok')>=0)       platformContext+=' Целевая платформа: OK.ru.';
+  if(p.platforms.indexOf('max')>=0)      platformContext+=' Целевая платформа: MAX мессенджер.';
+  if(p.platforms.indexOf('steam')>=0)    platformContext+=' Целевая платформа: Steam (Electron + steamworks.js).';
+  if(p.platforms.indexOf('vkplay')>=0)   platformContext+=' Целевая платформа: VK Play (vkplay.ru).';
+  if(p.platforms.indexOf('web')>=0)      platformContext+=' Целевая платформа: Web деплой.';
+
+  return orchestrator + '\n\nКонтекст: в папке src/ лежит ' + t + ' "' + p.name + '" — ' + desc + '.'
+    + platformContext + specs
+    + ' Прогони полный analyze: type/жанр detection, research конкурентов через /research-references (Phase 0), discovery missing skills через /find-or-make-skill, gap analysis vs current state, плана для CONTEXT.md и ARCHITECTURE.md.';
+}
+
+function getContinuePrompt(p){
+  // /continue is the canonical orchestrator — reads CONTEXT.md, _current.md, _map.md
+  return '/continue';
+}
+
+function getPolishPrompt(p){
+  var extra=specsForPrompt(p);
+  // v4.10.9: prefer the high-level orchestrators over enumerating skills.
+  // /improve and /polish-app already know which skills to compose; in v4.5+
+  // those skills run /research-references as Phase 0 automatically.
+  if(p.type==='game'){
+    return '/improve\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Если игра уже играбельна и хочется добавить контент глубже (больше уровней, прогрессия, retention) — используй /deepen-game вместо /improve.';
+  }
+  return '/polish-app\n\nКонтекст: ' + (p.description || p.name) + '.' + extra;
+}
+
+function getBuildPrompt(p){
+  var extra=specsForPrompt(p);
+
+  // v4.9.5: insert pre-flight /release-ready check first. Only after green → release-*.
+  // Multi-platform projects use /release-all to leverage Agent Teams parallel build.
+  var platforms = p.platforms || [];
+  var multi = platforms.length > 1;
+
+  if(multi){
+    return '/release-ready ' + platforms.join(' ')
+      + '\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда все платформы зелёные — /release-all (Agent Teams parallel mode).';
+  }
+
+  if(platforms.indexOf('yandex')>=0){
+    return '/release-ready yandex\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-yandex (SDK + 13 языков + 3 ZIPs).';
+  }
+  if(platforms.indexOf('rustore')>=0){
+    return '/release-ready rustore\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-rustore (Pay SDK + receipt validation + privacy URL). Если ключей нет — /convert для debug APK.';
+  }
+  if(platforms.indexOf('vk')>=0){
+    return '/release-ready vk\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-vk (VK Bridge + 3 validators).';
+  }
+  if(platforms.indexOf('telegram')>=0){
+    return '/release-ready telegram\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-telegram (WebApp + HTTPS + 5 validators + runtime test).';
+  }
+  if(platforms.indexOf('ok')>=0){
+    return '/release-ready ok\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-ok (FAPI + API_callback + rewarded preload).';
+  }
+  if(platforms.indexOf('max')>=0){
+    return '/release-ready max\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-max (MaxSDK + URL ≤1024).';
+  }
+  if(platforms.indexOf('steam')>=0){
+    return '/release-ready steam\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-steam (Electron + steamworks.js → SteamPipe upload). Требуется Steam Direct fee $100 + Partner account.';
+  }
+  if(platforms.indexOf('vkplay')>=0){
+    return '/release-ready vkplay\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-vkplay (iframe + signed auth + payment webhook). НЕ путать с /release-vk (VK Mini Apps — другая платформа).';
+  }
+  if(platforms.indexOf('web')>=0){
+    return '/release-ready web\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Когда зелёное — /release-web (Dockerfile + nginx + Let\'s Encrypt) или /deploy.';
+  }
+  return '/release-ready\n\nКонтекст: ' + (p.description || p.name) + '.' + extra;
+}
+
+function getReviewPrompt(p){
+  var extra=specsForPrompt(p);
+  return '/review\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+    + ' Полный аудит: код, архитектура, безопасность, фейковый функционал. После /review — /release-ready для pre-release checklist.';
+}
+
+function render(){
+  // v4.9.5: backfill createdAt for legacy projects (added before timestamps were saved).
+  // Use index-based fallback so insertion order is preserved.
+  var bf = false;
+  projects.forEach(function(p, i){
+    if (!p.createdAt) {
+      p.createdAt = Date.now() - (projects.length - i) * 1000;
+      bf = true;
+    }
+  });
+  if (bf) save();
+
+  // Sync sort dropdown to current state
+  var ss = document.getElementById('sortSelect');
+  if (ss && ss.value !== sortBy) ss.value = sortBy;
+
+  var query=document.getElementById('searchInput').value.toLowerCase();
+  var filtered=projects.slice();
+  // v4.9.5: status filter is multi-select (Set). Empty = show all.
+  // Type/platform filter is still single-select via activeFilter.
+  if(activeStatuses.size > 0){
+    filtered=filtered.filter(function(p){return activeStatuses.has(p.status)});
+  }
+  if(activeFilter!=='all'){
+    if(TYPES.find(function(t){return t.id===activeFilter}))filtered=filtered.filter(function(p){return p.type===activeFilter});
+    else if(PLATFORMS.find(function(pl){return pl.id===activeFilter}))filtered=filtered.filter(function(p){return p.platforms.indexOf(activeFilter)>=0});
+  }
+  if(query)filtered=filtered.filter(function(p){return p.name.toLowerCase().indexOf(query)>=0||(p.description||'').toLowerCase().indexOf(query)>=0||(p.path||'').toLowerCase().indexOf(query)>=0||(p.notes||'').toLowerCase().indexOf(query)>=0});
+
+  // v4.9.5: sort by selected criterion
+  filtered.sort(function(a, b){
+    if (sortBy === 'date_desc') return (b.createdAt||0) - (a.createdAt||0);
+    if (sortBy === 'date_asc')  return (a.createdAt||0) - (b.createdAt||0);
+    if (sortBy === 'name')      return (a.name||'').localeCompare(b.name||'', 'ru');
+    if (sortBy === 'status') {
+      var statusOrder = {'new':0,'dev':1,'polish':2,'build':3,'review':4,'published':5,'frozen':6};
+      // Note: can't use ||99 fallback because 0 is falsy in JS
+      var ao = statusOrder[a.status] !== undefined ? statusOrder[a.status] : 99;
+      var bo = statusOrder[b.status] !== undefined ? statusOrder[b.status] : 99;
+      return ao - bo;
+    }
+    return 0;
+  });
+
+  var se=document.getElementById('stats');
+  var total=projects.length;
+  var games=projects.filter(function(p){return p.type==='game'}).length;
+  var apps=projects.filter(function(p){return p.type==='app'}).length;
+  var published=projects.filter(function(p){return p.status==='published'}).length;
+  var inDev=projects.filter(function(p){return p.status==='dev'||p.status==='polish'||p.status==='build'}).length;
+  se.innerHTML='<div class="stat"><div class="stat-num">'+total+'</div><div class="stat-label">Всего</div></div><div class="stat"><div class="stat-num" style="color:var(--purple)">'+games+'</div><div class="stat-label">Игры</div></div><div class="stat"><div class="stat-num" style="color:var(--green)">'+apps+'</div><div class="stat-label">Приложения</div></div><div class="stat"><div class="stat-num" style="color:var(--amber)">'+inDev+'</div><div class="stat-label">В работе</div></div><div class="stat"><div class="stat-num" style="color:var(--teal)">'+published+'</div><div class="stat-label">Опубликовано</div></div>';
+
+  // v4.9.5: filters split в two rows:
+  //   Row 1 (statusFilters): multi-select status chips. Empty = "all statuses".
+  //   Row 2 (filters): single-select type/platform chips (как раньше).
+  var sfe = document.getElementById('statusFilters');
+  if (sfe) {
+    var statusChips = STATUSES.map(function(s){
+      var c = projects.filter(function(p){return p.status===s.id}).length;
+      var active = activeStatuses.has(s.id);
+      var dim = c === 0 ? ' filter-btn-empty' : '';
+      return '<button class="filter-btn'+(active?' active':'')+dim+'" onclick="toggleStatus(\''+s.id+'\')">'+s.label+' ('+c+')</button>';
+    }).join('');
+    var allActive = activeStatuses.size === 0;
+    var clearBtn = '<button class="filter-btn'+(allActive?' active':'')+'" onclick="clearStatuses()">Все статусы</button>';
+    sfe.innerHTML = clearBtn + statusChips;
+  }
+
+  var fe=document.getElementById('filters');
+  var af=[{id:'all',label:'Все типы/платформы'}];
+  TYPES.forEach(function(t){var c=projects.filter(function(p){return p.type===t.id}).length;if(c>0)af.push({id:t.id,label:t.label+' ('+c+')'})});
+  PLATFORMS.forEach(function(pl){var c=projects.filter(function(p){return p.platforms.indexOf(pl.id)>=0}).length;if(c>0)af.push({id:pl.id,label:pl.label+' ('+c+')'})});
+  fe.innerHTML=af.map(function(f){return '<button class="filter-btn '+(activeFilter===f.id?'active':'')+'" onclick="activeFilter=\''+f.id+'\';render()">'+f.label+'</button>'}).join('');
+
+  // v4.9.5: sync description toggle checkbox state
+  var dt = document.getElementById('descToggle');
+  if (dt) dt.checked = showDescriptions;
+
+  var ge=document.getElementById('grid');var ee=document.getElementById('empty');
+  if(filtered.length===0){ge.innerHTML='';ee.classList.remove('hidden');return}
+  ee.classList.add('hidden');
+
+  ge.innerHTML=filtered.map(function(p){
+    var ri=projects.indexOf(p);
+    var sb=STATUSES.find(function(s){return s.id===p.status});
+    var tb=TYPES.find(function(t){return t.id===p.type});
+    var isNew=p.status==='new';
+    // v4.9.5: sanitize path before using in terminal cmd.
+    // If user accidentally saved path как F:\...\Project-forge\my-project (внутри template),
+    // remove the /project-forge/ segment because projects must be SIBLINGS of template, not nested.
+    var cleanPath = normalizedProjectPath(p.path);
+    var pathBroken = cleanPath !== (p.path||'').replace(/\\/g, '/');
+
+    var btns='<button class="btn btn-sm btn-accent" onclick="copyProjectLaunch('+ri+',\'claude\')" title="Claude Code через текущую подписку/авторизацию, без permission prompts">Claude Full</button>'
+      +'<button class="btn btn-sm" onclick="copyProjectLaunch('+ri+',\'claude-api\')" title="Claude Code через Anthropic API key из forge-data/secrets/anthropic.key">Claude API</button>'
+      +'<button class="btn btn-sm" onclick="copyProjectLaunch('+ri+',\'codex\')" title="Codex через текущую ChatGPT-авторизацию: approvals=never, sandbox=danger-full-access">Codex Full</button>'
+      +'<button class="btn btn-sm" onclick="copyProjectLaunch('+ri+',\'codex-api\')" title="Codex через изолированный OpenAI API profile из forge-data/secrets/openai.key">Codex API</button>'
+      +'<button class="btn btn-sm" onclick="copyProjectLaunch('+ri+',\'gigachat\')" title="Forge GigaChat terminal agent через официальный GigaChat API; full shell mode">GigaChat API</button>'
+      +'<button class="btn btn-sm" onclick="copyProjectLaunch('+ri+',\'gigacode\')" title="Dormant experimental bridge: заработает только когда официальный GigaCode CLI executable доступен">GigaCode CLI</button>';
+    if(pathBroken) btns+='<button class="btn btn-sm btn-warn" onclick="fixProjectPath('+ri+')" title="Путь содержит сегмент Project-forge — проекты должны быть СОСЕДЯМИ template, не внутри">Исправить путь</button>';
+    if(isNew) btns+='<button class="btn btn-sm" onclick="copyCmd(getInitPrompt(projects['+ri+']))">Первый запуск</button>';
+    else btns+='<button class="btn btn-sm" onclick="copyCmd(getContinuePrompt(projects['+ri+']))">Продолжить</button>';
+    if(p.status==='dev') btns+='<button class="btn btn-sm" onclick="copyCmd(getPolishPrompt(projects['+ri+']))">Полировка</button>';
+    if(p.status==='dev'||p.status==='polish') btns+='<button class="btn btn-sm" onclick="copyCmd(getBuildPrompt(projects['+ri+']))">Сборка</button>';
+    if(p.status==='build') btns+='<button class="btn btn-sm" onclick="copyCmd(getReviewPrompt(projects['+ri+']))">Аудит</button>';
+
+    var badges='<span class="badge '+(tb?tb.css:'')+'">'+( tb?tb.label:p.type)+'</span><span class="badge '+(sb?sb.css:'')+'">'+( sb?sb.label:p.status)+'</span>';
+    p.platforms.forEach(function(pl){var o=PLATFORMS.find(function(x){return x.id===pl});badges+='<span class="badge '+(o?o.css:'')+'">'+( o?o.label:pl)+'</span>'});
+
+    var specs=specsText(p);
+    var specsHtml=specs?'<div class="card-specs"><span>'+specs+'</span></div>':'';
+
+    // v4.9.5: cover image at top of card. Falls back to icon emoji if no image.
+    var coverHtml = '';
+    if (p.image && p.image.trim()) {
+      // Escape quotes in image URL/path
+      var imgSrc = p.image.replace(/"/g, '&quot;');
+      coverHtml = '<div class="card-cover"><img src="'+imgSrc+'" alt="" onerror="this.parentElement.innerHTML=\'<div class=card-cover-empty>'+(p.type==='game'?'🎮':'📱')+'</div>\'"></div>';
+    } else {
+      coverHtml = '<div class="card-cover card-cover-empty">'+(p.type==='game'?'🎮':'📱')+'</div>';
+    }
+
+    return '<div class="card"><div class="card-menu"><button onclick="showEditModal('+ri+')" title="Редактировать">✏️</button></div>'
+      +coverHtml
+      +'<div class="card-title">'+p.name+'</div>'
+      +'<div class="card-path">'+(p.path||'путь не указан')+'</div>'
+      +(showDescriptions && p.description?'<div style="font-size:12px;color:var(--text2);margin-top:4px">'+p.description+'</div>':'')
+      +'<div class="card-badges">'+badges+'</div>'
+      +specsHtml
+      +(p.notes?'<div style="font-size:12px;color:var(--text3);margin:6px 0;border-left:2px solid var(--border);padding-left:8px">'+p.notes+'</div>':'')
+      +'<div class="card-actions">'+btns+'</div></div>';
+  }).join('');
+}
+
+function modalFields(p){
+  var pr = getProjectsRoot() || 'F:\\ProjectForgeUniversal';
+  var sep = pr.indexOf('\\') >= 0 ? '\\' : '/';
+  var def=p||{name:'',path:'',description:'',type:'app',status:'new',platforms:[],orientation:'',controls:'',minScreen:'',notes:'',image:''};
+  return '<label>Название *</label><input type="text" id="m_name" value="'+(def.name)+'" placeholder="My App">'
+    +'<label>Путь к папке *</label><input type="text" id="m_path" value="'+(def.path||'')+'" placeholder="'+pr+sep+'my-app">'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:-8px;margin-bottom:8px">Папка проекта должна быть <b>соседом</b> Project-forge, не внутри. Пример: <code>F:\\ProjectForgeUniversal\\my-app</code> — правильно. <code>F:\\ProjectForgeUniversal\\project-forge\\my-app</code> — неправильно.</div>'
+    +'<label>Превью (URL или путь к файлу)</label><input type="text" id="m_image" value="'+(def.image||'').replace(/"/g,'&quot;')+'" placeholder="https://... или file:///F:/path/icon.png или относительный путь">'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:-8px;margin-bottom:8px">Картинка обрезается до 16:9 area, можно URL/file:// path. Оставь пусто для emoji иконки.</div>'
+    +'<label>Описание</label><input type="text" id="m_desc" value="'+(def.description||'')+'" placeholder="Короткое описание проекта">'
+    +'<label>Тип</label><div class="chips">'+TYPES.map(function(t){return '<button class="chip '+(def.type===t.id?'selected':'')+'" data-group="type" data-val="'+t.id+'" onclick="toggleChip(this)">'+t.label+'</button>'}).join('')+'</div>'
+    +'<label>Статус</label><div class="chips">'+STATUSES.map(function(s){return '<button class="chip '+(def.status===s.id?'selected':'')+'" data-group="status" data-val="'+s.id+'" onclick="toggleChip(this)">'+s.label+'</button>'}).join('')+'</div>'
+    +'<label>Платформы</label><div class="chips">'+PLATFORMS.map(function(pl){return '<button class="chip '+(def.platforms.indexOf(pl.id)>=0?'selected':'')+'" data-group="platform" data-val="'+pl.id+'" onclick="toggleChipMulti(this)">'+pl.label+'</button>'}).join('')+'</div>'
+    +'<div class="row2">'
+    +'<div><label>Ориентация экрана</label><div class="chips">'+ORIENTATIONS.map(function(o){return '<button class="chip '+(def.orientation===o.id?'selected':'')+'" data-group="orient" data-val="'+o.id+'" onclick="toggleChip(this)">'+o.label+'</button>'}).join('')+'</div></div>'
+    +'<div><label>Управление</label><div class="chips">'+CONTROLS.map(function(c){return '<button class="chip '+(def.controls===c.id?'selected':'')+'" data-group="controls" data-val="'+c.id+'" onclick="toggleChip(this)">'+c.label+'</button>'}).join('')+'</div></div>'
+    +'</div>'
+    +'<label>Мин. размер экрана</label><input type="text" id="m_minscreen" value="'+(def.minScreen||'')+'" placeholder="375x667 (iPhone SE) или пусто">'
+    +'<label>Заметки</label><textarea id="m_notes" placeholder="Что делать, на чём остановились...">'+(def.notes||'')+'</textarea>';
+}
+
+function showAddModal(){
+  document.getElementById('modal').innerHTML='<h2>Новый проект</h2>'+modalFields()
+    +'<div class="modal-actions"><button class="btn" onclick="closeModal()">Отмена</button><button class="btn btn-accent" onclick="addProject()">Добавить</button></div>';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  // Auto-fill path from name
+  var nameEl=document.getElementById('m_name');
+  var pathEl=document.getElementById('m_path');
+  nameEl.addEventListener('input',function(){
+    if(!pathEl.dataset.manual){
+      var slug=nameEl.value.trim().toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
+      var pr = getProjectsRoot() || 'F:\\ProjectForgeUniversal';
+      var sep = pr.indexOf('\\') >= 0 ? '\\' : '/';
+      if(slug) pathEl.value=pr+sep+slug;
+      else pathEl.value='';
+    }
+  });
+  pathEl.addEventListener('input',function(){pathEl.dataset.manual='1'});
+}
+
+function showEditModal(idx){
+  var p=projects[idx];
+  document.getElementById('modal').style.maxWidth='880px';
+  document.getElementById('modal').innerHTML='<h2>Редактировать: '+p.name+'</h2>'
+    +'<div style="display:grid;grid-template-columns:1fr 280px;gap:20px"><div>'+modalFields(p)+'</div>'
+    +'<div>'+phChecklistHTML(p.name)+'</div></div>' 
+    +'<div class="modal-actions"><button class="btn" style="color:var(--red)" onclick="if(confirm(\'Удалить '+p.name+'?\')){projects.splice('+idx+',1);save();render();closeModal()}">Удалить</button><div style="flex:1"></div><button class="btn" onclick="closeModal()">Отмена</button><button class="btn btn-accent" onclick="updateProject('+idx+')">Сохранить</button></div>';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');document.getElementById('modal').style.maxWidth='';}
+function toggleChip(el){var g=el.dataset.group;el.parentElement.querySelectorAll('[data-group="'+g+'"]').forEach(function(c){c.classList.remove('selected')});el.classList.toggle('selected')}
+function toggleChipMulti(el){el.classList.toggle('selected')}
+
+function getModalData(){
+  var name=document.getElementById('m_name').value.trim();
+  var path=document.getElementById('m_path').value.trim();
+  var image=document.getElementById('m_image').value.trim();
+  var desc=document.getElementById('m_desc').value.trim();
+  var notes=document.getElementById('m_notes').value.trim();
+  var minScreen=document.getElementById('m_minscreen').value.trim();
+  var te=document.querySelector('.chip[data-group="type"].selected');
+  var se=document.querySelector('.chip[data-group="status"].selected');
+  var oe=document.querySelector('.chip[data-group="orient"].selected');
+  var ce=document.querySelector('.chip[data-group="controls"].selected');
+  var platforms=[];
+  document.querySelectorAll('.chip[data-group="platform"].selected').forEach(function(c){platforms.push(c.dataset.val)});
+  return{name:name,path:path,image:image,description:desc,type:te?te.dataset.val:'app',status:se?se.dataset.val:'new',platforms:platforms,orientation:oe?oe.dataset.val:'',controls:ce?ce.dataset.val:'',minScreen:minScreen,notes:notes};
+}
+
+function addProject(){
+  var d=getModalData();
+  if(!d.name){toast('Укажи название');return}
+  if(!d.path){toast('Укажи путь');return}
+  // v4.9.6: warn if path includes Project-forge segment (common mistake)
+  // Project folders должны быть соседом forge folder, не внутри.
+  if(/[\\\/](project-forge|Project-forge)[\\\/]/i.test(d.path)){
+    if(!confirm('Путь содержит сегмент "project-forge" — обычно проекты должны быть СОСЕДОМ forge folder, не внутри.\n\nПример: F:\\ProjectForgeUniversal\\my-app (правильно)\nне F:\\ProjectForgeUniversal\\project-forge\\my-app (неправильно)\n\nВсё равно сохранить?')){
+      return;
+    }
+  }
+  // v4.9.5: timestamp on creation (used by sort by date)
+  d.createdAt = Date.now();
+  projects.push(d);save();render();closeModal();
+  // Show setup commands
+  var slug=d.path.replace(/\\/g,'/').split('/').pop();
+  var forgePath = getForgePath() || 'F:/ProjectForgeUniversal/Project-forge';
+  // Normalize всё к Windows backslashes for paste-into-PowerShell consistency.
+  // PowerShell принимает оба — но смешанные slashes в одном пути ломают user comprehension.
+  var forgePathWin = forgePath.replace(/\//g,'\\');
+  var projectPathWin = d.path.replace(/\//g,'\\');
+  var kind=d.type==='app'?'app':'game';
+  var claudeEntry=kind==='app'?'/app':'/phase-1-analyze .';
+  var codexEntry=kind==='app'?'$app':'$phase-1-analyze .';
+  var cmds='=== Создание проекта: '+d.name+' ('+kind+') ===\n\n';
+  cmds+='1. Создай проект и раздай единый Forge runtime:\n';
+  cmds+='   cd '+forgePathWin+'\n';
+  cmds+='   ./new-project.bat '+slug+' --type '+kind+'\n';
+  cmds+='   (каркас + skills + agents + hooks + AGENTS.md + FORGE.md + GitVerse rules + managed sync manifest)\n\n';
+  cmds+='2. Положи исходники/прототип в GameIntegration:\n';
+  cmds+='   '+projectPathWin+'\\GameIntegration\\\n\n';
+  cmds+='3a. Claude Code:\n';
+  cmds+='   cd '+projectPathWin+'\n';
+  cmds+='   cf\n';
+  cmds+='   '+claudeEntry+'\n\n';
+  cmds+='3b. Codex:\n';
+  cmds+='   cd '+projectPathWin+'\n';
+  cmds+='   codex\n';
+  cmds+='   '+codexEntry+'\n\n';
+  cmds+='3c. API-профили / GigaChat terminal:\n';
+  cmds+='   node '+forgePathWin+'\\scripts\\forge-agent.mjs launch claude --profile api --full --project '+projectPathWin+'\n';
+  cmds+='   node '+forgePathWin+'\\scripts\\forge-agent.mjs launch codex --profile api --full --project '+projectPathWin+'\n';
+  cmds+='   node '+forgePathWin+'\\scripts\\forge-agent.mjs launch gigachat --profile api --full --project '+projectPathWin+'\n\n';
+  cmds+='3d. GigaCode CLI: optional/dormant until an official executable is available.\n\n';
+  cmds+='4. После обновления Forge раздай runtime по всем sibling-проектам:\n';
+  cmds+='   cd '+forgePathWin+'\n';
+  cmds+='   ./sync.bat\n';
+  cmds+='   (.forge-managed.json позволяет удалять устаревшие файлы Forge, не трогая пользовательские)';
+  showCommandsModal(d.name,cmds,slug,forgePath,kind);
+}
+
+function showCommandsModal(name,cmds,slug,forgePath,kind){
+  var fp = forgePath || getForgePath() || 'F:/ProjectForgeUniversal/Project-forge';
+  var fpWin = fp.replace(/\//g,'\\');
+  document.getElementById('modal').innerHTML=''
+    +'<h2>Проект добавлен: '+name+'</h2>'
+    +'<p style="font-size:13px;color:var(--text2);margin-bottom:12px">Выполни эти команды чтобы создать проект на диске:</p>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:14px;font-family:monospace;font-size:12px;color:var(--green);white-space:pre-wrap;line-height:1.6;margin-bottom:12px">'+cmds.replace(/</g,'&lt;')+'</div>'
+    +'<div class="modal-actions">'
+    +'<button class="btn" onclick="copyCmd(\'cd '+fpWin+'; ./new-project.bat '+slug+' --type '+(kind||'game')+'\')">Копировать команду создания</button>'
+    +'<button class="btn btn-accent" onclick="closeModal()">Готово</button>'
+    +'</div>';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function updateProject(idx){var d=getModalData();if(!d.name){toast('Укажи название');return}d.createdAt=projects[idx].createdAt||Date.now();projects[idx]=d;save();render();closeModal();toast('Обновлён: '+d.name)}
+
+function exportData(){var data={projects:projects,notes:getNotes()};var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='forge-backup.json';a.click();URL.revokeObjectURL(a.href);toast('Экспортировано (проекты + заметки)')}
+function importData(event){var file=event.target.files[0];if(!file)return;var r=new FileReader();r.onload=function(e){try{var data=JSON.parse(e.target.result);if(Array.isArray(data)){var n=0;data.forEach(function(d){if(!projects.find(function(p){return p.name===d.name})){projects.push(d);n++}});save();render();toast('Импортировано проектов: '+n)}else if(data.projects){var n=0;data.projects.forEach(function(d){if(!projects.find(function(p){return p.name===d.name})){projects.push(d);n++}});if(data.notes){saveNotes(data.notes)}save();render();toast('Импортировано: '+n+' проектов'+(data.notes?' + заметки':''))}}catch(err){toast('Ошибка JSON')}};r.readAsText(file);event.target.value=''}
+
+function toggleCleaner(){var p=document.getElementById('cleanerPanel');var b=document.getElementById('cleanerBtn');if(p.classList.contains('open')){p.classList.remove('open');b.textContent='Очистка текста'}else{p.classList.add('open');b.textContent='Скрыть очистку';document.getElementById('cleanerInput').focus()}}
+
+function cleanText(){
+  var raw=document.getElementById('cleanerInput').value;
+  if(!raw.trim()){document.getElementById('cleanerResult').textContent='';return}
+  var clean=raw;
+  clean=clean.replace(/```[\s\S]*?```/g,function(m){return m.replace(/```\w*\n?/g,'').replace(/```/g,'')});
+  clean=clean.replace(/`([^`]+)`/g,'$1');
+  clean=clean.replace(/\*\*\*([^*]+)\*\*\*/g,'$1');
+  clean=clean.replace(/\*\*([^*]+)\*\*/g,'$1');
+  clean=clean.replace(/\*([^*]+)\*/g,'$1');
+  clean=clean.replace(/___([^_]+)___/g,'$1');
+  clean=clean.replace(/__([^_]+)__/g,'$1');
+  clean=clean.replace(/_([^_]+)_/g,'$1');
+  clean=clean.replace(/~~([^~]+)~~/g,'$1');
+  clean=clean.replace(/^#{1,6}\s+/gm,'');
+  clean=clean.replace(/^>\s+/gm,'');
+  clean=clean.replace(/^[-*+]\s+/gm,'');
+  clean=clean.replace(/^\d+\.\s+/gm,'');
+  clean=clean.replace(/\[([^\]]+)\]\([^)]+\)/g,'$1');
+  clean=clean.replace(/^[-*_]{3,}\s*$/gm,'');
+  clean=clean.replace(/\|/g,'');
+  clean=clean.replace(/^[:\-\s]+$/gm,'');
+  // ГЛАВНОЕ: убрать ВСЕ переносы строк - сделать одну строку
+  clean=clean.replace(/\n+/g,' ').replace(/\s{2,}/g,' ').trim();
+  document.getElementById('cleanerResult').textContent=clean;
+}
+
+function copyClean(){
+  var text=document.getElementById('cleanerResult').textContent;
+  if(!text)return;
+  navigator.clipboard.writeText(text).then(function(){
+    toast('Скопировано одной строкой!');
+    var el=document.getElementById('cleanerResult');
+    var flash=document.createElement('div');
+    flash.className='copied-flash';
+    el.appendChild(flash);
+    setTimeout(function(){flash.remove()},400);
+  });
+}
+
+function saveAsPrompt(){
+  var text=document.getElementById('cleanerResult').textContent;
+  if(!text){toast('Нечего сохранять');return}
+  var blob=new Blob([text],{type:'text/markdown'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='prompt.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Сохранён prompt.md — положи в папку проекта, скажи Claude: прочитай prompt.md и выполни');
+}
+
+function toggleHelp(){var p=document.getElementById('helpPanel');var b=document.getElementById('helpBtn');if(p.classList.contains('open')){p.classList.remove('open');b.textContent='Справка'}else{p.classList.add('open');b.textContent='Скрыть справку'}}
+
+function toggleNotes(){var p=document.getElementById('notesPanel');var b=document.getElementById('notesBtn');if(p.classList.contains('open')){p.classList.remove('open');b.textContent='Заметки'}else{p.classList.add('open');b.textContent='Скрыть заметки';renderNotes()}}
+
+function getNotes(){try{return JSON.parse(localStorage.getItem('forge_notes')||'[]')}catch(e){return[]}}
+function saveNotes(n){localStorage.setItem('forge_notes',JSON.stringify(n))}
+
+function addNote(){
+  var text=document.getElementById('noteInput').value.trim();
+  if(!text){toast('Напиши что-нибудь');return}
+  var notes=getNotes();
+  notes.unshift({id:Date.now(),text:text,date:new Date().toLocaleString('ru-RU')});
+  saveNotes(notes);
+  document.getElementById('noteInput').value='';
+  renderNotes();
+  toast('Заметка добавлена');
+}
+
+function deleteNote(id){
+  var notes=getNotes().filter(function(n){return n.id!==id});
+  saveNotes(notes);
+  renderNotes();
+}
+
+function editNote(id){
+  var el=document.querySelector('[data-note-id="'+id+'"]');
+  if(!el)return;
+  el.contentEditable='true';
+  el.focus();
+  el.onblur=function(){
+    el.contentEditable='false';
+    var notes=getNotes();
+    for(var i=0;i<notes.length;i++){if(notes[i].id===id){notes[i].text=el.textContent.trim();notes[i].date=new Date().toLocaleString('ru-RU')+' (ред.)';break}}
+    saveNotes(notes);
+    renderNotes();
+  };
+  el.onkeydown=function(e){if(e.key==='Escape'){el.contentEditable='false';renderNotes()}};
+}
+
+function renderNotes(){
+  var notes=getNotes();
+  var el=document.getElementById('notesList');
+  if(!notes.length){el.innerHTML='<div class="notes-empty">Пока пусто. Напиши первую заметку!</div>';return}
+  var h='';
+  notes.forEach(function(n){
+    h+='<div class="note-item">';
+    h+='<div class="note-text" data-note-id="'+n.id+'">'+n.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>';
+    h+='<div class="note-meta"><span>'+n.date+'</span><div class="note-actions">';
+    h+='<button onclick="editNote('+n.id+')">Редактировать</button>';
+    h+='<button class="del" onclick="if(confirm(\'Удалить заметку?\')){deleteNote('+n.id+')}">Удалить</button>';
+    h+='</div></div></div>';
+  });
+  el.innerHTML=h;
+}
+function toggleSection(btn){btn.classList.toggle('open');var c=btn.nextElementSibling;c.classList.toggle('open')}
+
+if(projects.length===0){
+  projects=[
+    {name:'UniDocs',path:'F:\\Project\\unidocs',description:'Просмотрщик документов для Android',type:'app',status:'new',platforms:['rustore'],orientation:'both',controls:'touch',minScreen:'375x667',notes:'Большое приложение. RuStore SDK + AppMetrica + Yandex Ads'},
+    {name:'Multi-Utility',path:'F:\\Project\\multi-utility',description:'Фонарик, линейка и другие утилиты',type:'app',status:'new',platforms:['rustore'],orientation:'portrait',controls:'touch',minScreen:'375x667',notes:'RuStore SDK + AppMetrica + Yandex Ads'},
+    {name:'FileView',path:'F:\\Project\\fileview',description:'Просмотрщик CSV, JSON и других файлов',type:'app',status:'new',platforms:['rustore'],orientation:'both',controls:'touch',minScreen:'375x667',notes:'RuStore SDK + AppMetrica + Yandex Ads'},
+    {name:'Ink Drift',path:'F:\\Project\\ink-drift',description:'Игра для Яндекс Игр',type:'game',status:'new',platforms:['yandex'],orientation:'portrait',controls:'both',minScreen:'375x667',notes:'Полный пайплайн + 3 билда + 13 языков'}
+  ];
+  save();
+}
+render();
+</script>
+<script>
+/* ФАЗЫ КОНВЕЙЕРА — единый источник для кнопок копирования.
+   ПРАВИЛО ДВИЖКА: при изменении фаз обновляй PH_DATA здесь же (drift-guard следит,
+   что все phase-слаги из .claude/skills присутствуют в этом файле). */
+const PH_VER='v4.68.1';
+const PH_DATA=[
+ {id:'phase-1-analyze',model:'opus',hk:'1',name:'Ф1 Анализ+метрики',c:'/phase-1-analyze <папка>',x:'$phase-1-analyze <папка>'},
+ {id:'phase-2-design',model:'opus',hk:'2',name:'Ф2 Дизайн+монетизация',c:'/phase-2-design',x:'$phase-2-design'},
+ {id:'phase-3-construct',model:'opus/sonnet',hk:'3',name:'Ф3 СТРОЙКА',c:'/phase-3-construct',x:'$phase-3-construct'},
+ {id:'phase-4-visual',model:'sonnet',hk:'4',name:'Ф4 Визуал+ассеты',c:'/phase-4-visual',x:'$phase-4-visual'},
+ {id:'phase-5-tech',model:'sonnet',hk:'5',name:'Ф5 Мобайл+SDK',c:'/phase-5-tech',x:'$phase-5-tech'},
+ {id:'phase-6-listing',model:'sonnet',hk:'6',name:'Ф6 Листинг+промо',c:'/phase-6-listing',x:'$phase-6-listing'},
+ {id:'phase-7-test',model:'sonnet',hk:'7',name:'Ф7 Тест',c:'/phase-7-test',x:'$phase-7-test'},
+ {id:'phase-8-release',model:'sonnet',hk:'8',name:'Ф8 Релиз',c:'/phase-8-release',x:'$phase-8-release'},
+ {id:'phase-9-live',model:'sonnet',hk:'9',name:'Ф9 Жизнь',c:'/phase-9-live',x:'$phase-9-live'},
+ {id:'status',hk:'0',name:'Статус',c:'/status',x:'$status'},
+ {id:'gacha-meta',hk:'—',name:'Гача-мета',c:'/gacha-meta',x:'$gacha-meta'},
+ {id:'multiplayer',hk:'—',name:'Мультиплеер (свой сервер)',c:'/multiplayer',x:'$multiplayer'},
+ {id:'asset-scan',hk:'—',name:'Разведать папку с ассетами',c:'/asset-scan <папка>',x:'$asset-scan <папка>'},
+ {id:'asset-library',hk:'—',name:'Библиотека ассетов',c:'/asset-library',x:'$asset-library'},
+ {id:'target-frame',hk:'—',name:'Целевой кадр игры',c:'node scripts/asset-bible.mjs <игра> --dir assets/target --title \"Целевой кадр\"',x:'node scripts/asset-bible.mjs <игра> --dir assets/target --title \"Целевой кадр\"'},
+ {id:'pixel-art',hk:'—',name:'Пиксель-арт (PixelLab / своя)',c:'/pixel-art-pipeline',x:'$pixel-art-pipeline'},
+ {id:'asset-bible',hk:'—',name:'Библия стиля (эталоны)',c:'node scripts/asset-bible.mjs <папка-игры>',x:'node scripts/asset-bible.mjs <папка-игры>'},
+ {id:'gap-audit',hk:'—',name:'Разрывы с движком',c:'node scripts/gap-audit.mjs <папка-игры>',x:'node scripts/gap-audit.mjs <папка-игры>'},
+ {id:'grilling',hk:'—',name:'Грилинг (интервью по плану)',c:'/grilling',x:'$grilling'},
+ {id:'find-skills',hk:'—',name:'Найти готовый скил',c:'/find-skills',x:'$find-skills'},
+ {id:'gameplay-balance',hk:'—',name:'Баланс: награждает ли мастерство',c:'/gameplay-balance',x:'$gameplay-balance'},
+ {id:'screens-shoot',hk:'—',name:'Снять и оценить экраны',c:'node scripts/screens-shoot.mjs <игра> --states \"штаб,карта,бой,итог\"',x:'node scripts/screens-shoot.mjs <игра> --states \"штаб,карта,бой,итог\"'},
+ {id:'asset-catalog',hk:'—',name:'Каталог ассетов (стиль)',c:'node scripts/asset-catalog.mjs <папка-игры>',x:'node scripts/asset-catalog.mjs <папка-игры>'},
+ {id:'handoff',hk:'—',name:'Handoff-архив (трекер)',c:'node scripts/pack-handoff.mjs <папка-игры>',x:'node scripts/pack-handoff.mjs <папка-игры>'},
+ {id:'port',hk:'—',name:'Порт (после GREEN)',c:'/port rustore',x:'$port rustore'}
+];
+function phKeyFor(name){return 'forge_phases_'+(name||'_default');}
+function phStateFor(name){try{return JSON.parse(localStorage.getItem(phKeyFor(name))||'{}')}catch(e){return{}}}
+function phCopy(t,btn){navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✓';setTimeout(()=>btn.textContent=o,900);});}
+function phMark(name,id,el){const st=phStateFor(name);st[id]=el.checked;localStorage.setItem(phKeyFor(name),JSON.stringify(st));}
+function phChecklistHTML(name){const st=phStateFor(name);const items=PH_DATA.filter(p=>/^phase-/.test(p.id)||p.id==='port');
+  const nm=name.replace(/'/g,"\\'");
+  return '<div style="border:1px solid var(--border);border-radius:12px;padding:12px;user-select:none"><div style="font-size:12px;letter-spacing:.06em;color:var(--text2);margin-bottom:8px">ФАЗЫ КОНВЕЙЕРА <span style="opacity:.5">(⧉C = Claude /skill, ⧉X = Codex $skill)</span></div>'
+   +items.map(function(p,i){
+     const cb='<input type="checkbox" style="width:14px;height:14px;padding:0;margin:0;flex:0 0 auto;accent-color:var(--accent)" '+(st[p.id]?'checked':'')+' onchange="phMark(\''+nm+'\',\''+p.id+'\',this)">';
+     const btn=function(txt,payload){return '<button onclick=\'phCopy('+JSON.stringify(payload)+',this)\' style="flex:0 0 auto;font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer">'+txt+'</button>';};
+     return '<div style="display:flex;gap:6px;align-items:center;font-size:13px;margin:7px 0;text-align:left">'+cb+'<span style="flex:1 1 auto;min-width:0">'+p.name+'</span>'+btn('⧉C',p.c)+btn('⧉X',p.x)+'</div>';
+   }).join('')
+   +'</div>';}
+function phRender(){
+  document.getElementById('phVer').textContent=PH_VER;
+  const rows=PH_DATA.map(p=>`<tr data-ph="${p.id}" style="border-bottom:1px solid #2a2a3a">
+    <td style="padding:6px;white-space:nowrap">${p.hk}</td>
+    <td style="padding:6px">${p.name}${p.model?' <span style="opacity:.45;font-size:11px">('+p.model+')</span>':''}</td>
+    <td style="padding:6px"><code style="font-size:11px">${p.c}</code> <button onclick="phCopy(${JSON.stringify(p.c).replace(/"/g,'&quot;')},this)" style="cursor:pointer">⧉ Claude</button></td>
+    <td style="padding:6px"><button onclick='phCopy(${JSON.stringify(p.x)},this)' style="cursor:pointer">⧉ Codex</button></td>
+  </tr>`).join('');
+  document.getElementById('phasesBody').innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="opacity:.6;text-align:left"><th style="padding:6px">Ctrl+Alt</th><th style="padding:6px">Фаза</th><th style="padding:6px">Claude Code</th><th style="padding:6px">Codex ($skill / shell)</th></tr>'+rows+'</table>';
+}
+phRender();
+setAgentMode(FORGE_AGENT_MODE);
+</script>
+</body>
+</html>

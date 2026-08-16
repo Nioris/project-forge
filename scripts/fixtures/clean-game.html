@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none;width:100%;height:100%;}
+  #game{width:100vw;height:100vh;}
+  button{min-width:48px;min-height:48px;font-size:18px;}
+  @media(max-width:768px){button{font-size:20px;}}
+</style>
+<script src="/sdk.js"></script>
+</head>
+<body>
+<div id="game">
+  <button id="playBtn">Играть</button>
+  <button id="soundToggle" onclick="toggleSound()">Звук</button>
+  <button id="pauseBtn" onclick="pauseGame()">Пауза</button>
+  <button id="rvBtn" onclick="showRewarded()">🎬 за рекламу — бонус ×2</button>
+  <input type="text" id="promo" placeholder="Промокод">
+</div>
+<script>
+'use strict';
+// --- i18n (assignment style, all 13 langs) ---
+var _lang = 'ru';
+var I18N = {};
+I18N.ru = { gameTitle:'Тест', play:'Играть' };
+I18N.en = { gameTitle:'Test', play:'Play' };
+I18N.tr = { gameTitle:'Test', play:'Oyna' };
+I18N.de = I18N.es = I18N.fr = I18N.it = I18N.pt = I18N.ja = I18N.ko = I18N.zh = I18N.ar = I18N.hi = { gameTitle:'Test', play:'Play' };
+function t(k){ return (I18N[_lang]&&I18N[_lang][k]) || (I18N.en&&I18N.en[k]) || k; }
+function td(x){ return x; }
+function detectLang(){
+  var l = (window.ysdk && ysdk.environment && ysdk.environment.i18n && ysdk.environment.i18n.lang) || 'ru';
+  _lang = I18N[l] ? l : 'ru';
+}
+function setLang(l){ _lang = I18N[l] ? l : 'ru'; applyStaticLang(); }
+function applyStaticLang(){ document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); }); }
+
+// --- sound / pause ---
+var _paused=false, AC=null;
+function toggleSound(){}
+function pauseGame(){ _paused=true; }
+function getAC(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)(); } return AC; }
+function suspendAudio(){ if(AC) AC.suspend(); }
+function resumeAudio(){ if(AC) AC.resume(); }
+document.addEventListener('visibilitychange', function(){ if(document.hidden){ suspendAudio(); } else { resumeAudio(); } });
+
+// --- save (cloud + local) ---
+function saveProgress(){ if(window.player){ player.setData({s:1}); } }
+function loadProgress(){ if(window.player){ player.getData(); } }
+
+// --- ads (gesture-gated only) ---
+var ysdk=null, player=null;
+function showInterstitial(){
+  saveProgress(); // progress saved before ad (4.2)
+  if(ysdk) ysdk.adv.showFullscreenAdv({ callbacks:{
+    onOpen:function(){ pauseGame(); suspendAudio(); },
+    onClose:function(){ resumeAudio(); },
+    onError:function(){ resumeAudio(); }
+  }});
+}
+function showRewarded(){
+  if(ysdk) ysdk.adv.showRewardedVideo({ callbacks:{
+    onOpen:function(){ suspendAudio(); },
+    onRewarded:function(){ /* grant */ },
+    onClose:function(){ resumeAudio(); }
+  }});
+}
+document.getElementById('playBtn').addEventListener('click', function(){ /* gameplay starts on click */ });
+
+// --- leaderboard ---
+function lbPush(){ if(ysdk) ysdk.getLeaderboards().then(function(lb){ lb.setLeaderboardScore('score', 1); lb.getLeaderboardEntries('score'); }); }
+
+// --- bootstrap: ready() only when interactive ---
+function initSDK(){
+  YaGames.init().then(function(sdk){
+    ysdk = sdk; window.ysdk = sdk; window.Plat = sdk;
+    detectLang();
+    applyStaticLang();
+    sdk.getPlayer().then(function(p){ player=p; window.player=p; });
+    // game_api_pause / game_api_resume handlers (1.19.4)
+    sdk.on && sdk.on('game_api_pause', function(){ pauseGame(); suspendAudio(); });
+    sdk.on && sdk.on('game_api_resume', function(){ resumeAudio(); });
+    // ready() after the menu is painted (double rAF), not on a timer
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      sdk.features.LoadingAPI && sdk.features.LoadingAPI.ready();
+    }); });
+  });
+}
+// GameplayAPI markup (1.19.3): start when a round begins, stop on pause/menu
+function startRound(){ if(ysdk && ysdk.features.GameplayAPI){ ysdk.features.GameplayAPI.start(); } }
+function endRound(){ if(ysdk && ysdk.features.GameplayAPI){ ysdk.features.GameplayAPI.stop(); } }
+
+// extra UI strings so t() is exercised across the menu
+var _labels = [ t('play'), t('gameTitle'), t('play'), t('gameTitle'), t('play'), t('gameTitle') ];
+window.addEventListener('load', initSDK);
+document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+</script>
+</body>
+</html>

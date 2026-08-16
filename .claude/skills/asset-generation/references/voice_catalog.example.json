@@ -1,0 +1,10 @@
+{
+  "_comment": "Map character key -> ElevenLabs voice_id (pick via ElevenLabs UI). Underscore keys are config, not roles.",
+  "_model": "eleven_v3",
+  "_settings_narrator": { "stability": 0.3, "similarity_boost": 0.85, "style": 0.4, "use_speaker_boost": true },
+  "_settings_dialogue": { "stability": 0.4, "similarity_boost": 0.85, "style": 0.35, "use_speaker_boost": true },
+  "narrator": "REPLACE_WITH_VOICE_ID",
+  "hero":     "REPLACE_WITH_VOICE_ID",
+  "npc":      "REPLACE_WITH_VOICE_ID",
+  "_note_vtag": "Per-line tone override: put vtag on a say-command in the script (e.g. vtag:'[whispers]'); it prefixes the TTS text only, not the displayed line. Otherwise generate_voice.py uses TAG_PREFIX[who]."
+}

@@ -1,0 +1,100 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash",
+      "Grep",
+      "Glob",
+      "LS",
+      "WebSearch"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node -e \"var c=require('child_process'),r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8'}).trim();try{process.stdout.write(c.execSync('node .claude/hooks/status-line.mjs',{cwd:r,encoding:'utf-8',timeout:2000}))}catch(e){process.stdout.write('')}\""
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','session-start.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/session-start.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','block-dangerous.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/block-dangerous.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','workspace-discipline.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/workspace-discipline.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','plan-check.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/plan-check.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','approval-gate.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/approval-gate.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','post-tool-capture.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/post-tool-capture.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','stop-flush.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/stop-flush.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','pre-claim-fixed.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/pre-claim-fixed.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

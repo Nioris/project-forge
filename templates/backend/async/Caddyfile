@@ -1,0 +1,8 @@
+# Замени на свой домен — Caddy сам получит и продлит сертификат Let's Encrypt.
+{$DOMAIN} {
+	encode gzip
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+	respond "forge async backend" 200
+}

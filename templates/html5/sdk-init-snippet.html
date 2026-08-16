@@ -1,0 +1,9 @@
+<!-- Yandex Games SDK — Вставить в <head> файла index.html -->
+<script src="/sdk.js"></script>
+<script src="yandex-sdk-wrapper.js"></script>
+<script>
+    // Инициализация при загрузке страницы
+    window.addEventListener('load', async function() {
+        await YandexSDK.init();
+    });
+</script>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 310px;
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 13px;
+  color: #d0d0e0;
+  background: linear-gradient(135deg, #0f0a1a 0%, #1a1030 100%);
+  padding: 14px;
+}
+h1 {
+  font-size: 15px;
+  color: #c8b0ff;
+  margin-bottom: 12px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.section-label {
+  font-size: 10px;
+  color: #605080;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 10px 0 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #2a2040;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.preset-btn {
+  padding: 10px 8px;
+  background: rgba(100, 70, 180, .15);
+  border: 2px solid rgba(100, 70, 180, .4);
+  border-radius: 8px;
+  color: #c8b0ff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  line-height: 1.3;
+}
+.preset-btn:hover { background: rgba(100, 70, 180, .3); border-color: rgba(140, 110, 220, .7); }
+.preset-btn:active { background: rgba(100, 70, 180, .45); }
+.preset-btn .size { display: block; font-size: 11px; font-weight: 400; color: #8070a0; margin-top: 2px; }
+.custom-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.dim-input {
+  flex: 1;
+  padding: 8px 10px;
+  background: rgba(100, 70, 180, .1);
+  border: 2px solid rgba(100, 70, 180, .3);
+  border-radius: 6px;
+  color: #c8b0ff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  width: 80px;
+}
+.dim-input:focus { border-color: #8060d0; }
+.dim-sep { color: #504070; font-size: 16px; font-weight: bold; }
+.shoot-btn {
+  padding: 8px 14px;
+  background: rgba(100, 70, 180, .25);
+  border: 2px solid rgba(140, 110, 220, .5);
+  border-radius: 8px;
+  color: #c8b0ff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.shoot-btn:hover { background: rgba(100, 70, 180, .4); border-color: #a080e0; }
+.shoot-btn:active { background: rgba(100, 70, 180, .55); }
+.lang-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.lang-btn {
+  padding: 5px 2px;
+  background: rgba(100, 70, 180, .1);
+  border: 1px solid rgba(100, 70, 180, .3);
+  border-radius: 4px;
+  color: #9080b0;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all .12s;
+}
+.lang-btn:hover { background: rgba(100, 70, 180, .25); color: #c8b0ff; }
+.lang-btn.active { background: rgba(100, 70, 180, .35); border-color: #8060d0; color: #e0d0ff; }
+.all-langs-btn {
+  width: 100%;
+  padding: 8px;
+  background: rgba(60, 160, 80, .15);
+  border: 2px solid rgba(60, 160, 80, .4);
+  border-radius: 8px;
+  color: #80e090;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  margin-bottom: 4px;
+}
+.all-langs-btn:hover { background: rgba(60, 160, 80, .3); }
+.hotkeys {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10px;
+  color: #504070;
+  margin-top: 10px;
+}
+.hotkeys span { display: flex; align-items: center; gap: 3px; }
+.hk {
+  background: rgba(100, 70, 180, .2);
+  border: 1px solid rgba(100, 70, 180, .4);
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 9px;
+  color: #9080b0;
+  font-weight: 600;
+}
+.status {
+  text-align: center;
+  font-size: 12px;
+  padding: 6px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  display: none;
+}
+.status.ok { display: block; background: rgba(0,180,80,.15); color: #4f8; }
+.status.busy { display: block; background: rgba(180,140,0,.15); color: #fd8; }
+.status.err { display: block; background: rgba(200,40,40,.15); color: #f66; }
+.progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(100,70,180,.15);
+  border-radius: 2px;
+  margin-bottom: 6px;
+  display: none;
+}
+.progress-bar {
+  height: 100%;
+  background: #80e090;
+  border-radius: 2px;
+  transition: width .3s;
+  width: 0%;
+}
+</style>
+</head>
+<body>
+  <h1>YG Screenshot <span style="font-size:10px;color:#706090">v2.5</span></h1>
+  <div id="status" class="status"></div>
+  <div class="progress" id="progress"><div class="progress-bar" id="progress-bar"></div></div>
+
+  <div class="grid">
+    <button class="preset-btn" id="btn-pc">PC<span class="size">1920 x 1080</span></button>
+    <button class="preset-btn" id="btn-mobile">Mobile<span class="size">1080 x 1920</span></button>
+    <button class="preset-btn" id="btn-current">Current<span class="size">as-is</span></button>
+    <button class="preset-btn" id="btn-square">Square<span class="size">1080 x 1080</span></button>
+  </div>
+
+  <div class="custom-row">
+    <input type="number" class="dim-input" id="cw" value="1920" min="100" max="3840">
+    <span class="dim-sep">x</span>
+    <input type="number" class="dim-input" id="ch" value="1080" min="100" max="3840">
+    <span class="dim-sep">@</span>
+    <input type="number" class="dim-input" id="cdpr" value="1" min="1" max="4" style="width:50px">
+    <button class="shoot-btn" id="btn-custom">Shot</button>
+  </div>
+
+  <div class="section-label">Language</div>
+  <div class="lang-grid" id="lang-grid"></div>
+
+  <div class="section-label">All 13 languages</div>
+  <div class="grid" style="margin-bottom:0">
+    <button class="all-langs-btn" id="btn-all-pc">All langs PC<span class="size" style="color:#5a9060">1920x1080</span></button>
+    <button class="all-langs-btn" id="btn-all-mobile">All langs Mobile<span class="size" style="color:#5a9060">1080x1920</span></button>
+  </div>
+
+  <div class="hotkeys">
+    <span>Hotkeys:</span>
+    <span><span class="hk">Alt+J</span> PC</span>
+    <span><span class="hk">Alt+K</span> Mobile</span>
+    <span><span class="hk">Alt+H</span> Current</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "_comment": "Example SFX catalog. Keys = filenames (without .mp3). Underscore-prefixed keys ignored. duration in seconds. generate_sfx.py reads this.",
+  "ui_click":       { "prompt": "short soft UI button click, clean, dry, no reverb", "duration": 1 },
+  "ui_back":        { "prompt": "subtle UI back/cancel blip, soft", "duration": 1 },
+  "coin_pickup":    { "prompt": "bright coin pickup chime, arcade, satisfying", "duration": 1 },
+  "hit_impact":     { "prompt": "punchy impact thud, dull, game hit", "duration": 2 },
+  "explosion":      { "prompt": "short arcade explosion, punchy low end, no music", "duration": 2 },
+  "level_win":      { "prompt": "triumphant short victory fanfare sting, bright", "duration": 3 },
+  "ambient_wind":   { "prompt": "soft looping wind ambience, calm, outdoors", "duration": 10 }
+}

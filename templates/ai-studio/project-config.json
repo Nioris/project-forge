@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "provider": "codex-native",
+  "reasoning": {
+    "model": "gpt-5.6-sol",
+    "effort": "high"
+  },
+  "image": {
+    "provider": "codex-native",
+    "model": "gpt-image-2",
+    "quality": "high",
+    "defaultSize": "1024x1024"
+  },
+  "agents": {
+    "mode": "phase-aware",
+    "maxParallelReadOnly": 4,
+    "maxParallelWriters": 2
+  },
+  "paths": {
+    "styleBible": "assets/style/STYLE-BIBLE.md",
+    "promptDir": "assets/prompts",
+    "generatedDir": "assets/generated",
+    "provenance": "assets/generated/provenance.jsonl"
+  },
+  "fallback": {
+    "openaiApi": true,
+    "gigachatApi": true,
+    "openRouter": false
+  },
+  "providers": {
+    "openai": {
+      "enabled": true,
+      "imageModel": "gpt-image-2"
+    },
+    "gigachat": {
+      "enabled": true,
+      "textModel": "GigaChat-2-Max",
+      "imageFunction": "text2image",
+      "model3dFunction": "text2model3d"
+    }
+  }
+}

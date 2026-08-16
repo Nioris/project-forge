@@ -1,0 +1,7 @@
+{
+  "name": "forge-async-backend",
+  "type": "module",
+  "private": true,
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": { "fastify": "^5.2.0", "pg": "^8.13.0" }
+}

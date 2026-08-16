@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Библиотека ассетов — Forge</title>
+<style>
+:root{--bg:#0f1117;--bg2:#171a23;--bg3:#1e2230;--fg:#e8eaf0;--fg2:#8b93a7;--acc:#7c5cff;--ok:#44b85c;--warn:#e0a33e;--err:#e05252;--brd:#282d3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:22px 26px;border-bottom:1px solid var(--brd);position:sticky;top:0;background:var(--bg);z-index:20}
+h1{margin:0 0 4px;font-size:20px}
+.sub{color:var(--fg2);font-size:13px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+button{background:var(--bg3);color:var(--fg);border:1px solid var(--brd);border-radius:8px;padding:7px 13px;cursor:pointer;font-size:13px}
+button:hover{border-color:var(--acc)}
+button.primary{background:#2a2350;border-color:var(--acc);color:#c9bcff;font-weight:600}
+input,select,textarea{background:var(--bg);border:1px solid var(--brd);color:var(--fg);border-radius:8px;padding:8px 11px;font:13px system-ui;width:100%}
+textarea{resize:vertical;min-height:64px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+#q{max-width:340px}
+main{padding:20px 26px;max-width:1400px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.card{background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:14px 16px}
+.card h3{margin:0 0 4px;font-size:15px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.kind{font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;background:var(--bg3);color:var(--fg2);border:1px solid var(--brd)}
+.k2d{color:#6fd3ff;border-color:#264a5e}.k3d{color:#c9a0ff;border-color:#41305e}
+.kaudio{color:#7ce0a0;border-color:#255c3a}.kunity{color:#ffb47c;border-color:#5e4126}
+.kfont{color:#ffd76f;border-color:#5e5326}.kui{color:#ff9ec7;border-color:#5e2a44}
+.path{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--fg2);word-break:break-all;background:var(--bg);padding:5px 8px;border-radius:6px;margin:7px 0;border:1px solid var(--brd)}
+.desc{font-size:13px;margin:6px 0}
+.notes{font-size:12px;color:var(--fg2);white-space:pre-wrap;background:var(--bg);border-left:2px solid var(--brd);padding:6px 9px;margin:7px 0;border-radius:0 6px 6px 0;max-height:150px;overflow:auto;font-family:ui-monospace,Consolas,monospace}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:11px;background:var(--bg3);color:var(--fg2);padding:2px 8px;border-radius:20px}
+.lic{font-size:11px;margin-top:8px}
+.lic b{color:var(--fg)}
+.lic.free{color:var(--ok)}.lic.attr{color:var(--warn)}.lic.paid{color:#c9a0ff}.lic.no{color:var(--err)}
+.stars{margin-top:8px;font-size:16px;letter-spacing:2px;user-select:none}
+.actions{display:flex;gap:6px;margin-top:11px}
+.actions button{padding:4px 10px;font-size:12px}
+.empty{text-align:center;color:var(--fg2);padding:60px 20px}
+dialog{background:var(--bg2);color:var(--fg);border:1px solid var(--brd);border-radius:14px;padding:0;max-width:640px;width:92%}
+dialog::backdrop{background:#000b}
+.dlg-b{padding:20px 22px}
+.dlg-h{padding:16px 22px;border-bottom:1px solid var(--brd);font-weight:600}
+.dlg-f{padding:14px 22px;border-top:1px solid var(--brd);display:flex;gap:8px;justify-content:flex-end}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg2);margin:12px 0 5px;font-weight:600}
+label:first-child{margin-top:0}
+.hint{font-size:11px;color:var(--fg2);margin-top:4px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+</style></head><body>
+
+<header>
+  <h1>📦 Библиотека ассетов</h1>
+  <div class="sub"><b id="cnt"></b> Источники готовых ассетов для Forge. Единственный источник данных — файл <code>asset-library.json</code> в папке <code>forge-data</code> (рядом с project-forge — обновление её не трогает): наполняется командой <code>/asset-scan</code>, читается движком, правится здесь. Страница ничего не хранит у себя: загрузил → поправил → сохранил.</div>
+  <div class="bar">
+    <button class="primary" onclick="openEdit(-1)">+ Добавить источник</button>
+    <input id="q" placeholder="поиск: имя, теги, описание, путь…" oninput="render()">
+    <select id="kf" onchange="render()" style="width:auto">
+      <option value="">Все типы</option><option value="2d">2D</option><option value="3d">3D</option>
+      <option value="audio">Аудио</option><option value="unity">Unity-пак</option>
+      <option value="font">Шрифты</option><option value="ui">UI</option>
+    </select>
+    <select id="uf" onchange="render()" style="width:auto">
+      <option value="">Любые игры</option><option value="2d">Для 2D-игр</option>
+      <option value="3d">Для 3D-игр</option><option value="any">Универсальные</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg2);text-transform:none;letter-spacing:0;margin:0">
+      <input type="checkbox" id="hw" onchange="render()" style="width:auto"> скрыть слабые (★≤2)</label>
+    <button class="primary" onclick="fileIn.click()">⬆ Загрузить asset-library.json</button>
+    <button onclick="exportForge()">⬇ Сохранить asset-library.json</button>
+    <input type="file" id="fileIn" accept=".json" style="display:none">
+  </div>
+</header>
+
+<div id="banner" style="display:none;margin:0 26px 14px;padding:10px 14px;border-radius:10px;background:#3a2a12;border:1px solid #6b4a1f;color:#e3b268;font-size:13px"></div><main><div id="grid" class="grid"></div><div id="more"></div><div id="empty" class="empty" style="display:none">
+  <h3>Пока пусто</h3><p>Добавь источник: путь к папке с ассетами и описание, что внутри.<br>
+  Forge будет искать здесь <b>до</b> того, как генерировать новое.</p></div></main>
+
+<dialog id="dlg"><form method="dialog">
+  <div class="dlg-h" id="dlgTitle">Источник ассетов</div>
+  <div class="dlg-b">
+    <div class="row">
+      <div><label>Название *</label><input id="f_name" placeholder="Synty POLYGON"></div>
+      <div><label>Тип</label><select id="f_kind">
+        <option value="2d">2D — спрайты, тайлы</option><option value="3d">3D — модели</option>
+        <option value="audio">Аудио</option><option value="unity">Unity-пак (.unitypackage)</option>
+        <option value="font">Шрифты</option><option value="ui">UI-киты</option></select></div>
+    </div>
+    <label>Путь / URL *</label>
+    <input id="f_path" placeholder="F:\ProjectForgeUniversal\AssetLibrary\Synty">
+    <div class="hint">Локальная папка (Forge читает напрямую) или ссылка на источник.</div>
+    <label>Что внутри — описание для поиска *</label>
+    <textarea id="f_desc" placeholder="Низкополигональные персонажи и окружение: город, зомби, спецназ. Один атлас на пак."></textarea>
+    <label>Теги через запятую</label>
+    <input id="f_tags" placeholder="lowpoly, персонажи, город, зомби">
+    <div class="hint">Теги — главный канал поиска для Forge. Пиши словами, которыми сам искал бы: жанр, сеттинг, объекты.</div>
+    <div class="row">
+      <div><label>Для каких игр</label><select id="f_use">
+        <option value="2d">Для 2D-игр</option><option value="3d">Для 3D-игр</option>
+        <option value="any">Универсально (2D и 3D)</option></select>
+        <div class="hint">3D-модели можно рендерить в спрайты — тогда «универсально».</div></div>
+      <div><label>Оценка качества</label><select id="f_rating">
+        <option value="0">— не оценивал</option><option value="5">★★★★★ отлично, берём первым</option>
+        <option value="4">★★★★ хорошо</option><option value="3">★★★ средне, доработка</option>
+        <option value="2">★★ слабо, крайний случай</option><option value="1">★ плохо, не использовать</option></select></div>
+    </div>
+    <label>Заметка об опыте использования</label>
+    <input id="f_verdict" placeholder="Что понравилось / что мешало: стиль, размеры, лицензия, качество мешей">
+    <div class="row">
+      <div><label>Лицензия</label><select id="f_lic">
+        <option value="free">Свободная (CC0 / MIT) — без условий</option>
+        <option value="attr">С указанием авторства (CC-BY)</option>
+        <option value="paid">Куплена — по условиям продавца</option>
+        <option value="no">Нельзя в коммерцию (NC/GPL)</option></select></div>
+      <div><label>Дата проверки лицензии</label><input id="f_licdate" type="date"></div>
+    </div>
+    <label>Как извлекать / особенности</label>
+    <textarea id="f_notes" placeholder="Команды, форматы, подводные камни. Этот текст Forge читает как инструкцию."></textarea>
+  </div>
+  <div class="dlg-f">
+    <button type="button" onclick="dlg.close()">Отмена</button>
+    <button type="button" class="primary" onclick="save()">Сохранить</button>
+  </div>
+</form></dialog>
+
+<script>
+var USE={'2d':'для 2D','3d':'для 3D','any':'2D и 3D'};
+var LIC={free:['free','свободная'],attr:['attr','с атрибуцией'],paid:['paid','куплена'],no:['no','НЕ для коммерции']};
+var items=[], dirty=false, loadedName='';
+var editIdx=-1, dlg=document.getElementById('dlg'), fileIn=document.getElementById('fileIn');
+var LIB_FIELDS=['name','path','desc','tags','kind','use','lic','licdate','notes','rating','verdict'];
+
+function slim(it){
+  var o={}; LIB_FIELDS.forEach(function(k){ if(it[k]!==undefined&&it[k]!=='') o[k]=it[k]; });
+  o.name=String(o.name||'без имени'); o.path=String(o.path||''); o.kind=o.kind||'2d';
+  o.lic=o.lic||'no'; o.use=o.use||'any'; o.rating=parseInt(o.rating,10)||0;
+  if(o.notes&&o.notes.length>4000)o.notes=o.notes.slice(0,4000)+'…';
+  if(o.desc&&o.desc.length>1500)o.desc=o.desc.slice(0,1500)+'…';
+  return o;
+}
+// Кэша браузера нет: источник истины — файл asset-library.json.
+function save2(){ dirty=true; render(); banner(); return {ok:true}; }
+function banner(){
+  var b=document.getElementById('banner'); if(!b)return;
+  if(!items.length){ b.style.display='block'; b.style.background='#1b2436'; b.style.borderColor='#2c3a52'; b.style.color='#9ab';
+    b.innerHTML='📂 Библиотека не загружена. Нажми <b>«⬆ Загрузить asset-library.json»</b> — '
+      +'файл лежит в корне project-forge (его наполняет <code>/asset-scan</code>).'; return; }
+  b.style.display='block';
+  if(dirty){ b.style.background='#3a2a12'; b.style.borderColor='#6b4a1f'; b.style.color='#e3b268';
+    b.innerHTML='✏️ <b>Есть несохранённые правки.</b> Нажми <b>«⬇ Сохранить asset-library.json»</b> '
+      +'и положи файл в корень project-forge — иначе изменения пропадут при закрытии вкладки.'; }
+  else { b.style.background='#12321f'; b.style.borderColor='#2f6b48'; b.style.color='#8fd6ac';
+    b.innerHTML='✅ Загружено: <b>'+items.length+'</b> источников'+(loadedName?' из <code>'+esc(loadedName)+'</code>':'')
+      +'. Правки не сохраняются автоматически — после изменений жми «Сохранить».'; }
+}
+window.addEventListener('beforeunload',function(e){ if(dirty){ e.preventDefault(); e.returnValue=''; } });
+
+function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var LIB_FIELDS=['name','path','desc','tags','kind','use','lic','licdate','notes','rating','verdict'];
+function slim(it){ // только поля библиотеки; черновиковые (sample/top_ext/files_seen) выбрасываем
+  var o={}; LIB_FIELDS.forEach(function(k){ if(it[k]!==undefined&&it[k]!=='') o[k]=it[k]; });
+  o.name=String(o.name||'без имени'); o.path=String(o.path||''); o.kind=o.kind||'2d';
+  o.lic=o.lic||'no'; o.use=o.use||'any'; o.rating=parseInt(o.rating,10)||0;
+  if(o.notes&&o.notes.length>4000)o.notes=o.notes.slice(0,4000)+'…';
+  if(o.desc&&o.desc.length>1500)o.desc=o.desc.slice(0,1500)+'…';
+  return o;
+}
+
+
+function render(){
+  var c=document.getElementById('cnt'); if(c)c.textContent=items.length?('Всего: '+items.length+' · '):'';
+  var q=(document.getElementById('q').value||'').toLowerCase(), kf=document.getElementById('kf').value;
+  var uf=document.getElementById('uf').value, hw=document.getElementById('hw').checked;
+  var list=items.filter(function(it){
+    if(kf&&it.kind!==kf)return false;
+    if(uf&&(it.use||'any')!==uf&&!(uf!=='any'&&(it.use||'any')==='any'))return false;
+    if(hw&&it.rating&&it.rating<=2)return false;
+    if(!q)return true;
+    return [it.name,it.desc,it.path,(it.tags||[]).join(' '),it.notes,it.verdict].join(' ').toLowerCase().indexOf(q)>=0;
+  }).sort(function(a,b){return (b.rating||0)-(a.rating||0)});
+  document.getElementById('empty').style.display=items.length?'none':'block';
+  var LIMIT=200, shown=list.slice(0,LIMIT);
+  document.getElementById('more').innerHTML = list.length>LIMIT
+    ? '<div style="padding:14px;color:var(--fg2);text-align:center">Показано '+LIMIT+' из '+list.length
+      +'. Уточни поиск или фильтры, чтобы увидеть остальные.</div>' : '';
+  document.getElementById('grid').innerHTML=shown.map(function(it){
+    var i=items.indexOf(it);
+    return '<div class="card"><h3>'+esc(it.name)+'<span style="display:flex;gap:5px;flex-wrap:wrap"><span class="kind k'+it.kind+'">'+it.kind+'</span><span class="kind">'+USE[it.use||'any']+'</span></span></h3>'
+      +'<div class="path">'+esc(it.path)+'</div>'
+      +'<div class="desc">'+esc(it.desc)+'</div>'
+      +(it.notes?'<div class="notes">'+esc(it.notes)+'</div>':'')
+      +((it.tags&&it.tags.length)?'<div class="tags">'+it.tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>'}).join('')+'</div>':'')
+      +'<div class="lic '+it.lic+'">Лицензия: <b>'+LIC[it.lic][1]+'</b>'+(it.licdate?' · проверена '+esc(it.licdate):'')+'</div>'
+      +(it.verdict?'<div class="lic" style="color:var(--fg2)">Опыт: '+esc(it.verdict)+'</div>':'')
+      +'<div class="stars" title="оценка качества — влияет на порядок выдачи для Forge">'
+        +[1,2,3,4,5].map(function(n){return '<span onclick="rate('+i+','+n+')" style="cursor:pointer;color:'+((it.rating||0)>=n?'#e0a33e':'#3a4055')+'">\u2605</span>'}).join('')
+        +'<span style="font-size:11px;color:var(--fg2);margin-left:6px">'+(it.rating?it.rating+'/5':'не оценён')+'</span></div>'
+      +'<div class="actions"><button onclick="openEdit('+i+')">Изменить</button>'
+      +'<button onclick="copyPath('+i+')">⧉ путь</button>'
+      +'<button onclick="del('+i+')" style="margin-left:auto">Удалить</button></div></div>';
+  }).join('');
+}
+function openEdit(i){
+  editIdx=i; var it=i>=0?items[i]:{kind:'2d',lic:'free'};
+  document.getElementById('dlgTitle').textContent=i>=0?'Изменить источник':'Новый источник';
+  f_name.value=it.name||''; f_path.value=it.path||''; f_desc.value=it.desc||'';
+  f_tags.value=(it.tags||[]).join(', '); f_kind.value=it.kind||'2d'; f_lic.value=it.lic||'free';
+  f_licdate.value=it.licdate||''; f_notes.value=it.notes||'';
+  f_use.value=it.use||'any'; f_rating.value=String(it.rating||0); f_verdict.value=it.verdict||'';
+  dlg.showModal();
+}
+function save(){
+  if(!f_name.value.trim()||!f_path.value.trim()||!f_desc.value.trim()){alert('Название, путь и описание обязательны');return}
+  var it={name:f_name.value.trim(),path:f_path.value.trim(),desc:f_desc.value.trim(),
+    tags:f_tags.value.split(',').map(function(s){return s.trim()}).filter(Boolean),
+    kind:f_kind.value,lic:f_lic.value,licdate:f_licdate.value,notes:f_notes.value.trim(),
+    use:f_use.value,rating:parseInt(f_rating.value,10)||0,verdict:f_verdict.value.trim()};
+  if(editIdx>=0)items[editIdx]=it; else items.push(it);
+  dlg.close(); save2();
+}
+function rate(i,n){ items[i].rating=(items[i].rating===n?0:n); save2(); }
+function del(i){ if(confirm('Удалить «'+items[i].name+'»?')){items.splice(i,1);save2()} }
+function copyPath(i){ navigator.clipboard.writeText(items[i].path) }
+function exportForge(){
+  var data={format:'forge-asset-library',version:1,updated:new Date().toISOString().slice(0,10),sources:items};
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download='asset-library.json'; a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},4000);
+  dirty=false; banner();
+  alert('Положи скачанный asset-library.json в папку forge-data (соседняя с project-forge).\nОбновления движка её не трогают — данные там в безопасности.');
+}
+fileIn.onchange=function(){
+  var f=fileIn.files[0]; if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){ try{
+    var d=JSON.parse(r.result); var src=d.sources||d.items||d;
+    if(!Array.isArray(src))throw new Error('нет массива sources');
+    items=src.map(slim); loadedName=f.name; dirty=false;
+    render(); banner();
+    alert('Загружено источников: '+items.length+'\n\nПравки не сохраняются автоматически: после изменений жми «Сохранить asset-library.json».');
+  }catch(e){alert('Не похоже на asset-library.json: '+e.message)} };
+  r.readAsText(f); fileIn.value='';
+};
+render(); banner();
+</script></body></html>

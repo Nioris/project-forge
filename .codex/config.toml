@@ -1,0 +1,30 @@
+# Project Forge — native Codex project configuration.
+# Claude Code remains fully supported through .claude/*; this file only adds Codex behavior.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+project_doc_max_bytes = 32768
+project_root_markers = [".git", ".claude-plugin", "AGENTS.md"]
+
+[features]
+hooks = true
+multi_agent = true
+goals = true
+
+# Compatibility note:
+# We intentionally do not set optional global [agents] scalar settings here.
+# Current Codex enables multi-agent by default and chooses a concurrency default;
+# older Codex CLI builds parsed [agents] only as role declarations and rejected
+# keys such as enabled=true with "expected struct AgentRoleToml".
+# Project custom agents still live under .codex/agents/*.toml.
+
+# Forge MCP exposes skills/knowledge/verifiers to Codex. It is optional: Codex can still work
+# from AGENTS.md + .agents/skills if the MCP process cannot start in a particular environment.
+[mcp_servers.forge]
+command = "node"
+args = ["mcp-server/index.mjs"]
+cwd = ".."
+enabled = true
+required = false
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+default_tools_approval_mode = "auto"

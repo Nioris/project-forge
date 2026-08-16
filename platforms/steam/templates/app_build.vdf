@@ -1,0 +1,33 @@
+// Project Forge — app_build VDF template for SteamPipe upload via steamcmd.
+//
+// Replace placeholders:
+//   <APPID>        Your Steam App ID
+//   <DEPOTID>      Your depot ID (typically AppID + 1, e.g. 480 → 481)
+//   <CONTENT_ROOT> Path to the directory containing your final .exe and assets
+//   <OUTPUT>       Where SteamPipe stores intermediate build files
+//
+// To upload:
+//   ./steamcmd.exe +login <build_account> +run_app_build app_build.vdf +quit
+//
+// Reference: https://partner.steamgames.com/doc/sdk/uploading
+
+"appbuild"
+{
+  "AppID" "<APPID>"
+  "Desc" "Build %BUILD_ID%"
+
+  "BuildOutput" "<OUTPUT>"
+  "ContentRoot" "<CONTENT_ROOT>"
+
+  // The branch to set the build live on — leave empty to NOT auto-set live.
+  // Use "default" to push to default branch (main public). Use a custom branch name like "beta" for testing.
+  "SetLive" ""
+
+  "Preview" "0"   // Set to "1" for dry-run upload (uploads & shows changes but doesn't publish)
+  "Local" ""
+
+  "Depots"
+  {
+    "<DEPOTID>" "depot_build_<DEPOTID>.vdf"
+  }
+}

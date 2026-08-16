@@ -1,0 +1,6 @@
+#!/bin/bash
+# cf - short alias for claude --dangerously-skip-permissions
+# Install: chmod +x cf && sudo ln -s $(pwd)/cf /usr/local/bin/cf
+# Then just type: cf
+
+claude --dangerously-skip-permissions "$@"

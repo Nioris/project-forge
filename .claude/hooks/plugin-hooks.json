@@ -1,0 +1,79 @@
+{
+    "_comment": "Hooks activated when Forge is installed via /plugin install. Uses ${CLAUDE_PLUGIN_ROOT} so paths resolve to the plugin install dir, not the user's project dir. For manual (unzip + setup.sh) install, the hooks in .claude/settings.json are used instead. DO NOT use both install paths simultaneously \u2014 hooks will fire twice.",
+    "SessionStart": [
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-start.mjs",
+                    "timeout": 15000
+                }
+            ]
+        }
+    ],
+    "PreToolUse": [
+        {
+            "matcher": "Bash",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/block-dangerous.mjs",
+                    "timeout": 5000
+                }
+            ]
+        },
+        {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/workspace-discipline.mjs",
+                    "timeout": 5000
+                },
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/plan-check.mjs",
+                    "timeout": 5000
+                }
+            ]
+        },
+        {
+            "matcher": "Bash",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/approval-gate.mjs",
+                    "timeout": 5000
+                }
+            ]
+        }
+    ],
+    "PostToolUse": [
+        {
+            "matcher": "Write|Edit|MultiEdit|Bash",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/post-tool-capture.mjs",
+                    "timeout": 15000
+                }
+            ]
+        }
+    ],
+    "Stop": [
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/stop-flush.mjs",
+                    "timeout": 10000
+                },
+                {
+                    "type": "command",
+                    "command": "node ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/pre-claim-fixed.mjs",
+                    "timeout": 5000
+                }
+            ]
+        }
+    ]
+}

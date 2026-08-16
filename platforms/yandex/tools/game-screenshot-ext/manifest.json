@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "YG Screenshot v2.1",
+  "version": "2.7.0",
+  "description": "Take clean screenshots of HTML5 games for Yandex Games store at preset resolutions (PC, Mobile, Square).",
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "scripting",
+    "debugger"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "shot-pc": {
+      "suggested_key": { "default": "Alt+J" },
+      "description": "Screenshot PC (1920x1080)"
+    },
+    "shot-mobile": {
+      "suggested_key": { "default": "Alt+K" },
+      "description": "Screenshot Mobile (1080x1920)"
+    },
+    "shot-current": {
+      "suggested_key": { "default": "Alt+H" },
+      "description": "Screenshot Current (as-is)"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

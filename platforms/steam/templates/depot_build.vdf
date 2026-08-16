@@ -1,0 +1,28 @@
+// Project Forge — depot_build VDF template for one Steam depot.
+//
+// One depot per OS or per content split. For all-in-one Windows games,
+// a single depot with FileMapping for everything is enough.
+//
+// Reference: https://partner.steamgames.com/doc/sdk/uploading
+
+"DepotBuildConfig"
+{
+  "DepotID" "<DEPOTID>"
+
+  // Source directory inside ContentRoot. Default: same as ContentRoot.
+  "ContentRoot" ""
+
+  "FileMapping"
+  {
+    "LocalPath" "*"     // include everything by default
+    "DepotPath" "."     // root of depot
+    "recursive" "1"
+  }
+
+  // Exclude common dev files
+  "FileExclusion" "*.pdb"
+  "FileExclusion" "*.log"
+  "FileExclusion" "*.vdf"
+  "FileExclusion" ".git/*"
+  "FileExclusion" "node_modules/*"
+}

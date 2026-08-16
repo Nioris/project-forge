@@ -1,0 +1,85 @@
+{
+  "description": "Project Forge native Codex lifecycle adapter. Claude hooks remain intact under .claude/hooks.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.claude/hooks/session-start.mjs\"",
+            "statusMessage": "Loading Forge project context",
+            "additionalContextLimit": 5000,
+            "commandWindows": "node \".\\.claude\\hooks\\session-start.mjs\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.claude/hooks/block-dangerous.mjs\"",
+            "statusMessage": "Checking dangerous command policy",
+            "commandWindows": "node \".\\.claude\\hooks\\block-dangerous.mjs\""
+          },
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.claude/hooks/approval-gate.mjs\"",
+            "statusMessage": "Checking Forge approval gates",
+            "commandWindows": "node \".\\.claude\\hooks\\approval-gate.mjs\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|^apply_patch$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.codex/hooks/workspace-discipline.mjs\"",
+            "statusMessage": "Checking Forge workspace discipline",
+            "commandWindows": "node \".\\.codex\\hooks\\workspace-discipline.mjs\""
+          },
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.codex/hooks/plan-check.mjs\"",
+            "statusMessage": "Checking active Forge plan",
+            "commandWindows": "node \".\\.codex\\hooks\\plan-check.mjs\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|^apply_patch$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.codex/hooks/post-tool-capture.mjs\"",
+            "commandWindows": "node \".\\.codex\\hooks\\post-tool-capture.mjs\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.claude/hooks/pre-claim-fixed.mjs\"",
+            "timeout": 10,
+            "commandWindows": "node \".\\.claude\\hooks\\pre-claim-fixed.mjs\""
+          },
+          {
+            "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.claude/hooks/stop-flush.mjs\"",
+            "timeout": 30,
+            "commandWindows": "node \".\\.claude\\hooks\\stop-flush.mjs\""
+          }
+        ]
+      }
+    ]
+  }
+}

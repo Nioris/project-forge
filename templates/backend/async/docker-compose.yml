@@ -1,0 +1,34 @@
+# Асинхронный мультиплеер Forge — Caddy (TLS) + API (Node) + PostgreSQL.
+# Разворачивается на своём сервере: docker compose up -d
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [api]
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://forge:${DB_PASSWORD}@db:5432/forge
+      YANDEX_SECRET: ${YANDEX_SECRET}      # ключ из Консоли Яндекс Игр
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}  # https://yandex.ru,https://games.s3.yandex.net
+      NODE_ENV: production
+    depends_on: [db]
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: forge
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+volumes: { caddy_data: {}, db_data: {} }

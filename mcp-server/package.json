@@ -1,0 +1,19 @@
+{
+  "name": "forge-mcp-server",
+  "version": "0.1.0",
+  "description": "Project Forge as MCP server — expose Forge skills, decisions, invariants, and verifiers to Claude Code, Codex, and other agents via Model Context Protocol",
+  "type": "module",
+  "bin": {
+    "forge-mcp": "./index.mjs"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

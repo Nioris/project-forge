@@ -1,0 +1,5 @@
+# Files to copy into new worktrees
+# These ensure every isolated project has access to forge infrastructure
+.claude/
+CLAUDE.md
+skills/

@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YandexGames Debug Checker</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh;}
+.header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:20px 30px;border-bottom:2px solid #f5a623;display:flex;align-items:center;gap:16px;}
+.header h1{font-size:22px;color:#f5a623;font-weight:700;}
+.header .subtitle{color:#888;font-size:13px;}
+.header .logo{font-size:32px;}
+.toolbar{background:#12121f;padding:12px 30px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #222;}
+.toolbar input{flex:1;padding:8px 14px;background:#1a1a2e;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:14px;}
+.toolbar button{padding:8px 20px;background:#f5a623;color:#000;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;white-space:nowrap;}
+.toolbar button:hover{background:#ffb940;}
+.toolbar button:disabled{opacity:.5;cursor:not-allowed;}
+.toolbar .status{color:#888;font-size:12px;margin-left:8px;}
+.container{display:flex;height:calc(100vh - 120px);}
+.panel-left{flex:1;overflow-y:auto;padding:20px 30px 40px;}
+.panel-right{width:50%;border-left:1px solid #222;position:relative;background:#0a0a14;}
+.panel-right iframe{width:100%;height:100%;border:none;}
+.panel-right .placeholder{display:flex;align-items:center;justify-content:center;height:100%;color:#444;font-size:15px;text-align:center;padding:40px;}
+
+.summary{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+.summary-card{flex:1;min-width:140px;padding:16px;border-radius:10px;text-align:center;}
+.summary-card.pass{background:linear-gradient(135deg,#0d2818,#143d22);border:1px solid #44b85c;}
+.summary-card.fail{background:linear-gradient(135deg,#2d0a0a,#3d1414);border:1px solid #ed1b35;}
+.summary-card.warn{background:linear-gradient(135deg,#2d2200,#3d3000);border:1px solid #f5a623;}
+.summary-card.info{background:linear-gradient(135deg,#0a1a2d,#142d3d);border:1px solid #3b82f6;}
+.summary-card .num{font-size:32px;font-weight:700;}
+.summary-card.pass .num{color:#44b85c;}
+.summary-card.fail .num{color:#ed1b35;}
+.summary-card.warn .num{color:#f5a623;}
+.summary-card.info .num{color:#3b82f6;}
+.summary-card .label{font-size:12px;color:#888;margin-top:4px;}
+
+.section{margin-bottom:20px;border:1px solid #222;border-radius:10px;overflow:hidden;}
+.section-header{padding:14px 18px;background:#16162a;cursor:pointer;display:flex;align-items:center;gap:10px;user-select:none;}
+.section-header:hover{background:#1a1a35;}
+.section-header .arrow{transition:transform .2s;font-size:12px;color:#666;}
+.section-header.open .arrow{transform:rotate(90deg);}
+.section-header .title{font-weight:600;font-size:15px;flex:1;}
+.section-header .badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;}
+.badge-pass{background:#143d22;color:#44b85c;}
+.badge-fail{background:#3d1414;color:#ed1b35;}
+.badge-warn{background:#3d3000;color:#f5a623;}
+.badge-skip{background:#222;color:#666;}
+.section-body{display:none;padding:4px 0;}
+.section-body.open{display:block;}
+
+.check{padding:10px 18px;display:flex;align-items:flex-start;gap:10px;border-top:1px solid #1a1a2e;}
+.check:first-child{border-top:none;}
+.check .icon{font-size:16px;min-width:20px;text-align:center;padding-top:1px;}
+.check .icon.pass{color:#44b85c;}
+.check .icon.fail{color:#ed1b35;}
+.check .icon.warn{color:#f5a623;}
+.check .icon.skip{color:#555;}
+.check .text{flex:1;}
+.check .text .name{font-size:13px;color:#ccc;}
+.check .text .detail{font-size:11px;color:#777;margin-top:3px;font-family:'Cascadia Code','Fira Code',monospace;}
+.check .text .detail.found{color:#44b85c;}
+.check .text .detail.notfound{color:#ed1b35;}
+
+.progress-bar{width:100%;height:4px;background:#222;border-radius:2px;margin-top:8px;overflow:hidden;}
+.progress-bar .fill{height:100%;border-radius:2px;transition:width .5s ease;}
+.fill-pass{background:#44b85c;}
+.fill-warn{background:#f5a623;}
+.fill-fail{background:#ed1b35;}
+
+.runtime-log{position:absolute;bottom:0;left:0;right:0;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.9);border-top:1px solid #333;padding:8px 12px;font-family:monospace;font-size:11px;}
+.runtime-log .entry{padding:2px 0;border-bottom:1px solid #1a1a1a;}
+.runtime-log .entry.ok{color:#44b85c;}
+.runtime-log .entry.err{color:#ed1b35;}
+.runtime-log .entry.wrn{color:#f5a623;}
+.runtime-log .entry.inf{color:#3b82f6;}
+
+.toggle-view{position:absolute;top:8px;right:8px;z-index:10;}
+.toggle-view button{padding:4px 12px;background:#222;color:#aaa;border:1px solid #333;border-radius:4px;cursor:pointer;font-size:11px;}
+.toggle-view button:hover{background:#333;}
+.toggle-view button.active{background:#f5a623;color:#000;border-color:#f5a623;}
+
+@media(max-width:900px){
+  .container{flex-direction:column;}
+  .panel-right{width:100%;height:40vh;border-left:none;border-top:1px solid #222;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">&#x1F3AE;</div>
+  <div>
+    <h1>Yandex Games Debug Checker</h1>
+    <div class="subtitle">Static + Runtime verification &bull; v1.0</div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <input type="text" id="fileInput" value="index.html" placeholder="Path to index.html (relative)">
+  <button id="btnRun" onclick="runCheck()">&#9654; Run Check</button>
+  <button id="btnRuntime" onclick="runRuntime()" disabled>&#x1F3AC; Runtime Test</button>
+  <span class="status" id="statusText">Ready</span>
+</div>
+
+<div class="container">
+  <div class="panel-left" id="results">
+    <div style="text-align:center;color:#444;padding:60px 20px;">
+      <div style="font-size:48px;margin-bottom:16px;">&#x1F50D;</div>
+      <div style="font-size:15px;">Enter the path to <code>index.html</code> and press <b>Run Check</b></div>
+      <div style="font-size:12px;margin-top:8px;color:#555;">The checker will fetch and analyze the source code</div>
+    </div>
+  </div>
+  <div class="panel-right" id="previewPanel">
+    <div class="toggle-view" id="toggleView" style="display:none;">
+      <button id="btnPreview" class="active" onclick="showTab('preview')">Preview</button>
+      <button id="btnLog" onclick="showTab('log')">Console</button>
+    </div>
+    <div class="placeholder" id="previewPlaceholder">
+      <div>&#x1F3AE;<br><br>Game preview will appear here<br>after Runtime Test</div>
+    </div>
+    <iframe id="gameFrame" style="display:none;" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+    <div class="runtime-log" id="runtimeLog" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  YANDEX GAMES DEBUG CHECKER — Static & Runtime Verification
+// ═══════════════════════════════════════════════════════════════════
+
+let sourceCode = '';
+let totalPass = 0, totalFail = 0, totalWarn = 0, totalSkip = 0;
+let runtimeResults = [];
+
+// ── Categories of checks ──────────────────────────────────────────
+const CATEGORIES = [
+  {
+    id: 'sdk', title: 'SDK Integration', icon: '\u{1F4E6}',
+    checks: [
+      { id:'sdk_script', name:'SDK script tag', desc:'<script src="/sdk.js"> in <head>',
+        test: s => pat(s, /<script[^>]*src=["']\/sdk\.js["'][^>]*>/i) },
+      { id:'sdk_init', name:'YaGames.init() called', desc:'SDK initialization',
+        test: s => pat(s, /YaGames\.init\s*\(/) },
+    ]
+  },
+  {
+    id: 'lifecycle', title: 'Lifecycle API', icon: '\u{1F504}',
+    checks: [
+      { id:'lc_ready', name:'LoadingAPI.ready()', desc:'Called when game is fully loaded',
+        test: s => pat(s, /LoadingAPI[?.]?\s*\.?\s*ready\s*\(/) },
+      { id:'lc_start', name:'GameplayAPI.start()', desc:'Called when gameplay begins',
+        test: s => pat(s, /GameplayAPI[?.]?\s*\.?\s*start\s*\(/) },
+      { id:'lc_stop', name:'GameplayAPI.stop()', desc:'Called when gameplay pauses/ends',
+        test: s => pat(s, /GameplayAPI[?.]?\s*\.?\s*stop\s*\(/) },
+      { id:'lc_chain', name:'Optional chaining for LoadingAPI/GameplayAPI', desc:'Using ?. for safety',
+        test: s => pat(s, /LoadingAPI\?\./) && pat(s, /GameplayAPI\?\./) },
+    ]
+  },
+  {
+    id: 'sound', title: 'Sound Management', icon: '\u{1F50A}',
+    checks: [
+      { id:'snd_vis', name:'visibilitychange handler', desc:'Mute when tab hidden',
+        test: s => pat(s, /visibilitychange/) },
+      { id:'snd_pause', name:'game_api_pause handler', desc:'Mute when SDK pauses game',
+        test: s => pat(s, /game_api_pause/) },
+      { id:'snd_resume', name:'game_api_resume handler', desc:'Unmute when SDK resumes',
+        test: s => pat(s, /game_api_resume/) },
+      { id:'snd_ctx', name:'AudioContext suspend/resume', desc:'AC.suspend() / AC.resume() or equivalent',
+        test: s => pat(s, /\.suspend\s*\(/) && pat(s, /\.resume\s*\(/) },
+    ]
+  },
+  {
+    id: 'ads_inter', title: 'Ads — Interstitial', icon: '\u{1F4FA}',
+    checks: [
+      { id:'ad_fs', name:'showFullscreenAdv present', desc:'Interstitial ad integration',
+        test: s => pat(s, /showFullscreenAdv\s*\(/) },
+      { id:'ad_fs_open', name:'onOpen callback (pause+mute)', desc:'Game pauses and mutes on ad open',
+        test: s => {
+          const m = extractBlock(s, /showFullscreenAdv\s*\(/);
+          return m && /onOpen/.test(m);
+        }},
+      { id:'ad_fs_close', name:'onClose callback (resume)', desc:'Game resumes after ad',
+        test: s => {
+          const m = extractBlock(s, /showFullscreenAdv\s*\(/);
+          return m && /onClose/.test(m);
+        }},
+      { id:'ad_fs_err', name:'onError callback', desc:'Error handling for interstitial',
+        test: s => {
+          const m = extractBlock(s, /showFullscreenAdv\s*\(/);
+          return m && /onError/.test(m);
+        }},
+    ]
+  },
+  {
+    id: 'ads_rw', title: 'Ads — Rewarded Video', icon: '\u{1F3AC}',
+    checks: [
+      { id:'ad_rw', name:'showRewardedVideo present', desc:'Rewarded video integration',
+        test: s => pat(s, /showRewardedVideo\s*\(/) },
+      { id:'ad_rw_rew', name:'onRewarded callback', desc:'Reward is granted in callback',
+        test: s => {
+          const m = extractBlock(s, /showRewardedVideo\s*\(/);
+          return m && /onRewarded/.test(m);
+        }},
+      { id:'ad_rw_open', name:'onOpen callback (pause+mute)', desc:'Game pauses on rewarded open',
+        test: s => {
+          const m = extractBlock(s, /showRewardedVideo\s*\(/);
+          return m && /onOpen/.test(m);
+        }},
+      { id:'ad_rw_close', name:'onClose callback', desc:'Game resumes after rewarded',
+        test: s => {
+          const m = extractBlock(s, /showRewardedVideo\s*\(/);
+          return m && /onClose/.test(m);
+        }},
+    ]
+  },
+  {
+    id: 'save', title: 'Cloud Saves', icon: '\u{1F4BE}',
+    checks: [
+      { id:'sv_set', name:'player.setData() used', desc:'Cloud save via SDK',
+        test: s => pat(s, /\.setData\s*\(/) },
+      { id:'sv_get', name:'player.getData() used', desc:'Cloud load via SDK',
+        test: s => pat(s, /\.getData\s*\(/) },
+      { id:'sv_nols', name:'No raw localStorage.setItem', desc:'All saves through SDK (or guarded by dev-mode)',
+        test: s => {
+          // Find all localStorage.setItem — check if they're inside dev-mode guards
+          const matches = [...s.matchAll(/localStorage\.setItem/g)];
+          if(matches.length === 0) return true;
+          // Check each occurrence — if ALL are near devMode/dev_mode, it's ok
+          let allGuarded = true;
+          for(const m of matches){
+            const ctx = s.slice(Math.max(0, m.index - 300), m.index + 100);
+            if(!/dev[_-]?[Mm]ode|_devMode|devMode/.test(ctx)) allGuarded = false;
+          }
+          return allGuarded ? true : 'warn';
+        }, warnText: 'localStorage.setItem found — verify it\'s dev-mode only' },
+    ]
+  },
+  {
+    id: 'payments', title: 'In-App Purchases', icon: '\u{1F4B0}',
+    optional: true,
+    checks: [
+      { id:'pay_get', name:'getPayments() called', desc:'Payment system initialized',
+        test: s => pat(s, /getPayments\s*\(/) },
+      { id:'pay_consume', name:'consumePurchase() present', desc:'Purchases are consumed after granting',
+        test: s => pat(s, /consumePurchase\s*\(/) },
+      { id:'pay_pending', name:'getPurchases() at startup', desc:'Pending purchases checked on init',
+        test: s => pat(s, /getPurchases\s*\(/) },
+      { id:'pay_order', name:'Grant → Save → Consume order', desc:'consumePurchase called AFTER save',
+        test: s => {
+          if(!pat(s, /consumePurchase/)) return 'skip';
+          return 'warn'; // Can't fully verify order statically
+        }, warnText: 'Verify manually: grant item → setData → consumePurchase' },
+    ]
+  },
+  {
+    id: 'i18n', title: 'Localization (I18N)', icon: '\u{1F310}',
+    checks: [
+      { id:'i18n_lang', name:'ysdk.environment.i18n.lang accessed', desc:'Language detected from SDK',
+        test: s => pat(s, /i18n\.lang/) || pat(s, /environment\.i18n/) },
+      { id:'i18n_detect', name:'detectLang() function exists', desc:'Language detection function',
+        test: s => pat(s, /function\s+detectLang|detectLang\s*=\s*function|const\s+detectLang/) },
+      { id:'i18n_t', name:'t() localization function', desc:'UI string localization',
+        test: s => {
+          // Look for t('key') pattern — at least 5 usages
+          const matches = s.match(/\bt\s*\(\s*['"]/g);
+          return matches && matches.length >= 5;
+        }},
+      { id:'i18n_ru', name:'Russian (ru) language pack', desc:'I18N.ru or equivalent',
+        test: s => pat(s, /I18N\s*[\[.]\s*['"]?ru/) || pat(s, /lang.*['"]ru['"]/) || pat(s, /ru\s*:\s*\{/) },
+      { id:'i18n_en', name:'English (en) language pack', desc:'I18N.en or equivalent',
+        test: s => pat(s, /I18N\s*[\[.]\s*['"]?en/) || pat(s, /lang.*['"]en['"]/) || pat(s, /en\s*:\s*\{/) },
+      { id:'i18n_nochaining', name:'No optional chaining on i18n access', desc:'Direct property access for SDK tracking',
+        test: s => {
+          // Warn if environment?.i18n?.lang pattern found
+          if(pat(s, /environment\?\.i18n\?\.lang/)) return 'warn';
+          return pat(s, /i18n\.lang/);
+        }, warnText: 'Optional chaining (?.) on i18n may prevent SDK debug panel detection' },
+    ]
+  },
+  {
+    id: 'ux', title: 'UX & Mobile', icon: '\u{1F4F1}',
+    checks: [
+      { id:'ux_ctx', name:'Context menu disabled', desc:'Right-click prevention',
+        test: s => pat(s, /contextmenu/) && pat(s, /preventDefault/) },
+      { id:'ux_sel', name:'Text selection disabled', desc:'user-select: none or selectstart handler',
+        test: s => pat(s, /user-select\s*:\s*none/) || pat(s, /selectstart/) },
+      { id:'ux_touch', name:'Touch-action configured', desc:'touch-action: none/manipulation',
+        test: s => pat(s, /touch-action\s*:\s*(none|manipulation)/) },
+      { id:'ux_callout', name:'Touch callout disabled', desc:'-webkit-touch-callout: none',
+        test: s => pat(s, /touch-callout\s*:\s*none/) },
+      { id:'ux_viewport', name:'Viewport meta tag', desc:'Proper mobile viewport',
+        test: s => pat(s, /<meta[^>]*viewport[^>]*>/) },
+      { id:'ux_overflow', name:'Overflow/scroll prevention', desc:'overflow: hidden on body or overscroll-behavior',
+        test: s => pat(s, /overflow\s*:\s*hidden/) || pat(s, /overscroll-behavior/) },
+      { id:'ux_fullscreen', name:'Fullscreen capability', desc:'fullscreen request available',
+        test: s => pat(s, /requestFullscreen|fullscreen\.request/) },
+    ]
+  },
+  {
+    id: 'danger', title: 'Dangerous Patterns', icon: '\u26A0\uFE0F',
+    checks: [
+      { id:'dng_alert', name:'No alert()', desc:'alert() is forbidden',
+        test: s => {
+          // Exclude comments and strings like "alertClass"
+          const cleaned = removeComments(s);
+          const m = cleaned.match(/\balert\s*\(/g);
+          return !m || m.length === 0;
+        }, failText: 'alert() found — remove it!' },
+      { id:'dng_confirm', name:'No confirm()', desc:'confirm() is forbidden',
+        test: s => {
+          const cleaned = removeComments(s);
+          // Exclude custom confirm dialogs
+          const m = [...cleaned.matchAll(/(?<!\w)confirm\s*\(/g)];
+          // Filter out property access like .confirm(
+          const real = m.filter(x => {
+            const pre = cleaned.slice(Math.max(0,x.index-1),x.index);
+            return pre !== '.' && pre !== '_';
+          });
+          return real.length === 0;
+        }, failText: 'confirm() found — use custom dialog!' },
+      { id:'dng_prompt', name:'No prompt()', desc:'prompt() is forbidden',
+        test: s => {
+          const cleaned = removeComments(s);
+          const m = cleaned.match(/(?<!\w)prompt\s*\(/g);
+          return !m || m.length === 0;
+        }, failText: 'prompt() found — remove it!' },
+      { id:'dng_docwrite', name:'No document.write()', desc:'document.write() is forbidden',
+        test: s => !pat(s, /document\.write\s*\(/) },
+      { id:'dng_eval', name:'No eval()', desc:'eval() is dangerous',
+        test: s => {
+          const cleaned = removeComments(s);
+          const m = cleaned.match(/(?<!\w)eval\s*\(/g);
+          return !m || m.length === 0;
+        }, warnText: 'eval() found — security risk' },
+      { id:'dng_console_err', name:'No console.error in production code', desc:'Only log/warn acceptable',
+        test: s => {
+          const m = s.match(/console\.error\s*\(/g);
+          return !m ? true : (m.length <= 3 ? 'warn' : true);
+        }, warnText: 'A few console.error found — acceptable in catch blocks' },
+    ]
+  },
+  {
+    id: 'archive', title: 'Archive Requirements', icon: '\u{1F4E6}',
+    checks: [
+      { id:'arc_idx', name:'index.html exists', desc:'Main entry point',
+        test: () => sourceCode.length > 0 },
+      { id:'arc_size', name:'File size < 100 MB', desc:'Yandex limit',
+        test: s => {
+          const bytes = new Blob([s]).size;
+          return bytes < 100 * 1024 * 1024;
+        }},
+      { id:'arc_s3', name:'No absolute Yandex S3 URLs', desc:'Must use relative paths',
+        test: s => !pat(s, /https?:\/\/[^"']*yandex.*\.s3/) },
+    ]
+  },
+  {
+    id: 'quality', title: 'Quality & Content', icon: '\u2B50',
+    checks: [
+      { id:'q_sound_toggle', name:'Sound toggle exists', desc:'Button/switch to mute',
+        test: s => pat(s, /sound[_-]?[Oo]n|sound[_-]?[Tt]oggle|mute|soundOn|toggleSound|soundBtn/) },
+      { id:'q_pause', name:'Pause functionality', desc:'Game can be paused',
+        test: s => pat(s, /pause|_paused|isPaused|gamePaused|gs\s*===?\s*['"]paused/) },
+      { id:'q_no_youtube', name:'No YouTube player', desc:'External video players forbidden',
+        test: s => !pat(s, /youtube\.com\/embed|youtu\.be|YT\.Player/) },
+      { id:'q_no_ext_ads', name:'No external ad networks', desc:'Only Yandex SDK ads allowed',
+        test: s => !pat(s, /googletag|doubleclick|adsbygoogle|facebook.*pixel|analytics\.js/) },
+      { id:'q_no_ext_auth', name:'No third-party auth', desc:'Only Yandex ID allowed',
+        test: s => !pat(s, /firebase.*auth|google.*sign[_-]?in|facebook.*login|auth0/) },
+    ]
+  },
+];
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+function pat(s, regex) {
+  return regex.test(s);
+}
+
+function removeComments(s) {
+  // Remove single-line and multi-line comments (rough)
+  return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+function extractBlock(s, startRegex, depth=200) {
+  const m = s.match(startRegex);
+  if(!m) return null;
+  return s.slice(m.index, m.index + depth + (m[0]||'').length);
+}
+
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Run Static Check ──────────────────────────────────────────────
+
+async function runCheck() {
+  const btn = document.getElementById('btnRun');
+  const status = document.getElementById('statusText');
+  const filePath = document.getElementById('fileInput').value.trim();
+
+  btn.disabled = true;
+  status.textContent = 'Fetching source...';
+
+  try {
+    const resp = await fetch(filePath);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    sourceCode = await resp.text();
+    status.textContent = `Loaded ${(sourceCode.length/1024).toFixed(0)} KB — Analyzing...`;
+  } catch(e) {
+    status.textContent = `Error: ${e.message}`;
+    btn.disabled = false;
+    document.getElementById('results').innerHTML = `
+      <div style="text-align:center;color:#ed1b35;padding:40px;">
+        <div style="font-size:48px;margin-bottom:16px;">\u274C</div>
+        <div style="font-size:15px;">Failed to load <code>${esc(filePath)}</code></div>
+        <div style="font-size:12px;margin-top:8px;color:#888;">${esc(e.message)}</div>
+        <div style="font-size:12px;margin-top:12px;color:#666;">
+          Make sure debugcheck.html is in the same folder as index.html<br>
+          and open via HTTP server (not file://)
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Reset counters
+  totalPass = 0; totalFail = 0; totalWarn = 0; totalSkip = 0;
+
+  // Run checks
+  const html = [];
+
+  for(const cat of CATEGORIES) {
+    let catPass = 0, catFail = 0, catWarn = 0, catSkip = 0;
+    const checkHtml = [];
+
+    for(const ch of cat.checks) {
+      let result;
+      try {
+        result = ch.test(sourceCode);
+      } catch(e) {
+        result = false;
+      }
+
+      let icon, cls, detail;
+      if(result === true) {
+        icon = '\u2714'; cls = 'pass'; catPass++; totalPass++;
+        detail = '<span class="detail found">Found in source</span>';
+      } else if(result === 'warn') {
+        icon = '\u26A0'; cls = 'warn'; catWarn++; totalWarn++;
+        detail = `<span class="detail" style="color:#f5a623">${esc(ch.warnText||'Warning — verify manually')}</span>`;
+      } else if(result === 'skip') {
+        icon = '\u23ED'; cls = 'skip'; catSkip++; totalSkip++;
+        detail = '<span class="detail">Skipped (optional / not applicable)</span>';
+      } else {
+        icon = '\u2718'; cls = 'fail'; catFail++; totalFail++;
+        detail = `<span class="detail notfound">${esc(ch.failText||'Not found in source!')}</span>`;
+      }
+
+      checkHtml.push(`
+        <div class="check">
+          <div class="icon ${cls}">${icon}</div>
+          <div class="text">
+            <div class="name">${esc(ch.name)}</div>
+            <div class="detail" style="color:#666">${esc(ch.desc)}</div>
+            ${detail}
+          </div>
+        </div>`);
+    }
+
+    // Category badge
+    let badgeCls, badgeText;
+    if(catFail > 0) { badgeCls = 'badge-fail'; badgeText = `${catFail} FAIL`; }
+    else if(catWarn > 0) { badgeCls = 'badge-warn'; badgeText = `${catWarn} WARN`; }
+    else if(catSkip === cat.checks.length && cat.optional) { badgeCls = 'badge-skip'; badgeText = 'N/A'; }
+    else { badgeCls = 'badge-pass'; badgeText = 'ALL PASS'; }
+
+    const isOpen = catFail > 0 || catWarn > 0;
+
+    html.push(`
+      <div class="section">
+        <div class="section-header ${isOpen?'open':''}" onclick="toggleSection(this)">
+          <span class="arrow">\u25B6</span>
+          <span style="font-size:18px">${cat.icon}</span>
+          <span class="title">${esc(cat.title)}</span>
+          <span class="badge ${badgeCls}">${badgeText}</span>
+          <span style="color:#555;font-size:12px">${catPass}/${cat.checks.length}</span>
+        </div>
+        <div class="section-body ${isOpen?'open':''}">
+          ${checkHtml.join('')}
+        </div>
+      </div>`);
+  }
+
+  // Summary
+  const total = totalPass + totalFail + totalWarn + totalSkip;
+  const pct = total > 0 ? Math.round((totalPass / (total - totalSkip)) * 100) : 0;
+  const fillCls = pct >= 90 ? 'fill-pass' : (pct >= 70 ? 'fill-warn' : 'fill-fail');
+
+  const summaryHtml = `
+    <div class="summary">
+      <div class="summary-card pass"><div class="num">${totalPass}</div><div class="label">PASSED</div></div>
+      <div class="summary-card fail"><div class="num">${totalFail}</div><div class="label">FAILED</div></div>
+      <div class="summary-card warn"><div class="num">${totalWarn}</div><div class="label">WARNINGS</div></div>
+      <div class="summary-card info"><div class="num">${pct}%</div><div class="label">SCORE</div></div>
+    </div>
+    <div class="progress-bar"><div class="fill ${fillCls}" style="width:${pct}%"></div></div>
+    <div style="margin:12px 0 24px;text-align:center;font-size:12px;color:#555">
+      ${totalFail===0 ? '\u2705 Ready for moderation!' : `\u274C ${totalFail} issue(s) must be fixed before moderation`}
+    </div>`;
+
+  document.getElementById('results').innerHTML = summaryHtml + html.join('');
+
+  status.textContent = `Done: ${totalPass} pass, ${totalFail} fail, ${totalWarn} warn`;
+  btn.disabled = false;
+  document.getElementById('btnRuntime').disabled = false;
+}
+
+// ── Toggle Section ────────────────────────────────────────────────
+
+function toggleSection(el) {
+  el.classList.toggle('open');
+  const body = el.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ── Runtime Test ──────────────────────────────────────────────────
+
+function runRuntime() {
+  const filePath = document.getElementById('fileInput').value.trim();
+  const frame = document.getElementById('gameFrame');
+  const placeholder = document.getElementById('previewPlaceholder');
+  const log = document.getElementById('runtimeLog');
+  const toggle = document.getElementById('toggleView');
+
+  placeholder.style.display = 'none';
+  frame.style.display = 'block';
+  log.style.display = 'block';
+  toggle.style.display = 'block';
+  log.innerHTML = '';
+
+  addLog('inf', `Loading ${filePath}...`);
+
+  // Inject SDK mock to track calls
+  frame.srcdoc = buildRuntimeHarness(filePath);
+
+  // Listen for messages from iframe
+  window.addEventListener('message', handleRuntimeMessage);
+
+  addLog('inf', 'Runtime test started — interact with the game to trigger checks');
+}
+
+function buildRuntimeHarness(gamePath) {
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>body{margin:0;overflow:hidden;}iframe{width:100%;height:100vh;border:none;}</style>
+</head><body>
+<script>
+// Mock SDK that tracks all calls
+const _calls = new Set();
+function _track(path) {
+  _calls.add(path);
+  window.parent.postMessage({type:'sdk_call', path: path}, '*');
+}
+
+// Create YaGames mock
+window.YaGames = {
+  init: function() {
+    _track('YaGames.init');
+    return Promise.resolve({
+      features: {
+        LoadingAPI: { ready: function(){ _track('LoadingAPI.ready'); } },
+        GameplayAPI: {
+          start: function(){ _track('GameplayAPI.start'); },
+          stop: function(){ _track('GameplayAPI.stop'); }
+        }
+      },
+      adv: {
+        showFullscreenAdv: function(cfg) {
+          _track('adv.showFullscreenAdv');
+          if(cfg&&cfg.callbacks){
+            if(cfg.callbacks.onOpen) { _track('adv.interstitial.onOpen'); cfg.callbacks.onOpen(); }
+            setTimeout(function(){
+              if(cfg.callbacks.onClose) { _track('adv.interstitial.onClose'); cfg.callbacks.onClose(true); }
+            }, 500);
+          }
+        },
+        showRewardedVideo: function(cfg) {
+          _track('adv.showRewardedVideo');
+          if(cfg&&cfg.callbacks){
+            if(cfg.callbacks.onOpen) { _track('adv.rewarded.onOpen'); cfg.callbacks.onOpen(); }
+            setTimeout(function(){
+              if(cfg.callbacks.onRewarded) { _track('adv.rewarded.onRewarded'); cfg.callbacks.onRewarded(); }
+              if(cfg.callbacks.onClose) { _track('adv.rewarded.onClose'); cfg.callbacks.onClose(); }
+            }, 500);
+          }
+        },
+        showBannerAdv: function(){ _track('adv.showBannerAdv'); return Promise.resolve({stickyAdvIsShowing:true}); },
+        hideBannerAdv: function(){ _track('adv.hideBannerAdv'); return Promise.resolve(); },
+        getBannerAdvStatus: function(){ return Promise.resolve({stickyAdvIsShowing:false}); }
+      },
+      auth: {
+        openAuthDialog: function(){ _track('auth.openAuthDialog'); return Promise.reject('mock'); }
+      },
+      environment: {
+        i18n: { lang: 'ru', tld: 'ru' },
+        app: { id: 'debug-check-mock' },
+        payload: ''
+      },
+      on: function(evt, cb) { _track('ysdk.on.' + evt); },
+      off: function(){},
+      getPlayer: function() {
+        _track('getPlayer');
+        return Promise.resolve({
+          isAuthorized: function(){ return false; },
+          getUniqueID: function(){ return 'debug_player_001'; },
+          getName: function(){ return 'Debug Player'; },
+          getPhoto: function(){ return ''; },
+          getPayingStatus: function(){ return 'unknown'; },
+          setData: function(d,f){ _track('player.setData'); return Promise.resolve(); },
+          getData: function(k){ _track('player.getData'); return Promise.resolve({}); },
+          setStats: function(s){ _track('player.setStats'); return Promise.resolve(); },
+          getStats: function(k){ _track('player.getStats'); return Promise.resolve({}); },
+          incrementStats: function(i){ return Promise.resolve(); }
+        });
+      },
+      getPayments: function(){
+        _track('getPayments');
+        return Promise.resolve({
+          getCatalog: function(){ return Promise.resolve([]); },
+          purchase: function(p){ return Promise.reject('mock'); },
+          consumePurchase: function(t){ _track('consumePurchase'); return Promise.resolve(); },
+          getPurchases: function(){ _track('getPurchases'); return Promise.resolve([]); }
+        });
+      },
+      getStorage: function(){ _track('getStorage'); return Promise.resolve(localStorage); },
+      leaderboards: {
+        setScore: function(){ _track('leaderboards.setScore'); return Promise.resolve(); },
+        getEntries: function(){ return Promise.resolve({entries:[]}); },
+        getPlayerEntry: function(){ return Promise.resolve(null); },
+        getDescription: function(){ return Promise.resolve({}); }
+      },
+      feedback: {
+        canReview: function(){ return Promise.resolve({value:false,reason:'mock'}); },
+        requestReview: function(){ return Promise.resolve({feedbackSent:false}); }
+      },
+      shortcut: {
+        canShowPrompt: function(){ return Promise.resolve({canShow:false}); },
+        showPrompt: function(){ return Promise.resolve({outcome:'rejected'}); }
+      },
+      deviceInfo: function(){ return {type:'desktop',isMobile:function(){return false;},isDesktop:function(){return true;},isTablet:function(){return false;},isTV:function(){return false;}}; },
+      serverTime: function(){ return Date.now(); },
+      clipboard: { writeText: function(){} },
+      screen: { fullscreen: { request:function(){}, exit:function(){}, status:'off' } },
+      isAvailableMethod: function(){ return true; },
+      getFlags: function(cfg){ return Promise.resolve(cfg&&cfg.defaultFlags||{}); },
+      dispatchEvent: function(){},
+      EVENTS: { HISTORY_BACK:'history_back', EXIT:'exit' }
+    });
+  }
+};
+
+// Intercept console for errors
+const _origErr = console.error;
+console.error = function(){
+  window.parent.postMessage({type:'console_error', msg: Array.from(arguments).join(' ')}, '*');
+  _origErr.apply(console, arguments);
+};
+const _origWarn = console.warn;
+console.warn = function(){
+  window.parent.postMessage({type:'console_warn', msg: Array.from(arguments).join(' ')}, '*');
+  _origWarn.apply(console, arguments);
+};
+const _origLog = console.log;
+console.log = function(){
+  window.parent.postMessage({type:'console_log', msg: Array.from(arguments).join(' ')}, '*');
+  _origLog.apply(console, arguments);
+};
+
+// Report all tracked calls every 2 seconds
+setInterval(function(){
+  window.parent.postMessage({type:'sdk_summary', calls: Array.from(_calls)}, '*');
+}, 2000);
+<\/script>
+<iframe src="${gamePath}" style="width:100%;height:100vh;border:none;" allow="autoplay"></iframe>
+</body></html>`;
+}
+
+const runtimeCalls = new Set();
+const runtimeErrors = [];
+
+function handleRuntimeMessage(e) {
+  if(!e.data || !e.data.type) return;
+  const d = e.data;
+
+  switch(d.type) {
+    case 'sdk_call':
+      if(!runtimeCalls.has(d.path)) {
+        runtimeCalls.add(d.path);
+        addLog('ok', `SDK: ${d.path}`);
+      }
+      break;
+    case 'sdk_summary':
+      // Update runtime checks display
+      if(d.calls) d.calls.forEach(c => runtimeCalls.add(c));
+      break;
+    case 'console_error':
+      runtimeErrors.push(d.msg);
+      addLog('err', d.msg);
+      break;
+    case 'console_warn':
+      addLog('wrn', d.msg);
+      break;
+    case 'console_log':
+      if(d.msg && (d.msg.includes('[Plat]') || d.msg.includes('[I18N]') || d.msg.includes('[SDK]'))) {
+        addLog('inf', d.msg);
+      }
+      break;
+  }
+}
+
+function addLog(cls, msg) {
+  const log = document.getElementById('runtimeLog');
+  const entry = document.createElement('div');
+  entry.className = 'entry ' + cls;
+  const time = new Date().toLocaleTimeString();
+  entry.textContent = `[${time}] ${msg}`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function showTab(tab) {
+  const frame = document.getElementById('gameFrame');
+  const log = document.getElementById('runtimeLog');
+  document.getElementById('btnPreview').classList.toggle('active', tab==='preview');
+  document.getElementById('btnLog').classList.toggle('active', tab==='log');
+  if(tab==='preview') {
+    frame.style.display = 'block';
+    log.style.display = 'none';
+  } else {
+    frame.style.display = 'none';
+    log.style.display = 'block';
+    log.style.maxHeight = '100%';
+    log.style.position = 'relative';
+  }
+}
+
+// ── Auto-run on load ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Check if we can auto-detect index.html
+  const url = new URL(window.location);
+  const customFile = url.searchParams.get('file');
+  if(customFile) {
+    document.getElementById('fileInput').value = customFile;
+  }
+});
+</script>
+</body>
+</html>

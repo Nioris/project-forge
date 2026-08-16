@@ -1,0 +1,29 @@
+{
+  "name": "project-forge",
+  "version": "4.68.1",
+  "description": "Multi-platform game/app bootstrapper with 9-phase Forge core, Claude/Codex subscription + API terminal profiles, GigaChat terminal agent, AI Studio, managed sibling sync and release gates.",
+  "author": {
+    "name": "Project Forge contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "gamedev",
+    "yandex-games",
+    "vk-mini-apps",
+    "telegram-mini-app",
+    "max-messenger",
+    "rustore",
+    "multi-platform",
+    "russian-market"
+  ],
+  "skills": [
+    "./.claude/skills"
+  ],
+  "commands": [
+    "./.claude/commands"
+  ],
+  "agents": [
+    "./.claude/agents"
+  ],
+  "hooks": "./.claude/hooks/plugin-hooks.json"
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html><body>
+<p>Right-click each canvas → Save as PNG</p>
+<canvas id="c16" width="16" height="16"></canvas>
+<canvas id="c48" width="48" height="48"></canvas>
+<canvas id="c128" width="128" height="128"></canvas>
+<script>
+function drawIcon(canvas) {
+  const s = canvas.width;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, s, s, s * 0.15);
+  ctx.fill();
+
+  // Camera body
+  const cx = s * 0.5, cy = s * 0.55;
+  const bw = s * 0.6, bh = s * 0.4;
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.roundRect(cx - bw/2, cy - bh/2, bw, bh, s * 0.08);
+  ctx.fill();
+
+  // Lens
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.arc(cx, cy, s * 0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4488ff';
+  ctx.beginPath();
+  ctx.arc(cx, cy, s * 0.08, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Flash
+  ctx.fillStyle = '#ffd700';
+  const fw = s * 0.15, fh = s * 0.08;
+  ctx.fillRect(cx - fw/2, cy - bh/2 - fh - s*0.02, fw, fh);
+}
+
+drawIcon(document.getElementById('c16'));
+drawIcon(document.getElementById('c48'));
+drawIcon(document.getElementById('c128'));
+</script>
+</body></html>

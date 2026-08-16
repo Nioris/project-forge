@@ -1,0 +1,5405 @@
+{
+  "captured_at": "2026-08-14T18:28:04.949Z",
+  "dashboard_size_bytes": 125277,
+  "fingerprint": "e5461db9e86ba96a",
+  "summary": {
+    "total_significant_elements": 468,
+    "by_tag": {
+      "div": 394,
+      "select": 2,
+      "button": 57,
+      "input": 9,
+      "label": 1,
+      "textarea": 3,
+      "section": 1,
+      "h2": 1
+    },
+    "by_id_count": 32,
+    "handler_count": 95,
+    "elements_with_position_styles": 4
+  },
+  "elements": [
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "header"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "header-actions"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "select",
+      "id": "agentModeSelect",
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onchange"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "input",
+      "id": "importFile",
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onchange"
+      ],
+      "position_styles": [
+        "display=none"
+      ],
+      "type": "file"
+    },
+    {
+      "tag": "button",
+      "id": "cleanerBtn",
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": "notesBtn",
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": "helpBtn",
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "stats",
+      "classes": [
+        "stats"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "search"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "input",
+      "id": "searchInput",
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "oninput"
+      ],
+      "position_styles": [],
+      "type": "text"
+    },
+    {
+      "tag": "div",
+      "id": "sortBar",
+      "classes": [
+        "sort-bar"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "select",
+      "id": "sortSelect",
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onchange"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "label",
+      "id": null,
+      "classes": [
+        "desc-toggle"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "input",
+      "id": "descToggle",
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onchange"
+      ],
+      "position_styles": [],
+      "type": "checkbox"
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "filter-row-label"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "statusFilters",
+      "classes": [
+        "filters",
+        "status-filters"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "filter-row-label"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "filters",
+      "classes": [
+        "filters"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "grid",
+      "classes": [
+        "grid"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "empty",
+      "classes": [
+        "empty",
+        "hidden"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "cleanerPanel",
+      "classes": [
+        "cleaner-panel"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "textarea",
+      "id": "cleanerInput",
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "oninput"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cleaner-bar"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "cleanerResult",
+      "classes": [
+        "cleaner-result"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "notesPanel",
+      "classes": [
+        "notes-panel"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "notes-add-bar"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "textarea",
+      "id": "noteInput",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "notesList",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "helpPanel",
+      "classes": [
+        "help-panel"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cmd-row"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip",
+        "warn"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-section"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "help-toggle"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "help-content"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "section",
+      "id": "phasesPanel",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [
+        "opacity=.85"
+      ],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "phasesBody",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "toast",
+      "classes": [
+        "toast"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "modalOverlay",
+      "classes": [
+        "hidden",
+        "modal-overlay"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "modal",
+      "classes": [
+        "modal"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-num"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-label"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-num"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-label"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-num"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-label"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-num"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-label"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-num"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "stat-label"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "filter-btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "filter-btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "filter-btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm",
+        "btn-warn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-specs"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-cover"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-cover",
+        "card-cover-empty"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-menu"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-title"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-path"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-badges"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "card-actions"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "input",
+      "id": "m_name",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": "text"
+    },
+    {
+      "tag": "input",
+      "id": "m_path",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": "text"
+    },
+    {
+      "tag": "input",
+      "id": "m_image",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": "text"
+    },
+    {
+      "tag": "input",
+      "id": "m_desc",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": "text"
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "chips"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "chip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "chips"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "chip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "chips"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "chip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "row2"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "chips"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "chip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "chips"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "chip"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "input",
+      "id": "m_minscreen",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": "text"
+    },
+    {
+      "tag": "textarea",
+      "id": "m_notes",
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "modal-actions"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [
+        "display=grid"
+      ],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "modal-actions"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "modal-actions"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "notes-empty"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "note-item"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "note-text"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "note-meta"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "note-actions"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "del"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "input",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onchange"
+      ],
+      "position_styles": [],
+      "type": "checkbox"
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [
+        "display=flex"
+      ],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    }
+  ]
+}

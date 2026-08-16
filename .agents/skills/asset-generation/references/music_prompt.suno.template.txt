@@ -1,0 +1,21 @@
+# {id} — {role in game, e.g. "main menu loop, calm but tense"}   | Suno 5.5
+# (For Suno 4.5: keep [Style] + a short [Structure], drop fine detail.)
+
+[Style]
+{genre}, {mood}, {instrumentation}, {tempo} BPM, {era/reference},
+instrumental, loopable, video game music, clean mix
+
+[Structure]
+[Intro] 2-4 bars, sparse — set the mood
+[Main] establish the core theme; {what it should evoke for the player}
+[Build] subtle layering (optional)
+[Loop] seamless return to [Main] — no hard ending
+
+[Exclude]
+vocals, lyrics, sudden volume spikes, abrupt cut-off, copyrighted melodies
+
+# --- For a vocal track (theme song), instead use: ---
+# [Style] {genre}, {mood}, {male/female} vocal, {language}, {tempo} BPM
+# [Lyrics]
+# [Verse] ...
+# [Chorus] ...

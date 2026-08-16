@@ -1,0 +1,6 @@
+#!/bin/bash
+# cx - short alias for Codex with no approval prompts and full sandbox access
+# Install: chmod +x cx && sudo ln -s "$(pwd)/cx" /usr/local/bin/cx
+# Then just type: cx
+
+codex -a never -s danger-full-access --dangerously-bypass-hook-trust "$@"

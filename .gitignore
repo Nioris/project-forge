@@ -1,0 +1,23 @@
+# Project Forge secrets and local state
+forge-data/
+**/forge-data/secrets/
+secrets/
+*.key
+.openai_key
+.anthropic_key
+.gigachat_key
+.gigachat_token
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Local/generated state
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+backups/
+**/backups/

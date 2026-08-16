@@ -1,0 +1,18 @@
+# Project Forge — Codex configuration copied into generated/sibling game projects.
+# The central Forge engine remains in a sibling folder; therefore this project profile
+# intentionally omits the engine-local MCP command while keeping skills, agents, and hooks native.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+project_doc_max_bytes = 32768
+project_root_markers = [".git", ".claude-plugin", "AGENTS.md"]
+
+[features]
+hooks = true
+multi_agent = true
+goals = true
+
+# Compatibility note:
+# Optional global [agents] scalars are deliberately omitted. Current Codex enables
+# multi-agent by default; some older CLI builds interpret every [agents] child as an
+# AgentRoleToml and reject enabled=true/max_concurrent_threads_per_session.
+# Project custom agents remain available from .codex/agents/*.toml.

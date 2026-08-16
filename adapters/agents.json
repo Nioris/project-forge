@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "agents": {
+    "claude": {
+      "status": "stable",
+      "displayName": "Claude Code",
+      "skillSyntax": "/{skill}{args}",
+      "executableCandidates": ["claude"],
+      "fullArgs": ["--dangerously-skip-permissions"],
+      "profiles": ["subscription", "api"],
+      "apiProvider": "anthropic",
+      "rules": ["CLAUDE.md", "FORGE.md"]
+    },
+    "codex": {
+      "status": "stable",
+      "displayName": "OpenAI Codex",
+      "skillSyntax": "${skill}{args}",
+      "executableCandidates": ["codex"],
+      "fullArgs": ["-a", "never", "-s", "danger-full-access", "--dangerously-bypass-hook-trust"],
+      "profiles": ["chatgpt", "api"],
+      "apiProvider": "openai",
+      "rules": ["AGENTS.md", "FORGE.md"]
+    },
+    "gigachat": {
+      "status": "experimental",
+      "displayName": "GigaChat Forge Agent",
+      "skillSyntax": "natural-language",
+      "builtinLauncher": "scripts/gigachat-agent.mjs",
+      "profiles": ["api"],
+      "apiProvider": "gigachat",
+      "rules": ["FORGE.md", ".claude/skills"]
+    },
+    "gigacode": {
+      "status": "experimental-dormant",
+      "displayName": "GigaCode CLI",
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["gigacode", "gigacode-cli", "gc-cli"],
+      "executableEnv": "FORGE_GIGACODE_CLI",
+      "fullArgs": [],
+      "rules": ["FORGE.md", ".gitverse/pr_rules/forge.md"],
+      "notes": "Official public pages confirm a terminal agent, but a public personal Windows CLI distribution is not currently exposed by the GitVerse install page. The bridge stays dormant until an executable is explicitly available."
+    }
+  }
+}

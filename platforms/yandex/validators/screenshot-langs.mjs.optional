@@ -1,0 +1,145 @@
+// scripts/validators/screenshot-langs.mjs
+// MOD-SCREENSHOT-LANG: per declared language there must be screenshots in that language.
+// Triggered by: Block2048, Virus Clicker, BattleFront — модератор отказал из-за русских скринов
+// в локалях других языков.
+//
+// YG Screenshot extension naming: <preset>_<lang>_<WxH>_<timestamp>.png
+//   e.g. pc_en_1920x1080_2026-04-06.png, mobile_tr_1080x1920_*.png
+//
+// Heuristic: look in Release/{Game}/screenshots/ AND in Release/{Game}/ for files
+// matching that pattern. For each store-listing-{lang}.json that exists, ensure
+// at least one PC and one mobile screenshot per lang.
+
+import path from 'node:path';
+import fs from 'node:fs';
+import { LEVELS, resolveGamePaths, listFiles, runCli, isMain } from './_lib.mjs';
+
+export const ID = 'screenshot-langs';
+export const REQUIREMENTS = ['MOD-SCREENSHOT-LANG'];
+export const URL = 'https://yandex.ru/dev/games/doc/ru/requirements/8/2/3';
+export const CITATION = '"Тексты, которые меняются в зависимости от языка... переведены" (8.2.3) — модераторы трактуют это и для скриншотов';
+
+// Filename pattern: <preset>_<lang>_<W>x<H>_<...>.png|jpg
+const SCREEN_RE = /^(pc|mobile|square|current|custom)_([a-z]{2})_\d+x\d+_/i;
+
+// Find candidate folders that may contain screenshots.
+function findScreenshotDirs(releasePath) {
+  const dirs = [];
+  // Check Release/{Game}/screenshots/, Release/{Game}/Screen*, Release/{Game}/promo/
+  for (const sub of ['screenshots', 'screens', 'promo', '']) {
+    const d = sub ? path.join(releasePath, sub) : releasePath;
+    if (fs.existsSync(d)) dirs.push(d);
+    // Also scan one level for "Screen*"
+  }
+  if (fs.existsSync(releasePath)) {
+    for (const e of fs.readdirSync(releasePath, { withFileTypes: true })) {
+      if (e.isDirectory() && /^screen/i.test(e.name)) {
+        const p = path.join(releasePath, e.name);
+        if (!dirs.includes(p)) dirs.push(p);
+      }
+    }
+  }
+  return dirs;
+}
+
+function listScreenshotFiles(dirs) {
+  const files = [];
+  for (const d of dirs) {
+    if (!fs.existsSync(d)) continue;
+    const entries = fs.readdirSync(d, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isFile() && /\.(png|jpe?g)$/i.test(e.name)) {
+        files.push({ name: e.name, full: path.join(d, e.name) });
+      }
+    }
+  }
+  return files;
+}
+
+export function validate(gamePath) {
+  const { releasePath } = resolveGamePaths(gamePath);
+  const issues = [];
+
+  // Languages declared = files store-listing-{lang}.json present.
+  const listings = listFiles(releasePath, /^store-listing-([a-z]{2})\.json$/);
+  if (listings.length === 0) {
+    issues.push({
+      id: 'MOD-SCREENSHOT-LANG', level: LEVELS.WARNING,
+      message: 'No store-listing-*.json files — cannot determine declared languages',
+      url: URL, file: releasePath
+    });
+    return issues;
+  }
+  const declaredLangs = listings.map(f => path.basename(f).match(/^store-listing-([a-z]{2})\.json$/)[1]);
+
+  // Find screenshots.
+  const dirs = findScreenshotDirs(releasePath);
+  const allFiles = listScreenshotFiles(dirs);
+  if (allFiles.length === 0) {
+    issues.push({
+      id: 'MOD-SCREENSHOT-LANG', level: LEVELS.WARNING,
+      message: 'No screenshot files (.png/.jpg) found in ' + path.basename(releasePath) + ' or its screenshots/ subdirs',
+      url: URL, file: releasePath
+    });
+    return issues;
+  }
+
+  // Group by lang and preset (pc/mobile).
+  const presetLang = new Map(); // key: lang -> { pc: [], mobile: [], other: [] }
+  const unmatched = [];
+  for (const f of allFiles) {
+    const m = f.name.match(SCREEN_RE);
+    if (!m) {
+      unmatched.push(f.name);
+      continue;
+    }
+    const preset = m[1].toLowerCase();
+    const lang = m[2].toLowerCase();
+    if (!presetLang.has(lang)) presetLang.set(lang, { pc: [], mobile: [], other: [] });
+    const bucket = preset === 'pc' ? 'pc' : preset === 'mobile' ? 'mobile' : 'other';
+    presetLang.get(lang)[bucket].push(f.name);
+  }
+
+  if (unmatched.length > 0) {
+    issues.push({
+      id: 'MOD-SCREENSHOT-LANG', level: LEVELS.WARNING,
+      message: unmatched.length + ' screenshot file(s) do not follow naming pattern <preset>_<lang>_<WxH>_<...>.png — language cannot be inferred. Examples: ' + unmatched.slice(0, 3).join(', '),
+      citation: 'YG Screenshot extension naming convention',
+      url: URL, file: dirs[0]
+    });
+  }
+
+  // For each declared lang, check we have PC and mobile.
+  for (const lang of declaredLangs) {
+    const bucket = presetLang.get(lang);
+    if (!bucket || (bucket.pc.length === 0 && bucket.mobile.length === 0 && bucket.other.length === 0)) {
+      issues.push({
+        id: 'MOD-SCREENSHOT-LANG', level: LEVELS.BLOCKER,
+        message: 'No screenshots found for declared language "' + lang + '". Expected files like pc_' + lang + '_*.png and mobile_' + lang + '_*.png',
+        citation: CITATION,
+        url: URL, file: 'store-listing-' + lang + '.json'
+      });
+      continue;
+    }
+    if (bucket.pc.length === 0) {
+      issues.push({
+        id: 'MOD-SCREENSHOT-LANG', level: LEVELS.WARNING,
+        message: 'No PC screenshots for lang "' + lang + '" (pc_' + lang + '_*.png). Mobile-only is risky.',
+        url: URL, file: 'store-listing-' + lang + '.json'
+      });
+    }
+    if (bucket.mobile.length === 0) {
+      issues.push({
+        id: 'MOD-SCREENSHOT-LANG', level: LEVELS.WARNING,
+        message: 'No mobile screenshots for lang "' + lang + '" (mobile_' + lang + '_*.png).',
+        url: URL, file: 'store-listing-' + lang + '.json'
+      });
+    }
+  }
+
+  return issues;
+}
+
+if (isMain(import.meta.url)) {
+  runCli({ ID, validate });
+}
