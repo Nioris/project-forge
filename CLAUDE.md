@@ -1,4 +1,4 @@
-# Project Forge v4.68.6 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.7 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -59,8 +59,9 @@ Terminal API profiles use one canonical secrets directory **outside projects**:
 | `../forge-data/secrets/anthropic.key` | Claude API profile |
 | `../forge-data/secrets/openai.key` | Codex API profile + optional OpenAI image batch |
 | `../forge-data/secrets/gigachat.key` | GigaChat terminal agent + image/3D providers |
+| `../forge-data/secrets/gigasearch.key` | Optional production GigaSearch provider; not needed for the no-key fallback |
 
-Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY` have precedence. Legacy project-local `.openai_key` / `.gigachat_key` remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
+Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY`, `GIGASEARCH_API_KEY` have precedence. Legacy project-local `.openai_key` / `.gigachat_key` / `.gigasearch_key` remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
 
 Rules:
 1. Never print, log, commit or copy secret values into wiki/config/prompt artifacts.
@@ -462,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.7 changelog (GigaChat resume orchestrator)
+
+The Forge-owned GigaChat adapter now carries the cumulative `6.3.1-resume-orchestrator` contract. It fixes the live malformed-`ask_user` const reassignment crash, reopens incomplete Q1–Q5 brief decisions before another model request, reconciles stale Phase 1 state and preserves approved research/product-metrics evidence across compaction and retries.
+
+The permanent capability now includes real web/image search, safe page fetch, a search doctor and offline provider self-test. `forge-agent` enables the Node system CA store before launching the GigaChat child and selects the no-key `bing-html` fallback only when no explicit provider/endpoint exists. The API-profile release gate runs both self-test suites and validates standard/full tool-surface semantics instead of a stale hard-coded count.
+
 ## v4.68.6 changelog (GitHub/GitVerse publication convergence)
 
 The local-first release branch was rebased onto the concurrent public `main` update that adds `.github/workflows/sync-gitverse.yml`. The workflow is now part of the canonical tree and generated MANIFEST instead of being accidentally deleted or omitted by a later local publication.
@@ -473,9 +480,3 @@ No engine runtime, sibling payload, phase, skill, agent or platform behavior cha
 The first complete v4.68.4 fleet pass exposed a Windows PowerShell 5.1 encoding trap: `MANIFEST.txt` is UTF-8 without BOM, while `Get-Content` defaulted to the active ANSI code page. The Cyrillic path `СПРАВОЧНИК-КОМАНД.md` therefore failed membership comparison, was removed from the engine, and the managed payload dropped from 424 to 423 files. The final drift gate stopped the updater, but sibling sync had already propagated the temporary absence.
 
 `upgrade.ps1` now reads MANIFEST with `-LiteralPath` and explicit `-Encoding UTF8`. `check-update-surface.mjs` release-gates that exact contract. Re-extracting v4.68.5 restores the command reference before cleanup; the subsequent 424-file sibling sync restores it across the fleet.
-
-## v4.68.4 changelog (reliable Windows one-click update)
-
-A real in-place update on Windows exposed two gaps that static source checks missed: the generic updater could stop during `Expand-Archive`, and LF-only/non-ASCII `upgrade.bat` could be misparsed by `cmd.exe` while still returning a misleading zero exit code. Sibling sync never ran in that state.
-
-The external updater now prefers the built-in Windows `tar.exe` path used by the proven version-specific updater, with a quiet fail-fast `Expand-Archive` fallback. `upgrade.bat` is ASCII-safe, has a non-mutating `/selftest`, and all shipped batch files are CRLF-normalized through `.gitattributes`. `check-bat-encoding.mjs` rejects bare LF, while `check-update-surface.mjs` gates tar extraction, CRLF and the real `cmd.exe` self-test on Windows.

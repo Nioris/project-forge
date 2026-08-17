@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { getProviderSecret, RUNTIME_DIR, ensureDataDirs } from './lib/forge-secrets.mjs';
+import { applyDefaultSearchEnvironment } from './lib/forge-search.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -91,7 +92,21 @@ if (cmd === 'launch') {
   if(a.profiles && !a.profiles.includes(profile)) fail(`Profile ${profile} is not valid for ${name}. Available: ${a.profiles.join(', ')}`);
   const d=detectExecutable(name,a); if(!d.found){ console.error(`[X] ${a.displayName} runtime was not detected.`); if(name==='gigacode') console.error('    GigaCode CLI is optional/dormant; use Claude, Codex or GigaChat API instead.'); process.exit(3); }
   let launchArgs=has('--full')?[...(a.fullArgs||[])]:[]; let env={...process.env}; let exe=d.executable;
-  if(name==='gigachat'){ exe=process.execPath; launchArgs=[join(ROOT,a.builtinLauncher),'--project',project,'--model',val('--model')||process.env.FORGE_GIGACHAT_MODEL||'GigaChat-3-Ultra',...(has('--full')?['--full']:[])]; }
+  if(name==='gigachat'){
+    exe=process.execPath;
+    // GigaChat requires the trusted MinDigital root. A child Node process must
+    // see this at startup; setting it inside gigachat-agent.mjs would be too late.
+    if(!env.NODE_USE_SYSTEM_CA) env.NODE_USE_SYSTEM_CA='1';
+
+    // Keep explicit GigaSearch configuration authoritative. When no provider or
+    // endpoint was configured, make the documented no-key live fallback usable
+    // from Dashboard/forge-agent without requiring two manual environment lines.
+    const searchDefault=applyDefaultSearchEnvironment(env);
+    if(searchDefault.applied){
+      console.log('[Forge] Search provider -> bing-html fallback (override with FORGE_SEARCH_PROVIDER or GIGASEARCH_* settings).');
+    }
+    launchArgs=[join(ROOT,a.builtinLauncher),'--project',project,'--model',val('--model')||process.env.FORGE_GIGACHAT_MODEL||'GigaChat-3-Ultra',...(has('--full')?['--full']:[])];
+  }
   if(name==='claude'&&profile==='api'){ const cfg=claudeApiSettings(project); launchArgs.push('--settings',cfg.settings); delete env.ANTHROPIC_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN; delete env.ANTHROPIC_BASE_URL; delete env.CLAUDE_CODE_USE_BEDROCK; delete env.CLAUDE_CODE_USE_VERTEX; console.log(`[Forge] Claude API profile -> ${cfg.source}`); }
   if(name==='codex'&&profile==='api'){ const cfg=ensureCodexApiAuth(exe,project); env.CODEX_HOME=cfg.home; delete env.OPENAI_API_KEY; delete env.CODEX_ACCESS_TOKEN; console.log(`[Forge] Codex API profile -> isolated CODEX_HOME (${cfg.source})`); }
   console.log(`[Forge] ${a.displayName} [${profile}] -> ${project}`); if(name==='gigacode') console.log('[Forge] GigaCode bridge is dormant/experimental; no undocumented flags are injected.');

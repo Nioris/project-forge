@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая публичная версия:** `v4.68.6`
+**Текущая публичная версия:** `v4.68.7`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -139,7 +139,7 @@ $status
 
 ## Терминальный launcher
 
-В `v4.68.6` обычная авторизация и API-профили остаются разделены.
+В `v4.68.7` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка
@@ -156,6 +156,9 @@ node scripts/forge-agent.mjs launch codex --profile api --full --project ../my-g
 
 # GigaChat — терминальный Forge-agent через API
 node scripts/forge-agent.mjs launch gigachat --profile api --full --project ../my-game
+
+# Проверка web/image search без вывода credentials
+node scripts/forge-search-doctor.mjs --project ../my-game
 
 # Проверка доступных host'ов
 node scripts/forge-agent.mjs doctor
@@ -177,6 +180,7 @@ GigaCode пока остаётся экспериментальным adapter'о
       anthropic.key
       openai.key
       gigachat.key
+      gigasearch.key       # опционально, только для настроенного production GigaSearch
   my-game/
 ```
 
@@ -185,6 +189,8 @@ GigaCode пока остаётся экспериментальным adapter'о
 ```bash
 node scripts/forge-secrets.mjs status
 ```
+
+При запуске GigaChat Forge включает системное хранилище CA до старта дочернего Node-процесса. Если явный `FORGE_SEARCH_PROVIDER` или endpoint `GIGASEARCH_*` не настроен, launcher выбирает no-key fallback `bing-html`. Явная production-конфигурация всегда имеет приоритет; активный provider можно проверить командой `/search-doctor` в GigaChat terminal.
 
 `.gitignore` исключает `forge-data/`, `secrets/`, `*.key`, `.env`, provider key files, backups и другое локальное состояние.
 

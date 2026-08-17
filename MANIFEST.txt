@@ -449,6 +449,7 @@ RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
+RELEASE_NOTES_v4.68.7.md
 ROADMAP.md
 Release/README.md
 SECURITY.md
@@ -665,6 +666,8 @@ scripts/cx.bat
 scripts/data-dir.mjs
 scripts/fixtures/clean-game.html
 scripts/forge-agent.mjs
+scripts/forge-search-doctor.mjs
+scripts/forge-search-selftest.mjs
 scripts/forge-secret-helper.mjs
 scripts/forge-secrets.mjs
 scripts/forge-sync-spec.mjs
@@ -677,6 +680,7 @@ scripts/gigachat-3d.mjs
 scripts/gigachat-agent.mjs
 scripts/gigachat-image.mjs
 scripts/git-init-games.mjs
+scripts/lib/forge-search.mjs
 scripts/lib/forge-secrets.mjs
 scripts/lib/gigachat-api.mjs
 scripts/local-stage.mjs

@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.6`
+**Current public version:** `v4.68.7`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -139,7 +139,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.6` keeps separate normal-account and API profiles.
+`v4.68.7` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -156,6 +156,9 @@ node scripts/forge-agent.mjs launch codex --profile api --full --project ../my-g
 
 # GigaChat — Forge terminal agent through API
 node scripts/forge-agent.mjs launch gigachat --profile api --full --project ../my-game
+
+# Inspect GigaChat web/image search without exposing credentials
+node scripts/forge-search-doctor.mjs --project ../my-game
 
 # Inspect installed hosts
 node scripts/forge-agent.mjs doctor
@@ -177,6 +180,7 @@ Recommended workspace layout:
       anthropic.key
       openai.key
       gigachat.key
+      gigasearch.key       # optional; only for a configured production GigaSearch endpoint
   my-game/
 ```
 
@@ -185,6 +189,8 @@ Check configured providers without printing secret values:
 ```bash
 node scripts/forge-secrets.mjs status
 ```
+
+On GigaChat launch, Forge enables Node's system CA store before the child process starts. If no explicit `FORGE_SEARCH_PROVIDER` or `GIGASEARCH_*` endpoint is configured, the launcher selects the no-key `bing-html` live-search fallback. Explicit production search configuration always wins; use `/search-doctor` in the GigaChat terminal to inspect the active provider.
 
 The repository `.gitignore` excludes `forge-data/`, `secrets/`, `*.key`, `.env`, provider key files, backups and other local state.
 

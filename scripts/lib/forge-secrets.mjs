@@ -14,6 +14,7 @@ export const PROVIDERS = {
   anthropic: { file: 'anthropic.key', env: 'ANTHROPIC_API_KEY', legacy: ['.anthropic_key'] },
   openai: { file: 'openai.key', env: 'OPENAI_API_KEY', legacy: ['.openai_key'] },
   gigachat: { file: 'gigachat.key', env: 'GIGACHAT_AUTH_KEY', legacy: ['.gigachat_key'] },
+  gigasearch: { file: 'gigasearch.key', env: 'GIGASEARCH_API_KEY', legacy: ['.gigasearch_key'] },
 };
 
 export function ensureDataDirs() {

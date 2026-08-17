@@ -1,11 +1,11 @@
 {
-  "captured_at": "2026-08-16T19:14:18.580Z",
-  "dashboard_size_bytes": 136293,
-  "fingerprint": "b502d448dcf9ecd6",
+  "captured_at": "2026-08-17T22:42:22.768Z",
+  "dashboard_size_bytes": 136605,
+  "fingerprint": "f83832ea8dca0a91",
   "summary": {
-    "total_significant_elements": 471,
+    "total_significant_elements": 472,
     "by_tag": {
-      "div": 396,
+      "div": 397,
       "select": 2,
       "button": 57,
       "input": 9,
@@ -1660,6 +1660,18 @@
       "tag": "div",
       "id": null,
       "classes": [
+        "tip"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "good",
         "tip"
       ],
       "role": null,

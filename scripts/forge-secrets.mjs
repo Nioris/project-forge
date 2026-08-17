@@ -21,7 +21,7 @@ if (cmd === 'status') {
   process.exit(0);
 }
 if (cmd === 'set') {
-  if (!provider || !PROVIDERS[provider]) { console.error('Usage: forge-secrets.mjs set <anthropic|openai|gigachat> --stdin|--from-file <path>'); process.exit(2); }
+  if (!provider || !PROVIDERS[provider]) { console.error('Usage: forge-secrets.mjs set <anthropic|openai|gigachat|gigasearch> --stdin|--from-file <path>'); process.exit(2); }
   let value = '';
   if (args.includes('--stdin')) value = readFileSync(0, 'utf8');
   else {

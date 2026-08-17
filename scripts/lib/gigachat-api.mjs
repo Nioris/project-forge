@@ -43,7 +43,7 @@ export async function getAccessToken(project) {
       body,
     });
   } catch (e) {
-    throw new Error(`GigaChat OAuth network/TLS error: ${e.message}. Forge does not disable TLS validation; install the official trusted certificate chain if your environment requires it.`);
+    throw new Error(`GigaChat OAuth network/TLS error: ${e.message}. Forge does not disable TLS validation; use the official trusted certificate chain. On supported Node versions, NODE_USE_SYSTEM_CA=1 lets Node use the Windows/system CA store.`);
   }
   let data = null;
   try { data = await res.json(); } catch {}
@@ -76,9 +76,15 @@ export async function downloadGigaFile(token, fileId, accept = '*/*', timeoutMs 
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(`${GIGA_API_BASE}/v1/files/${encodeURIComponent(fileId)}/content`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': accept }, signal: ctrl.signal,
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': accept },
+      signal: ctrl.signal,
     });
-    if (!res.ok) throw new Error(`GigaChat file download HTTP ${res.status}`);
+    if (!res.ok) {
+      let detail='';
+      try { detail=await res.text(); } catch {}
+      throw new Error(`GigaChat file download HTTP ${res.status}${detail?`: ${detail.slice(0,300)}`:''}`);
+    }
     return Buffer.from(await res.arrayBuffer());
   } catch (e) {
     if (e?.name === 'AbortError') throw new Error(`GigaChat file download timed out after ${timeoutMs} ms`);

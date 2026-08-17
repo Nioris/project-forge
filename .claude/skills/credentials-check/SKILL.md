@@ -21,6 +21,29 @@ description: "Check and request all required credentials, API keys, SDK IDs, sig
 
 ## Step 1: Определить платформу → Определить что нужно
 
+### Для terminal API-профилей Forge
+
+```
+📋 ЧЕКЛИСТ TERMINAL AGENTS
+═══════════════════════════════════
+
+  [ ] GigaChat Authorization Key
+      → ../forge-data/secrets/gigachat.key
+      → node scripts/forge-secrets.mjs set gigachat --stdin
+
+  [ ] Сертификат НУЦ Минцифры установлен в системное хранилище ОС
+      → GigaChat launcher включает NODE_USE_SYSTEM_CA=1 до старта Node child process
+
+  [ ] GigaSearch key — ОПЦИОНАЛЬНО, только для production endpoint
+      → ../forge-data/secrets/gigasearch.key
+      → node scripts/forge-secrets.mjs set gigasearch --stdin
+      → без production endpoint Forge launcher использует no-key fallback bing-html
+
+  [ ] Активная search-конфигурация проверена
+      → node scripts/forge-search-doctor.mjs --project <PROJECT>
+      → или /search-doctor внутри GigaChat terminal
+```
+
 ### Для RuStore (APK/AAB)
 
 ```

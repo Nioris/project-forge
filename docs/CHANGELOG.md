@@ -4491,6 +4491,12 @@ The public repository changes made after v4.68.2 are now closed as a real patch 
 
 `scripts/bump-version.mjs` now targets the known display locations by their shape rather than assuming every file already matches `plugin.json`. This lets the release tool repair partial/stale bumps, updates the English and Russian public-version markers, and still avoids historical changelog sections. Runtime behavior and managed sibling payload semantics remain unchanged from v4.68.1.
 
+## v4.68.4 changelog (reliable Windows one-click update)
+
+A real in-place update on Windows exposed two gaps that static source checks missed: the generic updater could stop during `Expand-Archive`, and LF-only/non-ASCII `upgrade.bat` could be misparsed by `cmd.exe` while still returning a misleading zero exit code. Sibling sync never ran in that state.
+
+The external updater now prefers the built-in Windows `tar.exe` path used by the proven version-specific updater, with a quiet fail-fast `Expand-Archive` fallback. `upgrade.bat` is ASCII-safe, has a non-mutating `/selftest`, and all shipped batch files are CRLF-normalized through `.gitattributes`. `check-bat-encoding.mjs` rejects bare LF, while `check-update-surface.mjs` gates tar extraction, CRLF and the real `cmd.exe` self-test on Windows.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".
