@@ -39,6 +39,7 @@ run('Forge search default doctor',['scripts/forge-search-doctor.mjs','--project'
 function runPhaseResumeEntrypointRegression(){
   const fixture=mkdtempSync(join(tmpdir(),'forge-gigachat-resume-'));
   const dataDir=join(fixture,'empty-forge-data');
+  const forgeVersion=JSON.parse(readFileSync(join(ROOT,'.claude-plugin/plugin.json'),'utf8')).version;
   const writeJson=(rel,value)=>writeFileSync(join(fixture,rel),JSON.stringify(value,null,2)+'\n','utf8');
   const briefQuestion=[
     '❓ **Q1** - **Аудитория**: Кто будет играть?',
@@ -58,7 +59,7 @@ function runPhaseResumeEntrypointRegression(){
     writeFileSync(join(fixture,'ANALYSIS.md'),'# Analysis\n\nExisting source and gameplay systems were inspected. This durable fixture is intentionally longer than eighty characters.\n','utf8');
     writeFileSync(join(fixture,'WorkProgress/fixture/index.html'),'<!doctype html><title>Existing prototype fixture</title>\n','utf8');
     writeFileSync(join(fixture,'wiki/_map.md'),'# Project map\n\n**Размерность:** 2D\n','utf8');
-    writeJson('wiki/phases/phase-1.json',{schemaVersion:1,phase:1,name:'Analyze',state:'in_progress',startedAt:'2026-08-18T00:00:00.000Z',updatedAt:'2026-08-18T00:00:00.000Z',completedAt:null,reason:null,evidence:[],forgeVersion:'4.68.7'});
+    writeJson('wiki/phases/phase-1.json',{schemaVersion:1,phase:1,name:'Analyze',state:'in_progress',startedAt:'2026-08-18T00:00:00.000Z',updatedAt:'2026-08-18T00:00:00.000Z',completedAt:null,reason:null,evidence:[],forgeVersion});
     writeJson('wiki/decisions/gigachat-decisions.json',{schemaVersion:1,decisions:[
       {phase:1,decision_key:'phase1-research-direction',question:'Approve research?',answer:'A',timestamp:'2026-08-18T00:00:00.000Z'},
       {phase:1,decision_key:'phase1-brief',question:briefQuestion,answer:'Q1 — согласен.',timestamp:'2026-08-18T00:01:00.000Z'}
@@ -78,7 +79,16 @@ function runPhaseResumeEntrypointRegression(){
       if(runtime.pendingDecision?.decision_key!=='phase1-brief') errors.push('GigaChat phase switch erased the durable Phase 1 pending decision');
       else ok.push('GigaChat phase switch preserves the durable pending decision');
     }
-    return first.r.status===0&&second.r.status===0&&blocked.r.status===0;
+    const accepted=spawnSync(process.execPath,['scripts/gigachat-agent.mjs','--project',fixture,'--prompt','принимаю рекомендации'],{cwd:ROOT,encoding:'utf8',env:{...process.env,...cleanEnv}});
+    const acceptedText=(accepted.stdout||'')+(accepted.stderr||'');
+    const decisions=JSON.parse(readFileSync(join(fixture,'wiki/decisions/gigachat-decisions.json'),'utf8')).decisions||[];
+    const runtimeAfterAccept=JSON.parse(readFileSync(join(fixture,'wiki/runtime/gigachat-evidence.json'),'utf8'));
+    const rebuiltBrief=existsSync(join(fixture,'wiki/design/brief.md'))?readFileSync(join(fixture,'wiki/design/brief.md'),'utf8'):'';
+    const naturalAcceptancePersisted=decisions.some(d=>d.decision_key==='phase1-brief'&&d.answer==='принимаю рекомендации');
+    if(/Ответ на STOP-point пока неполный/.test(acceptedText)) errors.push('GigaChat rejected the natural whole-brief answer "принимаю рекомендации"');
+    else if(!naturalAcceptancePersisted||runtimeAfterAccept.pendingDecision!==null||!['Audience','Ambition','Promise','Differentiator','History'].every(x=>rebuiltBrief.includes(`**${x}:**`))) errors.push('GigaChat did not persist/materialize the natural whole-brief acceptance');
+    else ok.push('GigaChat accepts and materializes "принимаю рекомендации" through the real entrypoint');
+    return first.r.status===0&&second.r.status===0&&blocked.r.status===0&&naturalAcceptancePersisted;
   }finally{
     rmSync(fixture,{recursive:true,force:true});
   }

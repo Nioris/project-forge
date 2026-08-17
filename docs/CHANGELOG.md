@@ -4497,6 +4497,12 @@ A real in-place update on Windows exposed two gaps that static source checks mis
 
 The external updater now prefers the built-in Windows `tar.exe` path used by the proven version-specific updater, with a quiet fail-fast `Expand-Archive` fallback. `upgrade.bat` is ASCII-safe, has a non-mutating `/selftest`, and all shipped batch files are CRLF-normalized through `.gitattributes`. `check-bat-encoding.mjs` rejects bare LF, while `check-update-surface.mjs` gates tar extraction, CRLF and the real `cmd.exe` self-test on Windows.
 
+## v4.68.5 changelog (UTF-8 MANIFEST preservation on Windows)
+
+The first complete v4.68.4 fleet pass exposed a Windows PowerShell 5.1 encoding trap: `MANIFEST.txt` is UTF-8 without BOM, while `Get-Content` defaulted to the active ANSI code page. The Cyrillic path `СПРАВОЧНИК-КОМАНД.md` therefore failed membership comparison, was removed from the engine, and the managed payload dropped from 424 to 423 files. The final drift gate stopped the updater, but sibling sync had already propagated the temporary absence.
+
+`upgrade.ps1` now reads MANIFEST with `-LiteralPath` and explicit `-Encoding UTF8`. `check-update-surface.mjs` release-gates that exact contract. Re-extracting v4.68.5 restores the command reference before cleanup; the subsequent 424-file sibling sync restores it across the fleet.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

@@ -20,8 +20,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.7';
-const CONTRACT_VERSION = '6.3.1-resume-orchestrator-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.8';
+const CONTRACT_VERSION = '6.3.2-natural-acceptance-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -709,13 +709,28 @@ function decisionBlockers(phase){
   const missing=[...requiredDecisionKeysForPhase(phase)].filter(k=>!resolvedDecisionKeys.has(k));
   return missing.length?[`Phase ${phase} required named decisions unresolved: ${missing.join(', ')}`]:[];
 }
+function acceptsAllPhase1BriefRecommendations(answer=''){
+  const s=String(answer||'').replace(/\r/g,'').replace(/\s+/g,' ').trim().replace(/[.!]+$/g,'');
+  if(!s || /\b(?:except|but)\b|(?:^|[\s,;])(?:не|кроме|исключая|но)(?:$|[\s,;])/i.test(s)) return false;
+  const ru=s.match(/^(?:да[\s,]+)?(?:я\s+)?(?:согласен|согласна|принимаю|подтверждаю|утверждаю)(?:\s+(.+))?$/i);
+  if(ru){
+    const tail=String(ru[1]||'').trim();
+    if(!tail) return true;
+    if(/^(?:(?:с(?:о)?\s+)?(?:вс(?:е|ё|еми|ем)|все\s+пять))$/i.test(tail)) return true;
+    return /^(?:с(?:о)?\s+)?(?:(?:вс(?:е|ё|еми|ем)|все\s+пять)\s+)?(?:(?:предложенн(?:ые|ыми|ое)|ваши|данные)\s+)?(?:рекомендаци(?:и|ями|ю|й|ям)|предложени(?:е|я|ем|ями)|вариант(?:ы|ом|ами))$/i.test(tail);
+  }
+  const en=s.match(/^(?:i\s+)?(?:approve|accept)(?:\s+(.+))?$/i);
+  if(!en) return false;
+  const tail=String(en[1]||'').trim();
+  return !tail || /^(?:all(?:\s+five)?|the)$/i.test(tail) || /^(?:(?:all(?:\s+five)?|the)\s+)?(?:recommendations?|proposals?|options?)$/i.test(tail);
+}
 function phase1BriefAnswerCoverageBlockers(answer=''){
   const s=String(answer||'').replace(/\r/g,'').trim();
   if(!s) return ['Phase 1 brief answer is empty'];
   const labels=[...s.matchAll(/(?:^|\n)\s*Q\s*([1-5])\s*(?:[—–\-:.)]|$)/gim)].map(m=>Number(m[1]));
   const unique=new Set(labels);
   if(unique.size===0){
-    if(/^(?:да[,.!\s]*)?(?:согласен|согласна|принимаю|подтверждаю|approve|accept)(?:\s+(?:со\s+всеми|все|всё|all))?[\s.!]*$/i.test(s)) return [];
+    if(acceptsAllPhase1BriefRecommendations(s)) return [];
     return ['Phase 1 brief is a five-question decision. Answer all Q1..Q5, or explicitly accept all five recommendations.'];
   }
   const missing=[1,2,3,4,5].filter(n=>!unique.has(n));
@@ -802,7 +817,7 @@ function rebuildPhase1BriefFromDecision(){
   const answer=String(rec.answer||''); if(phase1BriefAnswerCoverageBlockers(answer).length)return {changed:false,reason:'brief-answer-incomplete'};
   const seg=phase1BriefAnswerSegments(answer), recommendations=phase1BriefRecommendationMap(rec.question||'');
   const fields=[['Audience',1],['Ambition',2],['Promise',3],['Differentiator',4],['History',5]], values=new Map();
-  const globalAccept=seg.size===0&&/(?:согласен|принимаю|подтверждаю|approve|accept)/i.test(answer);
+  const globalAccept=seg.size===0&&acceptsAllPhase1BriefRecommendations(answer);
   for(const [label,q] of fields){const u=seg.get(q)||'',r=recommendations.get(q)||'';values.set(label,globalAccept?r:briefAnswerValue(u,r));}
   if([...values.values()].some(v=>!String(v||'').trim()))return {changed:false,reason:'could-not-resolve-all-brief-fields'};
   const projectName=String(PROJECT).replace(/\\/g,'/').split('/').filter(Boolean).pop()||'Project';
@@ -3868,7 +3883,7 @@ async function runIntegrationTest(){
   const proposal={benchmark_context:'Observed fetched retention/monetization benchmarks; targets are project proposals.',kpis:{d1:{industry:'22-35%',floor:'25%',target:'32%',stretch:'40%'},d7:{industry:'10-18%',floor:'8%',target:'14%',stretch:'20%'},d30:{industry:'3.5-5%',floor:'3%',target:'5%',stretch:'8%'},arpdau:{industry:'mobile range',floor:'$0.03',target:'$0.08',stretch:'$0.15'},session_length:{industry:'genre research',floor:'4 min',target:'7 min',stretch:'10 min'},iap_conversion:{industry:'Mistplay context',floor:'1%',target:'2%',stretch:'4%'},north_star:{industry:'engaged DAU',floor:'100 DAU',target:'500 DAU',stretch:'2000 DAU'}},engagement:{core_loop_length:'30-60 seconds',session_structure:'5-10 loops, 4-7 minutes',drop_off_points:'tutorial, first stall, day-3 exhaustion',retention_hooks:'offline catch-up, daily director orders, ranks, collection'},monetization:{narrative:'Provisional metric assumption; Phase 2 owns final decision.',primary_model:'Hybrid rewarded-first assumption',rewarded_hooks:'offline x2; production burst; reroll; bonus crate',interstitial_hooks:'natural session breaks only; capped',iap_catalog:'starter cosmetic; theme; optional no-ads tier',not_monetized:'НЕ монетизируем базовый core loop, mandatory signature, hard pay-to-win'},content_budget:{scope:'Серьёзная разработка примерно на 3 месяца / 12 недель.',d0_d1:{goal:'onboarding + first rank',effort:'1 day runway',current:'core prototype',deficit:'tutorial + authored moments'},d2_d7:{goal:'daily orders + progression tiers',effort:'7 quantified days',current:'limited prototype',deficit:'events + economy depth'},d8_d30:{goal:'meta + rotating events',effort:'30-day runway across 12 weeks',current:'not implemented',deficit:'long-tail content'},deficit:'Major D2-D30 authored content and retention-hook deficit.'}};
   const ask=canonicalizeAskUserArgs({decision_key:'phase1-content-budget',phase:'Phase 1',proposal});const structuredGuard=phase1StopGuard(ask);if(structuredGuard)process.stdout.write(`[INTEGRATION] structured STOP guard blocker=${structuredGuard}\n`);test('structured STOP guard passes',()=>structuredGuard===null);test('structured STOP renders complete sections',()=>/D0-D1/.test(ask.question)&&/НЕ монетизируем/.test(ask.question)&&/North-star/.test(ask.question));test('metrics are absent before approval',()=>!fileExistsNonEmpty('wiki/architecture/metrics.md',80));pendingDecision={decision_key:'phase1-content-budget',phase:'Phase 1',question:ask.question,options:ask.options,recommendation:ask.recommendation,reason:ask.reason,proposal};persistRuntimeEvidenceLedger();test('structured pending STOP survives runtime persistence',()=>{const x=JSON.parse(readText(safePath(RUNTIME_EVIDENCE_PATH)));return Boolean(x.pendingDecision&&x.pendingDecision.decision_key==='phase1-content-budget'&&x.pendingDecision.proposal?.kpis?.d30?.target);});
   const rec={phase:1,decision_key:'phase1-content-budget',question:ask.question,answer:'A',timestamp:new Date().toISOString(),outcome:'resolve'};runtimeDecisions.push(rec);persistDecisionRecordImmediate(rec);resolvedDecisionKeys.add('phase1-content-budget');const mat=materializeApprovedProductMetricsProposal(proposal);test('approval materializes metrics + ADR',()=>mat.ok&&fileExistsNonEmpty('wiki/architecture/metrics.md',200)&&fileExistsNonEmpty(mat.adr,80));test('materialized metrics preserve 3-month scope and KPI rows',()=>/3\s*месяц/i.test(optionalText('wiki/architecture/metrics.md',100000))&&/D1 retention/i.test(optionalText('wiki/architecture/metrics.md',100000))&&/IAP conversion/i.test(optionalText('wiki/architecture/metrics.md',100000)));pendingDecision=null;persistRuntimeEvidenceLedger();
-  persistMemoryUpdate({phase:1,summary:'v6.3.1 integration fixture completed Phase 1 deterministic decision/metrics flow.',artifacts:['wiki/design/brief.md','wiki/architecture/metrics.md',mat.adr],checks:['integration'],blockers:[],next:'gate'});
+  persistMemoryUpdate({phase:1,summary:'v6.3.2 integration fixture completed Phase 1 deterministic decision/metrics flow.',artifacts:['wiki/design/brief.md','wiki/architecture/metrics.md',mat.adr],checks:['integration'],blockers:[],next:'gate'});
   const gate=phaseGateReport(1);test('Phase 1 gate GREEN',()=>gate.ok);process.stdout.write(`\n[INTEGRATION] ${checks.filter(x=>x.ok).length}/${checks.length} passed\n`);if(!gate.ok)process.stdout.write(`[INTEGRATION] gate blockers=${JSON.stringify(gate.blockers)}\n`);return checks.every(x=>x.ok);
 }
 
@@ -3960,6 +3975,9 @@ if (REQUEST_DOCTOR) {
   test('approving targets from unwritten metrics.md is rejected',()=>{const a={question:'Floor Target Stretch D1 D7 D30 ARPDAU session length IAP conversion north-star core loop 30 сек session structure drop-off retention hooks monetization narrative primary model rewarded interstitial IAP catalog НЕ монетизируем D0-D1 D2-D7 D8-D30 дефицит benchmark 3 месяца. Подтвердите targets из wiki/architecture/metrics.md.'}; const b=productMetricsProposalBlockers(a); return b.some(x=>/already-written\/authoritative/.test(x));});
   test('partial Q1-only brief answer is not resolved',()=>phase1BriefAnswerCoverageBlockers('Q1 — согласен.').length>0);
   test('complete multiline brief answer resolves',()=>phase1BriefAnswerCoverageBlockers('Q1 — согласен.\nQ2 — 3 месяца.\nQ3 — согласен.\nQ4 — без подписи каждого апгрейда.\nQ5 — история неизвестна.').length===0);
+  test('natural recommendation acceptance resolves the whole brief',()=>phase1BriefAnswerCoverageBlockers('принимаю рекомендации').length===0);
+  test('inflected all-recommendations acceptance resolves the whole brief',()=>['принимаю все рекомендации','согласен со всеми рекомендациями','подтверждаю предложенные рекомендации'].every(x=>acceptsAllPhase1BriefRecommendations(x)));
+  test('qualified recommendation acceptance stays unresolved',()=>!acceptsAllPhase1BriefRecommendations('принимаю рекомендации, но Q2 изменить'));
   test('research deepen does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-research-direction',answer:'B — углубить'}));
   test('content-budget correction does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-content-budget',answer:'D7 = 12%, остальное ок'}));
   test('skill load requires ok result',()=>/r\.ok===false/.test(registerSuccessfulSkillLoad.toString()));

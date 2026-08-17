@@ -1,4 +1,4 @@
-# Project Forge v4.68.7 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.8 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.8 changelog (natural brief acceptance)
+
+The GigaChat adapter now treats explicit natural-language approval such as `принимаю рекомендации`, `принимаю все рекомендации` and `согласен со всеми рекомендациями` as approval of the complete Phase 1 Q1–Q5 recommendation set. Qualified answers such as `принимаю рекомендации, но Q2 изменить` remain unresolved so corrections are never silently discarded.
+
+The adapter contract is `6.3.2-natural-acceptance`. Unit coverage and a real CLI subprocess regression prove that the exact user phrase is persisted, rebuilds all five canonical brief fields and clears the durable pending STOP before the next model request.
+
 ## v4.68.7 changelog (GigaChat resume orchestrator)
 
 The Forge-owned GigaChat adapter now carries the cumulative `6.3.1-resume-orchestrator` contract. It fixes the live malformed-`ask_user` const reassignment crash, reopens incomplete Q1–Q5 brief decisions before another model request, reconciles stale Phase 1 state and preserves approved research/product-metrics evidence across compaction and retries.
@@ -474,9 +480,3 @@ The permanent capability now includes real web/image search, safe page fetch, a 
 The local-first release branch was rebased onto the concurrent public `main` update that adds `.github/workflows/sync-gitverse.yml`. The workflow is now part of the canonical tree and generated MANIFEST instead of being accidentally deleted or omitted by a later local publication.
 
 No engine runtime, sibling payload, phase, skill, agent or platform behavior changes in this patch. v4.68.6 is the final convergence release: verified local sources, release ZIP, Universal installation, sibling fleet and the GitHub publication branch share one versioned state.
-
-## v4.68.5 changelog (UTF-8 MANIFEST preservation on Windows)
-
-The first complete v4.68.4 fleet pass exposed a Windows PowerShell 5.1 encoding trap: `MANIFEST.txt` is UTF-8 without BOM, while `Get-Content` defaulted to the active ANSI code page. The Cyrillic path `СПРАВОЧНИК-КОМАНД.md` therefore failed membership comparison, was removed from the engine, and the managed payload dropped from 424 to 423 files. The final drift gate stopped the updater, but sibling sync had already propagated the temporary absence.
-
-`upgrade.ps1` now reads MANIFEST with `-LiteralPath` and explicit `-Encoding UTF8`. `check-update-surface.mjs` release-gates that exact contract. Re-extracting v4.68.5 restores the command reference before cleanup; the subsequent 424-file sibling sync restores it across the fleet.

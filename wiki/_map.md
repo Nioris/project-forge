@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.7 (latest released)
+### Version: v4.68.8 (latest released)
 
+- 2026-08-18: **v4.68.8** — GigaChat 6.3.2 natural brief acceptance: explicit phrases such as `принимаю рекомендации` approve the complete Q1–Q5 set, while qualified corrections remain unresolved; exact real-entrypoint regression added.
 - 2026-08-18: **v4.68.7** — GigaChat 6.3.1 resume orchestrator: repaired partial Phase 1 decisions and stale runtime evidence, fixed malformed ask_user crash, added live search/fetch + doctor/self-tests, automatic system CA/no-key fallback launcher setup, and semantic API-profile release gates.
 - 2026-08-16: **v4.68.6** — rebased the verified local-first release onto the concurrent GitHub/GitVerse mirror workflow and included that automation in the canonical MANIFEST.
 - 2026-08-16: **v4.68.5** — Windows PowerShell reads UTF-8 MANIFEST explicitly, preserving Cyrillic managed paths and restoring the full 424-file sibling payload.
