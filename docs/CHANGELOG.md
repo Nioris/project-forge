@@ -4529,6 +4529,12 @@ The GigaChat adapter now treats explicit natural-language approval such as `пр
 
 The adapter contract is `6.3.2-natural-acceptance`. Unit coverage and a real CLI subprocess regression prove that the exact user phrase is persisted, rebuilds all five canonical brief fields and clears the durable pending STOP before the next model request.
 
+## v4.68.9 changelog (guided STOP answers)
+
+Every GigaChat `ask_user` STOP now ends with deterministic answer guidance instead of relying on the model to remember response syntax. A recommended decision exposes the exact short approval phrase `утверждаю`; Phase 1 research and content-budget gates also show their correction/deepening form, while the five-question brief prints a complete Q1–Q5 answer template.
+
+The adapter contract is `6.3.3-guided-stop`. Unit tests cover approval/correction guidance and the real terminal subprocess gate asserts that the visible resume STOP contains `Как ответить`, `«утверждаю»` and the full Q1–Q5 correction format.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

@@ -84,6 +84,12 @@ try {
   marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));
   marker.state==='blocked' ? ok('phase-state block records STOP state') : bad('phase-state block failed');
 
+  const pHost=mk('host-only-selection');
+  phaseEnv(pHost,{FORGE_AI_HOST:'gigachat'},'start','1');
+  marker=JSON.parse(fs.readFileSync(path.join(pHost,'wiki/phases/phase-1.json'),'utf8'));
+  (marker.modelRuntime?.selection?.host==='gigachat' && marker.modelRuntime?.selection?.model===null && marker.modelRuntime?.selection?.source==='host-declared')
+    ? ok('host-only phase state records GigaChat without inventing a Codex model') : bad('host-only phase state invented or lost model metadata');
+
   const p7=mk('launcher-route');
   phaseEnv(p7,{
     FORGE_AI_HOST:'codex', FORGE_MODEL:'gpt-5.6-sol', FORGE_REASONING_EFFORT:'high',

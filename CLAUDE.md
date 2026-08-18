@@ -1,4 +1,4 @@
-# Project Forge v4.68.11 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.12 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.12 changelog (durable GigaChat phase resume)
+
+GigaChat Phase 1 resume now treats already approved decisions and research artifacts as durable evidence. Product-metrics evidence survives phase switches, the final gate reuses the approved KPI/content-budget decision and cited research, and a fully approved Phase 1 closes deterministically without another model round-trip or repeated user approval.
+
+Phase markers record `gigachat` as the actual host without inventing a Codex model selection. Memory snapshots discard obsolete nested `STOP:` lines, and exhausted empty/malformed response recovery emits the `GIGA_EMPTY_RESPONSE_LOOP` Forge diagnostic. The adapter contract is `6.3.4-durable-phase-resume`; regression coverage includes approved-state completion, durable metrics provenance, host-only model metadata and transport diagnostics.
+
 ## v4.68.11 changelog (fleet behavioral diagnostics)
 
 Managed projects now keep a dedicated local JSONL incident stream for defects in Forge itself: malformed phase/STOP behavior, adapter/runtime/hook failures, capability or state contradictions, and incorrect returned formats. AI instructions for Claude, Codex, generic agents and the GigaChat native tool all require immediate reporting while explicitly excluding ordinary game/app bugs. Fields are bounded and credential-redacted, evidence stays project-relative, logs rotate non-destructively and remain outside final Git commits.
@@ -474,9 +480,3 @@ Managed projects now keep a dedicated local JSONL incident stream for defects in
 Forge now owns a canonical per-phase Codex policy and a fresh-task launcher. Standard is the default tier; Terra handles normal implementation, Sol handles design and named complex escalations, and Luna is limited to mechanical work. Phase orchestration defaults to at most two Terra/medium subagents; Max/Ultra are never automatic.
 
 `phase-state.mjs` stores the recommended Codex route separately from the runtime selection reported by launcher/CLI evidence, so Claude and GigaChat are never mislabeled as Terra. Dashboard exposes both `$phase-*` and policy-aware launch commands. Regression coverage validates all nine routes, durable escalation metadata and Codex CLI compatibility.
-
-## v4.68.9 changelog (guided STOP answers)
-
-Every GigaChat `ask_user` STOP now ends with deterministic answer guidance instead of relying on the model to remember response syntax. A recommended decision exposes the exact short approval phrase `утверждаю`; Phase 1 research and content-budget gates also show their correction/deepening form, while the five-question brief prints a complete Q1–Q5 answer template.
-
-The adapter contract is `6.3.3-guided-stop`. Unit tests cover approval/correction guidance and the real terminal subprocess gate asserts that the visible resume STOP contains `Как ответить`, `«утверждаю»` and the full Q1–Q5 correction format.

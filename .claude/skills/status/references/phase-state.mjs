@@ -60,9 +60,10 @@ if (requestedRoute !== 'base' && !routePolicy) {
   process.exit(2);
 }
 const recommended = routePolicy || phasePolicy?.base || {};
-const cliSelection = ['model', 'reasoning', 'service-tier', 'route', 'host', 'enforced'].some(k => options[k] != null);
-const envSelection = ['FORGE_MODEL', 'FORGE_REASONING_EFFORT', 'FORGE_SERVICE_TIER', 'FORGE_MODEL_ROUTE', 'FORGE_AI_HOST'].some(k => process.env[k]);
-const declaredSelection = cliSelection || envSelection;
+const cliModelSelection = ['model', 'reasoning', 'service-tier', 'route', 'enforced'].some(k => options[k] != null);
+const envModelSelection = ['FORGE_MODEL', 'FORGE_REASONING_EFFORT', 'FORGE_SERVICE_TIER', 'FORGE_MODEL_ROUTE'].some(k => process.env[k]);
+const hostSelection = options.host != null || Boolean(process.env.FORGE_AI_HOST);
+const declaredSelection = cliModelSelection || envModelSelection;
 const selectedModel = declaredSelection ? (options.model || process.env.FORGE_MODEL || recommended.model || null) : null;
 const selectedReasoning = declaredSelection ? (options.reasoning || process.env.FORGE_REASONING_EFFORT || recommended.reasoning || null) : null;
 const selectedTier = declaredSelection ? (options['service-tier'] || process.env.FORGE_SERVICE_TIER || modelPolicy?.serviceTier || 'default') : null;
@@ -112,7 +113,7 @@ const record = {
       serviceTier: selectedTier || prev.modelRuntime?.selection?.serviceTier || null,
       route: declaredSelection ? requestedRoute : (prev.modelRuntime?.selection?.route || null),
       routeKind: declaredSelection ? (routePolicy?.kind || 'base') : (prev.modelRuntime?.selection?.routeKind || null),
-      source: cliSelection ? 'cli-declared' : envSelection ? 'launcher-env' : prev.modelRuntime?.selection?.source || 'unreported',
+      source: cliModelSelection ? 'cli-declared' : envModelSelection ? 'launcher-env' : hostSelection ? 'host-declared' : prev.modelRuntime?.selection?.source || 'unreported',
       enforced: declaredSelection ? enforced : Boolean(prev.modelRuntime?.selection?.enforced),
     },
     subagents: {

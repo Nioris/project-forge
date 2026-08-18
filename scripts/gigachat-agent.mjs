@@ -21,8 +21,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.11';
-const CONTRACT_VERSION = '6.3.3-guided-stop-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.12';
+const CONTRACT_VERSION = '6.3.4-durable-phase-resume-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -425,16 +425,19 @@ const RUNTIME_EVIDENCE_PATH='wiki/runtime/gigachat-evidence.json';
 function loadRuntimeEvidenceLedger(){
   try{
     const p=safePath(RUNTIME_EVIDENCE_PATH);
-    if(!existsSync(p)) return {schemaVersion:5,verifiers:[],completedSkills:[],phase:null,pendingDecision:null};
+    if(!existsSync(p)) return {schemaVersion:6,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null};
     const x=JSON.parse(readText(p));
     return {
-      schemaVersion:5,
+      schemaVersion:6,
       verifiers:Array.isArray(x.verifiers)?x.verifiers:[],
       completedSkills:Array.isArray(x.completedSkills)?x.completedSkills:[],
       phase:x.phase&&typeof x.phase==='object'?x.phase:null,
-      pendingDecision:x.pendingDecision&&typeof x.pendingDecision==='object'?x.pendingDecision:null
+      pendingDecision:x.pendingDecision&&typeof x.pendingDecision==='object'?x.pendingDecision:null,
+      productMetricsEvidence:x.productMetricsEvidence&&typeof x.productMetricsEvidence==='object'
+        ? x.productMetricsEvidence
+        : (x.phase?.productMetricsEvidence&&typeof x.phase.productMetricsEvidence==='object'?x.phase.productMetricsEvidence:null)
     };
-  }catch{return {schemaVersion:5,verifiers:[],completedSkills:[],phase:null,pendingDecision:null};}
+  }catch{return {schemaVersion:6,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null};}
 }
 let durableRuntimeEvidence=loadRuntimeEvidenceLedger();
 let verifierLedger=new Map((durableRuntimeEvidence.verifiers||[]).map(v=>[v.key,v]));
@@ -449,7 +452,11 @@ let unresolvedFailures=new Map();
 let capabilityBlock=null;
 let phaseWrittenFiles=new Set();
 let phaseSearchEvidence={web:[],image:[],fetch:[]};
-let phaseProductMetricsEvidence={startedAt:null,web:[],fetch:[]};
+let phaseProductMetricsEvidence={
+  startedAt:durableRuntimeEvidence.productMetricsEvidence?.startedAt||null,
+  web:Array.isArray(durableRuntimeEvidence.productMetricsEvidence?.web)?durableRuntimeEvidence.productMetricsEvidence.web:[],
+  fetch:Array.isArray(durableRuntimeEvidence.productMetricsEvidence?.fetch)?durableRuntimeEvidence.productMetricsEvidence.fetch:[]
+};
 let memoryDirty=false;
 let runtimeDecisions=[];
 let lastMemorySyncAt=null;
@@ -459,11 +466,12 @@ function persistRuntimeEvidenceLedger(){
   try{
     ensureDir('wiki/runtime');
     durableRuntimeEvidence={
-      schemaVersion:5,
+      schemaVersion:6,
       updatedAt:new Date().toISOString(),
       verifiers:[...verifierLedger.values()].slice(-500),
       completedSkills:[...completedSkills].sort(),
       pendingDecision:pendingDecision&&typeof pendingDecision==='object'?pendingDecision:null,
+      productMetricsEvidence:phaseProductMetricsEvidence,
       phase:activePhase?{
         phase:activePhase,
         startedAt:phaseEvidenceStartedAt,
@@ -481,7 +489,6 @@ function resetPhaseRuntimeEvidence() {
   phaseBaseline=new Map(); phaseStarted=false; phaseSuccessfulCommands=[]; phaseCommandOutputs=[];
   unresolvedFailures=new Map(); capabilityBlock=null; phaseWrittenFiles=new Set();
   phaseSearchEvidence={web:[],image:[],fetch:[]};
-  phaseProductMetricsEvidence={startedAt:null,web:[],fetch:[]};
   memoryDirty=false; runtimeDecisions=[]; lastMemorySyncAt=null; latestMemorySessionPath=null;
   phaseEvidenceStartedAt=null;
 }
@@ -500,17 +507,11 @@ function startPhaseEvidence(phase,{resume=false}={}) {
       image:Array.isArray(saved.searchEvidence?.image)?saved.searchEvidence.image:[],
       fetch:Array.isArray(saved.searchEvidence?.fetch)?saved.searchEvidence.fetch:[]
     };
-    phaseProductMetricsEvidence={
-      startedAt:saved.productMetricsEvidence?.startedAt||null,
-      web:Array.isArray(saved.productMetricsEvidence?.web)?saved.productMetricsEvidence.web:[],
-      fetch:Array.isArray(saved.productMetricsEvidence?.fetch)?saved.productMetricsEvidence.fetch:[]
-    };
   }else{
     phaseBaseline=snapshotRoots();
     phaseEvidenceStartedAt=new Date().toISOString();
     unresolvedFailures=new Map();
     phaseSearchEvidence={web:[],image:[],fetch:[]};
-    phaseProductMetricsEvidence={startedAt:null,web:[],fetch:[]};
   }
   phaseSuccessfulCommands=[]; phaseCommandOutputs=[]; phaseWrittenFiles=new Set(); capabilityBlock=null;
   persistRuntimeEvidenceLedger();
@@ -1308,11 +1309,18 @@ function metricsArtifactProvenanceBlockers(){
   const p='wiki/architecture/metrics.md';
   if(!fileExistsNonEmpty(p,80)) return [];
   const t=optionalText(p,120000);
-  const out=[...productMetricsResearchBlockers()];
+  const approved=resolvedDecisionKeys.has('phase1-content-budget');
+  const decision=approved?latestDecisionRecord('phase1-content-budget'):null;
+  const decisionText=String(decision?.question||'');
+  const out=approved?[]:[...productMetricsResearchBlockers()];
+  if(approved){
+    if(!decisionText || !/Floor/i.test(decisionText) || !/Target/i.test(decisionText) || !/Stretch/i.test(decisionText) || !/\bD1\b/i.test(decisionText) || !/\bD7\b/i.test(decisionText) || !/\bD30\b/i.test(decisionText)) {
+      out.push('approved content-budget decision does not preserve the complete KPI proposal');
+    }
+    if(researchReferenceUrls().length<3) out.push('approved metrics resume requires at least 3 durable source URLs in the research artifact');
+  }
   const urls=[...new Set((t.match(/https?:\/\/[^\s)<>"']+/g)||[]).map(x=>x.replace(/[.,;:!?]+$/,'')))];
-  const fetched=new Set((phaseProductMetricsEvidence.fetch||[]).flatMap(x=>[
-    normalizeEvidenceUrl(x.url),normalizeEvidenceUrl(x.requested_url)
-  ]).filter(Boolean));
+  const fetched=new Set((approved?researchReferenceUrls():(phaseProductMetricsEvidence.fetch||[]).flatMap(x=>[x.url,x.requested_url])).map(normalizeEvidenceUrl).filter(Boolean));
   const unseen=urls.filter(u=>!fetched.has(normalizeEvidenceUrl(u)));
   if(unseen.length) out.push(`metrics.md cites URL(s) that were not successfully fetched/read: ${unseen.slice(0,6).join(', ')}`);
   return out;
@@ -2343,6 +2351,40 @@ function openDeterministicStop(stop,reason='deterministic resume'){
   printStopPoint(a);
   return true;
 }
+function completeApprovedPhase1Resume(){
+  if(activePhase!==1 || pendingDecision || phaseMarkedComplete(1)) return {completed:false};
+  if([...requiredDecisionKeysForPhase(1)].some(key=>!resolvedDecisionKeys.has(key))) return {completed:false};
+  const research=phase1ResearchEvidencePath();
+  const productAdr=findFiles('wiki/decisions',/product-metrics.*\.md$/i,40,20)[0]||null;
+  const artifacts=['ANALYSIS.md',research,'wiki/design/brief.md','wiki/architecture/metrics.md',productAdr].filter(Boolean);
+  if(memoryDirty){
+    persistMemoryUpdate({
+      phase:1,
+      summary:'Reconciled already approved Phase 1 decisions and canonical artifacts from durable state before the final gate.',
+      artifacts,
+      checks:['Durable Phase 1 decision reconciliation'],
+      blockers:[],
+      next:'Run the final Phase 1 evidence gate without repeating research or user STOP-points.'
+    });
+  }
+  const gate=phaseGateReport(1);
+  if(!gate.ok) return {completed:false,blockers:gate.blockers};
+  const helper=safePath('.claude/skills/status/references/phase-state.mjs');
+  const evidence=['ANALYSIS.md','wiki/design/brief.md','wiki/architecture/metrics.md'];
+  const result=spawnSync(process.execPath,[helper,'complete','1',...evidence,'--host','gigachat'],{cwd:PROJECT,encoding:'utf8',timeout:30000});
+  if(result.status!==0) return {completed:false,blockers:[String(result.stderr||result.stdout||`phase-state exit ${result.status}`)]};
+  completedSkills.add('phase-1-analyze');
+  persistRuntimeEvidenceLedger();
+  persistMemoryUpdate({
+    phase:1,
+    summary:'Phase 1 Analyze completed from already approved durable state. Research, brief, KPI/content budget and the final evidence gate are complete; no approval was repeated.',
+    artifacts:evidence,
+    checks:['Forge Phase 1 gate: GREEN',String(result.stdout||'Phase 1 marker complete').trim()],
+    blockers:[],
+    next:'Await the user command “фаза 2” before starting Design.'
+  });
+  return {completed:true,evidence,stdout:String(result.stdout||'').trim()};
+}
 function reopenPendingDecisionStop(reason='phase resume'){
   if(!pendingDecision||typeof pendingDecision!=='object') return false;
   persistRuntimeEvidenceLedger();
@@ -2675,6 +2717,7 @@ function persistMemoryUpdate(a={}) {
 
   let status='';
   try { status=JSON.parse(tool('forge_status',{json:false})).output||''; } catch {}
+  status=status.split(/\r?\n/).filter(line=>!/^STOP:\s*/i.test(line.trim())).join('\n');
   const current=[
     '# Current state',
     '',
@@ -2865,6 +2908,7 @@ function tool(name, a={}) {
 
       const script=resolveForgeScript(a.name),args=Array.isArray(a.args)?a.args.map(String):[],sec=Math.max(1,Math.min(600,Number(a.timeout_seconds||120)));
       if(/ai-studio-init\.mjs$/i.test(script) && args.length===0) args.push('.');
+      if(/phase-state\.mjs$/i.test(script) && !args.includes('--host')) args.push('--host','gigachat');
 
       if(/phase-state\.mjs$/i.test(script) && /^(start|reopen)$/i.test(String(args[0]||'')) && Number(args[1])===Number(activePhase) && phaseMarkerState(activePhase)==='in_progress'){
         return jsonResult({ok:true,status:0,already_started:true,stdout:`Phase ${activePhase} is already in_progress; duplicate ${args[0]} is idempotent.`,stderr:'',resolved_path:script});
@@ -3418,6 +3462,15 @@ async function turn(text){
     if(pendingAtTurnStart && pendingDecision && reopenPendingDecisionStop(`Phase ${aliasExpanded.invocation.phase} resume`)) return;
     const immediateStop=phase1ImmediateResumeStopCandidate();
     if(immediateStop && openDeterministicStop(immediateStop,'Phase 1 resume')) return;
+    if(Number(aliasExpanded.invocation.phase)===1){
+      const completion=completeApprovedPhase1Resume();
+      if(completion.completed){
+        process.stdout.write(`\n[Forge] Completed Phase 1 directly from approved durable state; no model/tool round-trip required.\n`);
+        process.stdout.write(`[Forge] Evidence: ${completion.evidence.join(', ')}\n`);
+        process.stdout.write('[Forge] STOP: waiting for an explicit user command before Phase 2.\n');
+        return;
+      }
+    }
   }
 
   let userText = normalizedTurnText;
@@ -3860,6 +3913,7 @@ async function turn(text){
 
         if(checkpointJunkRecoveries>1 || consecutiveBareJunk>=4){
           const cp=forgeCheckpoint();
+          reportForgeBehavior({severity:'error',code:'GIGA_EMPTY_RESPONSE_LOOP',kind:'adapter_transport',component:'gigachat-function-calling',operation:`phase-${activePhase||'unknown'}-turn`,message:'GigaChat repeatedly returned empty or malformed content and exhausted bounded recovery.',expected:'Native function call or meaningful phase response.',actual:`checkpoint_junk_recoveries=${checkpointJunkRecoveries}; consecutive_bare_junk=${consecutiveBareJunk}`});
           process.stdout.write(`\n=== FORGE RECOVERABLE TRANSPORT STOP: Phase ${activePhase||'?'} ===\n`);
           process.stdout.write(`GigaChat repeatedly returned empty/malformed content. Recovery stopped before another token-burning checkpoint loop.\n`);
           if(cp.next_hints?.length) process.stdout.write(`Next canonical hints:\n- ${cp.next_hints.join('\n- ')}\n`);
@@ -4045,6 +4099,9 @@ if (REQUEST_DOCTOR) {
   test('Phase 1 brief guidance gives approval and full correction formats',()=>{const x=stopAnswerGuidance({decision_key:'phase1-brief'});return /«утверждаю»/.test(x)&&/Q1 —/.test(x)&&/Q5 —/.test(x)&&/все пять ответов/.test(x);});
   test('research deepen does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-research-direction',answer:'B — углубить'}));
   test('content-budget correction does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-content-budget',answer:'D7 = 12%, остальное ок'}));
+  test('approved metrics resume uses durable decision and research artifacts',()=>/resolvedDecisionKeys\.has\('phase1-content-budget'\)/.test(metricsArtifactProvenanceBlockers.toString())&&/researchReferenceUrls/.test(metricsArtifactProvenanceBlockers.toString()));
+  test('approved Phase 1 has deterministic completion path',()=>/completeApprovedPhase1Resume/.test(turn.toString())&&/no model\/tool round-trip required/.test(turn.toString()));
+  test('empty response recovery reports a Forge diagnostic',()=>/GIGA_EMPTY_RESPONSE_LOOP/.test(turn.toString()));
   test('skill load requires ok result',()=>/r\.ok===false/.test(registerSuccessfulSkillLoad.toString()));
   test('existing project blocks new-project',()=>/new-project is forbidden while resuming an existing Forge project/.test(tool.toString()));
   test('CLI batches pasted multiline input',()=>/replBuffer\.join\('\\n'\)/.test(flushReplBuffer.toString()));
