@@ -1,4 +1,4 @@
-# Project Forge v4.68.12 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.13 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.13 changelog (GigaChat decision and gate integrity)
+
+Standalone answers to durable GigaChat STOP-points now restore the owning phase, runtime baseline and named-decision state before the answer is consumed. Phase 2 decisions survive across one-shot terminal processes, and the model can no longer overwrite the runtime-owned decision/evidence ledgers directly.
+
+Every `phase-state complete` path, including native `forge_script`, now requires the full Forge gate to be GREEN plus explicit evidence arguments. Decision STOPs automatically persist the machine marker as `blocked` with host `gigachat`; Phase 2 prompts receive deterministic fast-MVP questions/recommendations and exact approval guidance. Phase 2 UI hierarchy matching accepts canonical prefix or suffix filenames, while the prompt-pack blocker names its exact `assets/prompts/*.json` target. Contract: `6.3.5-decision-gate-integrity`.
+
 ## v4.68.12 changelog (durable GigaChat phase resume)
 
 GigaChat Phase 1 resume now treats already approved decisions and research artifacts as durable evidence. Product-metrics evidence survives phase switches, the final gate reuses the approved KPI/content-budget decision and cited research, and a fully approved Phase 1 closes deterministically without another model round-trip or repeated user approval.
@@ -474,9 +480,3 @@ Phase markers record `gigachat` as the actual host without inventing a Codex mod
 Managed projects now keep a dedicated local JSONL incident stream for defects in Forge itself: malformed phase/STOP behavior, adapter/runtime/hook failures, capability or state contradictions, and incorrect returned formats. AI instructions for Claude, Codex, generic agents and the GigaChat native tool all require immediate reporting while explicitly excluding ordinary game/app bugs. Fields are bounded and credential-redacted, evidence stays project-relative, logs rotate non-destructively and remain outside final Git commits.
 
 `$status` exposes the open count, while `scripts/audit-forge-diagnostics.mjs` scans every managed sibling and groups unresolved observations by stable code/component/operation. Incidents are closed by fingerprint only after verification. Hook/runtime failures and bounded GigaChat STOP/transport recovery exhaustion report automatically; a dependency-free regression verifies redaction, deduplication, resolution, local Git exclusion and fleet aggregation.
-
-## v4.68.10 changelog (Codex economy routing)
-
-Forge now owns a canonical per-phase Codex policy and a fresh-task launcher. Standard is the default tier; Terra handles normal implementation, Sol handles design and named complex escalations, and Luna is limited to mechanical work. Phase orchestration defaults to at most two Terra/medium subagents; Max/Ultra are never automatic.
-
-`phase-state.mjs` stores the recommended Codex route separately from the runtime selection reported by launcher/CLI evidence, so Claude and GigaChat are never mislabeled as Terra. Dashboard exposes both `$phase-*` and policy-aware launch commands. Regression coverage validates all nine routes, durable escalation metadata and Codex CLI compatibility.

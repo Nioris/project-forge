@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.12 (latest released)
+### Version: v4.68.13 (latest released)
 
+- 2026-08-18: **v4.68.13** — GigaChat durable-answer integrity and non-bypassable phase completion: pending STOP answers restore phase context, runtime ledgers are protected, decision markers auto-block, and every completion path requires GREEN plus evidence.
 - 2026-08-18: **v4.68.12** — durable GigaChat Phase 1 resume: approved research/KPI decisions survive phase switches, final completion avoids a repeated model turn, host metadata stays honest, stale nested STOP text is removed, and exhausted empty responses are diagnosed.
 - 2026-08-18: **v4.68.11** — local fleet behavioral diagnostics: AI/adapter/hook/runtime incident reporting, secret-redacted JSONL with stable fingerprints and verified resolution, status counters, and a sibling-wide read-only auditor.
 - 2026-08-18: **v4.68.10** — Codex economy routing: Standard tier, per-phase Terra/Sol/Luna policy, policy-aware fresh-task launcher, maximum two Terra/medium subagents, Dashboard launch commands and honest actual-vs-recommended model state.

@@ -21,8 +21,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.12';
-const CONTRACT_VERSION = '6.3.4-durable-phase-resume-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.13';
+const CONTRACT_VERSION = '6.3.5-decision-gate-integrity-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -418,6 +418,13 @@ function completionArtifactArgs(command, phase) {
   const stop=new Set(['&&','||',';','>','>>','2>','2>>']); const out=[];
   for(const tok of shellTokens(m[1])) { if(stop.has(tok)) break; if(tok.startsWith('-')) continue; out.push(tok); }
   return out;
+}
+
+function runtimeOwnedWriteBlock(path='') {
+  const p=String(path||'').replace(/\\/g,'/').toLowerCase();
+  if(p==='wiki/decisions/gigachat-decisions.json') return 'This decision ledger is runtime-owned. Use ask_user; Forge persists the answer automatically. Do not write or replace the ledger directly.';
+  if(p==='wiki/runtime/gigachat-evidence.json') return 'This runtime evidence ledger is runtime-owned and cannot be written by the model.';
+  return null;
 }
 
 const RUNTIME_EVIDENCE_PATH='wiki/runtime/gigachat-evidence.json';
@@ -1078,9 +1085,9 @@ function phaseGateReport(phase=activePhase) {
   if(p===2){
     if(projectKind()==='game'){
       for(const [path,min] of [['wiki/design/levels.md',80],['wiki/design/monetization.md',80],['wiki/design/art-bible.md',80],['wiki/design/audio.md',80]]){const b=requiredFileBlock(path,min);if(b)blockers.push(b);}
-      if(!findFiles('wiki/design',/hierarchy-.*\.md$/i,60,50).length) blockers.push('Phase 2 game design requires at least one UI hierarchy document');
+      if(!findFiles('wiki/design',/(?:hierarchy-.+|.+-hierarchy)\.md$/i,60,50).length) blockers.push('Phase 2 game design requires at least one UI hierarchy document under wiki/design');
     }
-    if(!findFiles('assets/prompts',/\.json$/i,20,50).length) blockers.push('Phase 2 requires at least one draft AI prompt pack');
+    if(!findFiles('assets/prompts',/\.json$/i,20,50).length) blockers.push('Phase 2 requires at least one draft AI prompt pack at assets/prompts/*.json');
   }
   if(p===3){
     const gameChanges=changedSinceBaseline(pathLooksGameChange); evidence.gameChanges=gameChanges;
@@ -1647,7 +1654,26 @@ function renderStructuredContentBudgetQuestion(p={}){
   const k=p.kpis||{},e=p.engagement||{},m=p.monetization||{},c=p.content_budget||{};const row=(label,key)=>{const x=k[key]||{};return `| ${label} | ${String(x.industry||'see benchmark context')} | ${String(x.floor||'')} | ${String(x.target||'')} | ${String(x.stretch||'')} |`;};
   return ['## Phase 1 — Product Metrics + Content Budget approval','','### Industry benchmark context',String(p.benchmark_context||''),'','| KPI | Industry context | Floor | Target | Stretch |','|---|---|---|---|---|',row('D1 retention','d1'),row('D7 retention','d7'),row('D30 retention','d30'),row('ARPDAU','arpdau'),row('Session length','session_length'),row('IAP conversion','iap_conversion'),row('North-star','north_star'),'','### Engagement narrative',`- Core-loop length: ${formatListValue(e.core_loop_length)}`,`- Session structure: ${formatListValue(e.session_structure)}`,`- Drop-off points: ${formatListValue(e.drop_off_points)}`,`- Retention hooks: ${formatListValue(e.retention_hooks)}`,'','### Provisional monetization narrative',`- Monetization narrative: ${formatListValue(m.narrative)}`,`- Primary model (provisional; Phase 2 owns final decision): ${formatListValue(m.primary_model)}`,`- Rewarded-video hooks: ${formatListValue(m.rewarded_hooks)}`,`- Interstitial hooks: ${formatListValue(m.interstitial_hooks)}`,`- IAP catalog / provisional tiers: ${formatListValue(m.iap_catalog)}`,`- НЕ монетизируем: ${formatListValue(m.not_monetized)}`,'',`### Content budget — scope: ${String(c.scope||'')}`,'| Window | Content / goal | Effort / volume | Exists now | DEFICIT |','|---|---|---|---|---|',renderContentBudgetRow('D0-D1',c.d0_d1),renderContentBudgetRow('D2-D7',c.d2_d7),renderContentBudgetRow('D8-D30',c.d8_d30),'',`**Explicit DEFICIT:** ${formatListValue(c.deficit)}`,'','После утверждения Forge запишет wiki/architecture/metrics.md и product-metrics ADR.'].join('\n');
 }
-function canonicalizeAskUserArgs(a={}){let out=canonicalizePhase1BriefArgs(a);if(String(out.decision_key||'')==='phase1-content-budget'&&out.proposal&&typeof out.proposal==='object'){out={...out,question:renderStructuredContentBudgetQuestion(out.proposal),options:String(out.options||'A) Утвердить proposal как есть\nB) Скорректировать — укажите KPI/бюджет и новое значение\nC) Вернуться к research'),recommendation:String(out.recommendation||'A) Утвердить, если KPI и трёхмесячный content budget подходят.'),reason:String(out.reason||'Обязательный Phase 1 STOP перед metrics.md/ADR.')};}return out;}
+function canonicalizePhase2DecisionArgs(a={}){
+  const key=String(a.decision_key||'').trim();
+  if(key==='phase2-monetization') return {...a,
+    question:String(a.question||'На чём зарабатывает игра?'),
+    options:String(a.options||'А) Только реклама — Yandex-first, без сервера\nБ) Гибрид — платежи + реклама, backend и юридический контур'),
+    recommendation:String(a.recommendation||'А) Только реклама — самый быстрый путь к рабочему MVP.'),
+    reason:String(a.reason||'Модель монетизации определяет платформу, backend и объём реализации.')};
+  if(key==='phase2-multiplayer') return {...a,
+    question:String(a.question||'Делаем мультиплеер? Сервер увеличивает срок и постоянные расходы.'),
+    options:String(a.options||'А) Нет — одиночная игра без сервера\nБ) Асинхронный\nВ) Синхронный реалтайм'),
+    recommendation:String(a.recommendation||'А) Нет — самый быстрый путь к рабочему MVP.'),
+    reason:String(a.reason||'Мультиплеер добавляет backend, синхронизацию, эксплуатацию и QA.')};
+  if(key==='phase2-content-plan') return {...a,
+    question:String(a.question||'Утверждаем минимальную контентную рамку MVP и критерии готовности?'),
+    options:String(a.options||'А) Утвердить минимальный план\nБ) Изменить — перечислите необходимые правки'),
+    recommendation:String(a.recommendation||'А) Утвердить минимальный план без расширения D8–D30 до проверки удержания.'),
+    reason:String(a.reason||'Фиксированный scope предотвращает разрастание разработки до первого рабочего билда.')};
+  return a;
+}
+function canonicalizeAskUserArgs(a={}){let out=canonicalizePhase2DecisionArgs(canonicalizePhase1BriefArgs(a));if(String(out.decision_key||'')==='phase1-content-budget'&&out.proposal&&typeof out.proposal==='object'){out={...out,question:renderStructuredContentBudgetQuestion(out.proposal),options:String(out.options||'A) Утвердить proposal как есть\nB) Скорректировать — укажите KPI/бюджет и новое значение\nC) Вернуться к research'),recommendation:String(out.recommendation||'A) Утвердить, если KPI и трёхмесячный content budget подходят.'),reason:String(out.reason||'Обязательный Phase 1 STOP перед metrics.md/ADR.')};}return out;}
 function nextProductMetricsAdrPath(){const files=findFiles('wiki/decisions',/\.md$/i,1,500);let max=0;for(const f of files){const m=f.match(/\/(\d{3})-[^/]+\.md$/);if(m)max=Math.max(max,Number(m[1]));}return `wiki/decisions/${String(max+1).padStart(3,'0')}-product-metrics.md`;}
 function renderApprovedMetricsMarkdown(p={}){const sources=[...new Set((phaseProductMetricsEvidence.fetch||[]).map(x=>String(x.url||x.requested_url||'')).filter(u=>/^https?:\/\//i.test(u)))];return ['---',`date: ${new Date().toISOString().slice(0,10)}`,'status: approved','---','','# Product Metrics','',renderStructuredContentBudgetQuestion(p),'','## Sources',...sources.map(u=>`- ${u}`),''].join('\n');}
 function renderProductMetricsAdr(p={}){const sources=[...new Set((phaseProductMetricsEvidence.fetch||[]).map(x=>String(x.url||x.requested_url||'')).filter(u=>/^https?:\/\//i.test(u)))];return ['# ADR — Product Metrics','',`- Date: ${new Date().toISOString().slice(0,10)}`,'- Status: Accepted','- Phase: 1 Analyze','','## Decision','Adopt the approved KPI set and content budget from wiki/architecture/metrics.md.','','## Context',String(p.benchmark_context||''),'','## Consequences','- Phase 2 design uses these metrics as constraints.','- Phase 2 still owns the final monetization decision.','','## Evidence',...sources.map(u=>`- ${u}`),''].join('\n');}
@@ -1864,7 +1890,7 @@ function ensureHostPhaseStarted(phase) {
   // Canonical user STOPs use machine state "blocked". Preserve durable evidence on reopen.
   startPhaseEvidence(n,{resume:marker==='blocked'});
   const helper=safePath('.claude/skills/status/references/phase-state.mjs');
-  const r=spawnSync(process.execPath,[helper,action,String(n)],{cwd:PROJECT,encoding:'utf8',timeout:30000});
+  const r=spawnSync(process.execPath,[helper,action,String(n),'--host','gigachat'],{cwd:PROJECT,encoding:'utf8',timeout:30000});
   if(r.status===0)hydrateResolvedDecisionState(n);
   return {ok:r.status===0,phase:n,status:r.status,stdout:clip(r.stdout,4000),stderr:clip(r.stderr,4000),action};
 }
@@ -1891,7 +1917,7 @@ function markHostPhaseBlocked(phase,reason) {
   if(!n) return {ok:false,error:'no active phase'};
   try {
     const helper=safePath('.claude/skills/status/references/phase-state.mjs');
-    const r=spawnSync(process.execPath,[helper,'block',String(n),String(reason||'Infrastructure capability blocker')],{
+    const r=spawnSync(process.execPath,[helper,'block',String(n),String(reason||'Infrastructure capability blocker'),'--host','gigachat'],{
       cwd:PROJECT,encoding:'utf8',timeout:30000
     });
     return {ok:r.status===0,status:r.status,stdout:clip(r.stdout,4000),stderr:clip(r.stderr,4000)};
@@ -2006,6 +2032,7 @@ function phaseCompletionBlocked(command) {
   const phase = Number(m[1]);
   const report=phaseGateReport(phase);
   const artifactArgs=completionArtifactArgs(command,phase);
+  if(!artifactArgs.length) report.blockers.push('phase-state complete requires explicit evidence artifact arguments');
   for(const path of artifactArgs){
     if(!fileExistsNonEmpty(path,1)) report.blockers.push(`completion evidence argument does not exist/non-empty: ${path}`);
     else if(VISUAL_EXTS.has(extOf(path)) && !isValidMediaFile(path)) report.blockers.push(`completion evidence argument is not valid media: ${path}`);
@@ -2014,6 +2041,12 @@ function phaseCompletionBlocked(command) {
     return `Phase ${phase} completion blocked by Forge hard gate:\n- ${report.blockers.join('\n- ')}\nRun forge_gate to inspect evidence before retrying complete.`;
   }
   return null;
+}
+
+function forgeScriptPhaseCompletionBlocked(script,args=[]){
+  if(!/phase-state\.mjs$/i.test(String(script||'')) || !/^complete$/i.test(String(args[0]||''))) return null;
+  const completionProbe=['node',script,...args].map(String).join(' ');
+  return phaseCompletionBlocked(completionProbe);
 }
 
 function stripShellQuotes(value='') {
@@ -2807,6 +2840,8 @@ function tool(name, a={}) {
     if (name==='search_text') return jsonResult({ok:true,results:searchText(a.query,a.path||'.',Math.max(1,Math.min(200,Number(a.max_results||80))))});
     if (name==='write_file') {
       assertTextWritableExtension(a.path);
+      const runtimeWriteBlock=runtimeOwnedWriteBlock(a.path);
+      if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
       if(phaseWriteBlock) return jsonResult({ok:false,error:phaseWriteBlock});
       const p=safePath(a.path); assertWritablePath(p); mkdirSync(dirname(p),{recursive:true});
@@ -2817,6 +2852,8 @@ function tool(name, a={}) {
     }
     if (name==='replace_text') {
       assertTextWritableExtension(a.path);
+      const runtimeWriteBlock=runtimeOwnedWriteBlock(a.path);
+      if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
       if(phaseWriteBlock) return jsonResult({ok:false,error:phaseWriteBlock});
       const p=safePath(a.path); assertWritablePath(p); const old=String(a.old_text), neu=String(a.new_text); let txt=readText(p);
@@ -2908,6 +2945,8 @@ function tool(name, a={}) {
 
       const script=resolveForgeScript(a.name),args=Array.isArray(a.args)?a.args.map(String):[],sec=Math.max(1,Math.min(600,Number(a.timeout_seconds||120)));
       if(/ai-studio-init\.mjs$/i.test(script) && args.length===0) args.push('.');
+      const completionBlocked=forgeScriptPhaseCompletionBlocked(script,args);
+      if(completionBlocked) return jsonResult({ok:false,error:completionBlocked});
       if(/phase-state\.mjs$/i.test(script) && !args.includes('--host')) args.push('--host','gigachat');
 
       if(/phase-state\.mjs$/i.test(script) && /^(start|reopen)$/i.test(String(args[0]||'')) && Number(args[1])===Number(activePhase) && phaseMarkerState(activePhase)==='in_progress'){
@@ -3450,6 +3489,15 @@ async function turn(text){
   if(aliasExpanded.invocation) {
     process.stdout.write(`\n[Forge] Phase ${aliasExpanded.invocation.phase} -> ${aliasExpanded.invocation.skill}\n`);
   }
+  if(pendingAtTurnStart && !aliasExpanded.invocation){
+    const pendingPhase=pendingDecisionPhase();
+    if(pendingPhase){
+      activePhase=pendingPhase;
+      activePhaseSkill=PHASE_SKILLS.get(pendingPhase)||null;
+      startPhaseEvidence(pendingPhase,{resume:true});
+      hydrateResolvedDecisionState(pendingPhase);
+    }
+  }
   const phaseExecutionTurn=!statusOnly && (pendingAtTurnStart || Boolean(aliasExpanded.invocation) || phaseExecutionRequestedByText(normalizedTurnText));
   beginPhaseFromUserText(normalizedTurnText);
   if(aliasExpanded.invocation){
@@ -3620,6 +3668,11 @@ async function turn(text){
           reason: String(stopArgs.reason || ''),
           proposal: stopArgs.proposal&&typeof stopArgs.proposal==='object'?stopArgs.proposal:null
         };
+        if(activePhase){
+          const decisionReason=`Awaiting ${pendingDecision.decision_key||'user decision'}`;
+          const blockedState=markHostPhaseBlocked(activePhase,decisionReason);
+          if(!blockedState.ok) process.stdout.write(`[Forge] Warning: could not persist decision STOP state: ${blockedState.stderr||blockedState.error||blockedState.status}\n`);
+        }
         persistRuntimeEvidenceLedger();
         printStopPoint(stopArgs);
         return;
@@ -4012,6 +4065,8 @@ if (REQUEST_DOCTOR) {
   test('junk response rejected',()=>!meaningfulText('<') && !meaningfulText('...') && meaningfulText('status ok'));
   test('binary write extension blocked',()=>{ try{assertTextWritableExtension('x.png');return false;}catch{return true;} });
   test('phase complete hard gate active',()=>/Phase 4 completion blocked/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md')||''));
+  test('forge_script phase complete cannot bypass the hard gate',()=>/hard gate/i.test(forgeScriptPhaseCompletionBlocked('.claude/skills/status/references/phase-state.mjs',['complete','4'])||''));
+  test('phase complete requires explicit evidence arguments',()=>/explicit evidence artifact arguments/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4')||''));
   test('phase 4 named decisions',()=>requiredDecisionKeysForPhase(4).has('phase4-target-frame')&&requiredDecisionKeysForPhase(4).has('phase4-style-bible'));
   test('phase 1 named STOP gates',()=>PHASE1_REQUIRED_DECISIONS.has('phase1-research-direction')&&PHASE1_REQUIRED_DECISIONS.has('phase1-brief')&&PHASE1_REQUIRED_DECISIONS.has('phase1-content-budget'));
   test('phase execution intent detector',()=>phaseExecutionRequestedByText('Прочитай FORGE.md и выполни Forge skill phase-1-analyze для текущего проекта ".".'));
@@ -4097,6 +4152,10 @@ if (REQUEST_DOCTOR) {
   test('suggested approval word resolves the whole brief',()=>phase1BriefAnswerCoverageBlockers('утверждаю').length===0);
   test('STOP guidance always exposes an actionable answer',()=>/утверждаю/.test(stopAnswerGuidance({recommendation:'Use A'}))&&/одним сообщением/.test(stopAnswerGuidance({})));
   test('Phase 1 brief guidance gives approval and full correction formats',()=>{const x=stopAnswerGuidance({decision_key:'phase1-brief'});return /«утверждаю»/.test(x)&&/Q1 —/.test(x)&&/Q5 —/.test(x)&&/все пять ответов/.test(x);});
+  test('Phase 2 decisions receive deterministic fast-MVP recommendations',()=>{const x=canonicalizeAskUserArgs({decision_key:'phase2-multiplayer'});return /мультиплеер/i.test(x.question)&&/А\)/.test(x.recommendation)&&/«утверждаю»/.test(stopAnswerGuidance(x));});
+  test('runtime-owned decision ledger rejects model writes',()=>/runtime-owned/.test(runtimeOwnedWriteBlock('wiki/decisions/gigachat-decisions.json')||''));
+  test('pending decision turns restore phase runtime before consuming the answer',()=>/startPhaseEvidence\(pendingPhase,\{resume:true\}\)/.test(turn.toString())&&/hydrateResolvedDecisionState\(pendingPhase\)/.test(turn.toString()));
+  test('decision STOP automatically persists blocked phase state',()=>/Awaiting.*pendingDecision\.decision_key/.test(turn.toString())&&/markHostPhaseBlocked\(activePhase,decisionReason\)/.test(turn.toString()));
   test('research deepen does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-research-direction',answer:'B — углубить'}));
   test('content-budget correction does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-content-budget',answer:'D7 = 12%, остальное ок'}));
   test('approved metrics resume uses durable decision and research artifacts',()=>/resolvedDecisionKeys\.has\('phase1-content-budget'\)/.test(metricsArtifactProvenanceBlockers.toString())&&/researchReferenceUrls/.test(metricsArtifactProvenanceBlockers.toString()));
