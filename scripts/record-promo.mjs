@@ -13,6 +13,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, extname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const argv = process.argv.slice(2);
 const dir = resolve(argv.find(a => !a.startsWith('--')) || '.');
@@ -76,7 +77,7 @@ const server = createServer((req, res) => {
 async function play(page, w, h, seconds, touch) {
   // меню (до 3 экранов) → игра: сетка 5×5 + клавиши
   for (let r = 0; r < 3; r++) {
-    const c = await page.evaluate(() => { const RX=/(старт|начать|играть|start|play|new|далее|next|ok|бой|battle)/i;
+    const c = await page.evaluate(() => { const RX=/(старт|начать|играть|произвести|start|play|produce|new|далее|next|ok|бой|battle)/i;
       const b=[...document.querySelectorAll('button,[onclick],[role=button],a,.btn,[class*=btn]')]
         .find(e=>{const x=e.getBoundingClientRect();return x.width>5&&RX.test(e.textContent||e.value||'');});
       if(!b)return false; b.click(); return true; });
@@ -97,6 +98,7 @@ async function play(page, w, h, seconds, touch) {
 
 async function record(browser, name, w, h, touch, port) {
   const page = await browser.newPage();
+  page.on('dialog', async dialog => { try { await dialog.dismiss(); } catch {} });
   // FROZEN-rAF FIX (полевой кейс hostling): в автоматизированном браузере окно «не в фокусе» →
   // rAF замирает → screencast/скриншоты отдают первый кадр при живом JS-стейте. Канонический
   // фикс — CDP focus-эмуляция (флаги/visibilityState-подмена НЕ достаточны, проверено в поле).
@@ -126,8 +128,10 @@ async function record(browser, name, w, h, touch, port) {
 
 server.listen(0, async () => {
   const port = server.address().port;
-  let pup; try { pup = await import('puppeteer'); } catch { console.error('[X] npm i puppeteer'); process.exit(2); }
-  const browser = await pup.default.launch({ args:['--no-sandbox','--autoplay-policy=no-user-gesture-required',
+  let pup;
+  try { const mod=await import('puppeteer'); pup=mod.default||mod; }
+  catch { try { pup=createRequire(join(process.cwd(),'package.json'))('puppeteer'); } catch { console.error('[X] npm i puppeteer'); process.exit(2); } }
+  const browser = await pup.launch({ args:['--no-sandbox','--autoplay-policy=no-user-gesture-required',
     '--disable-background-timer-throttling','--disable-backgrounding-occluded-windows','--disable-renderer-backgrounding'] });
   if (ONLY !== 'mobile')  await record(browser, 'desktop', 1920, 1080, false, port);
   if (ONLY !== 'desktop') {

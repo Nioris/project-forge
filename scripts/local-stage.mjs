@@ -18,6 +18,7 @@
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, extname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 
 const argv = process.argv.slice(2);
 const dir = resolve(argv.find(a => !a.startsWith('--')) || '.');
@@ -82,6 +83,7 @@ const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', 
 
 const server = createServer((req, res) => {
   const u = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
+  if (u === 'favicon.ico') { res.writeHead(204); res.end(); return; }
   if (u === '__mock_sdk.js') { res.writeHead(200, {'Content-Type':'text/javascript'}); res.end(MOCK); return; }
   const p = join(dir, u);
   try {
@@ -104,11 +106,12 @@ server.listen(PORT, async () => {
   }
   // ── AI-режим: headless + дамп RT ──
   const OUT = resolve(arg('out', join(dir, 'stage-out'))); mkdirSync(OUT, { recursive: true });
-  let pup; try { pup = await import('puppeteer'); }
-  catch { console.error('[X] npm install puppeteer'); process.exit(2); }
+  let pup; try { const mod=await import('puppeteer'); pup=mod.default||mod; }
+  catch { try { pup=createRequire(join(process.cwd(),'package.json'))('puppeteer'); } catch { console.error('[X] npm install puppeteer'); process.exit(2); } }
   const errors = [];
-  const browser = await pup.default.launch({ args: ['--no-sandbox','--autoplay-policy=no-user-gesture-required'] });
+  const browser = await pup.launch({ args: ['--no-sandbox','--autoplay-policy=no-user-gesture-required'] });
   const page = await browser.newPage();
+  page.on('dialog', async dialog => { try { await dialog.dismiss(); } catch {} });
   await page.setViewport({ width: 1280, height: 720 });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push('console.error: ' + m.text()); });

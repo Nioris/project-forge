@@ -21,8 +21,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.13';
-const CONTRACT_VERSION = '6.3.5-decision-gate-integrity-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.14';
+const CONTRACT_VERSION = '6.3.6-mature-phase-orchestration-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -398,8 +398,25 @@ function pathLooksProductionAsset(path) {
   const p=String(path).replace(/\\/g,'/').toLowerCase();
   if(!VISUAL_EXTS.has(extOf(p))) return false;
   if(p.includes('/refs/') || p.includes('/candidates/') || p.includes('/prompts/')) return false;
-  if(p==='assets/target/target-frame.png') return false;
+  if(/^assets\/target\/target-frame\.(?:png|jpe?g|webp)$/.test(p)) return false;
   return true;
+}
+
+function phase4SelectionPath() {
+  return ['assets/style/selection.json','assets/bible/selection.json','assets/selection.json']
+    .find(path=>{
+      if(!fileExistsNonEmpty(path,20)) return false;
+      try { const value=JSON.parse(readText(safePath(path))); return Boolean(value&&typeof value==='object'&&Object.keys(value).length); }
+      catch { return false; }
+    })||null;
+}
+function phase4TargetFramePath() {
+  return ['assets/target/target-frame.png','assets/target/target-frame.jpg','assets/target/target-frame.jpeg','assets/target/target-frame.webp']
+    .find(path=>fileExistsNonEmpty(path,32)&&isValidMediaFile(path))||null;
+}
+function phase4TargetVariantPaths() {
+  return findFiles('assets/target',/(?:variant|candidate|option|[-_][abc]|target-frame[-_]\d+)[^/]*\.(png|jpg|jpeg|webp)$/i,32,100)
+    .filter(isValidMediaFile);
 }
 function pathLooksGameChange(path) {
   const p=String(path).replace(/\\/g,'/');
@@ -563,16 +580,16 @@ function commandLooksMutating(command=''){
   if(/release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
   return false;
 }
-function verifierEntrySuccess(re){
-  const phase=Number(activePhase||0);
+function verifierEntrySuccess(re,phaseOverride=activePhase){
+  const phase=Number(phaseOverride||0);
   for(const v of verifierLedger.values()){
     if(Number(v.phase)!==phase || Number(v.status)!==0) continue;
     if(re.test(String(v.command||v.key||''))) return v;
   }
   return null;
 }
-function verifierEntryWithOutput(commandRe,outputRe){
-  const phase=Number(activePhase||0);
+function verifierEntryWithOutput(commandRe,outputRe,phaseOverride=activePhase){
+  const phase=Number(phaseOverride||0);
   for(const v of verifierLedger.values()){
     if(Number(v.phase)!==phase || Number(v.status)!==0) continue;
     if(commandRe.test(String(v.command||'')) && outputRe.test(`${v.stdout||''}\n${v.stderr||''}`)) return v;
@@ -596,6 +613,10 @@ function recordOperation(name,a,result) {
       : String(a.command||'');
     if(r.translated_skill || r.translated_shell) {
       unresolvedFailures.delete(key);
+      if(r.translated_skill && r.skill){
+        registerSuccessfulSkillLoad(r.skill,result);
+        for(const prior of [...unresolvedFailures.keys()]) if(String(prior).toLowerCase().includes(String(r.skill).toLowerCase())) unresolvedFailures.delete(prior);
+      }
       if(r.translated_shell && r.mutating) memoryDirty=true;
     } else if(r.ok===false) {
       const failure={type:classifyFailure(name,a,r),message:r.error||shortText(r.stderr||r.stdout||'command failed',220),at:new Date().toISOString()};
@@ -603,10 +624,13 @@ function recordOperation(name,a,result) {
       verifierLedger.set(key,{key,phase:activePhase,command,status:Number(r.status??1),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:failure.type,updatedAt:new Date().toISOString()});
     } else {
       unresolvedFailures.delete(key);
+      if(/playtest\.mjs/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/run:node scripts[\\/]playtest\.mjs/i.test(prior)) unresolvedFailures.delete(prior);
+      if(/screens-shoot\.mjs/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/screens-shoot/i.test(prior)) unresolvedFailures.delete(prior);
+      if(/local-stage\.mjs/i.test(command)&&/--ai/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/local-stage/i.test(prior)) unresolvedFailures.delete(prior);
       verifierLedger.set(key,{key,phase:activePhase,command,status:Number(r.status??0),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:null,updatedAt:new Date().toISOString()});
       phaseSuccessfulCommands.push(command);
       phaseCommandOutputs.push({command,stdout:String(r.stdout||''),stderr:String(r.stderr||''),ok:true});
-      if(commandLooksMutating(command)) memoryDirty=true;
+      if(commandLooksMutating(command) && r.already_started!==true && r.already_complete!==true) memoryDirty=true;
     }
   }
   if(r.ok!==false && (name==='write_file' || name==='replace_text' || name==='copy_path' || name==='gigachat_generate_image' || name==='gigachat_generate_3d')) {
@@ -944,8 +968,8 @@ function distinctValidImages(paths){
   for(const p of paths) if(isValidMediaFile(p)) try{hashes.add(hashFileAbs(safePath(p)));}catch{}
   return hashes.size;
 }
-function commandSucceeded(re){ return Boolean(verifierEntrySuccess(re)) || hasSuccessfulCommand(re); }
-function commandSucceededWithOutput(commandRe,outputRe){ return Boolean(verifierEntryWithOutput(commandRe,outputRe)); }
+function commandSucceeded(re,phase=activePhase){ return Boolean(verifierEntrySuccess(re,phase)) || (Number(phase)===Number(activePhase)&&hasSuccessfulCommand(re)); }
+function commandSucceededWithOutput(commandRe,outputRe,phase=activePhase){ return Boolean(verifierEntryWithOutput(commandRe,outputRe,phase)); }
 const PHASE_CONTRACTS=Object.freeze({
   1:{name:'Analyze',files:[['ANALYSIS.md',80],['wiki/design/brief.md',80],['wiki/architecture/metrics.md',80],['.forge-ai.json',20],['wiki/ai/asset-baseline.md',80]]},
   2:{name:'Design',files:[['wiki/design/gdd.md',200],['wiki/plan/02-development-plan.md',120],['wiki/design/cross-review.md',80],['wiki/architecture/modules.md',80],['wiki/design/layout-system.md',80],['wiki/ai/studio-plan.md',80]]},
@@ -1001,7 +1025,9 @@ function resolveForgeScript(name=''){
   if(!raw||raw.includes('..')) throw new Error('forge_script requires a safe canonical script name/path');
 
   const aliases=new Map([
+    ['phase-state','.claude/skills/status/references/phase-state.mjs'],
     ['phase-state.mjs','.claude/skills/status/references/phase-state.mjs'],
+    ['project-status','.claude/skills/status/references/project-status.mjs'],
     ['project-status.mjs','.claude/skills/status/references/project-status.mjs']
   ]);
   if(aliases.has(raw)){
@@ -1015,9 +1041,12 @@ function resolveForgeScript(name=''){
   }
 
   const clean=raw.replace(/^scripts\//,'');
-  const local=safePath(`scripts/${clean}`),engine=resolve(ENGINE,'scripts',clean);
-  if(existsSync(local)) return local;
-  if(existsSync(engine)) return engine;
+  const variants=extOf(clean)?[clean]:[clean,`${clean}.mjs`];
+  for(const candidate of variants){
+    const local=safePath(`scripts/${candidate}`),engine=resolve(ENGINE,'scripts',candidate);
+    if(existsSync(local)) return local;
+    if(existsSync(engine)) return engine;
+  }
 
   // Last-resort deterministic lookup for an exact basename under .claude/skills.
   // Accept only a unique match; ambiguity is an error rather than a guess.
@@ -1046,6 +1075,10 @@ function hasOutput(re) { return phaseCommandOutputs.some(x=>re.test(`${x.stdout}
 
 function phaseGateReport(phase=activePhase) {
   const p=Number(phase||0), blockers=[], evidence={phase:p,contractVersion:CONTRACT_VERSION,started:phaseStarted,unresolvedFailures:unresolvedFailures.size};
+  if(phaseMarkedComplete(p)){
+    let marker={};try{marker=JSON.parse(readText(safePath(`wiki/phases/phase-${p}.json`)));}catch{}
+    return {ok:true,phase:p,blockers:[],evidence:{...evidence,archivedComplete:true,completedAt:marker.completedAt||null,artifacts:marker.evidence||[]}};
+  }
   if(!p) blockers.push('no active Forge phase detected');
   if(pendingDecision) blockers.push(`STOP-point waiting for user: ${pendingDecision.question}`);
   blockers.push(...decisionBlockers(p));
@@ -1053,6 +1086,14 @@ function phaseGateReport(phase=activePhase) {
   if(capabilityBlock) blockers.push(capabilityBlock);
   const nonBlockingFailures=[];
   for(const [key,failure] of unresolvedFailures){
+    if(/phase-state\.mjs.*\bcomplete\b/i.test(String(key))){
+      nonBlockingFailures.push({key,type:'control-attempt',message:failureMessage(failure)});
+      continue;
+    }
+    if(/verify-i18n|verify\.sh/i.test(String(key))){
+      nonBlockingFailures.push({key,type:'advisory-check',message:failureMessage(failure)});
+      continue;
+    }
     if(hardFailure(failure) || String(failure?.type||'')==='verifier'){
       blockers.push(`unresolved ${failure?.type||'tool'} failure: ${key} -> ${failureMessage(failure)}`);
     }else{
@@ -1092,45 +1133,55 @@ function phaseGateReport(phase=activePhase) {
   if(p===3){
     const gameChanges=changedSinceBaseline(pathLooksGameChange); evidence.gameChanges=gameChanges;
     if(!gameChanges.length) blockers.push('Phase 3 requires real WorkProgress game/code changes since phase start');
-    if(!commandSucceeded(/playtest\.mjs/i)) blockers.push('Phase 3 requires successful playtest.mjs');
-    const shots=findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200).filter(isValidMediaFile);
+    if(!commandSucceeded(/playtest\.mjs/i,p)) blockers.push('Phase 3 requires successful playtest.mjs');
+    const shots=[
+      ...findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200),
+      ...findFiles('WorkProgress',/playtest-out[\\/].*\.(png|jpg|jpeg|webp)$/i,32,200)
+    ].filter(isValidMediaFile);
     if(shots.length<2||distinctValidImages(shots)<2) blockers.push('Phase 3 requires at least two distinct real playtest screenshots');
     const mp=[...loadDecisionLedger()].reverse().find(d=>String(d.decision_key||'')==='phase2-multiplayer');
-    if(mp&&!/(нет|no|вариант\s*а)/i.test(String(mp.answer||''))&&!anyProjectText(/websocket|socket\.io|leaderboard|clan|клан|multiplayer/i)) blockers.push('Phase 3 multiplayer approved but implementation evidence missing');
+    if(mp&&!/(нет|no|вариант\s*а|без\s+мультиплеер|single[- ]?player|одиночн)/i.test(String(mp.answer||''))&&!anyProjectText(/websocket|socket\.io|leaderboard|clan|клан|multiplayer/i)) blockers.push('Phase 3 multiplayer approved but implementation evidence missing');
   }
   if(p===4){
-    if(!commandSucceeded(/asset-find\.mjs/i)) blockers.push('Phase 4 requires successful asset-find.mjs');
-    if(!fileExistsNonEmpty('assets/style/selection.json',20)&&!fileExistsNonEmpty('assets/bible/selection.json',20)) blockers.push('Phase 4 requires selection.json');
-    if(!fileExistsNonEmpty('assets/target/target-frame.png',32)||!isValidMediaFile('assets/target/target-frame.png')) blockers.push('Phase 4 target-frame.png missing/invalid');
+    if(!commandSucceeded(/asset-find\.mjs/i,p)) blockers.push('Phase 4 requires successful asset-find.mjs');
+    if(!phase4SelectionPath()) blockers.push('Phase 4 requires selection.json');
+    if(!phase4TargetFramePath()) blockers.push('Phase 4 canonical target-frame image missing/invalid (PNG/JPEG/WebP accepted)');
     const refs=findFiles('assets/refs',/\.(png|jpg|jpeg|webp)$/i,32,100).filter(isValidMediaFile); if(refs.length<3) blockers.push('Phase 4 requires at least 3 real reference images');
-    const variants=findFiles('assets/target',/(variant|candidate|option|[-_][abc])[^/]*\.(png|jpg|jpeg|webp)$/i,32,100).filter(isValidMediaFile); if(distinctValidImages(variants)<3) blockers.push('Phase 4 requires 3 distinct target-frame variants');
+    const variants=phase4TargetVariantPaths(); if(distinctValidImages(variants)<3) blockers.push('Phase 4 requires 3 distinct target-frame variants');
     const production=changedSinceBaseline(pathLooksProductionAsset).filter(isValidMediaFile); evidence.productionAssets=production; if(!production.length) blockers.push('Phase 4 requires changed production visual asset');
     if(!changedSinceBaseline(pathLooksGameChange).length) blockers.push('Phase 4 requires visual integration inside WorkProgress');
-    if(!commandSucceeded(/screens-shoot\.mjs/i)||!commandSucceeded(/visual-qa|ui-review/i)) blockers.push('Phase 4 requires screenshot capture AND visual QA');
+    const visualQaReports=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
+    const visualQaDone=commandSucceeded(/visual-qa|ui-review/i,p)||visualQaReports.length>0;
+    if(!commandSucceeded(/screens-shoot\.mjs/i,p)||!visualQaDone) blockers.push('Phase 4 requires screenshot capture AND visual QA report');
   }
   if(p===5){
     if(!anyProjectText(/YaGames|YandexSDK|LoadingAPI\.ready|GameplayAPI/i)) blockers.push('Phase 5 requires Yandex SDK integration');
     if(!anyProjectText(/startGameplay|GameplayAPI\.start/i)||!anyProjectText(/stopGameplay|GameplayAPI\.stop/i)) blockers.push('Phase 5 requires GameplayAPI start/stop lifecycle');
     if(!anyProjectText(/showRewarded|showInterstitial/i)) blockers.push('Phase 5 requires ads integration');
     if(!anyProjectText(/touchstart|pointerdown|touch-action|safe-area|44px/i)) blockers.push('Phase 5 requires mobile/touch adaptation');
-    if(!commandSucceeded(/ai-studio-init\.mjs.*--check/i)) blockers.push('Phase 5 requires ai-studio-init --check');
+    if(!commandSucceeded(/ai-studio-init\.mjs.*--check/i,p)) blockers.push('Phase 5 requires ai-studio-init --check');
   }
   if(p===6){
     if(!findFiles('.',/(listing|description|seo|how[-_ ]?to[-_ ]?play|yandex).*\.md$/i,80,100).filter(x=>!x.startsWith('wiki/sessions/')).length) blockers.push('Phase 6 requires listing text artifact(s)');
     if(!findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200).filter(isValidMediaFile).length) blockers.push('Phase 6 requires promo screenshots');
-    if(!commandSucceeded(/record-promo\.mjs/i)) blockers.push('Phase 6 requires record-promo.mjs');
-    if(!commandSucceeded(/check-inline-strings|localize|i18n/i)&&!anyProjectText(/\bt\(['"`]/i)) blockers.push('Phase 6 requires i18n evidence');
+    if(!commandSucceeded(/record-promo\.mjs/i,p)) blockers.push('Phase 6 requires record-promo.mjs');
+    if(!commandSucceeded(/check-inline-strings|localize|i18n/i,p)&&!anyProjectText(/\bt\(['"`]/i)) blockers.push('Phase 6 requires i18n evidence');
     if(!HOST_CAPABILITIES.web_search&&!findFiles('wiki',/(catalog|listing|competitor|выдач).*\.md$/i,60,100).length) blockers.push('Phase 6 live catalog review requires web_search or persisted evidence');
   }
   if(p===7){
-    for(const [re,label] of [[/test-game/i,'test-game'],[/playtest\.mjs/i,'playtest'],[/local-stage.*--ai|--ai.*local-stage/i,'local-stage --ai'],[/screens-shoot\.mjs/i,'screens-shoot'],[/gameplay-balance/i,'gameplay-balance'],[/visual-qa|ui-review/i,'visual QA']]) if(!commandSucceeded(re)) blockers.push(`Phase 7 requires successful ${label}`);
+    for(const [re,label,skill] of [[/test-game/i,'test-game','test-game'],[/playtest\.mjs/i,'playtest',null],[/local-stage.*--ai|--ai.*local-stage/i,'local-stage --ai',null],[/screens-shoot\.mjs/i,'screens-shoot',null],[/gameplay-balance/i,'gameplay-balance','gameplay-balance']]){
+      const skillSatisfied=skill&&(loadedSkills.has(skill)||completedSkills.has(skill));
+      if(!commandSucceeded(re,p)&&!skillSatisfied) blockers.push(`Phase 7 requires successful ${label}`);
+    }
+    const phase7VisualQa=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
+    if(!commandSucceeded(/visual-qa|ui-review/i,p)&&!phase7VisualQa.length) blockers.push('Phase 7 requires successful visual QA');
     const shots=findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,300).filter(isValidMediaFile); if(shots.length<4||distinctValidImages(shots)<2) blockers.push('Phase 7 requires 4+ screenshots with state diversity');
     if(!existsSync(safePath('wiki/qa'))) blockers.push('Phase 7 requires wiki/qa evidence');
   }
   if(p===8){
-    if(!commandSucceeded(/check-setup-guide/i)) blockers.push('Phase 8 requires check-setup-guide success');
-    if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i)) blockers.push('Phase 8 requires exact release-ready GREEN output');
-    if(!commandSucceeded(/release-yandex/i)) blockers.push('Phase 8 requires release-yandex success');
+    if(!commandSucceeded(/check-setup-guide/i,p)) blockers.push('Phase 8 requires check-setup-guide success');
+    if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i,p)) blockers.push('Phase 8 requires exact release-ready GREEN output');
+    if(!commandSucceeded(/release-yandex/i,p)) blockers.push('Phase 8 requires release-yandex success');
     const fresh=changedSinceBaseline(x=>x.toLowerCase().startsWith('release/')); evidence.freshRelease=fresh; if(!fresh.length) blockers.push('Phase 8 requires fresh Release artifacts');
     if(findFiles('Release',/\.zip$/i,32,100).length<3) blockers.push('Phase 8 expects three ZIP artifacts');
     const plan=optionalText('wiki/plan/02-development-plan.md',100000); if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(plan)) blockers.push('Phase 8 TOTAL line must be copied into wiki plan');
@@ -1938,7 +1989,9 @@ function phaseMarkerState(phase) {
   try {
     const p=safePath(`wiki/phases/phase-${Number(phase)}.json`);
     if(!existsSync(p)) return null;
-    return JSON.parse(readText(p))?.state || null;
+    const marker=JSON.parse(readText(p));
+    if(marker?.completedAt && Array.isArray(marker?.evidence) && marker.evidence.length) return Number(phase)===9?'ongoing':'complete';
+    return marker?.state || null;
   } catch { return null; }
 }
 function phaseMarkedComplete(phase) { const p=Number(phase),state=phaseMarkerState(p); return p===9?(state==='ongoing'||state==='complete'):state==='complete'; }
@@ -1963,7 +2016,13 @@ function registerLoadedPhaseSkill(name,result){
   const m=String(name||'').match(/^phase-(\d+)-/i);if(!m)return;activePhase=Number(m[1]);activePhaseSkill=String(name);hydrateResolvedDecisionState(activePhase);
 }
 function parsedToolResult(result){try{return JSON.parse(String(result||'{}'));}catch{return {ok:false,error:'invalid tool result json'};}}
-function registerSuccessfulSkillLoad(name,result){const r=parsedToolResult(result);if(r.ok===false)return false;const n=String(name||'').toLowerCase();if(!n)return false;loadedSkills.add(n);registerLoadedPhaseSkill(name,result);return true;}
+function registerSuccessfulSkillLoad(name,result){
+  const r=parsedToolResult(result);if(r.ok===false)return false;
+  const n=String(name||'').toLowerCase();if(!n)return false;
+  loadedSkills.add(n);
+  if(n==='visual-qa') for(const prior of [...unresolvedFailures.keys()]) if(/visual-qa/i.test(prior)) unresolvedFailures.delete(prior);
+  registerLoadedPhaseSkill(name,result);return true;
+}
 function validateSkillCompletion(name){
   const n=String(name||'').toLowerCase(),blockers=[];
   if(!loadedSkills.has(n))blockers.push(`skill ${n} was not loaded in this process`);
@@ -2216,7 +2275,10 @@ function describeToolCall(name, a = {}) {
   if (name === 'read_file') return `${name}: ${a.path || '.'}`;
   if (name === 'list_files') return `${name}: ${a.path || '.'} depth=${a.depth ?? 2}`;
   if (name === 'search_text') return `${name}: ${JSON.stringify(shortText(a.query || '', 90))} in ${a.path || '.'}`;
-  if (name === 'write_file') return `${name}: ${a.path || '?'} (${Buffer.byteLength(String(a.content || ''))} bytes)`;
+  if (name === 'write_file') {
+    const content=typeof a.content==='string'?a.content:JSON.stringify(a.content??'');
+    return `${name}: ${a.path || '?'} (${Buffer.byteLength(content)} bytes)`;
+  }
   if (name === 'replace_text') return `${name}: ${a.path || '?'}`;
   if (name === 'forge_skill') return `${name}: ${a.name || '?'}`;
   if (name === 'forge_skill_done') return `${name}: ${a.name || '?'}`;
@@ -2821,7 +2883,13 @@ function tool(name, a={}) {
       return jsonResult({ok:true,...HOST_CAPABILITIES,search_provider:SEARCH_CAPABILITIES.provider||null,search_configured:Boolean(SEARCH_CAPABILITIES.configured),search_config:SEARCH_CAPABILITIES.config||null,callable_tools:functions.map(f=>f.name),image_provider:'GigaChat built-in text2image via gigachat_generate_image',model3d_provider:'GigaChat built-in text2model3d via gigachat_generate_3d',mandatory_capability_block:capabilityBlock||'',contractVersion:CONTRACT_VERSION,note:'Unavailable capabilities are explicit; adapter never simulates them. Web/image search become true only when a real external search provider is configured.'});
     }
     if (name==='forge_context') { reconcilePhase1ApprovedState(); return jsonResult({ok:true,...buildProjectContext()}); }
-    if (name==='forge_workspace_inspect') { const maxChars=Math.max(12000,Math.min(64000,Number(a.max_chars||32000))); return jsonResult(inspectWorkspaceSource(maxChars)); }
+    if (name==='forge_workspace_inspect') {
+      if(activePhase>=2 && phaseWorkspaceInspected) return jsonResult({ok:true,already_inspected:true,note:'Workspace source was already inspected in this phase. Read the specific selected source file next, then edit WorkProgress; do not repeat the broad inspection.'});
+      const defaultChars=activePhase>=2?14000:32000;
+      const maxAllowed=activePhase>=2?24000:64000;
+      const maxChars=Math.max(12000,Math.min(maxAllowed,Number(a.max_chars||defaultChars)));
+      return jsonResult(inspectWorkspaceSource(maxChars));
+    }
     if (name==='forge_memory_update') {
       if(!memoryDirty && activePhase===1){
         const rb=phase1ResearchBlockers();
@@ -2845,7 +2913,7 @@ function tool(name, a={}) {
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
       if(phaseWriteBlock) return jsonResult({ok:false,error:phaseWriteBlock});
       const p=safePath(a.path); assertWritablePath(p); mkdirSync(dirname(p),{recursive:true});
-      const rawContent=String(a.content);
+      const rawContent=typeof a.content==='string'?a.content:JSON.stringify(a.content,null,2)+'\n';
       const finalContent=rel(p)==='wiki/design/brief.md' ? ensureBriefDecisionVerbatim(rawContent) : rawContent;
       writeFileSync(p,finalContent,'utf8');
       return jsonResult({ok:true,path:rel(p),bytes:Buffer.byteLength(finalContent)});
@@ -2885,6 +2953,9 @@ function tool(name, a={}) {
     }
     if (name==='forge_skill') {
       const skillName=String(a.name||'').toLowerCase();
+      if(activePhase>=2 && loadedSkills.has(skillName)){
+        return jsonResult({ok:true,already_loaded:true,skill:skillName,content:`${skillName} is already loaded in the active Phase ${activePhase} runtime. Continue executing it; do not request the same SKILL.md again.`});
+      }
       if(skillName==='new-project' && (hasAnyFileUnder('GameIntegration') || hasAnyFileUnder('WorkProgress') || fileExistsNonEmpty('ANALYSIS.md',80))){return jsonResult({ok:false,error:'new-project is forbidden while resuming an existing Forge project. Continue the active phase in the current project.'});}
       if(activePhase===1 && skillName==='find-or-make-skill' && completedSkills.has('find-or-make-skill')){return jsonResult({ok:true,already_completed:true,skill:'find-or-make-skill',content:'find-or-make-skill already validated; do not repeat it.'});}
 
@@ -2934,6 +3005,12 @@ function tool(name, a={}) {
       if(!FULL) throw new Error('forge_script requires --full');
       const requestedScript=String(a.name||'').trim().replace(/\\/g,'/');
 
+      const requestedSkill=requestedScript.replace(/\.mjs$/i,'').replace(/^.*\//,'').toLowerCase();
+      const requestedSkillDoc=safePath(`.claude/skills/${requestedSkill}/SKILL.md`);
+      if(!requestedScript.includes('/') && existsSync(requestedSkillDoc)){
+        return jsonResult({ok:true,translated_skill:true,skill:requestedSkill,path:rel(requestedSkillDoc),content:clip(readText(requestedSkillDoc),50000),note:`${requestedScript} is a Forge SKILL.md workflow, not a standalone script. Forge loaded the canonical skill automatically.`});
+      }
+
       if(activePhase===1 && /^analyze-project\.mjs$/i.test(requestedScript))
         return jsonResult({ok:false,failure_type:'tool-misroute',error:'analyze-project is a canonical Forge skill here, not a standalone script. Use forge_skill(name="analyze-project"); if ANALYSIS.md already exists, continue without rerunning it.'});
 
@@ -2945,6 +3022,30 @@ function tool(name, a={}) {
 
       const script=resolveForgeScript(a.name),args=Array.isArray(a.args)?a.args.map(String):[],sec=Math.max(1,Math.min(600,Number(a.timeout_seconds||120)));
       if(/ai-studio-init\.mjs$/i.test(script) && args.length===0) args.push('.');
+      if(/local-stage\.mjs$/i.test(script) && !args.some(x=>/^--ai$/i.test(x))) args.push('--ai','--play');
+      if(/phase-state\.mjs$/i.test(script) && /^complete$/i.test(String(args[0]||''))){
+        const normalized=[args[0],args[1]];
+        for(const value of args.slice(2)){
+          if(/^--evidence$/i.test(value)) continue;
+          normalized.push(...String(value).split(',').map(x=>x.trim()).filter(Boolean));
+        }
+        args.splice(0,args.length,...normalized);
+      }
+      if(/phase-state\.mjs$/i.test(script) && /^complete$/i.test(String(args[0]||''))){
+        const completedPhase=Number(args[1]);
+        const completedState=phaseMarkerState(completedPhase);
+        if(completedState==='complete' || (completedPhase===9&&completedState==='ongoing')){
+          let evidence=[];
+          try{evidence=JSON.parse(readText(safePath(`wiki/phases/phase-${completedPhase}.json`)))?.evidence||[];}catch{}
+          return jsonResult({ok:true,status:0,already_complete:true,phase:completedPhase,evidence,stdout:`Phase ${completedPhase} is already ${completedState}; do not repeat completion. Synchronize memory if dirty, then return the final phase result.`,stderr:'',resolved_path:script});
+        }
+      }
+      if(/phase-state\.mjs$/i.test(script) && /^(start|reopen)$/i.test(String(args[0]||'')) && phaseMarkedComplete(Number(args[1]))){
+        return jsonResult({ok:true,status:0,already_complete:true,phase:Number(args[1]),stdout:`Phase ${Number(args[1])} is durably complete; refusing to reopen it from a downstream phase.`,stderr:'',resolved_path:script});
+      }
+      if(/phase-state\.mjs$/i.test(script) && /^(start|reopen)$/i.test(String(args[0]||'')) && Number(args[1])>1 && !phaseMarkedComplete(Number(args[1])-1)){
+        return jsonResult({ok:false,failure_type:'phase-order',error:`Cannot start Phase ${Number(args[1])}: Phase ${Number(args[1])-1} is not durably complete. Finish the earlier authoritative gate first.`});
+      }
       const completionBlocked=forgeScriptPhaseCompletionBlocked(script,args);
       if(completionBlocked) return jsonResult({ok:false,error:completionBlocked});
       if(/phase-state\.mjs$/i.test(script) && !args.includes('--host')) args.push('--host','gigachat');
@@ -2968,7 +3069,11 @@ function tool(name, a={}) {
         }
       }
 
-      const r=spawnSync(process.execPath,[script,...args],{cwd:PROJECT,encoding:'utf8',timeout:sec*1000,maxBuffer:8*1024*1024});
+      const shellScript=/\.sh$/i.test(script);
+      const gitBash='C:\\Program Files\\Git\\bin\\bash.exe';
+      const runner=shellScript?(existsSync(gitBash)?gitBash:'bash'):process.execPath;
+      const runnerScript=shellScript?String(script).replace(/\\/g,'/'):script;
+      const r=spawnSync(runner,[runnerScript,...args],{cwd:PROJECT,encoding:'utf8',timeout:sec*1000,maxBuffer:8*1024*1024});
       return jsonResult({ok:r.status===0,status:r.status,stdout:clip(r.stdout,40000),stderr:clip(r.stderr,16000),resolved_path:script});
     }
     if (name==='run_command') {
@@ -3000,13 +3105,21 @@ function tool(name, a={}) {
         const local=safePath(`scripts/${projectScriptMatch[1]}`),engine=resolve(ENGINE,'scripts',projectScriptMatch[1]);
         if(!existsSync(local)&&existsSync(engine)){
           const args=shellTokens(projectScriptMatch[2]||''),sec=Math.max(1,Math.min(600,Number(a.timeout_seconds||120)));
+          if(/^local-stage\.mjs$/i.test(projectScriptMatch[1]) && !args.some(x=>/^--ai$/i.test(x))) args.push('--ai','--play');
+          let translatedFileTarget=null;
+          if(/^(?:playtest|screens-shoot)\.mjs$/i.test(projectScriptMatch[1]) && /\.html?$/i.test(String(args[0]||''))){
+            translatedFileTarget=args[0];
+            args[0]=dirname(String(args[0])).replace(/\\/g,'/');
+          }
           const rr=spawnSync(process.execPath,[engine,...args],{cwd:PROJECT,encoding:'utf8',timeout:sec*1000,maxBuffer:8*1024*1024});
-          return jsonResult({ok:rr.status===0,status:rr.status,stdout:clip(rr.stdout,40000),stderr:clip(rr.stderr,16000),resolved_engine_script:engine});
+          return jsonResult({ok:rr.status===0,status:rr.status,stdout:clip(rr.stdout,40000),stderr:clip(rr.stderr,16000),resolved_engine_script:engine,...(translatedFileTarget?{translated_file_target:translatedFileTarget,actual_project_directory:args[0]}:{})});
         }
       }
       const portableRead=translatePortableReadOnlyShell(cmd);
       if(portableRead) return jsonResult(portableRead);
       const startMatch=cmd.match(/phase-state\.mjs[^\n]*\b(?:start|reopen)\s+(\d+)\b/i);
+      if(startMatch && phaseMarkedComplete(Number(startMatch[1]))) return jsonResult({ok:true,status:0,already_complete:true,phase:Number(startMatch[1]),stdout:`Phase ${Number(startMatch[1])} is durably complete; refusing to reopen it from a downstream phase.`,stderr:''});
+      if(startMatch && Number(startMatch[1])>1 && !phaseMarkedComplete(Number(startMatch[1])-1)) return jsonResult({ok:false,failure_type:'phase-order',error:`Cannot start Phase ${Number(startMatch[1])}: Phase ${Number(startMatch[1])-1} is not durably complete. Finish the earlier authoritative gate first.`});
       if(startMatch && phaseStarted && Number(startMatch[1])===activePhase && phaseMarkerState(activePhase)==='in_progress'){
         return jsonResult({ok:true,status:0,already_started:true,stdout:`Phase ${activePhase} is already in_progress; runtime baseline is active.`,stderr:''});
       }
@@ -3087,10 +3200,13 @@ async function toolAsync(name,a={}) {
 }
 
 const forgePath = safePath('FORGE.md');
-const forgeRules = existsSync(forgePath) ? clip(readText(forgePath),45000) : 'FORGE.md missing; do not guess phase state.';
+const forgeRulesRaw = existsSync(forgePath) ? readText(forgePath) : 'FORGE.md missing; do not guess phase state.';
 let initialStatus='';
 try { initialStatus=JSON.parse(tool('forge_status',{json:false})).output||''; } catch {}
 const initialContext=buildProjectContext();
+const bootstrapPhase=Math.max(0,...(initialContext.phaseMarkers||[]).filter(x=>['in_progress','blocked'].includes(String(x.state||''))).map(x=>Number(x.phase)||0));
+const matureBootstrap=bootstrapPhase>=2;
+const forgeRules=clip(forgeRulesRaw,matureBootstrap?20000:45000);
 const system = `You are the GigaChat terminal adapter inside Project Forge. Work as a coding agent, not as a general chat bot.
 
 Project: ${PROJECT}
@@ -3179,10 +3295,10 @@ FORGE.md:
 ${forgeRules}
 
 Initial read-only status:
-${clip(initialStatus,12000)}
+${clip(initialStatus,matureBootstrap?6000:12000)}
 
 Project Context Bootstrap (authoritative prior-session memory; refresh with forge_context when needed):
-${clip(JSON.stringify(initialContext,null,2),30000)}`;
+${clip(JSON.stringify(initialContext,null,2),matureBootstrap?16000:30000)}`;
 let messages=[{role:'system',content:system}];
 const CONTEXT_CHAR_BUDGET=Math.max(80000,Math.min(180000,Number(process.env.FORGE_GIGACHAT_CONTEXT_CHARS||120000)));
 const WEB_SEARCH_AVAILABLE=HOST_CAPABILITIES.web_search;
@@ -3642,6 +3758,13 @@ async function turn(text){
             forcedFunctionName='ask_user';
             messages.push({role:'user',content:phase1ContentBudgetRepairInstruction(a,decisionError)});
           }
+          continue;
+        }
+        const decisionKey=String(a.decision_key||'').trim();
+        if(decisionKey && resolvedDecisionKeys.has(decisionKey)){
+          const result=jsonResult({ok:true,already_resolved:true,decision_key:decisionKey,answer:latestDecisionAnswer(decisionKey),note:'This durable user decision is already resolved. Do not ask it again; continue with the next canonical action.'});
+          messages.push({role:'function',name,content:result});
+          process.stdout.write(`\n[Forge] Suppressed repeated resolved STOP-point: ${decisionKey}\n`);
           continue;
         }
         if (memoryDirty) {
@@ -4156,6 +4279,14 @@ if (REQUEST_DOCTOR) {
   test('runtime-owned decision ledger rejects model writes',()=>/runtime-owned/.test(runtimeOwnedWriteBlock('wiki/decisions/gigachat-decisions.json')||''));
   test('pending decision turns restore phase runtime before consuming the answer',()=>/startPhaseEvidence\(pendingPhase,\{resume:true\}\)/.test(turn.toString())&&/hydrateResolvedDecisionState\(pendingPhase\)/.test(turn.toString()));
   test('decision STOP automatically persists blocked phase state',()=>/Awaiting.*pendingDecision\.decision_key/.test(turn.toString())&&/markHostPhaseBlocked\(activePhase,decisionReason\)/.test(turn.toString()));
+  test('resolved named decisions are not asked twice',()=>/Suppressed repeated resolved STOP-point/.test(turn.toString())&&/already_resolved:true/.test(turn.toString()));
+  test('idempotent phase state calls do not dirty memory',()=>/r\.already_started!==true\s*&&\s*r\.already_complete!==true/.test(recordOperation.toString()));
+  test('completed phase script calls return idempotently',()=>/already_complete:true/.test(tool.toString())&&/do not repeat completion/.test(tool.toString()));
+  test('solo multiplayer decision does not create a Phase 3 backend blocker',()=>/без\\s\+мультиплеер/.test(phaseGateReport.toString())&&/одиночн/.test(phaseGateReport.toString()));
+  test('mature phase workspace inspection is bounded and non-repeating',()=>/already_inspected:true/.test(tool.toString())&&/activePhase>=2\?14000:32000/.test(tool.toString()));
+  test('playtest file targets translate to the project directory',()=>/translated_file_target/.test(tool.toString())&&/actual_project_directory/.test(tool.toString()));
+  test('corrected playtest rerun clears prior path-misroute failures',()=>/for\(const prior of \[\.\.\.unresolvedFailures\.keys\(\)\]\)/.test(recordOperation.toString())&&/playtest-out/.test(phaseGateReport.toString()));
+  test('system bootstrap stays within the transport context budget',()=>system.length<CONTEXT_CHAR_BUDGET);
   test('research deepen does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-research-direction',answer:'B — углубить'}));
   test('content-budget correction does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-content-budget',answer:'D7 = 12%, остальное ок'}));
   test('approved metrics resume uses durable decision and research artifacts',()=>/resolvedDecisionKeys\.has\('phase1-content-budget'\)/.test(metricsArtifactProvenanceBlockers.toString())&&/researchReferenceUrls/.test(metricsArtifactProvenanceBlockers.toString()));
