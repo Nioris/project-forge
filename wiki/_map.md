@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.18 (latest released)
+### Version: v4.68.19 (latest released)
 
+- 2026-08-18: **v4.68.19** — clean one-window Codex startup: run-local disabling of unreachable loopback HTTP MCPs, preserved global config, terminal stdin inheritance, and selective MCP regression coverage.
 - 2026-08-18: **v4.68.18** — per-phase Codex cost/context reporting from exec JSON plus local rollout telemetry, privacy-bounded local persistence, model/context/tool/stopping warnings, and Dashboard comparison cards.
 - 2026-08-18: **v4.68.17** — one-window Codex lifecycle: STOP answers resume the current phase, complete phases switch to clean internal sessions in the same terminal, premature stops auto-resume, and Windows CLI resolution is reliable.
 - 2026-08-18: **v4.68.16** — Quality-Sol Codex routing on Standard with bounded per-phase context, automatic local Git checkpoints, secret/public-remote guards and opt-in private GitHub creation/push for every future game/app.

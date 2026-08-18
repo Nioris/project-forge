@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   classifyAfterTurn, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
-  resolveCodexLauncher, resumeExecArgs, runPipeline,
+  resolveCodexLauncher, resumeExecArgs, runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
 import {
   auditRolloutFile, buildPhaseCostReport, createExecTelemetry, formatPhaseCostReport,
@@ -31,6 +31,11 @@ const resumed = resumeExecArgs(policy, 1, 'thread-123', 'утверждаю');
 check(resumed.args[0] === 'exec' && resumed.args[1] === 'resume' && resumed.args.includes('thread-123'),
   'STOP answer resumes the current phase session');
 check(!second.args.includes('thread-123'), 'next phase launch does not inherit the previous session id');
+const mcpFirst = firstExecArgs(policy, 4, 'F:\\fixture', null, ['mcp_servers.unityMCP.enabled=false']);
+const mcpResume = resumeExecArgs(policy, 4, 'thread-456', 'continue', null, ['mcp_servers.unityMCP.enabled=false']);
+check(mcpFirst.args.includes('mcp_servers.unityMCP.enabled=false')
+  && mcpResume.args.includes('mcp_servers.unityMCP.enabled=false'),
+  'phase start and STOP resume preserve run-local MCP overrides');
 
 const thread = parseExecEvent(JSON.stringify({ type: 'thread.started', thread_id: 'abc' }));
 const message = parseExecEvent(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'Готово' } }));
@@ -100,7 +105,15 @@ try {
   fs.writeFileSync(fake, `
 import fs from 'node:fs'; import path from 'node:path';
 const args=process.argv.slice(2); const ci=args.indexOf('-C'); const root=ci>=0?args[ci+1]:process.cwd();
+if(args[0]==='mcp'&&args[1]==='list'){
+  console.log(JSON.stringify([
+    {name:'unityMCP',enabled:true,transport:{type:'streamable_http',url:'http://127.0.0.1:65534/mcp'}},
+    {name:'remoteMCP',enabled:true,transport:{type:'streamable_http',url:'https://example.invalid/mcp'}},
+    {name:'stdioMCP',enabled:true,transport:{type:'stdio',command:'fixture'}}
+  ])); process.exit(0);
+}
 const prompt=args.at(-1)||''; const m=prompt.match(/\\$phase-(\\d+)-/); const phase=Number(m?.[1]||1); const resumed=args[0]==='exec'&&args[1]==='resume';
+if(args.includes('mcp_servers.unityMCP.enabled=false')) fs.writeFileSync(path.join(root,'mcp-override-ok'),'yes');
 fs.mkdirSync(path.join(root,'wiki','phases'),{recursive:true});
 const state=phase===1&&!resumed?'blocked':'complete';
 fs.writeFileSync(path.join(root,'wiki','phases','phase-'+phase+'.json'),JSON.stringify({phase,state,reason:state==='blocked'?'Approve fixture':null})+'\\n');
@@ -108,6 +121,13 @@ console.log(JSON.stringify({type:'thread.started',thread_id:'fresh-phase-'+phase
 console.log(JSON.stringify({type:'item.completed',item:{type:'agent_message',text:state==='blocked'?'Утверждаете fixture?':'Phase '+phase+' complete'}}));
 console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_tokens:2}}));
 `);
+  const disabledMcp = await unavailableLocalMcpOverrides(
+    { command: process.execPath, prefixArgs: [fake] }, tmp,
+    { probe: async (endpoint) => endpoint.port !== 65534 },
+  );
+  check(disabledMcp.length === 1 && disabledMcp[0].name === 'unityMCP'
+    && disabledMcp[0].override === 'mcp_servers.unityMCP.enabled=false',
+    'preflight disables only an unreachable loopback HTTP MCP and leaves remote/stdio servers alone');
   const answers = [];
   const integrated = await runPipeline({
     projectRoot: tmp, fromPhase: 1, autoAdvance: true,
@@ -120,6 +140,8 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
   });
   check(integrated === 0 && allComplete && answers.length === 1,
     'full loop resumes one STOP inside Phase 1, then launches clean sessions through Phase 9');
+  check(fs.existsSync(path.join(tmp, 'mcp-override-ok')),
+    'full pipeline applies the unavailable local MCP override to real phase launches');
   check(Array.from({ length: 9 }, (_, i) => i + 1).every(phase =>
     fs.existsSync(path.join(tmp, 'wiki', 'diagnostics', 'codex-cost', `phase-${phase}-latest.json`))),
     'one-window pipeline saves a local cost/context report after every completed phase');

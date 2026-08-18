@@ -1,4 +1,4 @@
-# Project Forge v4.68.18 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.19 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.19 changelog (clean Codex launch with optional local MCPs)
+
+The one-window launcher now preflights enabled loopback HTTP MCP endpoints inherited from the user's Codex config. If a local endpoint is unreachable, Forge applies `mcp_servers.<name>.enabled=false` only to child phase/resume commands and prints the decision; it never edits global configuration. This prevents an optional stopped service such as Unity MCP from flooding or aborting an unrelated HTML5 phase. Remote and stdio MCPs are left untouched, reachable loopback endpoints stay enabled, and `--keep-local-mcp` provides an explicit escape hatch.
+
+Child `codex exec` now inherits terminal stdin instead of receiving a closed pipe. A prompt supplied as an argument is therefore no longer accompanied by the misleading `Reading additional input from stdin...` path in an interactive PowerShell launch. Regression fixtures verify start/resume override propagation, selective loopback detection, and the full Phase 1–9 lifecycle.
+
 ## v4.68.18 changelog (cost/context-aware Codex orchestration)
 
 The one-window Codex parent now produces a local per-phase cost/context report without adding anything to model context. The exec JSON stream supplies a bounded fallback; local rollout aggregation enriches it with model-response count, cumulative input/cached/output usage, compactions, subagent tree, exact tool-output payload size, and actual root model/reasoning policy. Reports deliberately omit prompts, messages, file contents, rate-limit state, and secrets, and remain local through repository excludes.
@@ -474,9 +480,3 @@ Terminal summaries explain cache reuse rather than calling output/input a univer
 Codex development no longer requires closing and reopening a terminal after every phase. `codex-pipeline.mjs` holds one terminal UI while using `codex exec` sessions internally: answers to a real STOP resume the current phase session, but `phase-state complete` discards that session and starts the next phase with clean context after a simple yes/no prompt. `--auto` removes only the between-phase prompt, not real decision gates.
 
 The orchestrator also repairs premature `in_progress` endings with bounded automatic resumes and resolves the installed Windows Codex JS entrypoint directly, avoiding child-process failures from npm `.cmd` wrappers and protected WindowsApps executables.
-
-## v4.68.16 changelog (Quality Sol + private project Git)
-
-Every Codex phase and generated custom agent now stays on GPT-5.6 Sol/Standard. Reasoning effort remains high for creative and technical work, medium for deterministic listing/release/live work, and reaches xhigh only through named hard-problem routes. Fresh phase tasks, bounded output and a one-high-detail-image rule address the real context amplification that consumed the weekly model budget.
-
-Every new project gets its own local `main` repository. Completing a phase creates a durable checkpoint commit. An explicit workspace policy can create and push each future game/app to a private GitHub repository; Forge refuses public remotes and staged secrets, preserves local commits when the network fails, and never mass-onboards existing projects without an explicit command.

@@ -4571,6 +4571,12 @@ The canonical three-ZIP Yandex builder now works from Windows and accepts an ext
 
 ZIP CDN inspection and variant runtime testing no longer depend on Unix `/tmp`, `unzip`, `cp` or `rm`. Runtime testing extracts the requested archive before Yandex delegation and cleans its temporary directory. Pre-submit path resolution now connects `WorkProgress/<game>-yandex` with `Release/<game>/yandex`, allowing the real localized listings to participate in the gate.
 
+## v4.68.16 changelog (Quality Sol + private project Git)
+
+Every Codex phase and generated custom agent now stays on GPT-5.6 Sol/Standard. Reasoning effort remains high for creative and technical work, medium for deterministic listing/release/live work, and reaches xhigh only through named hard-problem routes. Fresh phase tasks, bounded output and a one-high-detail-image rule address the real context amplification that consumed the weekly model budget.
+
+Every new project gets its own local `main` repository. Completing a phase creates a durable checkpoint commit. An explicit workspace policy can create and push each future game/app to a private GitHub repository; Forge refuses public remotes and staged secrets, preserves local commits when the network fails, and never mass-onboards existing projects without an explicit command.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

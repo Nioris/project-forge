@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.18`
+**Current public version:** `v4.68.19`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -137,6 +137,8 @@ The terminal remains open for the entire project. Within a phase, Forge resumes 
 
 After every completed phase, the parent orchestrator prints and stores a privacy-bounded cost/context report under `wiki/diagnostics/codex-cost/phase-N-latest.json`. When the local Codex rollout is available, it measures model responses, input/cache/output tokens, compactions, subagents, tool-output volume, actual model policy, and unexpected stops. Reports never store prompts, messages, file contents, rate-limit state, or secrets. Open one or more reports in the Dashboard's **Codex Cost / Context** panel to compare phases.
 
+Before the first phase, the launcher checks enabled loopback HTTP MCP endpoints inherited from the user Codex config. An unavailable local endpoint is disabled only for that pipeline run, preventing optional tools such as a stopped Unity MCP from breaking unrelated web-game work; the global config is not modified. Use `--keep-local-mcp` only when an endpoint is expected to become available after launch. Child Codex stdin remains attached to the terminal, so a supplied phase prompt is not misdetected as piped input.
+
 For manual single-phase control, `codex-phase.mjs <1..9>` remains available. See `.claude/skills/status/references/MODEL-ROUTING.md` for the complete table and `--route` options.
 
 Examples:
@@ -151,7 +153,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.18` keeps separate normal-account and API profiles.
+`v4.68.19` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -309,7 +311,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.18.md](RELEASE_NOTES_v4.68.18.md) — current release notes
+- [RELEASE_NOTES_v4.68.19.md](RELEASE_NOTES_v4.68.19.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

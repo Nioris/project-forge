@@ -5,6 +5,7 @@
  * The parent terminal stays open and offers the next phase after a durable complete marker.
  */
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -38,6 +39,10 @@ function option(args, name) {
 
 function boolOption(args, name) { return args.includes(`--${name}`); }
 
+function configOverrideArgs(overrides = []) {
+  return overrides.flatMap(value => ['-c', value]);
+}
+
 export function loadPolicy() {
   return JSON.parse(fs.readFileSync(POLICY_PATH, 'utf8'));
 }
@@ -63,7 +68,7 @@ export function phaseSelection(policy, phase, routeId = null) {
   return { phasePolicy, selected: route || phasePolicy.base, routeId: routeId || 'base' };
 }
 
-export function firstExecArgs(policy, phase, projectRoot, routeId = null) {
+export function firstExecArgs(policy, phase, projectRoot, routeId = null, configOverrides = []) {
   const { phasePolicy, selected, routeId: selectedRoute } = phaseSelection(policy, phase, routeId);
   const prompt = `$${phasePolicy.skill}${phase === 1 ? ' .' : ''}\n\n` +
     'Работай автономно до настоящего Forge STOP-point или полного завершения фазы. ' +
@@ -77,12 +82,13 @@ export function firstExecArgs(policy, phase, projectRoot, routeId = null) {
       '-m', selected.model,
       '-c', `model_reasoning_effort=${JSON.stringify(selected.reasoning)}`,
       '-c', `service_tier=${JSON.stringify(policy.serviceTier)}`,
+      ...configOverrideArgs(configOverrides),
       prompt,
     ],
   };
 }
 
-export function resumeExecArgs(policy, phase, sessionId, prompt, routeId = null) {
+export function resumeExecArgs(policy, phase, sessionId, prompt, routeId = null, configOverrides = []) {
   const { phasePolicy, selected, routeId: selectedRoute } = phaseSelection(policy, phase, routeId);
   return {
     selected,
@@ -93,6 +99,7 @@ export function resumeExecArgs(policy, phase, sessionId, prompt, routeId = null)
       '-m', selected.model,
       '-c', `model_reasoning_effort=${JSON.stringify(selected.reasoning)}`,
       '-c', `service_tier=${JSON.stringify(policy.serviceTier)}`,
+      ...configOverrideArgs(configOverrides),
       sessionId, prompt,
     ],
   };
@@ -159,6 +166,61 @@ export function resolveCodexLauncher(explicit = process.env.CODEX_CLI_PATH || nu
   return { command: 'codex', prefixArgs: [] };
 }
 
+function localEndpoint(urlValue) {
+  try {
+    const url = new URL(urlValue);
+    if (!['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname)) return null;
+    const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+    return Number.isInteger(port) && port > 0 && port <= 65535 ? { host: url.hostname.replace(/^\[|\]$/g, ''), port } : null;
+  } catch { return null; }
+}
+
+function canConnect({ host, port }, timeoutMs = 350) {
+  return new Promise(resolve => {
+    const socket = net.createConnection({ host, port });
+    let settled = false;
+    const finish = value => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+    socket.setTimeout(timeoutMs, () => finish(false));
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
+  });
+}
+
+function mcpOverrideKey(name) {
+  return /^[A-Za-z0-9_-]+$/.test(name)
+    ? `mcp_servers.${name}.enabled=false`
+    : `mcp_servers.${JSON.stringify(name)}.enabled=false`;
+}
+
+export async function unavailableLocalMcpOverrides(launcher, cwd, { probe = null } = {}) {
+  const result = spawnSync(launcher.command, [...(launcher.prefixArgs || []), 'mcp', 'list', '--json'], {
+    cwd, encoding: 'utf8', shell: false, windowsHide: true,
+  });
+  if (result.status !== 0) return [];
+  let servers;
+  try { servers = JSON.parse(result.stdout); } catch { return []; }
+  const check = probe || (endpoint => canConnect(endpoint));
+  const disabled = [];
+  for (const server of Array.isArray(servers) ? servers : []) {
+    if (!server?.enabled || !server?.name) continue;
+    const transport = server.transport || {};
+    if (!/^(?:streamable_http|sse)$/i.test(String(transport.type || ''))) continue;
+    const endpoint = localEndpoint(transport.url);
+    if (!endpoint || await check(endpoint, server)) continue;
+    disabled.push({
+      name: String(server.name),
+      endpoint: `${endpoint.host}:${endpoint.port}`,
+      override: mcpOverrideKey(String(server.name)),
+    });
+  }
+  return disabled;
+}
+
 function usageSummary(usage) {
   if (!usage || typeof usage !== 'object') return '';
   const input = usage.input_tokens ?? usage.inputTokens;
@@ -170,7 +232,7 @@ function usageSummary(usage) {
 export async function runCodexTurn(launcher, args, cwd, env) {
   return await new Promise(resolve => {
     const child = spawn(launcher.command, [...(launcher.prefixArgs || []), ...args], {
-      cwd, env, shell: false, windowsHide: false, stdio: ['ignore', 'pipe', 'pipe'],
+      cwd, env, shell: false, windowsHide: false, stdio: ['inherit', 'pipe', 'pipe'],
     });
     let sessionId = null;
     let finalText = '';
@@ -219,6 +281,7 @@ function answerIsExitCommand(answer) { return /^(?:stop|стоп|:stop|exit|вы
 
 export async function runPipeline({
   projectRoot, fromPhase = null, autoAdvance = false, dryRun = false,
+  keepLocalMcp = false,
   launcher = resolveCodexLauncher(),
   prompter = null,
 } = {}) {
@@ -236,11 +299,17 @@ export async function runPipeline({
     return 0;
   }
 
+  const unavailableMcp = keepLocalMcp ? [] : await unavailableLocalMcpOverrides(launcher, root);
+  const mcpOverrides = unavailableMcp.map(item => item.override);
+  for (const item of unavailableMcp) {
+    console.log(`[Forge] MCP ${item.name} disabled for this pipeline run: local endpoint unavailable (${item.endpoint}).`);
+  }
+
   const ownsPrompter = !prompter;
   const prompt = prompter || createPrompter();
   try {
     while (phase <= 9) {
-      const initial = firstExecArgs(policy, phase, root);
+      const initial = firstExecArgs(policy, phase, root, null, mcpOverrides);
       const phaseEnv = {
         ...process.env,
         FORGE_AI_HOST: 'codex', FORGE_MODEL: initial.selected.model,
@@ -277,7 +346,7 @@ export async function runPipeline({
           if (answerIsStop(answer)) return turn.exitCode || 1;
           if (!sessionId) nextArgs = initial.args;
           else nextArgs = resumeExecArgs(policy, phase, sessionId,
-            'Предыдущий запуск завершился технической ошибкой. Проверь состояние проекта и продолжай текущую фазу до STOP или complete.').args;
+            'Предыдущий запуск завершился технической ошибкой. Проверь состояние проекта и продолжай текущую фазу до STOP или complete.', null, mcpOverrides).args;
           continue;
         }
         if (state === 'needs-answer') {
@@ -287,11 +356,11 @@ export async function runPipeline({
           const answer = await prompt.ask('\nВаш ответ для ИИ (:stop — закончить):\n> ');
           if (answerIsExitCommand(answer)) return 0;
           if (!sessionId) {
-            nextArgs = firstExecArgs(policy, phase, root).args;
+            nextArgs = firstExecArgs(policy, phase, root, null, mcpOverrides).args;
             nextArgs[nextArgs.length - 1] += `\n\nОтвет пользователя на открытый STOP: ${answer}`;
           } else {
             nextArgs = resumeExecArgs(policy, phase, sessionId,
-              `${answer}\n\nПрими ответ, обнови durable state и продолжай эту же фазу до следующего настоящего STOP или complete.`).args;
+              `${answer}\n\nПрими ответ, обнови durable state и продолжай эту же фазу до следующего настоящего STOP или complete.`, null, mcpOverrides).args;
           }
           automaticContinues = 0;
           continue;
@@ -303,13 +372,13 @@ export async function runPipeline({
         if (automaticContinues <= 3) {
           console.log(`[Forge] Phase ${phase} is still in_progress; continuing automatically (${automaticContinues}/3).`);
           nextArgs = resumeExecArgs(policy, phase, sessionId,
-            'Фаза всё ещё in_progress. Не завершай ход сообщением о будущем действии: выполни следующий фактический шаг и продолжай до настоящего STOP-point или phase complete.').args;
+            'Фаза всё ещё in_progress. Не завершай ход сообщением о будущем действии: выполни следующий фактический шаг и продолжай до настоящего STOP-point или phase complete.', null, mcpOverrides).args;
           continue;
         }
         const answer = await prompt.ask('Фаза остаётся in_progress после 3 продолжений. Продолжить? [Y/n] ');
         if (answerIsStop(answer)) return 0;
         nextArgs = resumeExecArgs(policy, phase, sessionId,
-          'Пользователь подтвердил продолжение. Доведи текущую фазу до настоящего STOP-point или phase complete.').args;
+          'Пользователь подтвердил продолжение. Доведи текущую фазу до настоящего STOP-point или phase complete.', null, mcpOverrides).args;
         automaticContinues = 0;
       }
 
@@ -368,7 +437,7 @@ export async function runPipeline({
 async function main() {
   const args = process.argv.slice(2);
   if (boolOption(args, 'help')) {
-    console.log('Usage: node scripts/codex-pipeline.mjs [--cwd PROJECT] [--from 1..9] [--auto] [--dry-run]');
+    console.log('Usage: node scripts/codex-pipeline.mjs [--cwd PROJECT] [--from 1..9] [--auto] [--dry-run] [--keep-local-mcp]');
     return 0;
   }
   const projectRoot = path.resolve(option(args, 'cwd') || process.cwd());
@@ -381,6 +450,7 @@ async function main() {
     projectRoot, fromPhase,
     autoAdvance: boolOption(args, 'auto'),
     dryRun: boolOption(args, 'dry-run'),
+    keepLocalMcp: boolOption(args, 'keep-local-mcp'),
   });
 }
 
