@@ -391,6 +391,12 @@ safe('project-git-lifecycle', () => {
   else ok.push('project Git lifecycle creates local checkpoints and allows only private GitHub automation');
 });
 
+safe('codex-one-window-pipeline', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-codex-pipeline.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('one-window Codex phase orchestration failed — run scripts/check-codex-pipeline.mjs');
+  else ok.push('one terminal switches fresh Codex sessions between phases and resumes only open STOPs');
+});
+
 safe('api-terminal-profiles', () => {
   const r = spawnSync(process.execPath, ['scripts/check-api-terminal-profiles.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('API terminal profile regression failed — run scripts/check-api-terminal-profiles.mjs');

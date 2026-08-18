@@ -13,9 +13,9 @@ every generated Codex subagent uses GPT-5.6 Sol. Claude aliases in skills remain
    evidence or a reproducible unexplained failure. Changing effort never changes the Sol model family.
 5. A phase may use no more than `maxSubagents`, and never more than the global limit. Generated Codex
    agents default to Sol/medium; review, security and architecture roles use Sol/high.
-6. Start every phase as a fresh task through
-   `node ../project-forge/scripts/codex-phase.mjs <phase> --cwd .`. An existing Codex task cannot
-   reliably switch its primary model, and carrying a multi-phase transcript wastes the weekly budget.
+6. Preferred UX: start `node ../project-forge/scripts/codex-pipeline.mjs --cwd .` once. It resumes
+   the same session for answers inside a phase, but replaces the session after `complete` while keeping
+   one terminal window. `codex-phase.mjs <phase>` remains the manual single-phase launcher.
 7. Keep model-facing tool output bounded. Inspect one high-detail image per turn, summarize large logs,
    and read only relevant file ranges. Never paste multi-megabyte tool output back into the model.
 8. Without launcher evidence, phase state stores the recommendation separately and marks the actual
@@ -24,8 +24,8 @@ every generated Codex subagent uses GPT-5.6 Sol. Claude aliases in skills remain
 ## Examples
 
 ```bash
-# Phase 5 on Sol/high, Standard tier
-node ../project-forge/scripts/codex-phase.mjs 5 --cwd .
+# Whole lifecycle in one terminal, with a fresh internal session per phase
+node ../project-forge/scripts/codex-pipeline.mjs --cwd .
 
 # Sol/xhigh only after the same technical gate failed twice
 node ../project-forge/scripts/codex-phase.mjs 5 --route repeated-failure --cwd .

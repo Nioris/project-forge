@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.16 (latest released)
+### Version: v4.68.17 (latest released)
 
+- 2026-08-18: **v4.68.17** — one-window Codex lifecycle: STOP answers resume the current phase, complete phases switch to clean internal sessions in the same terminal, premature stops auto-resume, and Windows CLI resolution is reliable.
 - 2026-08-18: **v4.68.16** — Quality-Sol Codex routing on Standard with bounded per-phase context, automatic local Git checkpoints, secret/public-remote guards and opt-in private GitHub creation/push for every future game/app.
 - 2026-08-18: **v4.68.15** — Windows Yandex release pipeline: external project roots, native cross-platform ZIP handling, correct production/debug/marketing contents, ZIP-aware CDN/runtime checks and staging-to-release listing resolution.
 - 2026-08-18: **v4.68.14** — GigaChat mature-phase orchestration: immutable ordered phases, bounded context/skill loading, canonical tool-call recovery, durable verifier evidence, reliable browser QA helpers and real promo capture.

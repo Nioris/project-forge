@@ -16,7 +16,7 @@ NC='\033[0m'
 
 echo ""
 echo -e "${CYAN}  ╔══════════════════════════════════════╗${NC}"
-echo -e "${CYAN}  ║         PROJECT FORGE v4.68.16              ║${NC}"
+echo -e "${CYAN}  ║         PROJECT FORGE v4.68.17              ║${NC}"
 echo -e "${CYAN}  ║   Multi-platform release pipeline     ║${NC}"
 echo -e "${CYAN}  ╚══════════════════════════════════════╝${NC}"
 echo ""

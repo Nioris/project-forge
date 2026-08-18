@@ -53,7 +53,7 @@ Forge ships ${agentCount} role definitions in \`.claude/agents/\`; native Codex 
 ## Codex quality and token discipline
 
 - All Forge Codex phases and generated custom agents use GPT-5.6 Sol on Standard tier. Never select Fast automatically.
-- Start each phase in a fresh task with \`node ../project-forge/scripts/codex-phase.mjs <N> --cwd .\`; do not carry a multi-phase transcript forward.
+- Prefer one-window orchestration with \`node ../project-forge/scripts/codex-pipeline.mjs --cwd .\`. It resumes STOP answers inside a phase and starts a fresh internal session after phase completion; do not carry a multi-phase transcript forward.
 - Use high reasoning for analysis/design/implementation/visual/technical/QA work and medium for deterministic listing, routine release packaging, and ordinary metrics. Max/Ultra and xhigh are never automatic defaults.
 - Keep model-facing tool output bounded: read relevant ranges, summarize large logs, and inspect no more than one high-detail image per turn. Do not feed megabytes of screenshots or terminal output back into the model.
 - Continue autonomously until a real Forge STOP-point, verified completion, or genuine blocker. Do not end a task merely to announce the next implementation step.

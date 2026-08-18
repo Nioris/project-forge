@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveCodexLauncher } from './codex-pipeline.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SCRIPT_DIR, '..');
@@ -69,10 +70,10 @@ if (process.argv.includes('--dry-run')) {
   process.exit(0);
 }
 
-const executable = process.env.CODEX_CLI_PATH || 'codex';
-const result = spawnSync(executable, codexArgs, { cwd, env, stdio: 'inherit', shell: false });
+const launcher = resolveCodexLauncher();
+const result = spawnSync(launcher.command, [...launcher.prefixArgs, ...codexArgs], { cwd, env, stdio: 'inherit', shell: false });
 if (result.error) {
-  console.error(`[X] Could not launch ${executable}: ${result.error.message}`);
+  console.error(`[X] Could not launch Codex: ${result.error.message}`);
   console.error('    Set CODEX_CLI_PATH to the absolute codex.exe path, or run with --dry-run and copy the command.');
   process.exit(1);
 }

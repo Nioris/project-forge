@@ -1,13 +1,13 @@
 {
-  "captured_at": "2026-08-18T08:02:42.238Z",
-  "dashboard_size_bytes": 138110,
-  "fingerprint": "e4f458fd74302188",
+  "captured_at": "2026-08-18T17:23:46.513Z",
+  "dashboard_size_bytes": 138272,
+  "fingerprint": "037e50d96da1321a",
   "summary": {
-    "total_significant_elements": 474,
+    "total_significant_elements": 475,
     "by_tag": {
       "div": 398,
       "select": 2,
-      "button": 58,
+      "button": 59,
       "input": 9,
       "label": 1,
       "textarea": 3,
@@ -16,7 +16,7 @@
       "aside": 1
     },
     "by_id_count": 34,
-    "handler_count": 96,
+    "handler_count": 97,
     "elements_with_position_styles": 4
   },
   "elements": [
@@ -5434,6 +5434,17 @@
       ],
       "role": null,
       "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
       "position_styles": [],
       "type": null
     },

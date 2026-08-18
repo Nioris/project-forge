@@ -462,6 +462,7 @@ RELEASE_NOTES_v4.68.13.md
 RELEASE_NOTES_v4.68.14.md
 RELEASE_NOTES_v4.68.15.md
 RELEASE_NOTES_v4.68.16.md
+RELEASE_NOTES_v4.68.17.md
 RELEASE_NOTES_v4.68.2.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
@@ -658,6 +659,7 @@ scripts/check-bat-comments.mjs
 scripts/check-bat-encoding.mjs
 scripts/check-claude-md-size.mjs
 scripts/check-codex-compat.mjs
+scripts/check-codex-pipeline.mjs
 scripts/check-cross-refs.mjs
 scripts/check-dashboard-meta.mjs
 scripts/check-dashboard-structure.mjs
@@ -685,6 +687,7 @@ scripts/check-universal-agent-runtime.mjs
 scripts/check-update-surface.mjs
 scripts/check-workspace-discipline.mjs
 scripts/codex-phase.mjs
+scripts/codex-pipeline.mjs
 scripts/cx
 scripts/cx.bat
 scripts/data-dir.mjs

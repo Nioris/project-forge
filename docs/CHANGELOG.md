@@ -4559,6 +4559,12 @@ Standalone answers to durable GigaChat STOP-points now restore the owning phase,
 
 Every `phase-state complete` path, including native `forge_script`, now requires the full Forge gate to be GREEN plus explicit evidence arguments. Decision STOPs automatically persist the machine marker as `blocked` with host `gigachat`; Phase 2 prompts receive deterministic fast-MVP questions/recommendations and exact approval guidance. Phase 2 UI hierarchy matching accepts canonical prefix or suffix filenames, while the prompt-pack blocker names its exact `assets/prompts/*.json` target. Contract: `6.3.5-decision-gate-integrity`.
 
+## v4.68.14 changelog (GigaChat mature-phase orchestration)
+
+The GigaChat adapter now keeps completed phases immutable and advances phases strictly in order. Durable completed markers are authoritative even after stale runtime state, repeated skill/workspace loads are bounded, corrected verifier reruns clear obsolete failures, and wrong script-vs-skill or HTML-file-vs-project-directory calls are translated to their canonical Forge operations.
+
+Phase 4 accepts valid JPEG/WebP target frames, numbered visual variants and the supported selection locations. Phase 7 recognizes the canonical test/visual-QA skill workflow. Local staging automatically uses the finite AI play mode, shell scripts run through Git Bash, evidence arguments are normalized, and structured `write_file` values are serialized as JSON. Browser helpers now resolve project-local Puppeteer reliably, dismiss dialogs, provide a local Yandex SDK stub and produce a real playable promo recording. Contract: `6.3.6-mature-phase-orchestration`.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

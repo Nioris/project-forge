@@ -1,6 +1,6 @@
-# Project Forge v4.68.16 — Codex engine instructions
+# Project Forge v4.68.17 — Codex engine instructions
 
-<!-- GENERATED from Forge canonical sources; claude-hash:e0f633652a48e123; target:engine; do not edit by hand. -->
+<!-- GENERATED from Forge canonical sources; claude-hash:f0f811cf8d72043d; target:engine; do not edit by hand. -->
 
 This is the Project Forge engine repository. Claude Code support in `.claude/` remains canonical. Codex is a generated/native adapter over that source; `FORGE.md` + `adapters/agents.json` provide a host-neutral contract for additional terminal agents such as GigaCode.
 
@@ -40,7 +40,7 @@ Forge ships 21 role definitions in `.claude/agents/`; native Codex equivalents a
 ## Codex quality and token discipline
 
 - All Forge Codex phases and generated custom agents use GPT-5.6 Sol on Standard tier. Never select Fast automatically.
-- Start each phase in a fresh task with `node ../project-forge/scripts/codex-phase.mjs <N> --cwd .`; do not carry a multi-phase transcript forward.
+- Prefer one-window orchestration with `node ../project-forge/scripts/codex-pipeline.mjs --cwd .`. It resumes STOP answers inside a phase and starts a fresh internal session after phase completion; do not carry a multi-phase transcript forward.
 - Use high reasoning for analysis/design/implementation/visual/technical/QA work and medium for deterministic listing, routine release packaging, and ordinary metrics. Max/Ultra and xhigh are never automatic defaults.
 - Keep model-facing tool output bounded: read relevant ranges, summarize large logs, and inspect no more than one high-detail image per turn. Do not feed megabytes of screenshots or terminal output back into the model.
 - Continue autonomously until a real Forge STOP-point, verified completion, or genuine blocker. Do not end a task merely to announce the next implementation step.
