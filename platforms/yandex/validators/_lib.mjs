@@ -49,6 +49,14 @@ export function resolveGamePaths(gamePath) {
   if (parent === 'WorkProgress' && fs.existsSync(candidateRelease)) releasePath = candidateRelease;
   if (parent === 'Release' && fs.existsSync(candidateWork)) workPath = candidateWork;
 
+  // Canonical Yandex staging uses WorkProgress/<game>-yandex while release
+  // metadata and the three archives live in Release/<game>/yandex.
+  if (parent === 'WorkProgress' && gameName.endsWith('-yandex')) {
+    const baseName = gameName.slice(0, -'-yandex'.length);
+    const candidateYandexRelease = path.join(projectRoot, 'Release', baseName, 'yandex');
+    if (fs.existsSync(candidateYandexRelease)) releasePath = candidateYandexRelease;
+  }
+
   return { workPath, releasePath, gameName };
 }
 

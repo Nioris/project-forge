@@ -5,13 +5,13 @@
  *
  *   1. {project}-v{N}.zip                  — PRODUCTION (clean, для submission)
  *   2. {project}-v{N}-debug.zip            — DEBUG (с debugcheck.js + cheats-base.js)
- *   3. {project}-v{N}-marketing.zip        — MARKETING (с cheats-base.js + screenshots.js)
+ *   3. {project}-v{N}-marketing.zip        — MARKETING (с debugcheck.js + cheats-base.js + screenshots.js)
  *
  * Source folder: WorkProgress/{Project}-yandex/ (must exist)
  * Output folder: Release/{Project}/yandex/
  *
  * Variants determined by which support files copied:
- *   - debugcheck.js  → debug build only
+ *   - debugcheck.js  → debug + marketing
  *   - cheats-base.js → debug + marketing
  *   - screenshots.js → marketing only
  *
@@ -24,6 +24,7 @@
  * Usage:
  *   node scripts/build-yandex-3zips.mjs <project-name> <version>
  *   node scripts/build-yandex-3zips.mjs parkour v1
+ *   node scripts/build-yandex-3zips.mjs parkour v1 --root F:\\Games\\parkour
  *
  * Exit:
  *   0 = all 3 zips built + validated
@@ -33,15 +34,23 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-
 const args = process.argv.slice(2);
-const PROJECT = args[0];
-const VERSION = args[1] || 'v1';
+const rootIndex = args.indexOf('--root');
+const explicitRoot = rootIndex >= 0 ? args[rootIndex + 1] : null;
+if (rootIndex >= 0 && (!explicitRoot || explicitRoot.startsWith('--'))) {
+  console.error('[X] --root requires a project-root path');
+  process.exit(2);
+}
+const positional = args.filter((value, index) => index !== rootIndex && index !== rootIndex + 1);
+const ENGINE_ROOT = path.resolve(__dirname, '..');
+const ROOT = explicitRoot ? path.resolve(explicitRoot) : ENGINE_ROOT;
+const PROJECT = positional[0];
+const VERSION = positional[1] || 'v1';
 
 if (!PROJECT) {
   console.error('Usage: node scripts/build-yandex-3zips.mjs <project-name> [version]');
@@ -58,6 +67,8 @@ const OUTPUT_DIR = path.join(ROOT, 'Release', PROJECT, 'yandex');
 const SUPPORT_DIRS = [
   path.join(ROOT, 'platforms', 'yandex', 'templates'),
   path.join(ROOT, 'templates', 'html5'),
+  path.join(ENGINE_ROOT, 'platforms', 'yandex', 'templates'),
+  path.join(ENGINE_ROOT, 'templates', 'html5'),
 ];
 
 // Verify source
@@ -118,10 +129,20 @@ const VARIANTS = [
   {
     name: 'marketing',
     suffix: '-marketing', // {project}-v1-marketing.zip
-    include: [cheatsBase, screenshots].filter(Boolean),
-    forbid: ['debugcheck.js'],
+    include: [debugcheck, cheatsBase, screenshots].filter(Boolean),
+    forbid: [],
   },
 ];
+
+function createZip(stageDir, zipPath) {
+  const windows = process.platform === 'win32';
+  const command = windows ? 'tar.exe' : 'zip';
+  const args = windows ? ['-a', '-cf', zipPath, '.'] : ['-rq', zipPath, '.'];
+  const result = spawnSync(command, args, { cwd: stageDir, encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`${command} failed (${result.status}): ${result.stderr || result.stdout}`);
+  }
+}
 
 const results = [];
 
@@ -129,12 +150,12 @@ for (const variant of VARIANTS) {
   console.log(`📦 Building ${variant.name} variant...`);
 
   // Create staging dir
-  const stageDir = path.join('/tmp', `forge-build-${PROJECT}-${variant.name}-${Date.now()}`);
+  const stageDir = path.join(os.tmpdir(), `forge-build-${PROJECT}-${variant.name}-${Date.now()}`);
   fs.mkdirSync(stageDir, { recursive: true });
 
   try {
     // Copy source (excluding any stray support files first)
-    execSync(`cp -r "${SOURCE_DIR}"/. "${stageDir}/"`, { stdio: 'pipe' });
+    fs.cpSync(SOURCE_DIR, stageDir, { recursive: true });
 
     // Remove any forbidden files + their <script> tags from index.html
     // (v4.10.37: production build referencing debugcheck.js caused stale
@@ -200,7 +221,7 @@ for (const variant of VARIANTS) {
 
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
 
-    execSync(`cd "${stageDir}" && zip -rq "${zipPath}" .`, { stdio: 'pipe' });
+    createZip(stageDir, zipPath);
 
     const stats = fs.statSync(zipPath);
     const sizeKB = (stats.size / 1024).toFixed(1);
@@ -218,7 +239,7 @@ for (const variant of VARIANTS) {
     results.push({ variant: variant.name, status: 'failed', reason: e.message });
   } finally {
     // Cleanup stage dir
-    try { execSync(`rm -rf "${stageDir}"`, { stdio: 'pipe' }); } catch { /* ignore */ }
+    try { fs.rmSync(stageDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 }
 

@@ -1,4 +1,4 @@
-# Project Forge v4.68.14 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.15 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.15 changelog (Windows Yandex release pipeline)
+
+The canonical three-ZIP Yandex builder now works from Windows and accepts an external project root. It uses native filesystem operations and platform-appropriate archive commands; production stays clean, debug contains debugcheck plus cheats, and marketing contains debugcheck, cheats and screenshot helpers.
+
+ZIP CDN inspection and variant runtime testing no longer depend on Unix `/tmp`, `unzip`, `cp` or `rm`. Runtime testing extracts the requested archive before Yandex delegation and cleans its temporary directory. Pre-submit path resolution now connects `WorkProgress/<game>-yandex` with `Release/<game>/yandex`, allowing the real localized listings to participate in the gate.
+
 ## v4.68.14 changelog (GigaChat mature-phase orchestration)
 
 The GigaChat adapter now keeps completed phases immutable and advances phases strictly in order. Durable completed markers are authoritative even after stale runtime state, repeated skill/workspace loads are bounded, corrected verifier reruns clear obsolete failures, and wrong script-vs-skill or HTML-file-vs-project-directory calls are translated to their canonical Forge operations.
@@ -474,9 +480,3 @@ Phase 4 accepts valid JPEG/WebP target frames, numbered visual variants and the 
 Standalone answers to durable GigaChat STOP-points now restore the owning phase, runtime baseline and named-decision state before the answer is consumed. Phase 2 decisions survive across one-shot terminal processes, and the model can no longer overwrite the runtime-owned decision/evidence ledgers directly.
 
 Every `phase-state complete` path, including native `forge_script`, now requires the full Forge gate to be GREEN plus explicit evidence arguments. Decision STOPs automatically persist the machine marker as `blocked` with host `gigachat`; Phase 2 prompts receive deterministic fast-MVP questions/recommendations and exact approval guidance. Phase 2 UI hierarchy matching accepts canonical prefix or suffix filenames, while the prompt-pack blocker names its exact `assets/prompts/*.json` target. Contract: `6.3.5-decision-gate-integrity`.
-
-## v4.68.12 changelog (durable GigaChat phase resume)
-
-GigaChat Phase 1 resume now treats already approved decisions and research artifacts as durable evidence. Product-metrics evidence survives phase switches, the final gate reuses the approved KPI/content-budget decision and cited research, and a fully approved Phase 1 closes deterministically without another model round-trip or repeated user approval.
-
-Phase markers record `gigachat` as the actual host without inventing a Codex model selection. Memory snapshots discard obsolete nested `STOP:` lines, and exhausted empty/malformed response recovery emits the `GIGA_EMPTY_RESPONSE_LOOP` Forge diagnostic. The adapter contract is `6.3.4-durable-phase-resume`; regression coverage includes approved-state completion, durable metrics provenance, host-only model metadata and transport diagnostics.

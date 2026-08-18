@@ -162,7 +162,7 @@ Re-run pre-submit после создания listings — он проверяе
 Release/{Game}/yandex/
 ├── {Game}-v{N}.zip            # production — чистая игра
 ├── {Game}-v{N}-debug.zip      # + debugcheck.js v2.6
-└── {Game}-v{N}-marketing.zip  # + cheats-base.js + debugcheck.js
+└── {Game}-v{N}-marketing.zip  # + debugcheck.js + cheats-base.js + screenshots.js
 ```
 
 Используй `platforms/yandex/scripts/build-release.sh` или пиши `scripts/build-{game}.mjs` (шаблоны — в legacy YBuilder: `scripts/build-circle2048.mjs` и прочие).
@@ -215,4 +215,3 @@ The skill enforces:
 - **Motion + spatial composition:** animations that feel intentional, not decorative
 
 Invoke with: `Use the frontend-design skill to build the store listing page for this game.` Skip this step only when the game already has a design system in place that you're preserving.
-

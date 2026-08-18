@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.14 (latest released)
+### Version: v4.68.15 (latest released)
 
+- 2026-08-18: **v4.68.15** — Windows Yandex release pipeline: external project roots, native cross-platform ZIP handling, correct production/debug/marketing contents, ZIP-aware CDN/runtime checks and staging-to-release listing resolution.
 - 2026-08-18: **v4.68.14** — GigaChat mature-phase orchestration: immutable ordered phases, bounded context/skill loading, canonical tool-call recovery, durable verifier evidence, reliable browser QA helpers and real promo capture.
 - 2026-08-18: **v4.68.13** — GigaChat durable-answer integrity and non-bypassable phase completion: pending STOP answers restore phase context, runtime ledgers are protected, decision markers auto-block, and every completion path requires GREEN plus evidence.
 - 2026-08-18: **v4.68.12** — durable GigaChat Phase 1 resume: approved research/KPI decisions survive phase switches, final completion avoids a repeated model turn, host metadata stays honest, stale nested STOP text is removed, and exhausted empty responses are diagnosed.

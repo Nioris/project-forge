@@ -4547,6 +4547,12 @@ Managed projects now keep a dedicated local JSONL incident stream for defects in
 
 `$status` exposes the open count, while `scripts/audit-forge-diagnostics.mjs` scans every managed sibling and groups unresolved observations by stable code/component/operation. Incidents are closed by fingerprint only after verification. Hook/runtime failures and bounded GigaChat STOP/transport recovery exhaustion report automatically; a dependency-free regression verifies redaction, deduplication, resolution, local Git exclusion and fleet aggregation.
 
+## v4.68.12 changelog (durable GigaChat phase resume)
+
+GigaChat Phase 1 resume now treats already approved decisions and research artifacts as durable evidence. Product-metrics evidence survives phase switches, the final gate reuses the approved KPI/content-budget decision and cited research, and a fully approved Phase 1 closes deterministically without another model round-trip or repeated user approval.
+
+Phase markers record `gigachat` as the actual host without inventing a Codex model selection. Memory snapshots discard obsolete nested `STOP:` lines, and exhausted empty/malformed response recovery emits the `GIGA_EMPTY_RESPONSE_LOOP` Forge diagnostic. The adapter contract is `6.3.4-durable-phase-resume`; regression coverage includes approved-state completion, durable metrics provenance, host-only model metadata and transport diagnostics.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".
