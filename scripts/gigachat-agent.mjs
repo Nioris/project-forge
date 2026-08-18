@@ -21,8 +21,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.20';
-const CONTRACT_VERSION = '6.3.7-direct-task-intent-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.21';
+const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -467,6 +467,7 @@ function loadRuntimeEvidenceLedger(){
 }
 let durableRuntimeEvidence=loadRuntimeEvidenceLedger();
 let activeDirective=durableRuntimeEvidence.activeDirective&&typeof durableRuntimeEvidence.activeDirective==='object'?durableRuntimeEvidence.activeDirective:null;
+let currentTurnReadOnly=false;
 let verifierLedger=new Map((durableRuntimeEvidence.verifiers||[]).map(v=>[v.key,v]));
 let completedSkills=new Set(durableRuntimeEvidence.completedSkills||[]);
 let phaseEvidenceStartedAt=null;
@@ -609,6 +610,10 @@ function recordOperation(name,a,result) {
       const op={tool:name,target:String(r.path||r.destination||a.path||a.output_path||a.name||a.command||''),at:new Date().toISOString()};
       activeDirective={...activeDirective,operations:[...(activeDirective.operations||[]),op].slice(-50),updatedAt:op.at};
     }
+    if(name==='read_file'){
+      const read={path:String(r.path||a.path||''),at:new Date().toISOString()};
+      activeDirective={...activeDirective,reads:[...(activeDirective.reads||[]),read].slice(-50),updatedAt:read.at};
+    }
   }
   if(r.ok!==false && name==='read_file') phaseReadFiles.add(String(r.path||a.path||''));
   if(r.ok!==false && name==='list_files') phaseListedPaths.add(String(r.path||a.path||'.'));
@@ -649,6 +654,7 @@ function recordOperation(name,a,result) {
     phaseWrittenFiles.add(String(r.path||r.destination||a.path||a.output_path||''));
     if(!(name==='copy_path' && r.unchanged===true)) memoryDirty=true;
   }
+  if(activeDirective) persistRuntimeEvidenceLedger();
   if(r.ok!==false && name==='forge_web_search'){
     const q=String(a.query||'').trim();
     if(q && Array.isArray(r.results) && r.results.length){
@@ -1887,7 +1893,32 @@ function isStatusOnlyInput(text='') {
   if(!s) return false;
   return s==='/status' || s==='status' || s==='статус' ||
     /^(?:покажи|дай|какой|какая|какие)?\s*(?:текущий\s+)?статус[?.!]*$/i.test(s) ||
-    /^(?:что\s+ты\s+делаешь|что\s+сейчас\s+делаешь|какие\s+вопросы(?:\s+у\s+тебя)?)[?.!]*$/i.test(s);
+    /^(?:что\s+ты\s+делаешь|что\s+сейчас\s+делаешь|какие\s+вопросы(?:\s+у\s+тебя)?|что\s+уже\s+сделано|где\s+остановились|на\s+ч[её]м\s+остановились)[?.!]*$/i.test(s) ||
+    /^(?:ну\s+|а\s+)?(?:ты\s+)?(?:собрал(?:а|и)?|создал(?:а|и)?|сделал(?:а|и)?|запустил(?:а|и)?|проверил(?:а|и)?|закончил(?:а|и)?|готовил(?:а|и)?|обновил(?:а|и)?|отправил(?:а|и)?|запушил(?:а|и)?|исправил(?:а|и)?|подключил(?:а|и)?|добавил(?:а|и)?)(?=\s|[?])[^\n]*[?]+$/i.test(s) ||
+    /^(?:ну\s+|а\s+)?(?:вс[её]\s+)?(?:готово|сделано|собрано|создано|запущено|проверено|закончено|обновлено|отправлено|исправлено|подключено|добавлено)(?:\s+[^\n]*)?[?]+$/i.test(s) ||
+    /^(?:ну\s+|а\s+)?[^\n?]{1,100}\s+(?:готов[ыао]?|собран[ыао]?|создан[ыао]?|запущен[ыао]?|проверен[ыао]?|обновлен[ыао]?|обновлён[ыао]?|исправлен[ыао]?|подключен[ыао]?|подключён[ыао]?)[?]+$/i.test(s);
+}
+
+const READ_ONLY_FUNCTIONS=new Set(['forge_status','forge_checkpoint','forge_context','forge_workspace_inspect','forge_capabilities','forge_search_doctor','read_file','list_files','search_text','git_diff']);
+function readOnlyTurnToolBlock(name=''){
+  if(!currentTurnReadOnly || READ_ONLY_FUNCTIONS.has(String(name||''))) return null;
+  return `Read-only status question: tool ${name} is unavailable. Answer only from current project state; do not write files, run commands, start phases, build releases, or change memory.`;
+}
+
+function counterfeitCanonicalScriptWriteBlock(path=''){
+  const p=String(path||'').replace(/\\/g,'/').toLowerCase();
+  if(!/^workprogress\/[^/]+\/scripts\/(?:verify-|check-|release-|build-yandex|phase-state)/i.test(p)) return null;
+  return `Counterfeit Forge verifier/release script blocked: ${path}. Do not invent a project-local substitute for a missing canonical Forge verifier or release command; load the exact canonical skill/script and report a real blocker if it is unavailable.`;
+}
+
+function repeatedDirectiveOverwriteBlock(path=''){
+  if(!activeDirective) return null;
+  const target=String(path||'').replace(/\\/g,'/').toLowerCase();
+  const writes=(activeDirective.operations||[]).filter(op=>['write_file','replace_text'].includes(op.tool)&&String(op.target||'').replace(/\\/g,'/').toLowerCase()===target);
+  if(!writes.length) return null;
+  const lastWrite=writes[writes.length-1];
+  const readAfter=(activeDirective.reads||[]).some(x=>String(x.path||'').replace(/\\/g,'/').toLowerCase()===target && Date.parse(x.at||0)>Date.parse(lastWrite.at||0));
+  return readAfter?null:`Full overwrite blocked: ${path} was already changed during this direct task. Read the current file first, then use replace_text or make an informed replacement. This protects work across context compaction.`;
 }
 function phaseExecutionRequestedByText(text='') {
   const s=String(text||'');
@@ -1959,6 +1990,7 @@ function activateDirective(request,source='natural_language') {
     pausedPhase:activeDirective?.pausedPhase||authoritativeOpenPhase()||activePhase||null,
     latestUserInput:task,
     operations:Array.isArray(activeDirective?.operations)?activeDirective.operations.slice(-40):[],
+    reads:Array.isArray(activeDirective?.reads)?activeDirective.reads.slice(-40):[],
     history
   };
   persistRuntimeEvidenceLedger();
@@ -1998,6 +2030,18 @@ function directiveToolBlock(name,a={}) {
   return null;
 }
 
+function successfulDirectiveChecks(requestedChecks=[],directive=activeDirective){
+  if(!directive) return [];
+  const activatedAt=Date.parse(directive.activatedAt||0);
+  const checks=normalizeList(requestedChecks);
+  const normalized=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+  return [...verifierLedger.values()].filter(v=>{
+    if(Number(v.status)!==0 || Date.parse(v.updatedAt||0)<activatedAt || commandLooksMutating(v.command||'')) return false;
+    const actual=normalized(v.command);
+    return checks.some(c=>{const supplied=normalized(c);return supplied===actual || supplied.includes(actual);});
+  });
+}
+
 function completeDirective(a={}) {
   if(!activeDirective) return {ok:false,error:'No active change request. Use /do <task> first.'};
   const summary=String(a.summary||'').trim();
@@ -2005,15 +2049,22 @@ function completeDirective(a={}) {
   const checks=normalizeList(a.checks);
   const validEvidence=evidence.filter(p=>{try{return existsSync(safePath(p));}catch{return false;}});
   const operations=Array.isArray(activeDirective.operations)?activeDirective.operations:[];
+  const successfulChecks=[...verifierLedger.values()].filter(v=>Number(v.status)===0 && Date.parse(v.updatedAt||0)>=Date.parse(activeDirective.activatedAt||0) && !commandLooksMutating(v.command||''));
+  const matchedChecks=successfulDirectiveChecks(checks);
   if(!summary) return {ok:false,error:'forge_change_complete requires a factual summary.'};
   if(!operations.length) return {ok:false,error:'No successful implementation/write operation was recorded after /do. Do the work before completing the change request.'};
   if(!validEvidence.length) return {ok:false,error:'No existing project-relative evidence path was supplied.'};
   if(!checks.length) return {ok:false,error:'No verification checks were supplied. Run the relevant test/verifier first.'};
-  const completed={...activeDirective,status:'complete',completedAt:new Date().toISOString(),summary,evidence:validEvidence,checks};
+  if(!matchedChecks.length){
+    reportForgeBehavior({severity:'error',code:'GIGA_UNVERIFIED_COMPLETION_CLAIM',kind:'evidence_integrity',component:'gigachat-agent',operation:'forge_change_complete',message:'Direct-task completion used checks that are not backed by a successful post-activation command.',expected:'At least one supplied check matching a successful command recorded after direct-task activation.',actual:`supplied=${checks.length}; recorded=${successfulChecks.length}`});
+    return {ok:false,error:'None of the supplied checks matches a successful command recorded after this direct task started. Run a real focused verification and pass its exact command in checks.',recorded_successful_checks:successfulChecks.map(v=>v.command)};
+  }
+  const verifiedChecks=[...new Set(matchedChecks.map(v=>v.command))];
+  const completed={...activeDirective,status:'complete',completedAt:new Date().toISOString(),summary,evidence:validEvidence,checks:verifiedChecks};
   const resumePhase=completed.pausedPhase||null;
   activeDirective=null;
   persistRuntimeEvidenceLedger();
-  return {ok:true,completed_request:completed.request,summary,evidence:validEvidence,checks,resume_phase:resumePhase,note:'Direct task completed. Canonical phase autopilot is available again; it has not been started automatically.'};
+  return {ok:true,completed_request:completed.request,summary,evidence:validEvidence,checks:verifiedChecks,resume_phase:resumePhase,note:'Direct task completed from recorded evidence. Canonical phase autopilot is available again; it has not been started automatically.'};
 }
 function pendingDecisionPhase(decision=pendingDecision) {
   if(!decision||typeof decision!=='object') return null;
@@ -2493,7 +2544,11 @@ function phase1FunctionNames(){
   return [...new Set([...workCommon,'forge_gate'])];
 }
 
-function functionsForRequest(forcedName=null,phaseExecution=false){
+function functionsForRequest(forcedName=null,phaseExecution=false,readOnly=false){
+  if(readOnly){
+    const subset=functions.filter(f=>READ_ONLY_FUNCTIONS.has(f.name));
+    return subset.length?subset:functions.filter(f=>f.name==='forge_status');
+  }
   if(forcedName){
     const one=functions.filter(f=>f.name===forcedName);
     return one.length?one:functions;
@@ -2985,6 +3040,11 @@ function persistMemoryUpdate(a={}) {
 
 function tool(name, a={}) {
   try {
+    const readOnlyBlock=readOnlyTurnToolBlock(name);
+    if(readOnlyBlock){
+      reportForgeBehavior({severity:'error',code:'GIGA_STATUS_MUTATION_ATTEMPT',kind:'user_intent',component:'gigachat-agent',operation:name,message:'GigaChat attempted a non-read-only tool during a factual status question.',expected:'Read-only inspection and factual response.',actual:String(name||'unknown')});
+      return jsonResult({ok:false,failure_type:'read-only-intent-guard',error:readOnlyBlock});
+    }
     const taskBlock=directiveToolBlock(name,a);
     if(taskBlock) return jsonResult({ok:false,failure_type:'user-intent-guard',error:taskBlock,active_request:activeDirective?.request||''});
     if (name==='forge_diagnostic_report') {
@@ -3029,6 +3089,13 @@ function tool(name, a={}) {
     if (name==='search_text') return jsonResult({ok:true,results:searchText(a.query,a.path||'.',Math.max(1,Math.min(200,Number(a.max_results||80))))});
     if (name==='write_file') {
       assertTextWritableExtension(a.path);
+      const counterfeitBlock=counterfeitCanonicalScriptWriteBlock(a.path);
+      if(counterfeitBlock){
+        reportForgeBehavior({severity:'error',code:'GIGA_COUNTERFEIT_VERIFIER_ATTEMPT',kind:'evidence_integrity',component:'gigachat-agent',operation:'write_file',message:'GigaChat attempted to create a canonical-looking verifier/release substitute under WorkProgress.',expected:'Use the canonical Forge skill/script.',actual:String(a.path||'')});
+        return jsonResult({ok:false,failure_type:'canonical-tool-integrity-guard',error:counterfeitBlock});
+      }
+      const overwriteBlock=repeatedDirectiveOverwriteBlock(a.path);
+      if(overwriteBlock) return jsonResult({ok:false,failure_type:'compaction-overwrite-guard',error:overwriteBlock});
       const runtimeWriteBlock=runtimeOwnedWriteBlock(a.path);
       if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
@@ -3041,6 +3108,8 @@ function tool(name, a={}) {
     }
     if (name==='replace_text') {
       assertTextWritableExtension(a.path);
+      const counterfeitBlock=counterfeitCanonicalScriptWriteBlock(a.path);
+      if(counterfeitBlock) return jsonResult({ok:false,failure_type:'canonical-tool-integrity-guard',error:counterfeitBlock});
       const runtimeWriteBlock=runtimeOwnedWriteBlock(a.path);
       if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
@@ -3310,6 +3379,11 @@ async function generateGiga3d(a={}) {
 
 async function toolAsync(name,a={}) {
   try {
+    const readOnlyBlock=readOnlyTurnToolBlock(name);
+    if(readOnlyBlock){
+      reportForgeBehavior({severity:'error',code:'GIGA_STATUS_MUTATION_ATTEMPT',kind:'user_intent',component:'gigachat-agent',operation:name,message:'GigaChat attempted a non-read-only tool during a factual status question.',expected:'Read-only inspection and factual response.',actual:String(name||'unknown')});
+      return jsonResult({ok:false,failure_type:'read-only-intent-guard',error:readOnlyBlock});
+    }
     if(name==='gigachat_generate_image') return jsonResult(await generateGigaImage(a));
     if(name==='gigachat_generate_3d') return jsonResult(await generateGiga3d(a));
     if(name==='forge_search_doctor') return jsonResult(searchDoctor(PROJECT));
@@ -3716,6 +3790,7 @@ async function runRequestShapeDoctor(){
 async function turn(text){
   const rawTurnText=String(text || '');
   const statusOnly=isStatusOnlyInput(rawTurnText);
+  currentTurnReadOnly=statusOnly;
   const manualCommand=directiveCommand(rawTurnText);
   if(manualCommand?.kind==='resume'){
     const paused=activeDirective?.pausedPhase||authoritativeOpenPhase()||null;
@@ -3796,6 +3871,9 @@ async function turn(text){
   }
 
   let userText = changeRequestTurn?directiveTaskPrompt(normalizedTurnText):normalizedTurnText;
+  if(statusOnly && !pendingDecision){
+    userText=`[FORGE READ-ONLY STATUS TURN]\nПользователь задал фактический вопрос о том, что уже сделано: ${rawTurnText}\nПроверь состояние только read-only инструментами и ответь кратко и честно. Не начинай и не продолжай работу, не запускай фазу/релиз/проверки, не изменяй файлы или память. Не выдавай старые артефакты за созданные в текущем запросе.\n[END FORGE READ-ONLY STATUS TURN]`;
+  }
   if (pendingDecision && (!changeRequestTurn||directivePending) && statusOnly) {
     userText = `${rawTurnText}\n\nВАЖНО: это запрос статуса, а НЕ ответ на pending STOP-point. Не засчитывай его как пользовательское решение. Не продолжай новую работу. Покажи текущий статус и повтори ожидающий вопрос.`;
   } else if (pendingDecision && (!changeRequestTurn||directivePending)) {
@@ -3846,7 +3924,7 @@ async function turn(text){
   for(let n=0;n<56;n++){
     const forcedNow=forcedFunctionName;
     const callMode=forcedNow ? {name:forcedNow} : 'auto';
-    const requestFunctions=functionsForRequest(forcedNow,phaseExecutionTurn);
+    const requestFunctions=functionsForRequest(forcedNow,phaseExecutionTurn,statusOnly);
     turnStartIndex=compactMessagesIfNeeded(turnStartIndex,requestFunctions);
     forcedFunctionName=null;
     const data=await gigaChatRequestWithRetry({model:MODEL,messages,functions:requestFunctions,function_call:callMode},240000);
@@ -4372,6 +4450,15 @@ if (REQUEST_DOCTOR) {
   test('/resume-phase clears only directive-owned pending STOP',()=>/pendingDecision\?\.directive===true/.test(turn.toString()));
   test('natural direct implementation request detected',()=>naturalImplementationDirective('давай сделаем гачу чтобы привлечь игроков, сделай ТЗ и начинай делать')!==null);
   test('ordinary feature question does not activate direct task',()=>naturalImplementationDirective('почему нет фичей на D7-D30?')===null);
+  test('past-tense archive question is read-only',()=>isStatusOnlyInput('собрал архивы?'));
+  test('imperative archive request is not read-only',()=>!isStatusOnlyInput('собери архивы'));
+  test('read-only function surface excludes mutators',()=>{const names=functionsForRequest(null,false,true).map(x=>x.name);return names.includes('forge_status')&&!names.includes('write_file')&&!names.includes('forge_gate')&&!names.includes('run_command');});
+  test('counterfeit WorkProgress verifier blocked',()=>Boolean(counterfeitCanonicalScriptWriteBlock('WorkProgress/demo/scripts/verify-setup-guide.mjs')));
+  test('normal WorkProgress game script allowed',()=>counterfeitCanonicalScriptWriteBlock('WorkProgress/demo/gacha.js')===null);
+  test('compaction overwrite requires a fresh read',()=>{const old=activeDirective;activeDirective={operations:[{tool:'write_file',target:'WorkProgress/demo/gacha.js',at:'2026-08-18T12:00:00Z'}],reads:[]};const blocked=Boolean(repeatedDirectiveOverwriteBlock('WorkProgress/demo/gacha.js'));activeDirective=old;return blocked;});
+  test('direct completion rejects invented check strings',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['visual check passed'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
+  test('direct completion accepts exact post-activation command',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===1;});
+  test('direct completion rejects stale successful command',()=>{const old=verifierLedger;verifierLedger=new Map([['old',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T11:59:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
   test('change request prompt keeps exact task and pauses release',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveTaskPrompt('делай');activeDirective=old;return /добавь гачу/.test(x)&&/не запускай phase-state\/forge_gate\/release-\*/.test(x);});
   test('change request blocks release gate and phase-state',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const a=directiveToolBlock('forge_gate',{phase:8});const b=directiveToolBlock('forge_script',{name:'phase-state.mjs',args:['start','8']});activeDirective=old;return Boolean(a)&&Boolean(b);});
   test('change request allows tactical gacha skill',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveToolBlock('forge_skill',{name:'gacha-meta'});activeDirective=old;return x===null;});

@@ -1,4 +1,4 @@
-# Project Forge v4.68.20 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.21 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.21 changelog (GigaChat evidence-bound status guard)
+
+Real terminal evidence exposed three trust gaps after the direct-task intent fix: GigaChat could clear `forge_change_complete` with invented check descriptions, treat a factual question such as «собрал архивы?» as permission to start Phase 8, and create a counterfeit verifier under `WorkProgress`. Completion checks are now matched to successful commands recorded after the direct task started; unmatched claims remain blocked and produce a diagnostic.
+
+Factual status turns are mechanically read-only: the function surface contains inspection tools only, and the execution boundary rejects mutating recovered pseudo-calls. Canonical-looking verifier/release substitutes under `WorkProgress/<project>/scripts/` are blocked. A repeated full write of the same direct-task file also requires a fresh read after the prior write, preventing context compaction from silently replacing completed work with a shorter reconstruction.
+
 ## v4.68.20 changelog (GigaChat direct-task intent guard)
 
 GigaChat now has a durable change-request mode for explicit implementation work in the middle of the canonical pipeline. `/do <task>` preserves the exact user request across context compaction, pauses automatic phase/release continuation without falsifying phase markers, and injects the direct task as the authoritative current objective. Strong natural-language implementation commands activate the same mode; `/task` exposes it and `/resume-phase` clears it explicitly.
@@ -474,9 +480,3 @@ The protection is mechanical rather than prompt-only: phase preflight/gates, `ph
 The one-window launcher now preflights enabled loopback HTTP MCP endpoints inherited from the user's Codex config. If a local endpoint is unreachable, Forge applies `mcp_servers.<name>.enabled=false` only to child phase/resume commands and prints the decision; it never edits global configuration. This prevents an optional stopped service such as Unity MCP from flooding or aborting an unrelated HTML5 phase. Remote and stdio MCPs are left untouched, reachable loopback endpoints stay enabled, and `--keep-local-mcp` provides an explicit escape hatch.
 
 Child `codex exec` now inherits terminal stdin instead of receiving a closed pipe. A prompt supplied as an argument is therefore no longer accompanied by the misleading `Reading additional input from stdin...` path in an interactive PowerShell launch. Regression fixtures verify start/resume override propagation, selective loopback detection, and the full Phase 1–9 lifecycle.
-
-## v4.68.18 changelog (cost/context-aware Codex orchestration)
-
-The one-window Codex parent now produces a local per-phase cost/context report without adding anything to model context. The exec JSON stream supplies a bounded fallback; local rollout aggregation enriches it with model-response count, cumulative input/cached/output usage, compactions, subagent tree, exact tool-output payload size, and actual root model/reasoning policy. Reports deliberately omit prompts, messages, file contents, rate-limit state, and secrets, and remain local through repository excludes.
-
-Terminal summaries explain cache reuse rather than calling output/input a universal efficiency score. Heuristic warnings cover high-volume context amplification, oversized tool output, model-policy mismatch, unexpected incomplete endings, exec failures, excess subagents, and compactions. Dashboard can load multiple `phase-N-latest.json` reports into comparable cards without receiving implicit filesystem access.

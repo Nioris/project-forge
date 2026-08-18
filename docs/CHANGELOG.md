@@ -4583,6 +4583,12 @@ Codex development no longer requires closing and reopening a terminal after ever
 
 The orchestrator also repairs premature `in_progress` endings with bounded automatic resumes and resolves the installed Windows Codex JS entrypoint directly, avoiding child-process failures from npm `.cmd` wrappers and protected WindowsApps executables.
 
+## v4.68.18 changelog (cost/context-aware Codex orchestration)
+
+The one-window Codex parent now produces a local per-phase cost/context report without adding anything to model context. The exec JSON stream supplies a bounded fallback; local rollout aggregation enriches it with model-response count, cumulative input/cached/output usage, compactions, subagent tree, exact tool-output payload size, and actual root model/reasoning policy. Reports deliberately omit prompts, messages, file contents, rate-limit state, and secrets, and remain local through repository excludes.
+
+Terminal summaries explain cache reuse rather than calling output/input a universal efficiency score. Heuristic warnings cover high-volume context amplification, oversized tool output, model-policy mismatch, unexpected incomplete endings, exec failures, excess subagents, and compactions. Dashboard can load multiple `phase-N-latest.json` reports into comparable cards without receiving implicit filesystem access.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".
