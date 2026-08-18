@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.8`
+**Current public version:** `v4.68.9`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -139,7 +139,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.8` keeps separate normal-account and API profiles.
+`v4.68.9` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -165,6 +165,8 @@ node scripts/forge-agent.mjs doctor
 ```
 
 GigaCode remains an experimental adapter. Forge does not fake CLI availability when no executable is installed.
+
+Every GigaChat STOP-point includes a deterministic `How to answer` block: an exact short approval phrase (`утверждаю`) and, when needed, the complete correction format expected by the gate.
 
 ## API keys and secrets
 

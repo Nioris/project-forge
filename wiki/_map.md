@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.8 (latest released)
+### Version: v4.68.9 (latest released)
 
+- 2026-08-18: **v4.68.9** — GigaChat 6.3.3 guided STOP answers: every user gate prints `Как ответить`, the exact `утверждаю` approval phrase and a decision-specific correction/deepening format; Phase 1 brief includes a complete Q1–Q5 template.
 - 2026-08-18: **v4.68.8** — GigaChat 6.3.2 natural brief acceptance: explicit phrases such as `принимаю рекомендации` approve the complete Q1–Q5 set, while qualified corrections remain unresolved; exact real-entrypoint regression added.
 - 2026-08-18: **v4.68.7** — GigaChat 6.3.1 resume orchestrator: repaired partial Phase 1 decisions and stale runtime evidence, fixed malformed ask_user crash, added live search/fetch + doctor/self-tests, automatic system CA/no-key fallback launcher setup, and semantic API-profile release gates.
 - 2026-08-16: **v4.68.6** — rebased the verified local-first release onto the concurrent GitHub/GitVerse mirror workflow and included that automation in the canonical MANIFEST.

@@ -70,6 +70,7 @@ function runPhaseResumeEntrypointRegression(){
     if(first.r.status===0){
       if(!first.text.includes('Q1')||!first.text.includes('Q5')) errors.push('GigaChat real entrypoint resume did not render the full Q1..Q5 STOP');
       else if(/credentials missing/i.test(first.text)) errors.push('GigaChat real entrypoint checked credentials before restoring the durable STOP');
+      else if(!first.text.includes('Как ответить:')||!first.text.includes('«утверждаю»')||!first.text.includes('Q5 — <ваш вариант или «согласен»>')) errors.push('GigaChat real entrypoint STOP did not render actionable approval/correction guidance');
       else ok.push('GigaChat real entrypoint restores Q1..Q5 before credentials');
     }
     const second=run('GigaChat persisted pending STOP survives restart',['scripts/gigachat-agent.mjs','--project',fixture,'--prompt','фаза 1'],cleanEnv,'Reopened pending Phase 1 resume STOP directly from durable state');

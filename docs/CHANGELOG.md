@@ -4503,6 +4503,12 @@ The first complete v4.68.4 fleet pass exposed a Windows PowerShell 5.1 encoding 
 
 `upgrade.ps1` now reads MANIFEST with `-LiteralPath` and explicit `-Encoding UTF8`. `check-update-surface.mjs` release-gates that exact contract. Re-extracting v4.68.5 restores the command reference before cleanup; the subsequent 424-file sibling sync restores it across the fleet.
 
+## v4.68.6 changelog (GitHub/GitVerse publication convergence)
+
+The local-first release branch was rebased onto the concurrent public `main` update that adds `.github/workflows/sync-gitverse.yml`. The workflow is now part of the canonical tree and generated MANIFEST instead of being accidentally deleted or omitted by a later local publication.
+
+No engine runtime, sibling payload, phase, skill, agent or platform behavior changes in this patch. v4.68.6 is the final convergence release: verified local sources, release ZIP, Universal installation, sibling fleet and the GitHub publication branch share one versioned state.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

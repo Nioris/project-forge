@@ -1,4 +1,4 @@
-# Project Forge v4.68.8 — Полная инструкция по работе
+# Project Forge v4.68.9 — Полная инструкция по работе
 
 ## Оглавление
 
@@ -93,7 +93,7 @@ F:\ProjectForgeUniversal\forge-data\secrets\gigasearch.key   # optional producti
 node scripts\forge-secrets.mjs status
 ```
 
-Claude API запускается через `apiKeyHelper`. Codex API использует отдельный `CODEX_HOME`, чтобы не перетирать ChatGPT login. GigaChat API запускает Forge-owned REPL с file/search/edit/status/git tools; `--full` дополнительно даёт shell tool. Launcher включает системный CA store для дочернего Node-процесса и, если production GigaSearch явно не настроен, использует no-key fallback `bing-html`. Текущий search provider проверяется через `/search-doctor`. Значения ключей Forge не печатает и не передаёт как command-line arguments.
+Claude API запускается через `apiKeyHelper`. Codex API использует отдельный `CODEX_HOME`, чтобы не перетирать ChatGPT login. GigaChat API запускает Forge-owned REPL с file/search/edit/status/git tools; `--full` дополнительно даёт shell tool. Launcher включает системный CA store для дочернего Node-процесса и, если production GigaSearch явно не настроен, использует no-key fallback `bing-html`. Текущий search provider проверяется через `/search-doctor`. Каждый GigaChat STOP печатает блок `Как ответить` с готовым `утверждаю` и точным форматом для изменений. Значения ключей Forge не печатает и не передаёт как command-line arguments.
 
 После изменений canonical runtime:
 
