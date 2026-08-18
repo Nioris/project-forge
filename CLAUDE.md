@@ -1,4 +1,4 @@
-# Project Forge v4.68.17 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.18 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.18 changelog (cost/context-aware Codex orchestration)
+
+The one-window Codex parent now produces a local per-phase cost/context report without adding anything to model context. The exec JSON stream supplies a bounded fallback; local rollout aggregation enriches it with model-response count, cumulative input/cached/output usage, compactions, subagent tree, exact tool-output payload size, and actual root model/reasoning policy. Reports deliberately omit prompts, messages, file contents, rate-limit state, and secrets, and remain local through repository excludes.
+
+Terminal summaries explain cache reuse rather than calling output/input a universal efficiency score. Heuristic warnings cover high-volume context amplification, oversized tool output, model-policy mismatch, unexpected incomplete endings, exec failures, excess subagents, and compactions. Dashboard can load multiple `phase-N-latest.json` reports into comparable cards without receiving implicit filesystem access.
+
 ## v4.68.17 changelog (one-window Codex phases)
 
 Codex development no longer requires closing and reopening a terminal after every phase. `codex-pipeline.mjs` holds one terminal UI while using `codex exec` sessions internally: answers to a real STOP resume the current phase session, but `phase-state complete` discards that session and starts the next phase with clean context after a simple yes/no prompt. `--auto` removes only the between-phase prompt, not real decision gates.
@@ -474,9 +480,3 @@ The orchestrator also repairs premature `in_progress` endings with bounded autom
 Every Codex phase and generated custom agent now stays on GPT-5.6 Sol/Standard. Reasoning effort remains high for creative and technical work, medium for deterministic listing/release/live work, and reaches xhigh only through named hard-problem routes. Fresh phase tasks, bounded output and a one-high-detail-image rule address the real context amplification that consumed the weekly model budget.
 
 Every new project gets its own local `main` repository. Completing a phase creates a durable checkpoint commit. An explicit workspace policy can create and push each future game/app to a private GitHub repository; Forge refuses public remotes and staged secrets, preserves local commits when the network fails, and never mass-onboards existing projects without an explicit command.
-
-## v4.68.15 changelog (Windows Yandex release pipeline)
-
-The canonical three-ZIP Yandex builder now works from Windows and accepts an external project root. It uses native filesystem operations and platform-appropriate archive commands; production stays clean, debug contains debugcheck plus cheats, and marketing contains debugcheck, cheats and screenshot helpers.
-
-ZIP CDN inspection and variant runtime testing no longer depend on Unix `/tmp`, `unzip`, `cp` or `rm`. Runtime testing extracts the requested archive before Yandex delegation and cleans its temporary directory. Pre-submit path resolution now connects `WorkProgress/<game>-yandex` with `Release/<game>/yandex`, allowing the real localized listings to participate in the gate.

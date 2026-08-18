@@ -47,6 +47,9 @@ if (!dash.includes('./sync.bat')) fail('dashboard lacks canonical root sync.bat 
 if (!dash.includes('../update-forge.bat')) fail('dashboard lacks external one-click updater guidance');
 if (!dash.includes('./upgrade.bat')) fail('dashboard lacks engine upgrade guidance');
 else ok.push('dashboard command mode, project wizard, upgrade and sync guidance are universal-agent aware');
+if (!dash.includes('id="costReportPanel"') || !dash.includes('phase-N-latest.json') || !dash.includes('function costLoadFiles')) {
+  fail('dashboard lacks the local Codex cost/context report reader');
+} else ok.push('dashboard can render privacy-bounded per-phase Codex cost/context reports');
 
 console.log('\nDashboard integrity audit\n'+'─'.repeat(38));
 for (const x of ok) console.log('  ✓ '+x);

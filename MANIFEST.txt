@@ -463,6 +463,7 @@ RELEASE_NOTES_v4.68.14.md
 RELEASE_NOTES_v4.68.15.md
 RELEASE_NOTES_v4.68.16.md
 RELEASE_NOTES_v4.68.17.md
+RELEASE_NOTES_v4.68.18.md
 RELEASE_NOTES_v4.68.2.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
@@ -707,6 +708,7 @@ scripts/gigachat-3d.mjs
 scripts/gigachat-agent.mjs
 scripts/gigachat-image.mjs
 scripts/git-init-games.mjs
+scripts/lib/codex-cost-report.mjs
 scripts/lib/forge-search.mjs
 scripts/lib/forge-secrets.mjs
 scripts/lib/gigachat-api.mjs

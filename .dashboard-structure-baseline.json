@@ -1,23 +1,23 @@
 {
-  "captured_at": "2026-08-18T17:23:46.513Z",
-  "dashboard_size_bytes": 138272,
-  "fingerprint": "037e50d96da1321a",
+  "captured_at": "2026-08-18T17:40:55.889Z",
+  "dashboard_size_bytes": 144576,
+  "fingerprint": "51803a23fa0b2a2f",
   "summary": {
-    "total_significant_elements": 475,
+    "total_significant_elements": 499,
     "by_tag": {
-      "div": 398,
+      "div": 418,
       "select": 2,
-      "button": 59,
-      "input": 9,
+      "button": 60,
+      "input": 10,
       "label": 1,
       "textarea": 3,
-      "section": 1,
-      "h2": 1,
+      "section": 2,
+      "h2": 2,
       "aside": 1
     },
-    "by_id_count": 34,
-    "handler_count": 97,
-    "elements_with_position_styles": 4
+    "by_id_count": 38,
+    "handler_count": 99,
+    "elements_with_position_styles": 5
   },
   "elements": [
     {
@@ -4441,6 +4441,108 @@
       "type": null
     },
     {
+      "tag": "section",
+      "id": "costReportPanel",
+      "classes": [
+        "cost-panel"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "classes": [],
+      "role": null,
+      "handlers": [],
+      "position_styles": [
+        "opacity=.85"
+      ],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-shell"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-toolbar"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-accent"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "input",
+      "id": "costReportFiles",
+      "classes": [],
+      "role": null,
+      "handlers": [
+        "onchange"
+      ],
+      "position_styles": [],
+      "type": "file"
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-hint"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "costDrop",
+      "classes": [
+        "cost-drop"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": "costReports",
+      "classes": [
+        "cost-grid"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
       "tag": "div",
       "id": "toast",
       "classes": [
@@ -5445,6 +5547,171 @@
       "handlers": [
         "onclick"
       ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-warnings"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-warning"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-ok"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-card-head"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-card-title"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-source"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-source"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metrics"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metric"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metric"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metric"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metric"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metric"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metric"
+      ],
+      "role": null,
+      "handlers": [],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "classes": [
+        "cost-metric"
+      ],
+      "role": null,
+      "handlers": [],
       "position_styles": [],
       "type": null
     },

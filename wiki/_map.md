@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.17 (latest released)
+### Version: v4.68.18 (latest released)
 
+- 2026-08-18: **v4.68.18** — per-phase Codex cost/context reporting from exec JSON plus local rollout telemetry, privacy-bounded local persistence, model/context/tool/stopping warnings, and Dashboard comparison cards.
 - 2026-08-18: **v4.68.17** — one-window Codex lifecycle: STOP answers resume the current phase, complete phases switch to clean internal sessions in the same terminal, premature stops auto-resume, and Windows CLI resolution is reliable.
 - 2026-08-18: **v4.68.16** — Quality-Sol Codex routing on Standard with bounded per-phase context, automatic local Git checkpoints, secret/public-remote guards and opt-in private GitHub creation/push for every future game/app.
 - 2026-08-18: **v4.68.15** — Windows Yandex release pipeline: external project roots, native cross-platform ZIP handling, correct production/debug/marketing contents, ZIP-aware CDN/runtime checks and staging-to-release listing resolution.

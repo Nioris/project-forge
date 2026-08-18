@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.17`
+**Current public version:** `v4.68.18`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -135,6 +135,8 @@ node ../project-forge/scripts/codex-pipeline.mjs --cwd .
 
 The terminal remains open for the entire project. Within a phase, Forge resumes the same Codex session after your STOP answer. After a durable `complete`, it asks whether to start the next phase, discards the old session context, and launches a clean one in the same window. Every phase uses GPT-5.6 Sol on Standard; reasoning is high for creative/technical work and medium for deterministic listing, packaging, and routine metrics.
 
+After every completed phase, the parent orchestrator prints and stores a privacy-bounded cost/context report under `wiki/diagnostics/codex-cost/phase-N-latest.json`. When the local Codex rollout is available, it measures model responses, input/cache/output tokens, compactions, subagents, tool-output volume, actual model policy, and unexpected stops. Reports never store prompts, messages, file contents, rate-limit state, or secrets. Open one or more reports in the Dashboard's **Codex Cost / Context** panel to compare phases.
+
 For manual single-phase control, `codex-phase.mjs <1..9>` remains available. See `.claude/skills/status/references/MODEL-ROUTING.md` for the complete table and `--route` options.
 
 Examples:
@@ -149,7 +151,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.17` keeps separate normal-account and API profiles.
+`v4.68.18` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -307,7 +309,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.17.md](RELEASE_NOTES_v4.68.17.md) — current release notes
+- [RELEASE_NOTES_v4.68.18.md](RELEASE_NOTES_v4.68.18.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

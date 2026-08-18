@@ -5,10 +5,20 @@
  * The parent terminal stays open and offers the next phase after a durable complete marker.
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  auditCodexSessionTree,
+  buildPhaseCostReport,
+  createExecTelemetry,
+  formatPhaseCostReport,
+  mergeExecTelemetry,
+  observeExecTelemetry,
+  savePhaseCostReport,
+} from './lib/codex-cost-report.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -165,9 +175,11 @@ export async function runCodexTurn(launcher, args, cwd, env) {
     let sessionId = null;
     let finalText = '';
     let stderr = '';
+    const telemetry = createExecTelemetry();
     const out = readline.createInterface({ input: child.stdout });
     out.on('line', line => {
       const parsed = parseExecEvent(line);
+      observeExecTelemetry(telemetry, line, parsed);
       if (parsed.threadId) sessionId = parsed.threadId;
       if (parsed.kind === 'agent' && parsed.text) {
         finalText = parsed.text;
@@ -188,8 +200,8 @@ export async function runCodexTurn(launcher, args, cwd, env) {
       stderr += text;
       process.stderr.write(text);
     });
-    child.on('error', error => resolve({ exitCode: 127, sessionId, finalText, stderr: error.message }));
-    child.on('close', code => resolve({ exitCode: code ?? 1, sessionId, finalText, stderr }));
+    child.on('error', error => resolve({ exitCode: 127, sessionId, finalText, stderr: error.message, telemetry }));
+    child.on('close', code => resolve({ exitCode: code ?? 1, sessionId, finalText, stderr, telemetry }));
   });
 }
 
@@ -239,11 +251,17 @@ export async function runPipeline({
       console.log(`\n[Forge] Phase ${phase} ${PHASE_NAMES[phase]} — NEW clean Codex session`);
       console.log(`[Forge] ${initial.selected.model}/${initial.selected.reasoning}, tier=${policy.serviceTier}`);
 
+      const phaseStartedAtMs = Date.now();
+      const phaseTelemetry = createExecTelemetry();
       let sessionId = null;
       let nextArgs = initial.args;
       let automaticContinues = 0;
+      let unexpectedStops = 0;
+      let failedExecs = 0;
+      let stopPrompts = 0;
       while (true) {
         const turn = await runCodexTurn(launcher, nextArgs, root, phaseEnv);
+        mergeExecTelemetry(phaseTelemetry, turn.telemetry);
         if (turn.sessionId) sessionId = turn.sessionId;
         const marker = readPhaseMarker(root, phase);
         const state = classifyAfterTurn(marker, turn.finalText, turn.exitCode);
@@ -253,6 +271,7 @@ export async function runPipeline({
           break;
         }
         if (state === 'failed') {
+          failedExecs++;
           console.error(`\n[Forge] Codex process failed with exit ${turn.exitCode}.`);
           const answer = await prompt.ask('Повторить текущую фазу в этой же сессии? [Y/n] ');
           if (answerIsStop(answer)) return turn.exitCode || 1;
@@ -262,6 +281,7 @@ export async function runPipeline({
           continue;
         }
         if (state === 'needs-answer') {
+          stopPrompts++;
           const reason = marker?.reason ? `\n[Forge] STOP: ${marker.reason}` : '';
           if (reason) console.log(reason);
           const answer = await prompt.ask('\nВаш ответ для ИИ (:stop — закончить):\n> ');
@@ -278,6 +298,7 @@ export async function runPipeline({
         }
 
         automaticContinues++;
+        unexpectedStops++;
         if (!sessionId) throw new Error('Codex ended an incomplete phase without reporting a session id.');
         if (automaticContinues <= 3) {
           console.log(`[Forge] Phase ${phase} is still in_progress; continuing automatically (${automaticContinues}/3).`);
@@ -291,6 +312,40 @@ export async function runPipeline({
           'Пользователь подтвердил продолжение. Доведи текущую фазу до настоящего STOP-point или phase complete.').args;
         automaticContinues = 0;
       }
+
+      const phaseCompletedAtMs = Date.now();
+      let rolloutAudit = null;
+      try {
+        const codexDataRoot = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+        rolloutAudit = await auditCodexSessionTree({
+          sessionId,
+          sessionsRoot: path.join(codexDataRoot, 'sessions'),
+          startedAtMs: phaseStartedAtMs,
+          completedAtMs: phaseCompletedAtMs,
+        });
+      } catch (error) {
+        console.warn(`[Forge] Local rollout audit unavailable: ${error.message}`);
+      }
+      const report = buildPhaseCostReport({
+        projectRoot: root,
+        phase,
+        phaseName: PHASE_NAMES[phase],
+        startedAtMs: phaseStartedAtMs,
+        completedAtMs: phaseCompletedAtMs,
+        expectedModel: initial.selected.model,
+        expectedReasoning: initial.selected.reasoning,
+        serviceTier: policy.serviceTier,
+        maxSubagents: Math.min(policy.limits.maxPhaseSubagents, initial.phasePolicy.maxSubagents),
+        sessionId,
+        execTelemetry: phaseTelemetry,
+        rolloutAudit,
+        unexpectedStops,
+        failedExecs,
+        stopPrompts,
+      });
+      const saved = savePhaseCostReport(root, report);
+      const relativeReport = path.relative(root, saved.latestPath).replaceAll('\\', '/');
+      console.log(formatPhaseCostReport(report, relativeReport));
 
       if (phase === 9) {
         console.log('\n[Forge] Все девять фаз пройдены.');

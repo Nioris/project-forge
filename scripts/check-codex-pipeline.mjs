@@ -8,6 +8,10 @@ import {
   classifyAfterTurn, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
   resolveCodexLauncher, resumeExecArgs, runPipeline,
 } from './codex-pipeline.mjs';
+import {
+  auditRolloutFile, buildPhaseCostReport, createExecTelemetry, formatPhaseCostReport,
+  observeExecTelemetry, savePhaseCostReport,
+} from './lib/codex-cost-report.mjs';
 
 const failures = [];
 const check = (condition, message) => {
@@ -33,6 +37,13 @@ const message = parseExecEvent(JSON.stringify({ type: 'item.completed', item: { 
 check(thread.kind === 'thread' && thread.threadId === 'abc', 'exec JSON captures the session id');
 check(message.kind === 'agent' && message.text === 'Готово', 'exec JSON renders the final agent message');
 
+const liveTelemetry = createExecTelemetry();
+const usageEvent = JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 1200, cached_input_tokens: 900, output_tokens: 30 } });
+observeExecTelemetry(liveTelemetry, usageEvent, parseExecEvent(usageEvent));
+check(liveTelemetry.completedTurns === 1 && liveTelemetry.usage.inputTokens === 1200
+  && liveTelemetry.usage.cachedInputTokens === 900,
+  'exec JSON telemetry captures bounded fallback usage without entering model context');
+
 check(classifyAfterTurn({ state: 'complete' }, '', 0) === 'complete', 'durable complete advances the pipeline');
 check(classifyAfterTurn({ state: 'blocked' }, '', 0) === 'needs-answer', 'durable blocked requests an answer');
 check(classifyAfterTurn({ state: 'in_progress' }, 'Утверждаете план?', 0) === 'needs-answer' && looksLikeQuestion('Начинаем?'),
@@ -50,6 +61,36 @@ try {
   fs.mkdirSync(path.join(tmp, 'wiki', 'phases'), { recursive: true });
   fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-1.json'), JSON.stringify({ phase: 1, state: 'complete' }));
   fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({ phase: 2, state: 'in_progress' }));
+
+  const rolloutFixture = path.join(tmp, 'rollout-fixture.jsonl');
+  fs.writeFileSync(rolloutFixture, [
+    { type: 'session_meta', payload: { session_id: 'fixture-session' } },
+    { type: 'turn_context', payload: { model: 'gpt-5.6-sol', effort: 'high' } },
+    { type: 'event_msg', payload: { type: 'task_started' } },
+    { type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: { input_tokens: 600000, cached_input_tokens: 500000, output_tokens: 8000 } } } },
+    { type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: { input_tokens: 1200000, cached_input_tokens: 1100000, output_tokens: 12000, reasoning_output_tokens: 2000 } } } },
+    { type: 'response_item', payload: { type: 'custom_tool_call_output', output: 'fixture output' } },
+    { type: 'compacted', payload: {} },
+  ].map(event => JSON.stringify(event)).join('\n') + '\n');
+  const rollout = await auditRolloutFile(rolloutFixture);
+  check(rollout.modelCalls === 2 && rollout.compactions === 1 && rollout.usage.inputTokens === 1200000
+    && rollout.usage.cachedInputTokens === 1100000 && rollout.models[0] === 'gpt-5.6-sol',
+    'local rollout audit counts model calls, compactions, cache usage, and actual model policy');
+  const fixtureReport = buildPhaseCostReport({
+    projectRoot: tmp, phase: 4, phaseName: 'Visual', startedAtMs: Date.now() - 1000,
+    expectedModel: 'gpt-5.6-sol', expectedReasoning: 'high', serviceTier: 'standard', maxSubagents: 1,
+    sessionId: 'fixture-session', execTelemetry: liveTelemetry,
+    rolloutAudit: { ...rollout, source: 'local-rollout', sessions: 1, subagents: 0, rootModels: rollout.models, rootReasoningEfforts: rollout.reasoningEfforts },
+    unexpectedStops: 2,
+  });
+  const fixtureSaved = savePhaseCostReport(tmp, fixtureReport);
+  check(fixtureReport.tokens.contextReuseRatio > 0.9
+    && fixtureReport.warnings.some(item => item.code === 'CONTEXT_AMPLIFICATION')
+    && fixtureReport.warnings.some(item => item.code === 'UNEXPECTED_AGENT_STOPS')
+    && fs.existsSync(fixtureSaved.latestPath)
+    && /Output\/input is intentionally not labeled as efficiency/.test(fs.readFileSync(fixtureSaved.latestPath, 'utf8'))
+    && /Forge Cost Report/.test(formatPhaseCostReport(fixtureReport)),
+    'phase report persists transparent ratios, warnings, and measurement notes');
   const dry = spawnSync(process.execPath, [path.join(process.cwd(), 'scripts', 'codex-pipeline.mjs'), '--cwd', tmp, '--from', '2', '--dry-run'], { encoding: 'utf8' });
   check(dry.status === 0 && /Phase 2 Design/.test(dry.stdout) && /Phase 9 Live/.test(dry.stdout)
     && (dry.stdout.match(/fresh-session=yes/g) || []).length === 8,
@@ -79,6 +120,9 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
   });
   check(integrated === 0 && allComplete && answers.length === 1,
     'full loop resumes one STOP inside Phase 1, then launches clean sessions through Phase 9');
+  check(Array.from({ length: 9 }, (_, i) => i + 1).every(phase =>
+    fs.existsSync(path.join(tmp, 'wiki', 'diagnostics', 'codex-cost', `phase-${phase}-latest.json`))),
+    'one-window pipeline saves a local cost/context report after every completed phase');
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
