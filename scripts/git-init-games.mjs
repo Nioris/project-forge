@@ -21,6 +21,7 @@ const IGNORE = [
   'screens/video/', 'screens/review/',
   'assets/bible/', 'assets/refs/', 'assets/target/',
   'backend/node_modules/',
+  'wiki/diagnostics/forge-events*.jsonl',
   '# ключи API — маска *.key НЕ ловит .openai_key/.elevenlabs_key и подобные',
   '.*_key', '*.key', '*.secret', '.env',
 ].join('\n') + '\n';

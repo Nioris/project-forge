@@ -12,6 +12,7 @@ import { createInterface } from 'node:readline';
 import { createHash } from 'node:crypto';
 import { getAccessToken, gigaJson, downloadGigaFile } from './lib/gigachat-api.mjs';
 import { applyDefaultSearchEnvironment, getSearchCapabilities, searchDoctor, webSearch, imageSearch, webFetch } from './lib/forge-search.mjs';
+import { appendForgeDiagnostic } from '../.claude/hooks/lib/forge-diagnostics.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -20,7 +21,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.9';
+const AUDITED_FORGE_VERSION = '4.68.11';
 const CONTRACT_VERSION = '6.3.3-guided-stop-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -29,6 +30,25 @@ const SELF_TEST = argv.includes('--self-test');
 const REQUEST_DOCTOR = argv.includes('--request-doctor');
 const INTEGRATION_TEST = argv.includes('--integration-test');
 if (!existsSync(PROJECT) || !statSync(PROJECT).isDirectory()) { console.error(`[X] Project not found: ${PROJECT}`); process.exit(2); }
+
+function reportForgeBehavior(input={}) {
+  return appendForgeDiagnostic(PROJECT, {
+    action: input.action || 'report',
+    severity: input.severity || 'warn',
+    code: input.code || 'GIGACHAT_FORGE_BEHAVIOR_ANOMALY',
+    kind: input.kind || 'adapter_transport',
+    source: input.source || 'runtime',
+    host: 'gigachat',
+    phase: input.phase || activePhase || null,
+    component: input.component || 'gigachat-agent',
+    operation: input.operation || '',
+    message: input.message || '',
+    expected: input.expected || '',
+    actual: input.actual || '',
+    evidence: input.evidence || [],
+    fingerprint: input.fingerprint,
+  });
+}
 
 function safePath(input = '.') {
   const p = resolve(PROJECT, input);
@@ -1595,6 +1615,7 @@ function phase1BriefRepairInstruction(a={},error=''){
 }
 
 function printBriefFormatRecoveryStop(error=''){
+  reportForgeBehavior({severity:'error',code:'GIGA_STOP_FORMAT_REPAIR_EXHAUSTED',kind:'stop_protocol',component:'phase-1-analyze',operation:'phase1-brief',message:'GigaChat exhausted bounded repair attempts for the canonical Phase 1 brief STOP.',expected:'Native ask_user with Q1..Q5 and one recommendation per question.',actual:String(error||'Malformed STOP serialization')});
   process.stdout.write(`\n=== FORGE RECOVERABLE STOP-FORMAT ERROR: Phase 1 ===\n`);
   process.stdout.write(`GigaChat repeatedly failed to serialize the mandatory /grilling brief correctly.\n`);
   if(error) process.stdout.write(`Last blocker: ${String(error)}\n`);
@@ -1681,6 +1702,7 @@ function phase1ContentBudgetRepairInstruction(a={},error=''){
   ].join('\n');
 }
 function printContentBudgetFormatRecoveryStop(error){
+  reportForgeBehavior({severity:'error',code:'GIGA_STOP_FORMAT_REPAIR_EXHAUSTED',kind:'stop_protocol',component:'phase-1-analyze',operation:'phase1-content-budget',message:'GigaChat exhausted bounded repair attempts for the product-metrics/content-budget STOP.',expected:'Complete native ask_user structured proposal.',actual:String(error||'Malformed STOP serialization')});
   process.stdout.write(
     `\n=== FORGE RECOVERABLE STOP-FORMAT ERROR: Phase 1 product-metrics ===\n`+
     `GigaChat repeatedly failed to serialize the complete canonical product-metrics/content-budget STOP.\n`+
@@ -2217,8 +2239,8 @@ function describeToolResult(name, result) {
 
 
 function phase1FunctionNames(){
-  const stopCommon=['ask_user','forge_memory_update','forge_context','read_file'];
-  const workCommon=['ask_user','forge_checkpoint','forge_gate','forge_memory_update','forge_skill','forge_skill_done','read_file','write_file','replace_text'];
+  const stopCommon=['ask_user','forge_memory_update','forge_context','forge_diagnostic_report','read_file'];
+  const workCommon=['ask_user','forge_checkpoint','forge_gate','forge_memory_update','forge_skill','forge_skill_done','forge_diagnostic_report','read_file','write_file','replace_text'];
 
   if(!phaseContextRefreshed || !phase1SourceInspected()){
     if(fileExistsNonEmpty('ANALYSIS.md',80) && hasAnyFileUnder('WorkProgress')){
@@ -2455,6 +2477,12 @@ const commonOkReturn = (extra={}) => ({
 });
 
 const functions = [
+  fnDef(
+    'forge_diagnostic_report',
+    'Record a machine-readable incident only when Project Forge itself behaves incorrectly: malformed phase/STOP output, wrong adapter format, hook/runtime failure, capability contradiction, validator drift, or unexpected orchestration. Do NOT report ordinary game/app implementation bugs. Never include secrets, prompts, full outputs, or file contents. Use action=resolve only after verifying a prior fingerprint.',
+    {type:'object',properties:{action:{type:'string',enum:['report','resolve']},severity:{type:'string',enum:['info','warn','error','critical']},code:{type:'string',description:'Stable uppercase incident class'},kind:{type:'string'},component:{type:'string'},operation:{type:'string'},message:{type:'string'},expected:{type:'string'},actual:{type:'string'},phase:{type:'integer'},evidence:{type:'array',items:{type:'string'},description:'Project-relative evidence paths only'},fingerprint:{type:'string',description:'Required when action=resolve'}},required:['code','component','message']},
+    {type:'object',properties:{ok:{type:'boolean'},fingerprint:{type:'string'},path:{type:'string'},error:{type:'string'}}}
+  ),
   fnDef(
     'ask_user',
     'MANDATORY human-approval gate for every Project Forge STOP-point or decision explicitly owned by the user. Call this instead of answering the decision yourself. The adapter prints the question/options/recommendation and immediately pauses the current tool loop until a new user message arrives. Never call another tool after a successful ask_user in the same turn. Phase 1 order: complete real research -> phase1-research-direction approval -> finalize ANALYSIS.md + dimensionality -> phase1-brief -> product-metrics proposal -> phase1-content-budget. IMPORTANT for decision_key=phase1-brief: canonical phase-1-analyze requires /grilling format exactly: ask all five Q1..Q5 in one round and put a concrete ➡️ recommended answer directly under EACH question. A single generic recommendation field is NOT sufficient. Recommendations must be grounded in the prototype/research and remain proposals for the user to accept or replace. For Q5 history, never fabricate undocumented prior user attempts/failures/releases; recommend what to confirm or preserve and mark unknown history as unknown. Never offer waiting for web_search when live search is already configured. Never ask the user to approve unseen research; include concrete findings, and the runtime will append the current research artifact excerpt. Final research Sources URLs must be grounded in successful forge_web_fetch evidence. Quantitative KPI percentage provenance is enforced later at the separate phase1-content-budget/product-metrics approval. For phase1-content-budget use the structured proposal object; Forge renders the STOP deterministically.',
@@ -2704,6 +2732,10 @@ function persistMemoryUpdate(a={}) {
 
 function tool(name, a={}) {
   try {
+    if (name==='forge_diagnostic_report') {
+      const result=reportForgeBehavior({...a,source:'ai'});
+      return jsonResult(result.ok?{ok:true,fingerprint:result.event.fingerprint,path:rel(result.path)}:{ok:false,error:result.error});
+    }
     if (name==='forge_preflight') return jsonResult(forgePreflight(Number(a.phase||activePhase)));
     if (name==='forge_skill_done') return jsonResult(markSkillDone(a.name));
     if (name==='forge_checkpoint') { reconcilePhase1ApprovedState(); return jsonResult(forgeCheckpoint()); }
@@ -2984,6 +3016,7 @@ Full shell mode: ${FULL?'enabled':'disabled'}
 
 Mandatory rules:
 - Follow FORGE.md and canonical .claude/skills/*/SKILL.md.
+- If you observe Forge itself returning the wrong format, violating a phase/STOP contract, contradicting its capabilities/state, or suffering an adapter/hook/runtime failure, call forge_diagnostic_report immediately with a short factual record, then continue safe work when possible. Do not use it for ordinary game/app bugs and never include secrets, prompts, full tool output, or file contents.
 - Exactly 9 phases. Never invent Phase 10.
 - Respect STOP-points and explicit user approvals.
 - EVERY STOP-point, red decision, required approval, product choice, monetization choice, multiplayer choice, platform choice, budget choice, art-direction choice, or other decision assigned to the user MUST be asked through the ask_user tool. ask_user pauses the turn; do not continue work after calling it.
@@ -3589,6 +3622,7 @@ async function turn(text){
       pseudoCallCounts.set(signature,repeats);
 
       if(repeats<=2){
+        reportForgeBehavior({severity:'warn',code:'GIGA_MALFORMED_TOOL_CALL',kind:'adapter_transport',component:'gigachat-function-calling',operation:name,message:'GigaChat serialized a callable tool as textual pseudo-markup; the runtime recovered it once.',expected:'Native function_call transport.',actual:'Textual pseudo-call transport.'});
         pseudoRecoveryCount++;
         toolCalls++;
         emptyFinalRetries=0;
@@ -3936,6 +3970,7 @@ if (REQUEST_DOCTOR) {
   test('workspace inspect recovery tool exposed',()=>functions.some(f=>f.name==='forge_workspace_inspect'));
   test('compaction checkpoint is non-system',()=>{ const cp={role:'user',content:'ctx'}; return cp.role!=='system'; });
   test('forge checkpoint tool exposed',()=>functions.some(f=>f.name==='forge_checkpoint'));
+  test('Forge behavioral diagnostic tool exposed',()=>functions.some(f=>f.name==='forge_diagnostic_report'));
   test('phantom skill runner translated',()=>parseMissingSkillRunner('node .claude/skills/analyze-project/index.mjs WorkProgress/x')?.skill==='analyze-project');
   test('Phase 1 brief write protected',()=>{ const oldPhase=activePhase; activePhase=1; const hit=Boolean(phase1ArtifactWriteGuard('wiki/design/brief.md')); activePhase=oldPhase; return hit; });
   test('web research capability is real config-derived boolean',()=>typeof WEB_SEARCH_AVAILABLE==='boolean' && WEB_SEARCH_AVAILABLE===Boolean(SEARCH_CAPABILITIES.web_search));
@@ -4056,14 +4091,14 @@ if (INTEGRATION_TEST) { const ok=await runIntegrationTest(); process.exit(ok?0:4
 
 if (ONE_SHOT) {
   try { await turn(ONE_SHOT); }
-  catch(e){ console.error('[X] '+e.message); process.exit(1); }
+  catch(e){ reportForgeBehavior({severity:'error',code:'GIGACHAT_RUNTIME_EXCEPTION',kind:'adapter_transport',component:'gigachat-agent',operation:'one-shot',message:e.message}); console.error('[X] '+e.message); process.exit(1); }
   process.exit(0);
 }
 
 const rl=createInterface({input:process.stdin,output:process.stdout,terminal:true});
 let replBuffer=[],replTimer=null,replBusy=false;const replQueue=[];
 function showPrompt(){if(!replBusy)process.stdout.write('\n> ');}
-async function processReplInput(raw){const q=String(raw||'').trim();if(!q)return;if(['/exit','/quit'].includes(q)){rl.close();return;}if(q==='/status'){console.log(JSON.parse(tool('forge_status',{json:false})).output);return;}if(q==='/preflight'){console.log(JSON.stringify(forgePreflight(activePhase),null,2));return;}if(q==='/search-doctor'){console.log(JSON.stringify(searchDoctor(PROJECT),null,2));return;}if(q==='/gates'){const g=phaseGateReport(activePhase);console.log(g.ok?`[Forge Gate] GREEN for Phase ${g.phase}`:`[Forge Gate] BLOCKED for Phase ${g.phase}:\n- ${g.blockers.join('\n- ')}`);return;}if(q==='/context'){console.log(JSON.stringify(buildProjectContext(),null,2));return;}if(q==='/tokens'){console.log(JSON.stringify({model:MODEL,lastUsage,approxPayloadChars:approxPayloadChars(),contextCharBudget:CONTEXT_CHAR_BUDGET,compactions:compactionCount},null,2));return;}try{await turn(q);}catch(e){tokenCache=null;console.error('\n[X] '+e.message);}}
+async function processReplInput(raw){const q=String(raw||'').trim();if(!q)return;if(['/exit','/quit'].includes(q)){rl.close();return;}if(q==='/status'){console.log(JSON.parse(tool('forge_status',{json:false})).output);return;}if(q==='/preflight'){console.log(JSON.stringify(forgePreflight(activePhase),null,2));return;}if(q==='/search-doctor'){console.log(JSON.stringify(searchDoctor(PROJECT),null,2));return;}if(q==='/gates'){const g=phaseGateReport(activePhase);console.log(g.ok?`[Forge Gate] GREEN for Phase ${g.phase}`:`[Forge Gate] BLOCKED for Phase ${g.phase}:\n- ${g.blockers.join('\n- ')}`);return;}if(q==='/context'){console.log(JSON.stringify(buildProjectContext(),null,2));return;}if(q==='/tokens'){console.log(JSON.stringify({model:MODEL,lastUsage,approxPayloadChars:approxPayloadChars(),contextCharBudget:CONTEXT_CHAR_BUDGET,compactions:compactionCount},null,2));return;}try{await turn(q);}catch(e){tokenCache=null;reportForgeBehavior({severity:'error',code:'GIGACHAT_RUNTIME_EXCEPTION',kind:'adapter_transport',component:'gigachat-agent',operation:'repl-turn',message:e.message});console.error('\n[X] '+e.message);}}
 async function drainReplQueue(){if(replBusy)return;replBusy=true;while(replQueue.length)await processReplInput(replQueue.shift());replBusy=false;showPrompt();}
 function flushReplBuffer(){if(replTimer){clearTimeout(replTimer);replTimer=null;}if(!replBuffer.length)return;replQueue.push(replBuffer.join('\n'));replBuffer=[];void drainReplQueue();}
 rl.on('line',line=>{replBuffer.push(line);if(replTimer)clearTimeout(replTimer);replTimer=setTimeout(flushReplBuffer,180);});

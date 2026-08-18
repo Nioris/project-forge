@@ -7,6 +7,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { summarizeForgeDiagnostics } from '../../../hooks/lib/forge-diagnostics.mjs';
 
 const PHASES = [
   [1, 'Analyze'], [2, 'Design'], [3, 'Construct'], [4, 'Visual'], [5, 'Tech'],
@@ -190,6 +191,7 @@ for (const row of phaseRows) {
 }
 
 const currentRow = phaseRows.find(x => x.phase === currentPhase);
+const diagnostics = summarizeForgeDiagnostics(root);
 let stopPoint = currentRow?.reason || null;
 const currentWiki = read('wiki/_current.md');
 if (!stopPoint && currentWiki) {
@@ -223,6 +225,12 @@ const result = {
     visualQaReports: visualQaCount,
   },
   health,
+  diagnostics: {
+    open: diagnostics.open.length,
+    counts: diagnostics.counts,
+    parseErrors: diagnostics.parseErrors.length,
+    latest: diagnostics.open[0] || null,
+  },
   sources: {
     phaseMarkers: explicit.size,
     artifactFacts: true,
@@ -242,5 +250,6 @@ console.log(`Forge: ${forgeVersion || 'unknown'} | type: ${projectType} | curren
 for (const p of phaseRows) console.log(`${icon(p.state)} ${p.phase} ${p.name}${p.source === 'marker' ? ' [marker]' : ''}`);
 console.log(`AI Studio: config=${aiConfig ? 'yes' : 'no'} style=${styleBibleState} prompts=${promptCount} approved=${approvedCount} visualQA=${visualQaCount}`);
 console.log(`Health: viewport=${health.viewport} touch=${health.touchAction} sdkInit=${health.yandexInit} ready=${health.loadingReady} i18n=${health.i18nRuntime} builds=${health.builds}`);
+console.log(`Forge diagnostics: open=${diagnostics.open.length} critical=${diagnostics.counts.critical} error=${diagnostics.counts.error} warn=${diagnostics.counts.warn} parseErrors=${diagnostics.parseErrors.length}`);
 if (stopPoint) console.log(`STOP: ${stopPoint}`);
 for (const w of warnings) console.log(`WARN: ${w}`);

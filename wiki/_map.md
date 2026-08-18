@@ -28,7 +28,7 @@
 Кратко:
 - **Core**: Node.js 20+, ES modules (.mjs), bash + PowerShell для setup
 - **Tooling**: только встроенные модули Node (`fs`, `path`, `child_process`) — no runtime deps
-- **Skills**: 141 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
+- **Skills**: 142 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
 - **Hooks**: 8 .mjs файлов в `.claude/hooks/`
 - **Agents**: 21 canonical markdown roles в `.claude/agents/` + generated Codex TOML mirrors
 - **Knowledge base**: 61 SKILL.md в `./skills/` (referenced by command skills)
@@ -38,7 +38,7 @@
 
 - **9 platforms** — yandex, vk, telegram, ok, max, rustore, web, steam, vkplay
 - **34 validators** — pre-submit gate per platform
-- **141 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
+- **142 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
 - **8 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous
 - **21 agents** — platform builders + design/art/QA/security/research/AI Studio specialist roles
 - **Dashboard** — `dashboard.html` для project tracking + quick prompt copy
@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.10 (latest released)
+### Version: v4.68.11 (latest released)
 
+- 2026-08-18: **v4.68.11** — local fleet behavioral diagnostics: AI/adapter/hook/runtime incident reporting, secret-redacted JSONL with stable fingerprints and verified resolution, status counters, and a sibling-wide read-only auditor.
 - 2026-08-18: **v4.68.10** — Codex economy routing: Standard tier, per-phase Terra/Sol/Luna policy, policy-aware fresh-task launcher, maximum two Terra/medium subagents, Dashboard launch commands and honest actual-vs-recommended model state.
 - 2026-08-18: **v4.68.9** — GigaChat 6.3.3 guided STOP answers: every user gate prints `Как ответить`, the exact `утверждаю` approval phrase and a decision-specific correction/deepening format; Phase 1 brief includes a complete Q1–Q5 template.
 - 2026-08-18: **v4.68.8** — GigaChat 6.3.2 natural brief acceptance: explicit phrases such as `принимаю рекомендации` approve the complete Q1–Q5 set, while qualified corrections remain unresolved; exact real-entrypoint regression added.

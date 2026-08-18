@@ -1,4 +1,4 @@
-# Project Forge v4.68.10 — Полная инструкция по работе
+# Project Forge v4.68.11 — Полная инструкция по работе
 
 ## Оглавление
 
@@ -77,6 +77,18 @@ node scripts\forge-search-doctor.mjs --project .
 # Optional dormant bridge
 node scripts\forge-agent.mjs doctor gigacode
 ```
+
+### Локальный журнал ошибок Forge
+
+ИИ обязана отличать баг проекта от сбоя самого Forge. Неверный фазовый/STOP-формат, ошибка adapter/hook/runtime, противоречивое состояние или неверно заявленная capability записываются в `wiki/diagnostics/forge-events.jsonl`; обычные ошибки игры/приложения — нет. Журнал не содержит полных prompts/выводов и локально исключается из Git.
+
+Чтобы оценить масштаб одной и той же проблемы по всем проектам рядом с движком:
+
+```powershell
+node scripts\audit-forge-diagnostics.mjs --since 30d
+```
+
+Для машинного разбора добавьте `--json`, для всей истории — `--since all`. Исправленный инцидент закрывается только после повторной проверки.
 
 ### Экономичный запуск фаз Codex
 

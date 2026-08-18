@@ -63,6 +63,14 @@ Codex hooks enforce or assist with:
 
 Do not disable hooks to bypass a legitimate Forge invariant. Project-local Codex config/hooks load only for a trusted project.
 
+## Forge behavioral diagnostics
+
+When Forge itself behaves incorrectly—malformed phase/STOP output, wrong adapter format, hook/runtime failure, capability mismatch, validator contradiction, or unexpected orchestration—record it immediately with the \`forge-diagnostics\` skill or:
+
+\`node .claude/skills/status/references/forge-event.mjs report --severity error --code STABLE_ERROR_CODE --kind phase_protocol --component phase-1-analyze --operation ask-user --message "Short factual description" --expected "Expected Forge behavior" --actual "Observed Forge behavior" --phase 1 --host codex --evidence wiki/phases/phase-1.json\`
+
+Do not log ordinary game/app bugs unless Forge caused or misreported them. Continue safe work after recording when possible. Never include secrets, prompts, full terminal output, or full file contents; evidence paths must be project-relative. Resolve a fingerprint only after verification with \`forge-event.mjs resolve --fingerprint <id> --message "Verified correction"\`.
+
 ## Definition of Done
 
 - Run the verifier(s) named by the selected skill.

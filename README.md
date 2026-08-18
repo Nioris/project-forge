@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.10`
+**Current public version:** `v4.68.11`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -24,7 +24,7 @@ Forge is not another chat UI. It is a project runtime around terminal agents.
 It provides:
 
 - **9 canonical phases** from analysis to live operation;
-- **141 canonical skills** plus generated Codex discovery adapters;
+- **142 canonical skills** plus generated Codex discovery adapters;
 - **21 specialized subagents**;
 - shared phase markers, STOP-points and project state across supported hosts;
 - native Claude Code and Codex launch profiles;
@@ -148,7 +148,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.10` keeps separate normal-account and API profiles.
+`v4.68.11` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -178,6 +178,21 @@ GigaCode remains an experimental adapter. Forge does not fake CLI availability w
 Every GigaChat STOP-point includes a deterministic `How to answer` block: an exact short approval phrase (`утверждаю`) and, when needed, the complete correction format expected by the gate.
 
 Forge allows at most two phase subagents by default and never enables Max/Ultra automatically. These economy limits do not change the Claude or GigaChat workflows.
+
+## Forge behavioral diagnostics
+
+When Forge itself violates a phase/STOP contract, returns the wrong adapter format, suffers a hook/runtime failure, or reports contradictory state/capabilities, the AI records a local structured incident. Ordinary bugs in the game or app are excluded.
+
+Each project stores `wiki/diagnostics/forge-events.jsonl`. Common credentials and the absolute project root are redacted, evidence paths must remain project-relative, and the local log is excluded from Git. Current incidents also appear in `$status`/`/status`.
+
+Audit every managed sibling project from the engine:
+
+```powershell
+node scripts/audit-forge-diagnostics.mjs --since 30d
+node scripts/audit-forge-diagnostics.mjs --since all --json
+```
+
+Repeated observations are grouped by stable error class, component, and operation. A verified fix closes the same fingerprint without deleting its history.
 
 ## API keys and secrets
 

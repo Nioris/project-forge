@@ -3,6 +3,14 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.11 changelog (fleet behavioral diagnostics)
+
+Forge-managed projects now keep a local `wiki/diagnostics/forge-events.jsonl` stream for behavioral defects in Forge itself. Claude/Codex/generic instructions and a native GigaChat function report malformed phase/STOP output, adapter/hook/runtime failures, state/capability contradictions and incorrect Forge formats while excluding ordinary game/app bugs. The dependency-free logger bounds fields, redacts common credentials and the project root, accepts only project-relative evidence, rotates non-destructively and adds a local Git exclude.
+
+`project-status.mjs` shows unresolved counts. `scripts/audit-forge-diagnostics.mjs` scans all managed sibling projects, reconstructs report/resolve state and groups observations by stable code/component/operation so engine maintainers can measure fleet impact while projects continue developing. GigaChat also auto-reports bounded STOP-format exhaustion, malformed textual tool transport and fatal runtime exceptions.
+
+---
+
 ## v4.68.1 changelog (terminal API profiles + GigaChat coding agent)
 
 Claude and Codex now have explicit API launch profiles in addition to their existing subscription/ChatGPT profiles. Keys are centralized outside projects under `forge-data/secrets/`. Claude receives its key through `apiKeyHelper`; Codex receives an isolated API-key auth store under a dedicated `CODEX_HOME`, preventing API mode from replacing the normal ChatGPT login.
@@ -4514,6 +4522,12 @@ No engine runtime, sibling payload, phase, skill, agent or platform behavior cha
 The Forge-owned GigaChat adapter now carries the cumulative `6.3.1-resume-orchestrator` contract. It fixes the live malformed-`ask_user` const reassignment crash, reopens incomplete Q1–Q5 brief decisions before another model request, reconciles stale Phase 1 state and preserves approved research/product-metrics evidence across compaction and retries.
 
 The permanent capability now includes real web/image search, safe page fetch, a search doctor and offline provider self-test. `forge-agent` enables the Node system CA store before launching the GigaChat child and selects the no-key `bing-html` fallback only when no explicit provider/endpoint exists. The API-profile release gate runs both self-test suites and validates standard/full tool-surface semantics instead of a stale hard-coded count.
+
+## v4.68.8 changelog (natural brief acceptance)
+
+The GigaChat adapter now treats explicit natural-language approval such as `принимаю рекомендации`, `принимаю все рекомендации` and `согласен со всеми рекомендациями` as approval of the complete Phase 1 Q1–Q5 recommendation set. Qualified answers such as `принимаю рекомендации, но Q2 изменить` remain unresolved so corrections are never silently discarded.
+
+The adapter contract is `6.3.2-natural-acceptance`. Unit coverage and a real CLI subprocess regression prove that the exact user phrase is persisted, rebuilds all five canonical brief fields and clears the durable pending STOP before the next model request.
 
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 

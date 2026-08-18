@@ -62,6 +62,7 @@
 .agents/skills/find-skills/SKILL.md
 .agents/skills/fix-moderation/SKILL.md
 .agents/skills/fix-ui/SKILL.md
+.agents/skills/forge-diagnostics/SKILL.md
 .agents/skills/full-pipeline/SKILL.md
 .agents/skills/gacha-meta/SKILL.md
 .agents/skills/game-design/SKILL.md
@@ -157,6 +158,7 @@
 .agents/skills/start/SKILL.md
 .agents/skills/status/SKILL.md
 .agents/skills/status/references/MODEL-ROUTING.md
+.agents/skills/status/references/forge-event.mjs
 .agents/skills/status/references/model-policy.json
 .agents/skills/status/references/phase-state.mjs
 .agents/skills/status/references/project-status.mjs
@@ -209,6 +211,7 @@
 .claude/context-essentials.md
 .claude/hooks/approval-gate.mjs
 .claude/hooks/block-dangerous.mjs
+.claude/hooks/lib/forge-diagnostics.mjs
 .claude/hooks/lib/parse-plan.mjs
 .claude/hooks/plan-check.mjs
 .claude/hooks/plugin-hooks.json
@@ -281,6 +284,7 @@
 .claude/skills/find-skills/SKILL.md
 .claude/skills/fix-moderation/SKILL.md
 .claude/skills/fix-ui/SKILL.md
+.claude/skills/forge-diagnostics/SKILL.md
 .claude/skills/full-pipeline/SKILL.md
 .claude/skills/gacha-meta/SKILL.md
 .claude/skills/game-design/SKILL.md
@@ -375,6 +379,7 @@
 .claude/skills/start/SKILL.md
 .claude/skills/status/SKILL.md
 .claude/skills/status/references/MODEL-ROUTING.md
+.claude/skills/status/references/forge-event.mjs
 .claude/skills/status/references/model-policy.json
 .claude/skills/status/references/phase-state.mjs
 .claude/skills/status/references/project-status.mjs
@@ -449,6 +454,7 @@ README.md
 README_RU.md
 RELEASE_NOTES_v4.68.1.md
 RELEASE_NOTES_v4.68.10.md
+RELEASE_NOTES_v4.68.11.md
 RELEASE_NOTES_v4.68.2.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
@@ -630,6 +636,7 @@ scripts/asset-merge.mjs
 scripts/asset-normalize.mjs
 scripts/asset-scan.mjs
 scripts/asset-shard.mjs
+scripts/audit-forge-diagnostics.mjs
 scripts/backup-data.mjs
 scripts/build-all-platforms.mjs
 scripts/build-release.sh
@@ -651,6 +658,7 @@ scripts/check-debugcheck-fixtures.mjs
 scripts/check-drift.mjs
 scripts/check-emoji-coverage.mjs
 scripts/check-external-cdn.mjs
+scripts/check-forge-diagnostics.mjs
 scripts/check-inline-strings.mjs
 scripts/check-nested-dirs.mjs
 scripts/check-no-float-money.mjs

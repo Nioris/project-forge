@@ -25,9 +25,14 @@ import { join, extname, dirname, relative } from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { loadActive } from './lib/parse-plan.mjs';
+import { appendForgeDiagnostic } from './lib/forge-diagnostics.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = join(__dirname, '..', '..');
+const bundledRoot = join(__dirname, '..', '..');
+const cwd = process.cwd();
+const root = existsSync(join(cwd, '.forge-managed.json')) || existsSync(join(cwd, 'FORGE.md'))
+  ? cwd
+  : bundledRoot;
 
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
 
@@ -146,7 +151,15 @@ function run() {
 
   let data;
   try { data = JSON.parse(raw); }
-  catch { process.stdout.write('{"continue":true,"suppressOutput":true}'); return; }
+  catch (error) {
+    appendForgeDiagnostic(root, {
+      severity: 'error', code: 'HOOK_PAYLOAD_INVALID', kind: 'hook_failure', source: 'hook',
+      component: 'post-tool-capture', operation: 'parse-event',
+      message: error?.message || 'Hook received invalid JSON', expected: 'Valid lifecycle hook JSON',
+      actual: 'Payload could not be parsed',
+    });
+    process.stdout.write('{"continue":true,"suppressOutput":true}'); return;
+  }
 
   const { dir: sessDir, file: logFile, dateStr } = todayLogPath();
   if (!existsSync(sessDir)) mkdirSync(sessDir, { recursive: true });
@@ -232,6 +245,11 @@ function tryLint(filePath) {
   } catch { /* silent */ }
 }
 
-try { run(); } catch {
+try { run(); } catch (error) {
+  appendForgeDiagnostic(root, {
+    severity: 'error', code: 'HOOK_POST_TOOL_CAPTURE_EXCEPTION', kind: 'hook_failure', source: 'hook',
+    component: 'post-tool-capture', operation: 'capture',
+    message: error?.message || 'Unexpected post-tool capture failure',
+  });
   process.stdout.write('{"continue":true,"suppressOutput":true}');
 }

@@ -1,4 +1,4 @@
-# Project Forge v4.68.10 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.11 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.11 changelog (fleet behavioral diagnostics)
+
+Managed projects now keep a dedicated local JSONL incident stream for defects in Forge itself: malformed phase/STOP behavior, adapter/runtime/hook failures, capability or state contradictions, and incorrect returned formats. AI instructions for Claude, Codex, generic agents and the GigaChat native tool all require immediate reporting while explicitly excluding ordinary game/app bugs. Fields are bounded and credential-redacted, evidence stays project-relative, logs rotate non-destructively and remain outside final Git commits.
+
+`$status` exposes the open count, while `scripts/audit-forge-diagnostics.mjs` scans every managed sibling and groups unresolved observations by stable code/component/operation. Incidents are closed by fingerprint only after verification. Hook/runtime failures and bounded GigaChat STOP/transport recovery exhaustion report automatically; a dependency-free regression verifies redaction, deduplication, resolution, local Git exclusion and fleet aggregation.
+
 ## v4.68.10 changelog (Codex economy routing)
 
 Forge now owns a canonical per-phase Codex policy and a fresh-task launcher. Standard is the default tier; Terra handles normal implementation, Sol handles design and named complex escalations, and Luna is limited to mechanical work. Phase orchestration defaults to at most two Terra/medium subagents; Max/Ultra are never automatic.
@@ -474,9 +480,3 @@ Forge now owns a canonical per-phase Codex policy and a fresh-task launcher. Sta
 Every GigaChat `ask_user` STOP now ends with deterministic answer guidance instead of relying on the model to remember response syntax. A recommended decision exposes the exact short approval phrase `утверждаю`; Phase 1 research and content-budget gates also show their correction/deepening form, while the five-question brief prints a complete Q1–Q5 answer template.
 
 The adapter contract is `6.3.3-guided-stop`. Unit tests cover approval/correction guidance and the real terminal subprocess gate asserts that the visible resume STOP contains `Как ответить`, `«утверждаю»` and the full Q1–Q5 correction format.
-
-## v4.68.8 changelog (natural brief acceptance)
-
-The GigaChat adapter now treats explicit natural-language approval such as `принимаю рекомендации`, `принимаю все рекомендации` and `согласен со всеми рекомендациями` as approval of the complete Phase 1 Q1–Q5 recommendation set. Qualified answers such as `принимаю рекомендации, но Q2 изменить` remain unresolved so corrections are never silently discarded.
-
-The adapter contract is `6.3.2-natural-acceptance`. Unit coverage and a real CLI subprocess regression prove that the exact user phrase is persisted, rebuilds all five canonical brief fields and clears the durable pending STOP before the next model request.

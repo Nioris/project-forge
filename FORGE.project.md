@@ -85,6 +85,18 @@ Supported Forge provider surfaces can include:
 
 Never silently fall back to a paid provider. Preserve prompt packs and provenance.
 
+## Forge behavioral diagnostics
+
+If Forge itself behaves incorrectly, record the incident immediately. Examples include malformed phase or STOP output, an adapter returning the wrong format, a hook/runtime failure, a capability contradiction, validator drift, or unexpected orchestration behavior. Do not use this journal for ordinary bugs in the game or app unless Forge caused or misreported them.
+
+From the managed project root, run:
+
+`node .claude/skills/status/references/forge-event.mjs report --severity error --code STABLE_ERROR_CODE --kind phase_protocol --component phase-1-analyze --operation ask-user --message "Short factual description" --expected "Expected Forge behavior" --actual "Observed Forge behavior" --phase 1 --host codex --evidence wiki/phases/phase-1.json`
+
+Continue safe work after recording when possible. Never include secrets, bearer tokens, prompts, full terminal output, or full file contents. Use only project-relative evidence paths. After a verified correction, close the fingerprint with `forge-event.mjs resolve --fingerprint <id> --message "How the correction was verified"`.
+
+The durable machine log is `wiki/diagnostics/forge-events.jsonl`. Use the `forge-diagnostics` skill for the complete protocol.
+
 ## Definition of done
 
 A task is not complete until the selected skill's required evidence/verifiers pass. Update project memory after meaningful work. Never claim fixed/ready/done without repository or runtime evidence.

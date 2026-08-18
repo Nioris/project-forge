@@ -41,7 +41,7 @@ try {
   writeFileSync(join(dir, 'assets', 'style', 'STYLE-BIBLE.md'), '# STYLE BIBLE\n\nStatus: draft — approve in Phase 4 before mass generation.\n');
 } catch {}
 writeFileSync(join(dir, '.gitignore'),
-  'node_modules/\noutput/\nhandoff/\nscreens/video/\nscreens/review/\nassets/bible/\nassets/refs/\nassets/target/\nbackend/node_modules/\n.*_key\n.*_token\n*.key\n*.secret\n.env\n');
+  'node_modules/\noutput/\nhandoff/\nscreens/video/\nscreens/review/\nassets/bible/\nassets/refs/\nassets/target/\nbackend/node_modules/\nwiki/diagnostics/forge-events*.jsonl\n.*_key\n.*_token\n*.key\n*.secret\n.env\n');
 
 console.log(`Created ${type} project: ${dir}`);
 console.log('Syncing universal Forge runtime (Claude/Codex/generic agents)...\n');

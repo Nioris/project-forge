@@ -91,6 +91,12 @@ const RULES = [
     replace: `"version": "${targetVersion}"`,
     desc: 'marketplace.json version field',
   },
+  {
+    file: 'scripts/gigachat-agent.mjs',
+    find: /const AUDITED_FORGE_VERSION = '\d+\.\d+\.\d+';/,
+    replace: `const AUDITED_FORGE_VERSION = '${targetVersion}';`,
+    desc: 'GigaChat audited Forge contract version',
+  },
   // CLAUDE.md top display heading only — historical changelog headers remain untouched
   {
     file: 'CLAUDE.md',
