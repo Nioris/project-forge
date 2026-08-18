@@ -22,9 +22,13 @@
  *   - Marketing must contain screenshots.js
  *
  * Usage:
- *   node scripts/build-yandex-3zips.mjs <project-name> <version>
- *   node scripts/build-yandex-3zips.mjs parkour v1
- *   node scripts/build-yandex-3zips.mjs parkour v1 --root F:\\Games\\parkour
+ *   node scripts/build-yandex-3zips.mjs <project-name> [requested-version]
+ *   node scripts/build-yandex-3zips.mjs parkour
+ *   node scripts/build-yandex-3zips.mjs parkour v1.2.0 --root F:\\Games\\parkour
+ *
+ * Every successful invocation creates a NEW release version. When the requested
+ * version is absent, equal to, or older than the latest existing build, Forge
+ * automatically increments the latest version instead of overwriting ZIPs.
  *
  * Exit:
  *   0 = all 3 zips built + validated
@@ -40,26 +44,99 @@ import os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
+const SELF_TEST = args.includes('--self-test');
 const rootIndex = args.indexOf('--root');
 const explicitRoot = rootIndex >= 0 ? args[rootIndex + 1] : null;
 if (rootIndex >= 0 && (!explicitRoot || explicitRoot.startsWith('--'))) {
   console.error('[X] --root requires a project-root path');
   process.exit(2);
 }
-const positional = args.filter((value, index) => index !== rootIndex && index !== rootIndex + 1);
+const positional = args.filter((value, index) => value!=='--self-test' && index !== rootIndex && index !== rootIndex + 1);
 const ENGINE_ROOT = path.resolve(__dirname, '..');
 const ROOT = explicitRoot ? path.resolve(explicitRoot) : ENGINE_ROOT;
 const PROJECT = positional[0];
-const VERSION = positional[1] || 'v1';
+const REQUESTED_VERSION = positional[1] || null;
+
+function parseVersionLabel(value) {
+  const match=String(value||'').trim().match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?$/i);
+  if(!match) return null;
+  const parts=[Number(match[1])];
+  if(match[2]!==undefined) parts.push(Number(match[2]));
+  if(match[3]!==undefined) parts.push(Number(match[3]));
+  return {label:`v${parts.join('.')}`,parts};
+}
+
+function compareVersions(a,b) {
+  for(let i=0;i<3;i++){
+    const delta=(a.parts[i]||0)-(b.parts[i]||0);
+    if(delta) return delta;
+  }
+  return a.parts.length-b.parts.length;
+}
+
+function incrementVersion(version) {
+  const parts=[...version.parts];
+  parts[parts.length-1]=(parts[parts.length-1]||0)+1;
+  return {label:`v${parts.join('.')}`,parts};
+}
+
+function chooseReleaseVersion(existing,requestedLabel=null){
+  const ordered=existing.map(parseVersionLabel).filter(Boolean).sort(compareVersions);
+  const latest=ordered.at(-1)||null;
+  const requested=parseVersionLabel(requestedLabel);
+  if(requestedLabel && !requested) throw new Error(`Invalid requested version: ${requestedLabel}. Use vN, vN.N, or vN.N.N.`);
+  let selected=requested || (latest?incrementVersion(latest):parseVersionLabel('v1.0.0'));
+  let autoBumped=false;
+  if(latest && (!requested || compareVersions(selected,latest)<=0)){
+    selected=incrementVersion(latest);
+    autoBumped=true;
+  }
+  return {selected,latest,autoBumped};
+}
+
+if(SELF_TEST){
+  const checks=[
+    ['first build starts at v1.0.0',chooseReleaseVersion([],null).selected.label==='v1.0.0'],
+    ['automatic rebuild increments patch',chooseReleaseVersion(['v1.0.0'],null).selected.label==='v1.0.1'],
+    ['same requested version auto-bumps',chooseReleaseVersion(['v1.0.0'],'v1.0.0').selected.label==='v1.0.1'],
+    ['older requested version auto-bumps latest',chooseReleaseVersion(['v1.2.8'],'v1.1.0').selected.label==='v1.2.9'],
+    ['newer requested version is respected',chooseReleaseVersion(['v1.2.8'],'v2.0.0').selected.label==='v2.0.0'],
+    ['single-component convention increments',chooseReleaseVersion(['v7'],'v7').selected.label==='v8'],
+  ];
+  for(const [name,ok] of checks) console.log(`${ok?'[OK]':'[FAIL]'} ${name}`);
+  process.exit(checks.every(([,ok])=>ok)?0:1);
+}
 
 if (!PROJECT) {
   console.error('Usage: node scripts/build-yandex-3zips.mjs <project-name> [version]');
-  console.error('Example: node scripts/build-yandex-3zips.mjs parkour v1');
+  console.error('Example: node scripts/build-yandex-3zips.mjs parkour v1.0.0');
   process.exit(2);
 }
 
-const SOURCE_DIR = path.join(ROOT, 'WorkProgress', `${PROJECT}-yandex`);
 const OUTPUT_DIR = path.join(ROOT, 'Release', PROJECT, 'yandex');
+const SOURCE_CANDIDATES = [
+  path.join(ROOT, 'WorkProgress', `${PROJECT}-yandex`),
+  path.join(ROOT, 'WorkProgress', PROJECT),
+];
+const SOURCE_DIR = SOURCE_CANDIDATES.find(dir => fs.existsSync(path.join(dir, 'index.html'))) || SOURCE_CANDIDATES[0];
+
+function existingProductionVersions() {
+  if(!fs.existsSync(OUTPUT_DIR)) return [];
+  const prefix=`${PROJECT}-`;
+  return fs.readdirSync(OUTPUT_DIR).map(name=>{
+    if(!name.startsWith(prefix) || /-(?:debug|marketing)\.zip$/i.test(name)) return null;
+    const match=name.slice(prefix.length).match(/^(v\d+(?:\.\d+){0,2})\.zip$/i);
+    return match?parseVersionLabel(match[1]):null;
+  }).filter(Boolean).sort(compareVersions);
+}
+
+const existingVersions=existingProductionVersions();
+let versionChoice;
+try{versionChoice=chooseReleaseVersion(existingVersions.map(x=>x.label),REQUESTED_VERSION);}catch(error){console.error(`[X] ${error.message}`);process.exit(2);}
+const latestVersion=versionChoice.latest;
+const selectedVersion=versionChoice.selected;
+const autoBumped=versionChoice.autoBumped;
+const VERSION=selectedVersion.label;
 
 // Support files (debugcheck.js, cheats-base.js, screenshots.js) live в
 // platforms/yandex/templates/ — NOT tools/ (tools/ has only game-screenshot-ext/).
@@ -74,6 +151,7 @@ const SUPPORT_DIRS = [
 // Verify source
 if (!fs.existsSync(path.join(SOURCE_DIR, 'index.html'))) {
   console.error(`[X] Source missing: ${SOURCE_DIR}/index.html`);
+  console.error(`    Checked: ${SOURCE_CANDIDATES.join(', ')}`);
   console.error(`    Run /build-release or /mvp-to-yandex first to populate WorkProgress.`);
   process.exit(2);
 }
@@ -111,6 +189,8 @@ if (warnings.length > 0) {
 
 // Ensure output dir
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+const BUILD_STARTED_AT=new Date().toISOString();
+console.log(`[Forge] Release version: ${VERSION}${latestVersion?` (previous: ${latestVersion.label})`:''}${autoBumped?` — requested ${REQUESTED_VERSION||'auto'} was not newer, auto-bumped`:''}`);
 
 // Build variants
 const VARIANTS = [
@@ -219,7 +299,7 @@ for (const variant of VARIANTS) {
     const zipName = `${PROJECT}-${VERSION}${variant.suffix}.zip`;
     const zipPath = path.join(OUTPUT_DIR, zipName);
 
-    if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+    if (fs.existsSync(zipPath)) throw new Error(`Refusing to overwrite existing release artifact: ${zipPath}`);
 
     createZip(stageDir, zipPath);
 
@@ -261,8 +341,26 @@ if (failed > 0) {
   process.exit(1);
 }
 
+const historyPath=path.join(OUTPUT_DIR,'build-history.json');
+let history=[];
+try{const parsed=JSON.parse(fs.readFileSync(historyPath,'utf8'));history=Array.isArray(parsed)?parsed:[];}catch{}
+const completedAt=new Date().toISOString();
+history.push({
+  version:VERSION,
+  requestedVersion:REQUESTED_VERSION,
+  autoBumped,
+  previousVersion:latestVersion?.label||null,
+  startedAt:BUILD_STARTED_AT,
+  completedAt,
+  source:path.relative(ROOT,SOURCE_DIR).replace(/\\/g,'/'),
+  artifacts:results.filter(r=>r.status==='ok').map(r=>({variant:r.variant,path:r.path.replace(/\\/g,'/'),sizeKB:Number(r.size_kb)})),
+});
+fs.writeFileSync(historyPath,JSON.stringify(history.slice(-100),null,2)+'\n','utf8');
+
 console.log('');
 console.log('✓ All 3 ZIPs built successfully');
+console.log(`BUILD_VERSION: ${VERSION}`);
+console.log(`BUILD_HISTORY: ${path.relative(ROOT,historyPath).replace(/\\/g,'/')}`);
 console.log('');
 console.log('Next:');
 console.log('  - Production zip → Yandex Console upload');

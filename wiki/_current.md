@@ -4,7 +4,7 @@
 
 ## Session goal
 
-Ship evidence-bound direct-task completion and mechanically read-only GigaChat status turns as Project Forge `v4.68.21`.
+Ship immutable, automatically incremented Yandex build versions as Project Forge `v4.68.22`.
 
 ## Active task
 
@@ -22,6 +22,11 @@ Ship evidence-bound direct-task completion and mechanically read-only GigaChat s
 - [x] Block counterfeit WorkProgress verifier/release scripts.
 - [x] Protect direct-task files from blind full overwrite after compaction.
 - [x] Complete release checks, package and synchronize v4.68.21.
+- [x] Diagnose same-version ZIP overwrite in the canonical Yandex builder.
+- [x] Auto-select the next release version and refuse existing ZIP paths.
+- [x] Persist build history and print the exact selected version.
+- [x] Require a newly named higher-version three-ZIP trio at the Phase 8 gate.
+- [x] Complete release checks, package and synchronize v4.68.22.
 
 ## Blockers
 
@@ -32,5 +37,6 @@ No code blocker. No paid GigaChat API call is required for the deterministic rou
 - 2026-08-18: Direct implementation intent outranks automatic continuation of a stale open phase.
 - 2026-08-18: `/do` is the deterministic manual override; natural imperative detection is a convenience layer.
 - 2026-08-18: Status intent and verification provenance must be enforced at the tool boundary, not trusted from model prose.
+- 2026-08-18: Every build is a new immutable version; an overwritten filename is never fresh release evidence.
 
-<!-- last updated 2026-08-18 during v4.68.21 GigaChat evidence-integrity patch -->
+<!-- last updated 2026-08-18 during v4.68.22 immutable release-version patch -->

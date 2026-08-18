@@ -1,4 +1,4 @@
-# Project Forge v4.68.21 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.22 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.22 changelog (immutable release build versions)
+
+Every canonical Yandex three-ZIP build now creates a new immutable version. The builder scans existing production archives, increments the latest numeric component when no newer version is supplied, and auto-bumps an explicitly repeated or older version. Existing ZIP paths are never unlinked or overwritten. Each successful build prints its exact `BUILD_VERSION` and appends the selected version and three artifact paths to `build-history.json`.
+
+Phase 8 no longer treats a changed hash at an old ZIP path as a fresh release. Its baseline gate requires a newly named production/debug/marketing trio of one version that is higher than the newest version present when the phase started. The canonical release skill now routes all packaging through `build-yandex-3zips.mjs` rather than allowing improvised release scripts.
+
 ## v4.68.21 changelog (GigaChat evidence-bound status guard)
 
 Real terminal evidence exposed three trust gaps after the direct-task intent fix: GigaChat could clear `forge_change_complete` with invented check descriptions, treat a factual question such as «собрал архивы?» as permission to start Phase 8, and create a counterfeit verifier under `WorkProgress`. Completion checks are now matched to successful commands recorded after the direct task started; unmatched claims remain blocked and produce a diagnostic.
@@ -474,9 +480,3 @@ Factual status turns are mechanically read-only: the function surface contains i
 GigaChat now has a durable change-request mode for explicit implementation work in the middle of the canonical pipeline. `/do <task>` preserves the exact user request across context compaction, pauses automatic phase/release continuation without falsifying phase markers, and injects the direct task as the authoritative current objective. Strong natural-language implementation commands activate the same mode; `/task` exposes it and `/resume-phase` clears it explicitly.
 
 The protection is mechanical rather than prompt-only: phase preflight/gates, `phase-state`, phase skills, release skills, and release packaging are rejected at the tool boundary while the direct task is active, including malformed textual-call recovery. `forge_change_complete` clears the override only after a successful implementation operation, existing evidence paths, and reported verification checks. This prevents a request such as “сделай гачу” from being replaced by a stale Phase 8 release marker after context compaction.
-
-## v4.68.19 changelog (clean Codex launch with optional local MCPs)
-
-The one-window launcher now preflights enabled loopback HTTP MCP endpoints inherited from the user's Codex config. If a local endpoint is unreachable, Forge applies `mcp_servers.<name>.enabled=false` only to child phase/resume commands and prints the decision; it never edits global configuration. This prevents an optional stopped service such as Unity MCP from flooding or aborting an unrelated HTML5 phase. Remote and stdio MCPs are left untouched, reachable loopback endpoints stay enabled, and `--keep-local-mcp` provides an explicit escape hatch.
-
-Child `codex exec` now inherits terminal stdin instead of receiving a closed pipe. A prompt supplied as an argument is therefore no longer accompanied by the misleading `Reading additional input from stdin...` path in an interactive PowerShell launch. Regression fixtures verify start/resume override propagation, selective loopback detection, and the full Phase 1–9 lifecycle.

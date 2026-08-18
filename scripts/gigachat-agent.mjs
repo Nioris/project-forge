@@ -21,7 +21,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.21';
+const AUDITED_FORGE_VERSION = '4.68.22';
 const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -988,6 +988,36 @@ function distinctValidImages(paths){
 }
 function commandSucceeded(re,phase=activePhase){ return Boolean(verifierEntrySuccess(re,phase)) || (Number(phase)===Number(activePhase)&&hasSuccessfulCommand(re)); }
 function commandSucceededWithOutput(commandRe,outputRe,phase=activePhase){ return Boolean(verifierEntryWithOutput(commandRe,outputRe,phase)); }
+function parsedReleaseZip(pathValue=''){
+  const p=String(pathValue||'').replace(/\\/g,'/');
+  const name=p.split('/').pop()||'';
+  const match=name.match(/^(.+)-(v\d+(?:\.\d+){0,2})(?:-(debug|marketing))?\.zip$/i);
+  if(!match) return null;
+  return {path:p,project:match[1],version:match[2].toLowerCase(),variant:(match[3]||'production').toLowerCase(),parts:match[2].slice(1).split('.').map(Number)};
+}
+function compareReleaseVersion(a,b){for(let i=0;i<3;i++){const d=(a.parts[i]||0)-(b.parts[i]||0);if(d)return d;}return a.parts.length-b.parts.length;}
+function releaseVersionEvidenceFromPaths(paths=[],baselinePaths=new Set()){
+  const all=paths.map(parsedReleaseZip).filter(Boolean);
+  const before=all.filter(x=>baselinePaths.has(x.path));
+  const created=all.filter(x=>!baselinePaths.has(x.path));
+  const groups=new Map();
+  for(const item of created){
+    const key=`${item.project}|${item.version}`;
+    if(!groups.has(key)) groups.set(key,{project:item.project,version:item.version,parts:item.parts,variants:new Set(),paths:[]});
+    const group=groups.get(key);group.variants.add(item.variant);group.paths.push(item.path);
+  }
+  const complete=[...groups.values()].filter(g=>['production','debug','marketing'].every(v=>g.variants.has(v))).sort(compareReleaseVersion);
+  const newest=complete.at(-1)||null;
+  const previous=before.sort(compareReleaseVersion).at(-1)||null;
+  const blockers=[];
+  if(!newest) blockers.push('Phase 8 requires three newly named ZIP artifacts of one version (production/debug/marketing); overwriting an existing version is not accepted');
+  else if(previous && compareReleaseVersion(newest,previous)<=0) blockers.push(`Phase 8 release version ${newest.version} must be newer than the pre-phase version ${previous.version}`);
+  return {ok:blockers.length===0,blockers,version:newest?.version||null,paths:newest?.paths||[],previousVersion:previous?.version||null};
+}
+function phase8ReleaseVersionEvidence(){
+  const paths=findFiles('Release',/\.zip$/i,32,300);
+  return releaseVersionEvidenceFromPaths(paths,new Set([...phaseBaseline.keys()].filter(x=>x.toLowerCase().startsWith('release/')&&x.toLowerCase().endsWith('.zip'))));
+}
 const PHASE_CONTRACTS=Object.freeze({
   1:{name:'Analyze',files:[['ANALYSIS.md',80],['wiki/design/brief.md',80],['wiki/architecture/metrics.md',80],['.forge-ai.json',20],['wiki/ai/asset-baseline.md',80]]},
   2:{name:'Design',files:[['wiki/design/gdd.md',200],['wiki/plan/02-development-plan.md',120],['wiki/design/cross-review.md',80],['wiki/architecture/modules.md',80],['wiki/design/layout-system.md',80],['wiki/ai/studio-plan.md',80]]},
@@ -1199,9 +1229,9 @@ function phaseGateReport(phase=activePhase) {
   if(p===8){
     if(!commandSucceeded(/check-setup-guide/i,p)) blockers.push('Phase 8 requires check-setup-guide success');
     if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i,p)) blockers.push('Phase 8 requires exact release-ready GREEN output');
-    if(!commandSucceeded(/release-yandex/i,p)) blockers.push('Phase 8 requires release-yandex success');
+    if(!commandSucceeded(/release-yandex|build-yandex-3zips/i,p)) blockers.push('Phase 8 requires release-yandex/build-yandex-3zips success');
     const fresh=changedSinceBaseline(x=>x.toLowerCase().startsWith('release/')); evidence.freshRelease=fresh; if(!fresh.length) blockers.push('Phase 8 requires fresh Release artifacts');
-    if(findFiles('Release',/\.zip$/i,32,100).length<3) blockers.push('Phase 8 expects three ZIP artifacts');
+    const versionEvidence=phase8ReleaseVersionEvidence(); evidence.releaseBuild=versionEvidence; blockers.push(...versionEvidence.blockers);
     const plan=optionalText('wiki/plan/02-development-plan.md',100000); if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(plan)) blockers.push('Phase 8 TOTAL line must be copied into wiki plan');
     if(!/(MANUAL|Проверь сам|ручн)/i.test(`${plan}\n${optionalText('SETUP_GUIDE.md',50000)}`)) blockers.push('Phase 8 requires manual checklist evidence');
   }
@@ -4459,6 +4489,9 @@ if (REQUEST_DOCTOR) {
   test('direct completion rejects invented check strings',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['visual check passed'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
   test('direct completion accepts exact post-activation command',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===1;});
   test('direct completion rejects stale successful command',()=>{const old=verifierLedger;verifierLedger=new Map([['old',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T11:59:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
+  test('Phase 8 rejects overwritten same-version ZIP names',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip','Release/demo/yandex/demo-v1.0.0-debug.zip','Release/demo/yandex/demo-v1.0.0-marketing.zip'];return !releaseVersionEvidenceFromPaths(old,new Set(old)).ok;});
+  test('Phase 8 accepts one complete newly named higher version',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip','Release/demo/yandex/demo-v1.0.0-debug.zip','Release/demo/yandex/demo-v1.0.0-marketing.zip'];const fresh=['Release/demo/yandex/demo-v1.0.1.zip','Release/demo/yandex/demo-v1.0.1-debug.zip','Release/demo/yandex/demo-v1.0.1-marketing.zip'];const result=releaseVersionEvidenceFromPaths([...old,...fresh],new Set(old));return result.ok&&result.version==='v1.0.1'&&result.paths.length===3;});
+  test('Phase 8 rejects incomplete new release trio',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip'];const fresh=['Release/demo/yandex/demo-v1.0.1.zip','Release/demo/yandex/demo-v1.0.1-debug.zip'];return !releaseVersionEvidenceFromPaths([...old,...fresh],new Set(old)).ok;});
   test('change request prompt keeps exact task and pauses release',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveTaskPrompt('делай');activeDirective=old;return /добавь гачу/.test(x)&&/не запускай phase-state\/forge_gate\/release-\*/.test(x);});
   test('change request blocks release gate and phase-state',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const a=directiveToolBlock('forge_gate',{phase:8});const b=directiveToolBlock('forge_script',{name:'phase-state.mjs',args:['start','8']});activeDirective=old;return Boolean(a)&&Boolean(b);});
   test('change request allows tactical gacha skill',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveToolBlock('forge_skill',{name:'gacha-meta'});activeDirective=old;return x===null;});
