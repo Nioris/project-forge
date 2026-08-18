@@ -4595,6 +4595,12 @@ The one-window launcher now preflights enabled loopback HTTP MCP endpoints inher
 
 Child `codex exec` now inherits terminal stdin instead of receiving a closed pipe. A prompt supplied as an argument is therefore no longer accompanied by the misleading `Reading additional input from stdin...` path in an interactive PowerShell launch. Regression fixtures verify start/resume override propagation, selective loopback detection, and the full Phase 1–9 lifecycle.
 
+## v4.68.20 changelog (GigaChat direct-task intent guard)
+
+GigaChat now has a durable change-request mode for explicit implementation work in the middle of the canonical pipeline. `/do <task>` preserves the exact user request across context compaction, pauses automatic phase/release continuation without falsifying phase markers, and injects the direct task as the authoritative current objective. Strong natural-language implementation commands activate the same mode; `/task` exposes it and `/resume-phase` clears it explicitly.
+
+The protection is mechanical rather than prompt-only: phase preflight/gates, `phase-state`, phase skills, release skills, and release packaging are rejected at the tool boundary while the direct task is active, including malformed textual-call recovery. `forge_change_complete` clears the override only after a successful implementation operation, existing evidence paths, and reported verification checks. This prevents a request such as “сделай гачу” from being replaced by a stale Phase 8 release marker after context compaction.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

@@ -21,7 +21,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.22';
+const AUDITED_FORGE_VERSION = '4.68.23';
 const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -71,6 +71,26 @@ function readText(p) { return readFileSync(p, 'utf8'); }
 function lineSlice(text, start = 1, end = null) {
   const lines = text.split(/\r?\n/); const a = Math.max(1, Number(start)||1); const b = end == null ? Math.min(lines.length, a+299) : Math.min(lines.length, Number(end)||a);
   return { start:a, end:b, total:lines.length, content:lines.slice(a-1,b).map((x,i)=>`${a+i}: ${x}`).join('\n') };
+}
+
+function readFileForModel(a={}){
+  const p=safePath(a.path), pathKey=rel(p), text=readText(p);
+  const explicit=a.start_line!==undefined || a.end_line!==undefined;
+  let start=a.start_line, end=a.end_line;
+  if(!explicit && activeDirective){
+    const cursors=activeDirective.readCursors&&typeof activeDirective.readCursors==='object'?activeDirective.readCursors:{};
+    start=Math.max(1,Number(cursors[pathKey]||1));
+    end=start+299;
+  }
+  const slice=lineSlice(text,start,end);
+  if(!explicit && activeDirective){
+    if(slice.start>slice.total) return {ok:false,failure_type:'read-loop-guard',error:`${pathKey} was already read through line ${slice.total}. Do not restart at line 1; use search_text and targeted replace_text now.`,path:pathKey,total:slice.total,complete:true};
+    const next=slice.end<slice.total?slice.end+1:null;
+    activeDirective={...activeDirective,readCursors:{...(activeDirective.readCursors||{}),[pathKey]:next||slice.total+1},updatedAt:new Date().toISOString()};
+    persistRuntimeEvidenceLedger();
+    return {ok:true,path:pathKey,...slice,auto_paged:true,complete:next===null,next_start_line:next,note:next?`Call read_file with the same path and no line range for the next page starting at line ${next}.`:'Entire file has now been read; do not read it again.'};
+  }
+  return {ok:true,path:pathKey,...slice,auto_paged:false,complete:slice.end>=slice.total,next_start_line:slice.end<slice.total?slice.end+1:null};
 }
 function walk(dir, depth, base = dir, out = []) {
   if (depth < 0 || out.length >= 1000) return out;
@@ -1944,11 +1964,20 @@ function counterfeitCanonicalScriptWriteBlock(path=''){
 function repeatedDirectiveOverwriteBlock(path=''){
   if(!activeDirective) return null;
   const target=String(path||'').replace(/\\/g,'/').toLowerCase();
-  const writes=(activeDirective.operations||[]).filter(op=>['write_file','replace_text'].includes(op.tool)&&String(op.target||'').replace(/\\/g,'/').toLowerCase()===target);
+  const writes=(activeDirective.operations||[]).filter(op=>op.tool==='write_file'&&String(op.target||'').replace(/\\/g,'/').toLowerCase()===target);
   if(!writes.length) return null;
-  const lastWrite=writes[writes.length-1];
-  const readAfter=(activeDirective.reads||[]).some(x=>String(x.path||'').replace(/\\/g,'/').toLowerCase()===target && Date.parse(x.at||0)>Date.parse(lastWrite.at||0));
-  return readAfter?null:`Full overwrite blocked: ${path} was already changed during this direct task. Read the current file first, then use replace_text or make an informed replacement. This protects work across context compaction.`;
+  return `Repeated full overwrite blocked: ${path} already received write_file during this direct task. Use targeted replace_text for all further edits; rereading the file does not authorize another reconstruction.`;
+}
+
+function destructiveFullWriteBlock(path='',content=''){
+  if(!activeDirective) return null;
+  let p;try{p=safePath(path);}catch{return null;}
+  if(!existsSync(p) || !statSync(p).isFile()) return null;
+  const oldBytes=statSync(p).size, newBytes=Buffer.byteLength(String(content??''));
+  const explicitRebuild=/(?:перепиши|пересобери|замени)\s+(?:файл\s+)?(?:полностью|целиком|с\s+нуля)|rebuild\s+(?:the\s+)?file\s+from\s+scratch|replace\s+(?:the\s+)?entire\s+file/i.test(String(activeDirective.request||''));
+  if(oldBytes>=32_000 && !explicitRebuild) return `Full write_file replacement of existing large file ${path} (${oldBytes} bytes) is blocked for this direct integration task. Preserve the existing game and use targeted replace_text anchors.`;
+  if(oldBytes>=8_000 && newBytes+4_096<oldBytes*0.75 && !explicitRebuild) return `Destructive shrink blocked for ${path}: ${oldBytes} -> ${newBytes} bytes. The task did not explicitly authorize rebuilding this file from scratch; use replace_text.`;
+  return null;
 }
 function phaseExecutionRequestedByText(text='') {
   const s=String(text||'');
@@ -2008,6 +2037,10 @@ function activateDirective(request,source='natural_language') {
   const task=String(request||'').trim();
   if(!task) return {ok:false,error:'Пустая команда. Использование: /do <что конкретно сделать>'};
   const now=new Date().toISOString();
+  // Reissuing an explicit /do is a deliberate retry and must start with clean
+  // operation/read cursors. Natural continuation in the same runtime may keep
+  // durable progress, but a failed direct task must not poison its retry.
+  const continuingSame=Boolean(source!=='explicit_command' && activeDirective?.request===task && activeDirective?.status==='active');
   const history=Array.isArray(activeDirective?.history)?activeDirective.history.slice(-7):[];
   if(activeDirective?.request && activeDirective.request!==task) history.push({request:activeDirective.request,at:activeDirective.updatedAt||activeDirective.activatedAt||now});
   activeDirective={
@@ -2015,12 +2048,13 @@ function activateDirective(request,source='natural_language') {
     status:'active',
     request:task,
     source,
-    activatedAt:activeDirective?.activatedAt||now,
+    activatedAt:continuingSame?(activeDirective?.activatedAt||now):now,
     updatedAt:now,
-    pausedPhase:activeDirective?.pausedPhase||authoritativeOpenPhase()||activePhase||null,
+    pausedPhase:(continuingSame?activeDirective?.pausedPhase:null)||authoritativeOpenPhase()||activePhase||null,
     latestUserInput:task,
-    operations:Array.isArray(activeDirective?.operations)?activeDirective.operations.slice(-40):[],
-    reads:Array.isArray(activeDirective?.reads)?activeDirective.reads.slice(-40):[],
+    operations:continuingSame&&Array.isArray(activeDirective?.operations)?activeDirective.operations.slice(-40):[],
+    reads:continuingSame&&Array.isArray(activeDirective?.reads)?activeDirective.reads.slice(-40):[],
+    readCursors:continuingSame&&activeDirective?.readCursors&&typeof activeDirective.readCursors==='object'?activeDirective.readCursors:{},
     history
   };
   persistRuntimeEvidenceLedger();
@@ -2924,7 +2958,7 @@ const functions = [
   ),
   fnDef(
     'read_file',
-    'Read an existing UTF-8 project text file with line numbers. Use before editing a file and to verify prior project memory/artifacts. Do not use on binary media.',
+    'Read an existing UTF-8 project text file with line numbers. During an active direct task, omitting start_line/end_line automatically returns the next unread 300-line page and persists the cursor across context compaction. Repeat the same path without a range only until complete=true; then use search_text/replace_text instead of restarting. Do not use on binary media.',
     {type:'object',properties:{path:{type:'string'},start_line:{type:'integer'},end_line:{type:'integer'}},required:['path']},
     commonOkReturn({path:{type:'string'},start:{type:'integer'},end:{type:'integer'},total:{type:'integer'},content:{type:'string'}})
   ),
@@ -2942,7 +2976,7 @@ const functions = [
   ),
   fnDef(
     'write_file',
-    'Create or fully replace a UTF-8 TEXT file inside the project. This tool is forbidden for PNG/JPG/WebP/audio/video/3D/archive/font/binary media. For generated images use gigachat_generate_image. Respect GameIntegration read-only and Release protection.',
+    'Create a new or fully replace a small UTF-8 TEXT file inside the project. During a direct integration task, never use this tool to reconstruct an existing large game/source file: preserve it with targeted replace_text anchors. A second full overwrite of the same path in one task is blocked. This tool is forbidden for PNG/JPG/WebP/audio/video/3D/archive/font/binary media. For generated images use gigachat_generate_image. Respect GameIntegration read-only and Release protection.',
     {type:'object',properties:{path:{type:'string'},content:{type:'string'}},required:['path','content']},
     commonOkReturn({path:{type:'string'},bytes:{type:'integer'}}),
     [{request:'Обнови wiki текущим решением',params:{path:'wiki/design/brief.md',content:'# Brief\n\nMonetization: ads-only\n'}}]
@@ -3114,7 +3148,7 @@ function tool(name, a={}) {
       }
       return jsonResult(persistMemoryUpdate(a));
     }
-    if (name==='read_file') { const p=safePath(a.path); return jsonResult({ok:true,path:rel(p),...lineSlice(readText(p),a.start_line,a.end_line)}); }
+    if (name==='read_file') return jsonResult(readFileForModel(a));
     if (name==='list_files') { const p=safePath(a.path||'.'); return jsonResult({ok:true,path:rel(p),items:walk(p,Math.max(0,Math.min(5,Number(a.depth??2))))}); }
     if (name==='search_text') return jsonResult({ok:true,results:searchText(a.query,a.path||'.',Math.max(1,Math.min(200,Number(a.max_results||80))))});
     if (name==='write_file') {
@@ -3126,6 +3160,11 @@ function tool(name, a={}) {
       }
       const overwriteBlock=repeatedDirectiveOverwriteBlock(a.path);
       if(overwriteBlock) return jsonResult({ok:false,failure_type:'compaction-overwrite-guard',error:overwriteBlock});
+      const destructiveBlock=destructiveFullWriteBlock(a.path,a.content);
+      if(destructiveBlock){
+        reportForgeBehavior({severity:'error',code:'GIGA_DESTRUCTIVE_FULL_WRITE_ATTEMPT',kind:'content_integrity',component:'gigachat-agent',operation:'write_file',message:'GigaChat attempted to reconstruct an existing large file during a targeted direct task.',expected:'Targeted replace_text edits that preserve unrelated game content.',actual:String(a.path||'')});
+        return jsonResult({ok:false,failure_type:'content-loss-guard',error:destructiveBlock});
+      }
       const runtimeWriteBlock=runtimeOwnedWriteBlock(a.path);
       if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
@@ -3618,6 +3657,21 @@ function transportRequestStats(body){
     };
   }catch{return {chars:0,messages:0,functions:0,system_chars:0,function_history_pairs:0};}
 }
+function durableDirectiveSnapshot(){
+  if(!activeDirective) return null;
+  return {
+    mode:activeDirective.mode,
+    status:activeDirective.status,
+    request:activeDirective.request,
+    activatedAt:activeDirective.activatedAt,
+    updatedAt:activeDirective.updatedAt,
+    pausedPhase:activeDirective.pausedPhase,
+    latestUserInput:activeDirective.latestUserInput,
+    operations:(activeDirective.operations||[]).slice(-12),
+    readCursors:activeDirective.readCursors||{},
+    instruction:'Continue from these operations/cursors. Never restart reading at line 1 or reconstruct a large existing file with write_file; use targeted replace_text.'
+  };
+}
 function durableContinuationMessage(reason='context compaction'){
   const ctx=buildProjectContext();
   const pm=activePhase===1 ? {
@@ -3637,7 +3691,7 @@ function durableContinuationMessage(reason='context compaction'){
       `The previous function-call transcript was intentionally closed as a completed transport epoch. `+
       `Do NOT reconstruct or repeat completed tool calls merely because their raw assistant/function messages are absent. `+
       `Continue from durable Forge state, persisted decisions, artifacts, evidence ledger, and the canonical skill/gates.\n\n`+
-      (activeDirective?`ACTIVE CHANGE REQUEST (authoritative; phase autopilot remains paused):\n${clip(JSON.stringify(activeDirective,null,2),8000)}\n\n`:``)+
+      (activeDirective?`ACTIVE CHANGE REQUEST (authoritative; phase autopilot remains paused):\n${clip(JSON.stringify(durableDirectiveSnapshot(),null,2),8000)}\n\n`:``)+
       `PROJECT CONTEXT:\n${clip(JSON.stringify(ctx,null,2),22000)}\n\n`+
       (pm?`PHASE 1 PRODUCT-METRICS DURABLE EVIDENCE:\n${clip(JSON.stringify(pm,null,2),12000)}\n\n`:'')+
       `Choose only the next canonical action. If a user-owned STOP is ready, call ask_user; otherwise call the required Forge tool.`
@@ -3949,13 +4003,32 @@ async function turn(text){
   let invalidBriefAskRepairs = 0;
   let invalidContentBudgetRepairs = 0;
   let askUserTransportRetries = 0;
+  let consecutiveDirectiveReads = 0;
+  const turnCompactionStart = compactionCount;
   const pseudoCallCounts = new Map();
+
+  const directTaskLoopGuard = name => {
+    if(!changeRequestTurn || !activeDirective) return false;
+    if(name==='read_file') consecutiveDirectiveReads++;
+    else if(['write_file','replace_text','copy_path','run_command','forge_script','gigachat_generate_image','gigachat_generate_3d','forge_change_complete'].includes(String(name||''))) consecutiveDirectiveReads=0;
+    if(consecutiveDirectiveReads<=12) return false;
+    reportForgeBehavior({severity:'error',code:'GIGA_DIRECT_TASK_READ_LOOP',kind:'context_efficiency',component:'gigachat-agent',operation:'read_file',message:'Direct task stopped after too many consecutive file reads without implementation progress.',expected:'Use search_text and targeted replace_text after bounded source inspection.',actual:`${consecutiveDirectiveReads} consecutive read_file calls`});
+    process.stdout.write(`\n[Forge] Direct task safely stopped: ${consecutiveDirectiveReads} consecutive read_file calls produced no implementation progress. No more tools were executed. Reissue /do to retry from clean durable cursors.\n`);
+    persistRuntimeEvidenceLedger();
+    return true;
+  };
 
   for(let n=0;n<56;n++){
     const forcedNow=forcedFunctionName;
     const callMode=forcedNow ? {name:forcedNow} : 'auto';
     const requestFunctions=functionsForRequest(forcedNow,phaseExecutionTurn,statusOnly);
     turnStartIndex=compactMessagesIfNeeded(turnStartIndex,requestFunctions);
+    if(changeRequestTurn && activeDirective && compactionCount-turnCompactionStart>=4){
+      reportForgeBehavior({severity:'error',code:'GIGA_DIRECT_TASK_COMPACTION_LOOP',kind:'context_efficiency',component:'gigachat-agent',operation:'context_compaction',message:'Direct task stopped after four context compactions in one user turn.',expected:'Finish the targeted edit and checks within bounded durable context.',actual:`${compactionCount-turnCompactionStart} compactions`});
+      process.stdout.write(`\n[Forge] Direct task safely stopped after ${compactionCount-turnCompactionStart} context compactions in one turn. Existing files are preserved; reissue /do to retry from clean task state.\n`);
+      persistRuntimeEvidenceLedger();
+      return;
+    }
     forcedFunctionName=null;
     const data=await gigaChatRequestWithRetry({model:MODEL,messages,functions:requestFunctions,function_call:callMode},240000);
     if(data?.usage) lastUsage=data.usage;
@@ -3986,6 +4059,7 @@ async function turn(text){
       toolCalls++;
       consecutiveBareJunk=0;
       if(name!=='forge_context' && name!=='forge_workspace_inspect') emptyFinalRetries=0;
+      if(directTaskLoopGuard(name)) return;
 
       if (name === 'ask_user') {
         a=canonicalizeAskUserArgs(a);
@@ -4125,6 +4199,7 @@ async function turn(text){
         toolCalls++;
         emptyFinalRetries=0;
         consecutiveBareJunk=0;
+        if(directTaskLoopGuard(name)) return;
         process.stdout.write(`\n[Forge] Recovered malformed textual tool call -> ${describeToolCall(name,a)}\n`);
 
         // Preserve the malformed assistant output as diagnostics, but do not send a
@@ -4485,7 +4560,11 @@ if (REQUEST_DOCTOR) {
   test('read-only function surface excludes mutators',()=>{const names=functionsForRequest(null,false,true).map(x=>x.name);return names.includes('forge_status')&&!names.includes('write_file')&&!names.includes('forge_gate')&&!names.includes('run_command');});
   test('counterfeit WorkProgress verifier blocked',()=>Boolean(counterfeitCanonicalScriptWriteBlock('WorkProgress/demo/scripts/verify-setup-guide.mjs')));
   test('normal WorkProgress game script allowed',()=>counterfeitCanonicalScriptWriteBlock('WorkProgress/demo/gacha.js')===null);
-  test('compaction overwrite requires a fresh read',()=>{const old=activeDirective;activeDirective={operations:[{tool:'write_file',target:'WorkProgress/demo/gacha.js',at:'2026-08-18T12:00:00Z'}],reads:[]};const blocked=Boolean(repeatedDirectiveOverwriteBlock('WorkProgress/demo/gacha.js'));activeDirective=old;return blocked;});
+  test('repeated full overwrite stays blocked after reread',()=>{const old=activeDirective;activeDirective={operations:[{tool:'write_file',target:'WorkProgress/demo/gacha.js',at:'2026-08-18T12:00:00Z'}],reads:['WorkProgress/demo/gacha.js']};const blocked=Boolean(repeatedDirectiveOverwriteBlock('WorkProgress/demo/gacha.js'));activeDirective=old;return blocked;});
+  test('large existing direct-task file rejects full reconstruction',()=>{const old=activeDirective;activeDirective={request:'добавь функцию в существующий проект',operations:[]};const blocked=Boolean(destructiveFullWriteBlock('scripts/gigachat-agent.mjs','short replacement'));activeDirective=old;return blocked;});
+  test('direct-task read_file auto-pagination is durable',()=>/readCursors/.test(readFileForModel.toString())&&/already read through line/.test(readFileForModel.toString()));
+  test('durable directive snapshot excludes unbounded raw reads',()=>{const old=activeDirective;activeDirective={request:'x',reads:Array(100).fill('large'),operations:[],readCursors:{a:301}};const snapshot=durableDirectiveSnapshot();activeDirective=old;return !Object.prototype.hasOwnProperty.call(snapshot,'reads')&&snapshot.readCursors.a===301;});
+  test('direct-task loop circuit breakers installed',()=>/consecutiveDirectiveReads<=12/.test(turn.toString())&&/compactionCount-turnCompactionStart>=4/.test(turn.toString()));
   test('direct completion rejects invented check strings',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['visual check passed'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
   test('direct completion accepts exact post-activation command',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===1;});
   test('direct completion rejects stale successful command',()=>{const old=verifierLedger;verifierLedger=new Map([['old',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T11:59:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});

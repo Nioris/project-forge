@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.22 (latest released)
+### Version: v4.68.23 (latest released)
 
+- 2026-08-18: **v4.68.23** — safe GigaChat large-file integration: durable auto-pagination, destructive full-write/shrink guards, bounded compaction/read loops, and clean explicit `/do` retries.
 - 2026-08-18: **v4.68.22** — immutable Yandex build versions: automatic numeric increment, no ZIP overwrite, durable build history, and Phase 8 newly named higher-version trio enforcement.
 - 2026-08-18: **v4.68.21** — evidence-bound GigaChat completion, mechanically read-only factual status turns, counterfeit verifier/release-script blocking, and compaction-safe repeat writes.
 - 2026-08-18: **v4.68.20** — durable GigaChat direct-task routing: `/do`, `/task`, `/resume-phase`, natural imperative detection, exact intent preservation across compaction, tool-boundary phase/release blocking, and evidence-gated task completion.
