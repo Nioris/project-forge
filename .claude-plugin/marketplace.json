@@ -10,7 +10,7 @@
         "source": "github",
         "repo": "Nioris/project-forge"
       },
-      "version": "4.68.19",
+      "version": "4.68.20",
       "description": "Project Forge terminal-first runtime: 9 canonical phases, Claude/Codex subscription + API profiles, GigaChat terminal agent, 141 canonical skills, AI Studio and multi-platform release gates.",
       "category": "productivity",
       "keywords": [

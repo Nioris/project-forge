@@ -4577,6 +4577,12 @@ Every Codex phase and generated custom agent now stays on GPT-5.6 Sol/Standard. 
 
 Every new project gets its own local `main` repository. Completing a phase creates a durable checkpoint commit. An explicit workspace policy can create and push each future game/app to a private GitHub repository; Forge refuses public remotes and staged secrets, preserves local commits when the network fails, and never mass-onboards existing projects without an explicit command.
 
+## v4.68.17 changelog (one-window Codex phases)
+
+Codex development no longer requires closing and reopening a terminal after every phase. `codex-pipeline.mjs` holds one terminal UI while using `codex exec` sessions internally: answers to a real STOP resume the current phase session, but `phase-state complete` discards that session and starts the next phase with clean context after a simple yes/no prompt. `--auto` removes only the between-phase prompt, not real decision gates.
+
+The orchestrator also repairs premature `in_progress` endings with bounded automatic resumes and resolves the installed Windows Codex JS entrypoint directly, avoiding child-process failures from npm `.cmd` wrappers and protected WindowsApps executables.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

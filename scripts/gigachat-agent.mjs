@@ -21,8 +21,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.19';
-const CONTRACT_VERSION = '6.3.6-mature-phase-orchestration-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.20';
+const CONTRACT_VERSION = '6.3.7-direct-task-intent-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -248,6 +248,7 @@ function buildProjectContext() {
     workProgress:work,
     planFiles:plans,
     gitStatus:gitStatusSnapshot(),
+    activeDirective:activeDirective&&typeof activeDirective==='object'?activeDirective:null,
     warnings
   };
 }
@@ -449,21 +450,23 @@ const RUNTIME_EVIDENCE_PATH='wiki/runtime/gigachat-evidence.json';
 function loadRuntimeEvidenceLedger(){
   try{
     const p=safePath(RUNTIME_EVIDENCE_PATH);
-    if(!existsSync(p)) return {schemaVersion:6,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null};
+    if(!existsSync(p)) return {schemaVersion:7,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null,activeDirective:null};
     const x=JSON.parse(readText(p));
     return {
-      schemaVersion:6,
+      schemaVersion:7,
       verifiers:Array.isArray(x.verifiers)?x.verifiers:[],
       completedSkills:Array.isArray(x.completedSkills)?x.completedSkills:[],
       phase:x.phase&&typeof x.phase==='object'?x.phase:null,
       pendingDecision:x.pendingDecision&&typeof x.pendingDecision==='object'?x.pendingDecision:null,
+      activeDirective:x.activeDirective&&typeof x.activeDirective==='object'&&String(x.activeDirective.request||'').trim()?x.activeDirective:null,
       productMetricsEvidence:x.productMetricsEvidence&&typeof x.productMetricsEvidence==='object'
         ? x.productMetricsEvidence
         : (x.phase?.productMetricsEvidence&&typeof x.phase.productMetricsEvidence==='object'?x.phase.productMetricsEvidence:null)
     };
-  }catch{return {schemaVersion:6,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null};}
+  }catch{return {schemaVersion:7,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null,activeDirective:null};}
 }
 let durableRuntimeEvidence=loadRuntimeEvidenceLedger();
+let activeDirective=durableRuntimeEvidence.activeDirective&&typeof durableRuntimeEvidence.activeDirective==='object'?durableRuntimeEvidence.activeDirective:null;
 let verifierLedger=new Map((durableRuntimeEvidence.verifiers||[]).map(v=>[v.key,v]));
 let completedSkills=new Set(durableRuntimeEvidence.completedSkills||[]);
 let phaseEvidenceStartedAt=null;
@@ -490,11 +493,12 @@ function persistRuntimeEvidenceLedger(){
   try{
     ensureDir('wiki/runtime');
     durableRuntimeEvidence={
-      schemaVersion:6,
+      schemaVersion:7,
       updatedAt:new Date().toISOString(),
       verifiers:[...verifierLedger.values()].slice(-500),
       completedSkills:[...completedSkills].sort(),
       pendingDecision:pendingDecision&&typeof pendingDecision==='object'?pendingDecision:null,
+      activeDirective:activeDirective&&typeof activeDirective==='object'?activeDirective:null,
       productMetricsEvidence:phaseProductMetricsEvidence,
       phase:activePhase?{
         phase:activePhase,
@@ -598,6 +602,14 @@ function verifierEntryWithOutput(commandRe,outputRe,phaseOverride=activePhase){
 }
 function recordOperation(name,a,result) {
   let r={}; try{r=JSON.parse(result);}catch{}
+  if(activeDirective && r.ok!==false){
+    const isWrite=['write_file','replace_text','copy_path','gigachat_generate_image','gigachat_generate_3d'].includes(name) && !(name==='copy_path'&&r.unchanged===true);
+    const isMutatingCommand=(name==='run_command'||name==='forge_script') && commandLooksMutating(name==='forge_script'?`${a.name||''} ${(a.args||[]).join(' ')}`:a.command);
+    if(isWrite||isMutatingCommand){
+      const op={tool:name,target:String(r.path||r.destination||a.path||a.output_path||a.name||a.command||''),at:new Date().toISOString()};
+      activeDirective={...activeDirective,operations:[...(activeDirective.operations||[]),op].slice(-50),updatedAt:op.at};
+    }
+  }
   if(r.ok!==false && name==='read_file') phaseReadFiles.add(String(r.path||a.path||''));
   if(r.ok!==false && name==='list_files') phaseListedPaths.add(String(r.path||a.path||'.'));
   if(r.ok!==false && name==='forge_context') phaseContextRefreshed=true;
@@ -1906,6 +1918,103 @@ function phaseAliasInvocation(text='') {
   if(m) return {phase:Number(m[2]),skill:m[1].toLowerCase()};
   return null;
 }
+
+function directiveCommand(text='') {
+  const s=String(text||'').trim();
+  if(/^\/resume-phase\s*$/i.test(s)) return {kind:'resume'};
+  if(/^\/(?:task|do-status)\s*$/i.test(s)) return {kind:'status'};
+  const m=s.match(/^\/do(?:\s+([\s\S]+))?$/i);
+  if(m) return {kind:'do',request:String(m[1]||'').trim()};
+  return null;
+}
+
+function naturalImplementationDirective(text='') {
+  const s=String(text||'').trim();
+  if(!s || s.startsWith('/') || isStatusOnlyInput(s) || phaseAliasInvocation(s) || phaseExecutionRequestedByText(s)) return null;
+  const direct=/(?:^|[.!?]\s*)(?:сделай|добавь|реализуй|внедри|исправь|почини|переработай|доработай|создай|замени|убери|начинай(?:\s+делать)?|давай\s+(?:сделаем|добавим|реализуем|внедрим|исправим|починим|переработаем|доработаем|создадим))(?=\s|[.,!?:;]|$)/i;
+  return direct.test(s)?s:null;
+}
+
+function authoritativeOpenPhase() {
+  const markers=phaseMarkersSnapshot();
+  const open=markers.filter(x=>['in_progress','blocked'].includes(String(x.state||''))).sort((a,b)=>Number(b.phase)-Number(a.phase));
+  if(open.length) return Number(open[0].phase)||null;
+  const firstPending=markers.find(x=>!['complete','ongoing'].includes(String(x.state||'')));
+  return firstPending?Number(firstPending.phase)||null:null;
+}
+
+function activateDirective(request,source='natural_language') {
+  const task=String(request||'').trim();
+  if(!task) return {ok:false,error:'Пустая команда. Использование: /do <что конкретно сделать>'};
+  const now=new Date().toISOString();
+  const history=Array.isArray(activeDirective?.history)?activeDirective.history.slice(-7):[];
+  if(activeDirective?.request && activeDirective.request!==task) history.push({request:activeDirective.request,at:activeDirective.updatedAt||activeDirective.activatedAt||now});
+  activeDirective={
+    mode:'change_request',
+    status:'active',
+    request:task,
+    source,
+    activatedAt:activeDirective?.activatedAt||now,
+    updatedAt:now,
+    pausedPhase:activeDirective?.pausedPhase||authoritativeOpenPhase()||activePhase||null,
+    latestUserInput:task,
+    operations:Array.isArray(activeDirective?.operations)?activeDirective.operations.slice(-40):[],
+    history
+  };
+  persistRuntimeEvidenceLedger();
+  return {ok:true,directive:activeDirective};
+}
+
+function updateDirectiveInput(text='') {
+  if(!activeDirective) return;
+  activeDirective={...activeDirective,latestUserInput:String(text||'').trim(),updatedAt:new Date().toISOString()};
+  persistRuntimeEvidenceLedger();
+}
+
+function directiveTaskPrompt(userText='') {
+  if(!activeDirective) return String(userText||'');
+  const hints=/гач/i.test(activeDirective.request)?'Для этой задачи сначала загрузи tactical skill gacha-meta; при необходимости затем deepen-game/gameplay-balance. ':'';
+  return `[FORGE CHANGE REQUEST MODE — AUTHORITATIVE USER TASK]\n`+
+    `Текущая прямая задача: ${activeDirective.request}\n`+
+    `Последнее сообщение пользователя: ${String(userText||activeDirective.latestUserInput||'').trim()}\n`+
+    `Канонический фазовый автопилот временно приостановлен на Phase ${activeDirective.pausedPhase||'?'}. Не продолжай Release и не запускай phase-state/forge_gate/release-* до завершения этой задачи. `+
+    `${hints}Составь необходимое ТЗ внутри рабочих артефактов и сразу реализуй задачу в WorkProgress. Не останавливайся на плане. `+
+    `После реальных изменений и проверок вызови forge_change_complete с существующими evidence paths и выполненными checks. Если нужен настоящий пользовательский выбор, используй ask_user.\n`+
+    `[END FORGE CHANGE REQUEST MODE]`;
+}
+
+function directiveToolBlock(name,a={}) {
+  if(!activeDirective || name==='forge_change_complete' || name==='forge_diagnostic_report') return null;
+  if(name==='forge_gate' || name==='forge_preflight') return `Change request mode is active: "${activeDirective.request}". Phase gates/preflight are paused until forge_change_complete or /resume-phase.`;
+  if(name==='forge_skill' && /^(?:phase-[1-9]-|release-)/i.test(String(a.name||''))) return `Change request mode blocks phase/release skill ${a.name}. Load the matching tactical implementation skill instead.`;
+  if(name==='forge_script'){
+    const command=`${String(a.name||'')} ${(Array.isArray(a.args)?a.args:[]).join(' ')}`;
+    if(/phase-state\.mjs|release-(?:ready|yandex|all|web)|build-yandex-3zips|check-setup-guide/i.test(command)) return `Change request mode blocks phase/release command: ${command}. Finish the direct task first.`;
+  }
+  if(name==='run_command'){
+    const command=String(a.command||'');
+    if(/phase-state\.mjs|scripts[\\/]release-(?:ready|yandex|all|web)|build-yandex-3zips|check-setup-guide/i.test(command)) return `Change request mode blocks phase/release shell command. Finish the direct task first.`;
+  }
+  return null;
+}
+
+function completeDirective(a={}) {
+  if(!activeDirective) return {ok:false,error:'No active change request. Use /do <task> first.'};
+  const summary=String(a.summary||'').trim();
+  const evidence=normalizeList(a.evidence);
+  const checks=normalizeList(a.checks);
+  const validEvidence=evidence.filter(p=>{try{return existsSync(safePath(p));}catch{return false;}});
+  const operations=Array.isArray(activeDirective.operations)?activeDirective.operations:[];
+  if(!summary) return {ok:false,error:'forge_change_complete requires a factual summary.'};
+  if(!operations.length) return {ok:false,error:'No successful implementation/write operation was recorded after /do. Do the work before completing the change request.'};
+  if(!validEvidence.length) return {ok:false,error:'No existing project-relative evidence path was supplied.'};
+  if(!checks.length) return {ok:false,error:'No verification checks were supplied. Run the relevant test/verifier first.'};
+  const completed={...activeDirective,status:'complete',completedAt:new Date().toISOString(),summary,evidence:validEvidence,checks};
+  const resumePhase=completed.pausedPhase||null;
+  activeDirective=null;
+  persistRuntimeEvidenceLedger();
+  return {ok:true,completed_request:completed.request,summary,evidence:validEvidence,checks,resume_phase:resumePhase,note:'Direct task completed. Canonical phase autopilot is available again; it has not been started automatically.'};
+}
 function pendingDecisionPhase(decision=pendingDecision) {
   if(!decision||typeof decision!=='object') return null;
   const explicit=Number(decision.phase);
@@ -2621,6 +2730,12 @@ const functions = [
     {type:'object',properties:{ok:{type:'boolean'},fingerprint:{type:'string'},path:{type:'string'},error:{type:'string'}}}
   ),
   fnDef(
+    'forge_change_complete',
+    'Complete the active /do or natural-language change request only after the requested implementation is actually written and verified. Supply a factual summary, project-relative paths that already exist, and the checks that were run. This clears change-request mode but does not automatically resume or advance a Forge phase.',
+    {type:'object',properties:{summary:{type:'string'},evidence:{type:'array',items:{type:'string'}},checks:{type:'array',items:{type:'string'}}},required:['summary','evidence','checks']},
+    {type:'object',properties:{ok:{type:'boolean'},completed_request:{type:'string'},summary:{type:'string'},evidence:{type:'array',items:{type:'string'}},checks:{type:'array',items:{type:'string'}},resume_phase:{type:'integer'},note:{type:'string'},error:{type:'string'}}}
+  ),
+  fnDef(
     'ask_user',
     'MANDATORY human-approval gate for every Project Forge STOP-point or decision explicitly owned by the user. Call this instead of answering the decision yourself. The adapter prints the question/options/recommendation and immediately pauses the current tool loop until a new user message arrives. Never call another tool after a successful ask_user in the same turn. Phase 1 order: complete real research -> phase1-research-direction approval -> finalize ANALYSIS.md + dimensionality -> phase1-brief -> product-metrics proposal -> phase1-content-budget. IMPORTANT for decision_key=phase1-brief: canonical phase-1-analyze requires /grilling format exactly: ask all five Q1..Q5 in one round and put a concrete ➡️ recommended answer directly under EACH question. A single generic recommendation field is NOT sufficient. Recommendations must be grounded in the prototype/research and remain proposals for the user to accept or replace. For Q5 history, never fabricate undocumented prior user attempts/failures/releases; recommend what to confirm or preserve and mark unknown history as unknown. Never offer waiting for web_search when live search is already configured. Never ask the user to approve unseen research; include concrete findings, and the runtime will append the current research artifact excerpt. Final research Sources URLs must be grounded in successful forge_web_fetch evidence. Quantitative KPI percentage provenance is enforced later at the separate phase1-content-budget/product-metrics approval. For phase1-content-budget use the structured proposal object; Forge renders the STOP deterministically.',
     {type:'object',properties:{decision_key:{type:'string',description:'Stable machine key.'},phase:{type:'string'},question:{type:'string',description:'Required for ordinary STOPs and phase1-brief. For phase1-content-budget prefer proposal.'},options:{type:'string'},recommendation:{type:'string'},reason:{type:'string'},proposal:phase1ContentBudgetProposalSchema},required:[]},
@@ -2870,13 +2985,19 @@ function persistMemoryUpdate(a={}) {
 
 function tool(name, a={}) {
   try {
+    const taskBlock=directiveToolBlock(name,a);
+    if(taskBlock) return jsonResult({ok:false,failure_type:'user-intent-guard',error:taskBlock,active_request:activeDirective?.request||''});
     if (name==='forge_diagnostic_report') {
       const result=reportForgeBehavior({...a,source:'ai'});
       return jsonResult(result.ok?{ok:true,fingerprint:result.event.fingerprint,path:rel(result.path)}:{ok:false,error:result.error});
     }
     if (name==='forge_preflight') return jsonResult(forgePreflight(Number(a.phase||activePhase)));
     if (name==='forge_skill_done') return jsonResult(markSkillDone(a.name));
-    if (name==='forge_checkpoint') { reconcilePhase1ApprovedState(); return jsonResult(forgeCheckpoint()); }
+    if (name==='forge_change_complete') return jsonResult(completeDirective(a));
+    if (name==='forge_checkpoint') {
+      if(activeDirective) return jsonResult({ok:true,mode:'change_request',active_request:activeDirective.request,paused_phase:activeDirective.pausedPhase||null,operations:activeDirective.operations||[],next_hints:['Continue the direct user task in WorkProgress.','Do not run phase/release gates.','After implementation and verification call forge_change_complete.']});
+      reconcilePhase1ApprovedState(); return jsonResult(forgeCheckpoint());
+    }
     if (name==='forge_gate') { reconcilePhase1ApprovedState(); return jsonResult(phaseGateReport(Number(a.phase||activePhase))); }
     if (name==='forge_capabilities') {
       refreshMandatoryCapabilityBlock();
@@ -3235,6 +3356,9 @@ Mandatory rules:
 - Never mark a phase complete while a required user decision is unresolved. If a phase skill contains mandatory decisions, ask them at the required point and wait for a new user turn.
 - When the user asks for status or asks what you are doing, STOP doing new work and answer with current status plus all pending questions.
 - Machine phase markers and actual artifacts outrank prose state.
+- A direct implementation request from the user (for example "сделай гачу", "добавь магазин", "/do исправь экономику") outranks automatic continuation of the currently open phase. Forge enters CHANGE REQUEST MODE, preserves the exact request durably, and pauses phase/release orchestration without changing phase markers.
+- In CHANGE REQUEST MODE, do not call forge_preflight, forge_gate, phase-state, phase-* skills, release-* skills, or release packaging. Use the matching tactical skill, write the necessary specification and implementation in WorkProgress, run focused verification, then call forge_change_complete. Do not return only a plan when the user said to start doing the work.
+- /resume-phase explicitly abandons/ends the direct-task override and returns control to the canonical phase machine. Never infer /resume-phase merely from an old phase marker.
 - At the START of every agent process you receive a Project Context Bootstrap containing phase markers, wiki memory, persisted decisions, recent sessions, WorkProgress inventory, plans, git status, and drift warnings. Treat it as prior-session memory.
 - Before claiming that work, a file, a prototype, or an implementation has not been done, inspect forge_context and the existing WorkProgress/wiki evidence first. Do not rediscover source material as if it were new work.
 - WorkProgress is the active implementation workspace. GameIntegration is read-only source material that may already have been ingested. NEVER present GameIntegration itself as the Forge asset library and never re-copy it merely because you noticed it in a new session.
@@ -3409,6 +3533,7 @@ function durableContinuationMessage(reason='context compaction'){
       `The previous function-call transcript was intentionally closed as a completed transport epoch. `+
       `Do NOT reconstruct or repeat completed tool calls merely because their raw assistant/function messages are absent. `+
       `Continue from durable Forge state, persisted decisions, artifacts, evidence ledger, and the canonical skill/gates.\n\n`+
+      (activeDirective?`ACTIVE CHANGE REQUEST (authoritative; phase autopilot remains paused):\n${clip(JSON.stringify(activeDirective,null,2),8000)}\n\n`:``)+
       `PROJECT CONTEXT:\n${clip(JSON.stringify(ctx,null,2),22000)}\n\n`+
       (pm?`PHASE 1 PRODUCT-METRICS DURABLE EVIDENCE:\n${clip(JSON.stringify(pm,null,2),12000)}\n\n`:'')+
       `Choose only the next canonical action. If a user-owned STOP is ready, call ask_user; otherwise call the required Forge tool.`
@@ -3590,9 +3715,42 @@ async function runRequestShapeDoctor(){
 
 async function turn(text){
   const rawTurnText=String(text || '');
-  const pendingAtTurnStart=Boolean(pendingDecision);
   const statusOnly=isStatusOnlyInput(rawTurnText);
-  const aliasExpanded = !statusOnly ? expandPhaseAlias(rawTurnText) : {text:rawTurnText,invocation:null};
+  const manualCommand=directiveCommand(rawTurnText);
+  if(manualCommand?.kind==='resume'){
+    const paused=activeDirective?.pausedPhase||authoritativeOpenPhase()||null;
+    const abandoned=activeDirective?.request||null;
+    if(pendingDecision?.directive===true) pendingDecision=null;
+    activeDirective=null; persistRuntimeEvidenceLedger();
+    process.stdout.write(abandoned
+      ? `\n[Forge] Direct task override cleared: ${abandoned}\n[Forge] Canonical phase autopilot is available again at Phase ${paused||'?'}. No phase was advanced automatically.\n`
+      : `\n[Forge] No direct task override was active. Canonical phase autopilot remains available at Phase ${paused||'?'}.\n`);
+    return;
+  }
+  if(manualCommand?.kind==='status'){
+    process.stdout.write(activeDirective
+      ? `\n[Forge] ACTIVE DIRECT TASK\nTask: ${activeDirective.request}\nPaused phase: ${activeDirective.pausedPhase||'?'}\nRecorded operations: ${(activeDirective.operations||[]).length}\nFinish automatically with forge_change_complete after implementation, or use /resume-phase to cancel the override.\n`
+      : `\n[Forge] No direct task override. Use /do <task> to pause phase autopilot for a concrete implementation request.\n`);
+    return;
+  }
+  if(manualCommand?.kind==='do'){
+    const activated=activateDirective(manualCommand.request,'explicit_command');
+    if(!activated.ok){process.stdout.write(`\n[Forge] ${activated.error}\n`);return;}
+    process.stdout.write(`\n[Forge] Direct task accepted; Phase ${activeDirective.pausedPhase||'?'} autopilot paused.\n[Forge] Task: ${activeDirective.request}\n`);
+  }else{
+    const naturalTask=naturalImplementationDirective(rawTurnText);
+    if(naturalTask && !activeDirective){
+      activateDirective(naturalTask,'natural_language');
+      process.stdout.write(`\n[Forge] Direct implementation request detected; Phase ${activeDirective.pausedPhase||'?'} autopilot paused.\n`);
+    }else if(activeDirective && !statusOnly){
+      if(naturalTask && naturalTask!==activeDirective.request) activateDirective(naturalTask,'natural_language');
+      else updateDirectiveInput(rawTurnText);
+    }
+  }
+  const changeRequestTurn=Boolean(activeDirective);
+  const directivePending=Boolean(changeRequestTurn&&pendingDecision?.directive===true);
+  const pendingAtTurnStart=Boolean(pendingDecision)&&(!changeRequestTurn||directivePending);
+  const aliasExpanded = !statusOnly&&!changeRequestTurn ? expandPhaseAlias(rawTurnText) : {text:rawTurnText,invocation:null};
   const normalizedTurnText = aliasExpanded.text;
   if(pendingAtTurnStart && aliasExpanded.invocation){
     const pendingPhase=pendingDecisionPhase();
@@ -3605,7 +3763,7 @@ async function turn(text){
   if(aliasExpanded.invocation) {
     process.stdout.write(`\n[Forge] Phase ${aliasExpanded.invocation.phase} -> ${aliasExpanded.invocation.skill}\n`);
   }
-  if(pendingAtTurnStart && !aliasExpanded.invocation){
+  if(pendingAtTurnStart && !changeRequestTurn && !aliasExpanded.invocation){
     const pendingPhase=pendingDecisionPhase();
     if(pendingPhase){
       activePhase=pendingPhase;
@@ -3614,7 +3772,7 @@ async function turn(text){
       hydrateResolvedDecisionState(pendingPhase);
     }
   }
-  const phaseExecutionTurn=!statusOnly && (pendingAtTurnStart || Boolean(aliasExpanded.invocation) || phaseExecutionRequestedByText(normalizedTurnText));
+  const phaseExecutionTurn=!statusOnly && !changeRequestTurn && (pendingAtTurnStart || Boolean(aliasExpanded.invocation) || phaseExecutionRequestedByText(normalizedTurnText));
   beginPhaseFromUserText(normalizedTurnText);
   if(aliasExpanded.invocation){
     const started=ensureHostPhaseStarted(aliasExpanded.invocation.phase);
@@ -3637,13 +3795,13 @@ async function turn(text){
     }
   }
 
-  let userText = normalizedTurnText;
-  if (pendingDecision && statusOnly) {
+  let userText = changeRequestTurn?directiveTaskPrompt(normalizedTurnText):normalizedTurnText;
+  if (pendingDecision && (!changeRequestTurn||directivePending) && statusOnly) {
     userText = `${rawTurnText}\n\nВАЖНО: это запрос статуса, а НЕ ответ на pending STOP-point. Не засчитывай его как пользовательское решение. Не продолжай новую работу. Покажи текущий статус и повтори ожидающий вопрос.`;
-  } else if (pendingDecision) {
+  } else if (pendingDecision && (!changeRequestTurn||directivePending)) {
     const decisionKey=String(pendingDecision.decision_key||'').trim();
     const decisionContext=`${pendingDecision.question}\n${pendingDecision.options||''}`;
-    const rawAnswer=userText, disposition=decisionAnswerDisposition(pendingDecision,rawAnswer);
+    const rawAnswer=normalizedTurnText, disposition=decisionAnswerDisposition(pendingDecision,rawAnswer);
     if(disposition.kind==='invalid'){
       process.stdout.write(`\n[Forge] Ответ на STOP-point пока неполный: ${disposition.blockers.join('; ')}\n[Forge] STOP остаётся открытым; вставьте полный ответ одним сообщением.\n`);
       persistRuntimeEvidenceLedger();return;
@@ -3665,6 +3823,7 @@ async function turn(text){
       if(activePhase===4&&capabilityBlock&&!/pixellab/i.test(rawAnswer))capabilityBlock=null;
     }
     pendingDecision=null;persistRuntimeEvidenceLedger();
+    if(changeRequestTurn) userText=directiveTaskPrompt(`Ответ пользователя на STOP-point: ${rawAnswer}`);
   }
 
   messages.push({role:'user',content:userText});
@@ -3674,6 +3833,7 @@ async function turn(text){
   let emptyFinalRetries = 0;
   let memorySyncRetries = 0;
   let prematureFinalRetries = 0;
+  let directiveFinalRetries = 0;
   let forcedFunctionName = null;
   let pseudoRecoveryCount = 0;
   let consecutiveBareJunk = 0;
@@ -3789,9 +3949,10 @@ async function turn(text){
           options: String(stopArgs.options || ''),
           recommendation: String(stopArgs.recommendation || ''),
           reason: String(stopArgs.reason || ''),
-          proposal: stopArgs.proposal&&typeof stopArgs.proposal==='object'?stopArgs.proposal:null
+          proposal: stopArgs.proposal&&typeof stopArgs.proposal==='object'?stopArgs.proposal:null,
+          directive:Boolean(activeDirective)
         };
-        if(activePhase){
+        if(activePhase&&!activeDirective){
           const decisionReason=`Awaiting ${pendingDecision.decision_key||'user decision'}`;
           const blockedState=markHostPhaseBlocked(activePhase,decisionReason);
           if(!blockedState.ok) process.stdout.write(`[Forge] Warning: could not persist decision STOP state: ${blockedState.stderr||blockedState.error||blockedState.status}\n`);
@@ -4010,6 +4171,18 @@ async function turn(text){
 
     if(meaningfulText(content)){
       emptyFinalRetries=0;
+      if(changeRequestTurn && activeDirective && directiveFinalRetries<6){
+        directiveFinalRetries++;
+        process.stdout.write(`\n[Forge] Premature direct-task final blocked: implementation request is still active and forge_change_complete was not called.\n`);
+        messages.push({
+          role:'user',
+          content:
+            `Это был преждевременный ответ по прямой задаче "${activeDirective.request}". Пользователь потребовал сделать работу, а не описать будущие шаги. `+
+            `Продолжай сейчас: загрузи подходящий tactical skill, внеси реальные изменения в WorkProgress, выполни сфокусированные проверки и вызови forge_change_complete. `+
+            `Не запускай phase-state, forge_gate или release-команды. Если обнаружен настоящий пользовательский выбор — ask_user; если исправимый сбой — исправь и продолжай.`
+        });
+        continue;
+      }
       if(phaseExecutionTurn) refreshMandatoryCapabilityBlock();
       if(phaseExecutionTurn && capabilityBlock && !memoryDirty){
         markHostPhaseBlocked(activePhase,capabilityBlock);
@@ -4153,7 +4326,7 @@ console.log(`Project Forge GigaChat Terminal Agent
 Project: ${PROJECT}
 Model: ${MODEL}
 Mode: ${FULL?'FULL (shell enabled)':'standard (no shell tool)'}
-Commands: /exit, /status, /gates, /context, /preflight, /search-doctor, /tokens`);
+Commands: /do <task>, /task, /resume-phase, /exit, /status, /gates, /context, /preflight, /search-doctor, /tokens`);
 
 
 async function runIntegrationTest(){
@@ -4194,6 +4367,15 @@ if (REQUEST_DOCTOR) {
   test('phase 1 named STOP gates',()=>PHASE1_REQUIRED_DECISIONS.has('phase1-research-direction')&&PHASE1_REQUIRED_DECISIONS.has('phase1-brief')&&PHASE1_REQUIRED_DECISIONS.has('phase1-content-budget'));
   test('phase execution intent detector',()=>phaseExecutionRequestedByText('Прочитай FORGE.md и выполни Forge skill phase-1-analyze для текущего проекта ".".'));
   test('short phase alias',()=>phaseAliasInvocation('фаза 1')?.skill==='phase-1-analyze' && phaseAliasInvocation('/phase-4-visual')?.phase===4);
+  test('manual /do command preserves exact task',()=>directiveCommand('/do сделай гачу и сразу реализуй')?.request==='сделай гачу и сразу реализуй');
+  test('manual /resume-phase command recognized',()=>directiveCommand('/resume-phase')?.kind==='resume');
+  test('/resume-phase clears only directive-owned pending STOP',()=>/pendingDecision\?\.directive===true/.test(turn.toString()));
+  test('natural direct implementation request detected',()=>naturalImplementationDirective('давай сделаем гачу чтобы привлечь игроков, сделай ТЗ и начинай делать')!==null);
+  test('ordinary feature question does not activate direct task',()=>naturalImplementationDirective('почему нет фичей на D7-D30?')===null);
+  test('change request prompt keeps exact task and pauses release',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveTaskPrompt('делай');activeDirective=old;return /добавь гачу/.test(x)&&/не запускай phase-state\/forge_gate\/release-\*/.test(x);});
+  test('change request blocks release gate and phase-state',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const a=directiveToolBlock('forge_gate',{phase:8});const b=directiveToolBlock('forge_script',{name:'phase-state.mjs',args:['start','8']});activeDirective=old;return Boolean(a)&&Boolean(b);});
+  test('change request allows tactical gacha skill',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveToolBlock('forge_skill',{name:'gacha-meta'});activeDirective=old;return x===null;});
+  test('change completion tool exposed',()=>functions.some(f=>f.name==='forge_change_complete'));
   test('textual pseudo tool-call rejected',()=>!meaningfulText('< супругиtool_calls>'));
   test('malformed GigaChat pseudo-call parser recovers search',()=>{ const x=parseTextualPseudoToolCall('< выгодныеtool_calls> < выгодныеinvoke name="forge_web_search"> < выгодныеparameter name="query" string="true">idle game retention benchmarks 2026</ выгодныеparameter>'); return x?.name==='forge_web_search' && x?.args?.query==='idle game retention benchmarks 2026'; });
   test('pseudo-call parser rejects unknown tool',()=>!parseTextualPseudoToolCall('< tool_calls>< invoke name="evil_shell">< parameter name="x">1</parameter>'));
@@ -4261,6 +4443,7 @@ if (REQUEST_DOCTOR) {
   test('approved research skill_done uses approved completion contract',()=>/phase1ResearchCompletionBlockers/.test(validateSkillCompletion.toString()));
   test('proactive compaction closes old function-call epoch',()=>/resetFunctionHistoryEpoch/.test(compactMessagesIfNeeded.toString())&&/payload_chars/.test(compactMessagesIfNeeded.toString()));
   test('durable continuation includes product-metrics evidence',()=>/PHASE 1 PRODUCT-METRICS DURABLE EVIDENCE/.test(durableContinuationMessage.toString()));
+  test('durable continuation explicitly preserves active change request',()=>/ACTIVE CHANGE REQUEST/.test(durableContinuationMessage.toString()));
   test('server-error retries do not resend old function history',()=>/attempt===0\?sanitizeGigaRequestBody\(body\):emergencyTrimGigaRequest\(body\)/.test(gigaChatRequestWithRetry.toString()));
   test('content-budget repair rewrites full proposal',()=>/REWRITE the ENTIRE native ask_user call/.test(phase1ContentBudgetRepairInstruction.toString())&&/D8-D30/.test(phase1ContentBudgetRepairInstruction.toString()));
   test('content-budget format recovery is bounded',()=>/invalidContentBudgetRepairs>3/.test(turn.toString())&&/FORGE RECOVERABLE STOP-FORMAT ERROR/.test(printContentBudgetFormatRecoveryStop.toString()));
@@ -4345,7 +4528,27 @@ if (ONE_SHOT) {
 const rl=createInterface({input:process.stdin,output:process.stdout,terminal:true});
 let replBuffer=[],replTimer=null,replBusy=false;const replQueue=[];
 function showPrompt(){if(!replBusy)process.stdout.write('\n> ');}
-async function processReplInput(raw){const q=String(raw||'').trim();if(!q)return;if(['/exit','/quit'].includes(q)){rl.close();return;}if(q==='/status'){console.log(JSON.parse(tool('forge_status',{json:false})).output);return;}if(q==='/preflight'){console.log(JSON.stringify(forgePreflight(activePhase),null,2));return;}if(q==='/search-doctor'){console.log(JSON.stringify(searchDoctor(PROJECT),null,2));return;}if(q==='/gates'){const g=phaseGateReport(activePhase);console.log(g.ok?`[Forge Gate] GREEN for Phase ${g.phase}`:`[Forge Gate] BLOCKED for Phase ${g.phase}:\n- ${g.blockers.join('\n- ')}`);return;}if(q==='/context'){console.log(JSON.stringify(buildProjectContext(),null,2));return;}if(q==='/tokens'){console.log(JSON.stringify({model:MODEL,lastUsage,approxPayloadChars:approxPayloadChars(),contextCharBudget:CONTEXT_CHAR_BUDGET,compactions:compactionCount},null,2));return;}try{await turn(q);}catch(e){tokenCache=null;reportForgeBehavior({severity:'error',code:'GIGACHAT_RUNTIME_EXCEPTION',kind:'adapter_transport',component:'gigachat-agent',operation:'repl-turn',message:e.message});console.error('\n[X] '+e.message);}}
+async function processReplInput(raw){
+  const q=String(raw||'').trim(); if(!q)return;
+  if(['/exit','/quit'].includes(q)){rl.close();return;}
+  if(q==='/status'){
+    console.log(JSON.parse(tool('forge_status',{json:false})).output);
+    if(activeDirective) console.log(`\n[Forge] DIRECT TASK ACTIVE: ${activeDirective.request}\nPhase ${activeDirective.pausedPhase||'?'} autopilot is paused. Use /task for details.`);
+    return;
+  }
+  if(q==='/preflight'){
+    if(activeDirective){console.log(`[Forge] Preflight paused by direct task: ${activeDirective.request}`);return;}
+    console.log(JSON.stringify(forgePreflight(activePhase),null,2));return;
+  }
+  if(q==='/search-doctor'){console.log(JSON.stringify(searchDoctor(PROJECT),null,2));return;}
+  if(q==='/gates'){
+    if(activeDirective){console.log(`[Forge Gate] PAUSED by direct task: ${activeDirective.request}`);return;}
+    const g=phaseGateReport(activePhase);console.log(g.ok?`[Forge Gate] GREEN for Phase ${g.phase}`:`[Forge Gate] BLOCKED for Phase ${g.phase}:\n- ${g.blockers.join('\n- ')}`);return;
+  }
+  if(q==='/context'){console.log(JSON.stringify(buildProjectContext(),null,2));return;}
+  if(q==='/tokens'){console.log(JSON.stringify({model:MODEL,lastUsage,approxPayloadChars:approxPayloadChars(),contextCharBudget:CONTEXT_CHAR_BUDGET,compactions:compactionCount},null,2));return;}
+  try{await turn(q);}catch(e){tokenCache=null;reportForgeBehavior({severity:'error',code:'GIGACHAT_RUNTIME_EXCEPTION',kind:'adapter_transport',component:'gigachat-agent',operation:'repl-turn',message:e.message});console.error('\n[X] '+e.message);}
+}
 async function drainReplQueue(){if(replBusy)return;replBusy=true;while(replQueue.length)await processReplInput(replQueue.shift());replBusy=false;showPrompt();}
 function flushReplBuffer(){if(replTimer){clearTimeout(replTimer);replTimer=null;}if(!replBuffer.length)return;replQueue.push(replBuffer.join('\n'));replBuffer=[];void drainReplQueue();}
 rl.on('line',line=>{replBuffer.push(line);if(replTimer)clearTimeout(replTimer);replTimer=setTimeout(flushReplBuffer,180);});

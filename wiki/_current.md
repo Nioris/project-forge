@@ -4,26 +4,27 @@
 
 ## Session goal
 
-Ship deterministic answer guidance as GigaChat adapter `6.3.3` / Project Forge `v4.68.9`.
+Ship a durable GigaChat direct-task intent guard as Project Forge `v4.68.20`.
 
 ## Active task
 
-- [x] Add deterministic `Как ответить` guidance to every GigaChat STOP.
-- [x] Add exact `утверждаю` approval guidance and full Q1–Q5 correction format.
-- [x] Add research deepen and content-budget change examples.
-- [x] Release-gate the visible guidance through the real CLI subprocess fixture.
-- [x] Bump all generated/version/manifest surfaces to v4.68.9.
-- [x] Run full release gates.
-- [x] Package, synchronize Universal/fleet and publish GitHub v4.68.9 from the verified release commit.
+- [x] Diagnose the real «сделай гачу» Phase 8 intent hijack.
+- [x] Add `/do <task>`, `/task`, and `/resume-phase` manual controls.
+- [x] Detect strong natural-language implementation requests.
+- [x] Preserve the exact task across compaction and restart.
+- [x] Block phase/release calls mechanically while the direct task is active.
+- [x] Require implementation evidence and checks before `forge_change_complete`.
+- [x] Add adapter and API-profile regression coverage.
+- [x] Complete release checks, package and synchronize v4.68.20.
 
 ## Blockers
 
-No code blocker. No paid GigaChat request is required for deterministic STOP rendering.
+No code blocker. No paid GigaChat API call is required for the deterministic routing tests.
 
 ## Last 3 decisions
 
-- 2026-08-18: STOP response syntax is adapter-owned UX and must not depend on model wording.
-- 2026-08-18: Offer `утверждаю` only as approval; provide a separate explicit correction format.
-- 2026-08-18: Phase 1 brief corrections must still contain Q1–Q5 in one message.
+- 2026-08-18: Direct implementation intent outranks automatic continuation of a stale open phase.
+- 2026-08-18: `/do` is the deterministic manual override; natural imperative detection is a convenience layer.
+- 2026-08-18: Intent protection must be enforced at the tool boundary and survive context compaction.
 
-<!-- last updated 2026-08-18 during v4.68.9 guided-STOP patch -->
+<!-- last updated 2026-08-18 during v4.68.20 GigaChat direct-task patch -->

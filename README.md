@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.19`
+**Current public version:** `v4.68.20`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -153,7 +153,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.19` keeps separate normal-account and API profiles.
+`v4.68.20` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -239,6 +239,8 @@ node scripts/forge-secrets.mjs status
 ```
 
 On GigaChat launch, Forge enables Node's system CA store before the child process starts. If no explicit `FORGE_SEARCH_PROVIDER` or `GIGASEARCH_*` endpoint is configured, the launcher selects the no-key `bing-html` live-search fallback. Explicit production search configuration always wins; use `/search-doctor` in the GigaChat terminal to inspect the active provider.
+
+For an urgent implementation change in the middle of the phase pipeline, use `/do <task>`. The command durably preserves the exact request, pauses phase autopilot, and blocks accidental release routing until the task is implemented and verified. `/task` shows the active direct task; `/resume-phase` clears the override and returns control to the canonical pipeline. Strong natural-language implementation commands are detected too, while `/do` is the deterministic manual form.
 
 The repository `.gitignore` excludes `forge-data/`, `secrets/`, `*.key`, `.env`, provider key files, backups and other local state.
 

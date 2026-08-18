@@ -1,4 +1,4 @@
-# Project Forge v4.68.19 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.20 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.20 changelog (GigaChat direct-task intent guard)
+
+GigaChat now has a durable change-request mode for explicit implementation work in the middle of the canonical pipeline. `/do <task>` preserves the exact user request across context compaction, pauses automatic phase/release continuation without falsifying phase markers, and injects the direct task as the authoritative current objective. Strong natural-language implementation commands activate the same mode; `/task` exposes it and `/resume-phase` clears it explicitly.
+
+The protection is mechanical rather than prompt-only: phase preflight/gates, `phase-state`, phase skills, release skills, and release packaging are rejected at the tool boundary while the direct task is active, including malformed textual-call recovery. `forge_change_complete` clears the override only after a successful implementation operation, existing evidence paths, and reported verification checks. This prevents a request such as “сделай гачу” from being replaced by a stale Phase 8 release marker after context compaction.
+
 ## v4.68.19 changelog (clean Codex launch with optional local MCPs)
 
 The one-window launcher now preflights enabled loopback HTTP MCP endpoints inherited from the user's Codex config. If a local endpoint is unreachable, Forge applies `mcp_servers.<name>.enabled=false` only to child phase/resume commands and prints the decision; it never edits global configuration. This prevents an optional stopped service such as Unity MCP from flooding or aborting an unrelated HTML5 phase. Remote and stdio MCPs are left untouched, reachable loopback endpoints stay enabled, and `--keep-local-mcp` provides an explicit escape hatch.
@@ -474,9 +480,3 @@ Child `codex exec` now inherits terminal stdin instead of receiving a closed pip
 The one-window Codex parent now produces a local per-phase cost/context report without adding anything to model context. The exec JSON stream supplies a bounded fallback; local rollout aggregation enriches it with model-response count, cumulative input/cached/output usage, compactions, subagent tree, exact tool-output payload size, and actual root model/reasoning policy. Reports deliberately omit prompts, messages, file contents, rate-limit state, and secrets, and remain local through repository excludes.
 
 Terminal summaries explain cache reuse rather than calling output/input a universal efficiency score. Heuristic warnings cover high-volume context amplification, oversized tool output, model-policy mismatch, unexpected incomplete endings, exec failures, excess subagents, and compactions. Dashboard can load multiple `phase-N-latest.json` reports into comparable cards without receiving implicit filesystem access.
-
-## v4.68.17 changelog (one-window Codex phases)
-
-Codex development no longer requires closing and reopening a terminal after every phase. `codex-pipeline.mjs` holds one terminal UI while using `codex exec` sessions internally: answers to a real STOP resume the current phase session, but `phase-state complete` discards that session and starts the next phase with clean context after a simple yes/no prompt. `--auto` removes only the between-phase prompt, not real decision gates.
-
-The orchestrator also repairs premature `in_progress` endings with bounded automatic resumes and resolves the installed Windows Codex JS entrypoint directly, avoiding child-process failures from npm `.cmd` wrappers and protected WindowsApps executables.

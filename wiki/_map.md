@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.19 (latest released)
+### Version: v4.68.20 (latest released)
 
+- 2026-08-18: **v4.68.20** — durable GigaChat direct-task routing: `/do`, `/task`, `/resume-phase`, natural imperative detection, exact intent preservation across compaction, tool-boundary phase/release blocking, and evidence-gated task completion.
 - 2026-08-18: **v4.68.19** — clean one-window Codex startup: run-local disabling of unreachable loopback HTTP MCPs, preserved global config, terminal stdin inheritance, and selective MCP regression coverage.
 - 2026-08-18: **v4.68.18** — per-phase Codex cost/context reporting from exec JSON plus local rollout telemetry, privacy-bounded local persistence, model/context/tool/stopping warnings, and Dashboard comparison cards.
 - 2026-08-18: **v4.68.17** — one-window Codex lifecycle: STOP answers resume the current phase, complete phases switch to clean internal sessions in the same terminal, premature stops auto-resume, and Windows CLI resolution is reliable.
