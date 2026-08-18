@@ -4509,6 +4509,12 @@ The local-first release branch was rebased onto the concurrent public `main` upd
 
 No engine runtime, sibling payload, phase, skill, agent or platform behavior changes in this patch. v4.68.6 is the final convergence release: verified local sources, release ZIP, Universal installation, sibling fleet and the GitHub publication branch share one versioned state.
 
+## v4.68.7 changelog (GigaChat resume orchestrator)
+
+The Forge-owned GigaChat adapter now carries the cumulative `6.3.1-resume-orchestrator` contract. It fixes the live malformed-`ask_user` const reassignment crash, reopens incomplete Q1–Q5 brief decisions before another model request, reconciles stale Phase 1 state and preserves approved research/product-metrics evidence across compaction and retries.
+
+The permanent capability now includes real web/image search, safe page fetch, a search doctor and offline provider self-test. `forge-agent` enables the Node system CA store before launching the GigaChat child and selects the no-key `bing-html` fallback only when no explicit provider/endpoint exists. The API-profile release gate runs both self-test suites and validates standard/full tool-surface semantics instead of a stale hard-coded count.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

@@ -29,7 +29,9 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модель:** `opus` — считает дефицит и контент-бюджет — ошибка тут стоит недель стройки.
+**Модели:** Claude `opus`. Codex `gpt-5.6-terra/high`; route `metrics-conflict` →
+`gpt-5.6-sol/high` только при противоречивых источниках или KPI/content-budget.
+Канон: `status/references/model-policy.json`; Max/Ultra автоматически не включать.
 
 
 Проходит целиком: прототип → wiki → метрики с контент-бюджетом.

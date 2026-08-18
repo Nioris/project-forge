@@ -23,7 +23,10 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модель:** `sonnet` — прогоны и отчёты; разбор непонятного падения — opus.
+**Модели:** Claude `sonnet`, непонятное падение — `opus`. Codex base
+`gpt-5.6-terra/high`; route `unexplained-failure` → `gpt-5.6-sol/high` только после
+обычной воспроизводимой диагностики.
+Канон: `status/references/model-policy.json`.
 
 
 1. `/test-game` целиком: ЭТАП 1 (verify+smoke) → ЭТАП 1.5 (playtest: скрипт ИГРАЕТ, 4 скриншота —

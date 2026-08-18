@@ -1,7 +1,7 @@
 ---
 name: design-pipeline
 kind: architectural
-description: "Step 3 главного pipeline. Запускает параллельно специалистов (game-design, level-design, monetization-design, art-prompts, sound-design, architecture review) которые читают…"
+description: "Step 3 главного pipeline. В economy-режиме координирует не более двух подагентов для game-design, level-design, monetization, art/sound и architecture review; полный parallel…"
 ---
 
 # Design Pipeline — координация специалистов под targets
@@ -17,9 +17,12 @@ Pre-requisites:
 
 Если хоть одно отсутствует — abort, попроси юзера сначала запустить нужный шаг.
 
-## Концепция: parallel specialists через subagents
+## Концепция: economy-first specialists
 
-Без agents этот skill превратился бы в линейное "сначала game-design, потом level-design, потом monetization, потом..." — последовательно, медленно. С Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) — параллельно.
+Forge бережёт токены по умолчанию: основной агент держит общий контекст, а максимум два подагента
+получают сгруппированные независимые workstreams. Полный fan-out по одному агенту на специалиста
+разрешён только по явной просьбе пользователя. Для Codex лимит и модели берутся из
+`status/references/model-policy.json`; Max/Ultra автоматически не включаются.
 
 **Specialists зависят от типа проекта.** Read `wiki/_map.md` → `type` (game/app) и `category` (productivity/tools/saas/etc).
 
@@ -88,7 +91,7 @@ Plus 1-2 specialists in addition to universals, depending on category:
 
 
 
-7 specialists. Можно последовательно (1.5-2 часа) или параллельно через Agent Teams (~30 минут).
+7 specialist-ролей. По умолчанию они группируются в два workstream, а не создают семь отдельных контекстов.
 
 ## Pipeline (5 шагов)
 
@@ -106,11 +109,17 @@ Plus 1-2 specialists in addition to universals, depending on category:
 
 ### Шаг 2 — Mode selection
 
-Спроси юзера: **parallel или sequential?**
+Не останавливай фазу отдельным вопросом о режиме. Используй **economy**, если пользователь явно не
+попросил `parallel` или `sequential`.
 
-- **Parallel (через Agent Teams)** — рекомендуется если AGENT_TEAMS=1 (default в Forge):
+- **Economy (default)**:
+  - не более двух подагентов на фазу;
+  - смежные specialist-роли объединены в workstreams;
+  - основной агент выполняет merge и cross-review;
+  - Codex custom agents работают на Terra, даже если parent task запущен на Sol.
+- **Parallel (только явно)**:
   - 30-40 минут общего времени
-  - Каждый specialist работает в своём контексте
+  - Каждый specialist работает в своём контексте; это быстрее по времени, но дороже по токенам
   - Если один fail'ит — остальные продолжают
   - Stop point после ВСЕХ — единый review
 - **Sequential** — backup mode:
@@ -119,11 +128,26 @@ Plus 1-2 specialists in addition to universals, depending on category:
   - Stop point после каждого
   - Проще debug'ить если что-то идёт не так
 
-Default: parallel. Юзер может скастомизировать ("только game-design + monetization, остальные пропусти").
+Default: economy. Пользователь может явно написать `parallel` или скастомизировать subset
+(`только game-design + monetization, остальные пропусти`).
 
 ### Шаг 3 — Spawn specialists
 
-#### Parallel mode (Agent Teams)
+#### Economy mode (default, максимум 2 подагента)
+
+Для игры сгруппируй роли так:
+
+1. **Product systems:** game design + level design + monetization. Пишет разные документы, но читает
+   metrics/research один раз.
+2. **Experience + architecture:** UI systems сначала, затем art/sound и modules. Не нарушает порядок
+   из шага 3.5.
+
+Product manager/master plan и cross-review остаются у основного агента после возврата workstreams.
+Для приложения сгруппируй: (1) IA/UX/data; (2) UI systems/visual/technical architecture. Обязательный
+compliance specialist заменяет второй необязательный workstream или выполняется последовательно —
+не создавай третьего параллельного агента.
+
+#### Parallel mode (Agent Teams, only when explicitly requested)
 
 ```
 Спавн через subagent invocation. Каждый specialist получает context:
@@ -167,7 +191,8 @@ Right order:
 
 После того как все specialists сдали свои документы — **cross-review phase**:
 
-Spawn **code-reviewer** или **doc-writer** subagent с задачей:
+В economy/sequential режиме cross-review выполняет основной агент. В явно выбранном parallel режиме
+можно запустить **одного** `code-reviewer` или `doc-writer` после завершения остальных с задачей:
 - Прочитать все 7 design документов
 - Найти противоречия (e.g. game-design предполагает 30-сек core loop, но monetization-design предполагает 5-min между rewarded — несовместимо)
 - Найти gaps (e.g. level-design референсит mechanic "X" которого нет в gdd)
@@ -278,7 +303,9 @@ User теперь имеет:
 
 ### Coordination
 
-После спавна specialists — wait until **all done** (или timeout 30 минут). Если кто-то не вернулся — fall back на sequential для этого specialist'а.
+После спавна workstreams — wait until **all done** (или timeout 30 минут). Если кто-то не вернулся —
+fall back на sequential для этого workstream. Economy mode никогда не открывает больше двух
+подагентов за фазу.
 
 ### Через `$team` orchestrator
 
@@ -297,7 +324,8 @@ $design-pipeline only=monetization   # уже есть остальное, ну�
 
 1. **Запуск без metrics.md** — specialists не знают targets, делают generic решения. Skill должен abort early.
 
-2. **Parallel без Agent Teams** — без `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` "parallel" будет sequential. Проверь env, fall back на sequential если flag не set.
+2. **Неявный full parallel** — запрещён. Наличие Agent Teams означает доступность функции, а не
+   согласие тратить токены на 7-9 отдельных контекстов. Без явного `parallel` оставайся в economy.
 
 3. **Skip cross-review** — без него противоречия между документами всплывут позже в коде. Cross-review дешёвый, не пропускай.
 
@@ -308,11 +336,11 @@ $design-pipeline only=monetization   # уже есть остальное, ну�
 ## Non-Negotiable
 
 - [ ] Pre-requisites checked (metrics.md, _map.md, research/)
-- [ ] Spawn 7 specialists (или subset по запросу пользователя)
+- [ ] Все релевантные specialist-роли покрыты; economy использует не более 2 подагентов
 - [ ] Каждый specialist читает metrics + research
 - [ ] Cross-review phase ДО master plan
 - [ ] Master plan имеет sprints с acceptance criteria
 - [ ] Output в правильные папки (`wiki/design/`, `wiki/plan/`)
-- [ ] Agent Teams используются если AGENT_TEAMS=1
+- [ ] Full parallel использован только по явному запросу; Max/Ultra не включены автоматически
 - [ ] Stop point после cross-review (user approve gaps решены)
 - [ ] Stop point после master plan (user approve sprints)

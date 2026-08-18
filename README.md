@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.9`
+**Current public version:** `v4.68.10`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -127,6 +127,15 @@ $continue
 $status
 ```
 
+For an economy-aware fresh Codex phase, run the policy launcher from the managed project directory:
+
+```powershell
+node ../project-forge/scripts/codex-phase.mjs 1 --cwd .
+node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
+```
+
+It opens a fresh Codex task on the Standard service tier with phase-specific model and reasoning settings: Terra handles normal implementation, Sol covers design and difficult escalations, and Luna is limited to mechanical work. Calling `$phase-*` inside an existing task cannot switch that task's primary model. See `.claude/skills/status/references/MODEL-ROUTING.md` for the complete table and `--route` options.
+
 Examples:
 
 ```text
@@ -139,7 +148,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.9` keeps separate normal-account and API profiles.
+`v4.68.10` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -167,6 +176,8 @@ node scripts/forge-agent.mjs doctor
 GigaCode remains an experimental adapter. Forge does not fake CLI availability when no executable is installed.
 
 Every GigaChat STOP-point includes a deterministic `How to answer` block: an exact short approval phrase (`утверждаю`) and, when needed, the complete correction format expected by the gate.
+
+Forge allows at most two phase subagents by default and never enables Max/Ultra automatically. These economy limits do not change the Claude or GigaChat workflows.
 
 ## API keys and secrets
 

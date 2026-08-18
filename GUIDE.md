@@ -1,4 +1,4 @@
-# Project Forge v4.68.9 — Полная инструкция по работе
+# Project Forge v4.68.10 — Полная инструкция по работе
 
 ## Оглавление
 
@@ -77,6 +77,17 @@ node scripts\forge-search-doctor.mjs --project .
 # Optional dormant bridge
 node scripts\forge-agent.mjs doctor gigacode
 ```
+
+### Экономичный запуск фаз Codex
+
+Модель основной задачи выбирается при её запуске, поэтому один `$phase-*` внутри уже открытого Codex не может гарантированно переключить модель. Из папки рабочего проекта запускайте фазу так:
+
+```powershell
+node ..\project-forge\scripts\codex-phase.mjs 1 --cwd .
+node ..\project-forge\scripts\codex-phase.mjs 5 --route payment-security --cwd .
+```
+
+Policy-launcher всегда использует Standard tier, ограничивает фазу двумя субагентами и записывает объявленную модель в `wiki/phases/phase-N.json`. Без launcher Forge сохраняет рекомендацию отдельно, но честно отмечает фактическую модель как не сообщённую. Max/Ultra остаются только ручным решением. Таблица фаз и эскалаций: `.claude/skills/status/references/MODEL-ROUTING.md`.
 
 Ключи хранятся централизованно и не копируются в проекты:
 

@@ -22,6 +22,9 @@ const CLAUDE_COMMANDS = join(ROOT, '.claude', 'commands');
 const CODEX_SKILLS = join(ROOT, '.agents', 'skills');
 const CLAUDE_AGENTS = join(ROOT, '.claude', 'agents');
 const CODEX_AGENTS = join(ROOT, '.codex', 'agents');
+const MODEL_POLICY_PATH = join(CLAUDE_SKILLS, 'status', 'references', 'model-policy.json');
+const MODEL_POLICY = JSON.parse(readFileSync(MODEL_POLICY_PATH, 'utf8'));
+const DEFAULT_SUBAGENT_MODEL = MODEL_POLICY.defaultSubagent.model;
 
 /** Return all regular files below a directory in stable relative-path order. */
 function walkFiles(rootDir, current = rootDir, out = []) {
@@ -155,7 +158,7 @@ function chooseSandbox(meta) {
   return /\b(Write|Edit|MultiEdit)\b/i.test(tools) ? 'workspace-write' : 'read-only';
 }
 
-/** Give review/security roles more reasoning without pinning a model version. */
+/** Give review/security roles more reasoning while the economy policy pins the model family. */
 function chooseEffort(name, description) {
   const text = `${name} ${description}`.toLowerCase();
   return /(security|review|audit|qa|tester|architecture)/.test(text) ? 'high' : 'medium';
@@ -177,7 +180,7 @@ function renderCodexAgent(fileName) {
     'Do not edit this TOML directly; run node scripts/sync-codex-adapter.mjs in the Forge engine.',
     'Treat references to CLAUDE.md or .claude/skills as Forge source-of-truth references; Codex-native skills are available under .agents/skills.',
     'Translate Claude-only orchestration syntax instead of assuming those tools exist: `/skill` means invoke the matching Forge skill (Codex form: `$skill`); TaskCreate/TaskUpdate/team-message instructions mean use Codex native subagents, task tracking, or report the result to the parent agent.',
-    'Ignore Claude model aliases such as sonnet/opus/haiku when choosing a Codex model; this generated adapter intentionally does not pin a Codex model version.',
+    `Ignore Claude model aliases such as sonnet/opus/haiku when choosing a Codex model. This generated agent is pinned by Forge economy policy to ${DEFAULT_SUBAGENT_MODEL}; only an explicit documented phase route may override it.`,
     '',
   ].join('\n');
 
@@ -186,6 +189,7 @@ function renderCodexAgent(fileName) {
     `# source-hash: ${sourceHash}`,
     `name = ${JSON.stringify(name)}`,
     `description = ${JSON.stringify(description)}`,
+    `model = ${JSON.stringify(DEFAULT_SUBAGENT_MODEL)}`,
     `model_reasoning_effort = ${JSON.stringify(effort)}`,
     `sandbox_mode = ${JSON.stringify(sandbox)}`,
     `developer_instructions = ${JSON.stringify(prefix + body)}`,

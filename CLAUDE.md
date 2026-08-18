@@ -1,4 +1,4 @@
-# Project Forge v4.68.9 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.10 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.10 changelog (Codex economy routing)
+
+Forge now owns a canonical per-phase Codex policy and a fresh-task launcher. Standard is the default tier; Terra handles normal implementation, Sol handles design and named complex escalations, and Luna is limited to mechanical work. Phase orchestration defaults to at most two Terra/medium subagents; Max/Ultra are never automatic.
+
+`phase-state.mjs` stores the recommended Codex route separately from the runtime selection reported by launcher/CLI evidence, so Claude and GigaChat are never mislabeled as Terra. Dashboard exposes both `$phase-*` and policy-aware launch commands. Regression coverage validates all nine routes, durable escalation metadata and Codex CLI compatibility.
+
 ## v4.68.9 changelog (guided STOP answers)
 
 Every GigaChat `ask_user` STOP now ends with deterministic answer guidance instead of relying on the model to remember response syntax. A recommended decision exposes the exact short approval phrase `утверждаю`; Phase 1 research and content-budget gates also show their correction/deepening form, while the five-question brief prints a complete Q1–Q5 answer template.
@@ -474,9 +480,3 @@ The adapter contract is `6.3.3-guided-stop`. Unit tests cover approval/correctio
 The GigaChat adapter now treats explicit natural-language approval such as `принимаю рекомендации`, `принимаю все рекомендации` and `согласен со всеми рекомендациями` as approval of the complete Phase 1 Q1–Q5 recommendation set. Qualified answers such as `принимаю рекомендации, но Q2 изменить` remain unresolved so corrections are never silently discarded.
 
 The adapter contract is `6.3.2-natural-acceptance`. Unit coverage and a real CLI subprocess regression prove that the exact user phrase is persisted, rebuilds all five canonical brief fields and clears the durable pending STOP before the next model request.
-
-## v4.68.7 changelog (GigaChat resume orchestrator)
-
-The Forge-owned GigaChat adapter now carries the cumulative `6.3.1-resume-orchestrator` contract. It fixes the live malformed-`ask_user` const reassignment crash, reopens incomplete Q1–Q5 brief decisions before another model request, reconciles stale Phase 1 state and preserves approved research/product-metrics evidence across compaction and retries.
-
-The permanent capability now includes real web/image search, safe page fetch, a search doctor and offline provider self-test. `forge-agent` enables the Node system CA store before launching the GigaChat child and selects the no-key `bing-html` fallback only when no explicit provider/endpoint exists. The API-profile release gate runs both self-test suites and validates standard/full tool-surface semantics instead of a stale hard-coded count.

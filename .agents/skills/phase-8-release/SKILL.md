@@ -23,7 +23,10 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модель:** `sonnet` — догнать чекер до 0 fail; отказ модерации разбирать на opus.
+**Модели:** Claude `sonnet`, отказ модерации — `opus`. Codex base
+`gpt-5.6-terra/medium`; route `gate-failure` → Terra/high, route `moderation-rejection` →
+Sol/high. Не держать всю штатную упаковку на Sol.
+Канон: `status/references/model-policy.json`.
 
 
 0a. Гейт Яндекса (техгейт §1.14, автоматический с их стороны): игра ОБЯЗАНА быть запущена

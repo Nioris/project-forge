@@ -156,6 +156,8 @@
 .agents/skills/sound-design/SKILL.md
 .agents/skills/start/SKILL.md
 .agents/skills/status/SKILL.md
+.agents/skills/status/references/MODEL-ROUTING.md
+.agents/skills/status/references/model-policy.json
 .agents/skills/status/references/phase-state.mjs
 .agents/skills/status/references/project-status.mjs
 .agents/skills/steam-sdk-integration/SKILL.md
@@ -372,6 +374,8 @@
 .claude/skills/sound-design/SKILL.md
 .claude/skills/start/SKILL.md
 .claude/skills/status/SKILL.md
+.claude/skills/status/references/MODEL-ROUTING.md
+.claude/skills/status/references/model-policy.json
 .claude/skills/status/references/phase-state.mjs
 .claude/skills/status/references/project-status.mjs
 .claude/skills/steam-sdk-integration/SKILL.md
@@ -444,6 +448,7 @@ README-MEMORY.md
 README.md
 README_RU.md
 RELEASE_NOTES_v4.68.1.md
+RELEASE_NOTES_v4.68.10.md
 RELEASE_NOTES_v4.68.2.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
@@ -663,6 +668,7 @@ scripts/check-sync-status.mjs
 scripts/check-universal-agent-runtime.mjs
 scripts/check-update-surface.mjs
 scripts/check-workspace-discipline.mjs
+scripts/codex-phase.mjs
 scripts/cx
 scripts/cx.bat
 scripts/data-dir.mjs

@@ -23,7 +23,10 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модель:** `sonnet` — интеграция по шаблону, проверяется чекером.
+**Модели:** Claude `sonnet`. Codex base `gpt-5.6-terra/high`; routes `repeated-failure` и
+`payment-security` → `gpt-5.6-sol/high` только после двух одинаковых FAIL либо для
+платежей/secrets/auth/non-standard SDK conflicts.
+Канон: `status/references/model-policy.json`.
 
 
 1. `$mobile-game-ui` — тач-управление, цели ≥44px, безопасные зоны.

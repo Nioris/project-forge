@@ -99,6 +99,21 @@ const codexAgents = existsSync(join(ROOT, '.codex/agents'))
 if (claudeAgents !== codexAgents) fail(`custom-agent count mismatch: Claude ${claudeAgents}, Codex ${codexAgents}`);
 else ok.push(`${codexAgents} native Codex custom agents generated`);
 
+const policyPath = requireFile('.claude/skills/status/references/model-policy.json');
+if (policyPath) {
+  try {
+    const policy = JSON.parse(readFileSync(policyPath, 'utf8'));
+    const expectedModel = policy.defaultSubagent?.model;
+    const unpinned = readdirSync(join(ROOT, '.codex/agents')).filter(f => f.endsWith('.toml')).filter(f => {
+      const text = readFileSync(join(ROOT, '.codex/agents', f), 'utf8');
+      return !text.split(/\r?\n/).includes(`model = ${JSON.stringify(expectedModel)}`);
+    });
+    if (!expectedModel) fail('model policy does not define defaultSubagent.model');
+    else if (unpinned.length) fail(`Codex custom agents are not pinned to ${expectedModel}: ${unpinned.join(', ')}`);
+    else ok.push(`all Codex custom agents pinned to economy model ${expectedModel}`);
+  } catch (e) { fail(`model policy invalid: ${e.message}`); }
+}
+
 const claudeSkillNames = existsSync(join(ROOT, '.claude/skills'))
   ? new Set(readdirSync(join(ROOT, '.claude/skills'), { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name)) : new Set();
 const codexSkillNames = existsSync(join(ROOT, '.agents/skills'))

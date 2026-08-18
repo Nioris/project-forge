@@ -24,7 +24,10 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модель:** `opus` — сложная игровая логика; простые механики и рутинные спринты — sonnet.
+**Модели:** Claude `opus` для сложной логики, `sonnet` для рутины. Codex base
+`gpt-5.6-terra/medium`; route `complex-logic` → `gpt-5.6-sol/high` для экономики,
+мультиплеера, backend architecture или повторного провала.
+Канон: `status/references/model-policy.json`.
 
 
 Фазы 1-2 производят ЧЕРТЕЖИ (метрики, GDD, план). Фазы 4+ полируют ПОСТРОЕННОЕ. /phase-3-construct («стройка») — то,

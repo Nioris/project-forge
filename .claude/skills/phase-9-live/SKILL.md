@@ -23,7 +23,10 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модель:** `sonnet` — события и замеры по расписанию.
+**Модели:** Claude `sonnet`. Codex base `gpt-5.6-terra/medium`; route
+`metrics-collection` → `gpt-5.6-luna/low` только для сбора известных цифр и заполнения
+фиксированной таблицы. Причинный анализ остаётся на Terra.
+Канон: `status/references/model-policy.json`.
 
 
 1. `/seasonal-event` — календарь событий сейчас + напоминание раз в 2-3 недели.
