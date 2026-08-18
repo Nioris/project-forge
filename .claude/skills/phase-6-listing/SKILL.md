@@ -23,9 +23,9 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модели:** Claude `sonnet`. Codex base `gpt-5.6-terra/medium`; route
-`mechanical-metadata` → `gpt-5.6-luna/low` только когда осталась детерминированная сборка
-метаданных по готовому шаблону. Локализацию, SEO и visual selection целиком Luna не отдавать.
+**Модели:** Claude `sonnet`. Codex base `gpt-5.6-sol/medium`; route
+`creative-conflict` → `gpt-5.6-sol/high` только при реальном конфликте локализации,
+позиционирования или visual selection.
 Канон: `status/references/model-policy.json`.
 
 

@@ -30,7 +30,7 @@ machine-readable progression state, а сами артефакты остают�
 
 
 **Модели:** Claude `opus`. Codex `gpt-5.6-sol/high` — GDD, экономика, монетизация и
-🔴-решения; Max/Ultra автоматически не включать. Economy mode ограничивает фазу двумя подагентами.
+🔴-решения; Max/Ultra автоматически не включать. Quality-Sol mode ограничивает фазу двумя подагентами.
 Канон: `status/references/model-policy.json`.
 
 

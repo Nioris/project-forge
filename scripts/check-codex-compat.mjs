@@ -110,7 +110,7 @@ if (policyPath) {
     });
     if (!expectedModel) fail('model policy does not define defaultSubagent.model');
     else if (unpinned.length) fail(`Codex custom agents are not pinned to ${expectedModel}: ${unpinned.join(', ')}`);
-    else ok.push(`all Codex custom agents pinned to economy model ${expectedModel}`);
+    else ok.push(`all Codex custom agents pinned to policy model ${expectedModel}`);
   } catch (e) { fail(`model policy invalid: ${e.message}`); }
 }
 

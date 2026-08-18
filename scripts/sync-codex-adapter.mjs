@@ -158,7 +158,7 @@ function chooseSandbox(meta) {
   return /\b(Write|Edit|MultiEdit)\b/i.test(tools) ? 'workspace-write' : 'read-only';
 }
 
-/** Give review/security roles more reasoning while the economy policy pins the model family. */
+/** Give review/security roles more reasoning while the quality policy pins the model family. */
 function chooseEffort(name, description) {
   const text = `${name} ${description}`.toLowerCase();
   return /(security|review|audit|qa|tester|architecture)/.test(text) ? 'high' : 'medium';
@@ -180,7 +180,7 @@ function renderCodexAgent(fileName) {
     'Do not edit this TOML directly; run node scripts/sync-codex-adapter.mjs in the Forge engine.',
     'Treat references to CLAUDE.md or .claude/skills as Forge source-of-truth references; Codex-native skills are available under .agents/skills.',
     'Translate Claude-only orchestration syntax instead of assuming those tools exist: `/skill` means invoke the matching Forge skill (Codex form: `$skill`); TaskCreate/TaskUpdate/team-message instructions mean use Codex native subagents, task tracking, or report the result to the parent agent.',
-    `Ignore Claude model aliases such as sonnet/opus/haiku when choosing a Codex model. This generated agent is pinned by Forge economy policy to ${DEFAULT_SUBAGENT_MODEL}; only an explicit documented phase route may override it.`,
+    `Ignore Claude model aliases such as sonnet/opus/haiku when choosing a Codex model. This generated agent is pinned by Forge quality policy to ${DEFAULT_SUBAGENT_MODEL}; only an explicit documented phase route may change reasoning effort.`,
     '',
   ].join('\n');
 

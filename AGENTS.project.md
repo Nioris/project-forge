@@ -1,6 +1,6 @@
-# Project Forge v4.68.15 — Codex project runtime instructions
+# Project Forge v4.68.16 — Codex project runtime instructions
 
-<!-- GENERATED from Forge canonical sources; claude-hash:f4ba3b8f4b950283; target:project; do not edit by hand. -->
+<!-- GENERATED from Forge canonical sources; claude-hash:e0f633652a48e123; target:project; do not edit by hand. -->
 
 This project is managed by Project Forge. The copied `.claude/*`, Codex adapter files, `FORGE.md`, and GitVerse rules come from one Forge engine and are intended to stay behaviorally aligned across supported hosts. Root `CLAUDE.md` belongs to this project and may contain additional project-specific rules.
 
@@ -37,6 +37,14 @@ Forge ships 21 role definitions in `.claude/agents/`; native Codex equivalents a
 - Keep parallel write-heavy work separated by files/worktrees; avoid multiple agents editing the same files.
 - Generated `.codex/agents/*.toml` translate Claude-only orchestration terms to Codex-native subagent behavior.
 
+## Codex quality and token discipline
+
+- All Forge Codex phases and generated custom agents use GPT-5.6 Sol on Standard tier. Never select Fast automatically.
+- Start each phase in a fresh task with `node ../project-forge/scripts/codex-phase.mjs <N> --cwd .`; do not carry a multi-phase transcript forward.
+- Use high reasoning for analysis/design/implementation/visual/technical/QA work and medium for deterministic listing, routine release packaging, and ordinary metrics. Max/Ultra and xhigh are never automatic defaults.
+- Keep model-facing tool output bounded: read relevant ranges, summarize large logs, and inspect no more than one high-detail image per turn. Do not feed megabytes of screenshots or terminal output back into the model.
+- Continue autonomously until a real Forge STOP-point, verified completion, or genuine blocker. Do not end a task merely to announce the next implementation step.
+
 ## Hooks and safety
 
 Codex lifecycle hooks are configured in `.codex/hooks.json`; Claude Code hooks remain intact in `.claude/hooks/`.
@@ -68,6 +76,7 @@ Do not log ordinary game/app bugs unless Forge caused or misreported them. Conti
 - Money values must not use floating-point `number` for authoritative amounts; follow the Forge money invariant in the applicable skill/instructions.
 - Persisted-data/UI migrations must account for existing local storage/state.
 - A platform addition is cross-cutting; use the platform-completeness workflow instead of updating only the obvious directory.
+- Completing a phase invokes the local-first Git checkpoint helper. Preserve that checkpoint even if a private GitHub push temporarily fails.
 
 
 ## Synced-project update contract

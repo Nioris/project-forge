@@ -23,9 +23,9 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модели:** Claude `sonnet`. Codex base `gpt-5.6-terra/medium`; route
-`metrics-collection` → `gpt-5.6-luna/low` только для сбора известных цифр и заполнения
-фиксированной таблицы. Причинный анализ остаётся на Terra.
+**Модели:** Claude `sonnet`. Codex base `gpt-5.6-sol/medium`; route
+`causal-analysis` → `gpt-5.6-sol/high` для причинного анализа, redesign эксперимента
+или нетривиального продуктового решения.
 Канон: `status/references/model-policy.json`.
 
 

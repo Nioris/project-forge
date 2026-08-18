@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Regression test for Project Forge phase-aware status + Codex economy model policy. */
+/** Regression test for Project Forge phase-aware status + Codex quality-first Sol policy. */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,12 +28,12 @@ try {
   const phaseIds=Object.keys(policy.phases||{}).sort();
   JSON.stringify(phaseIds)===JSON.stringify(['1','2','3','4','5','6','7','8','9'])
     ? ok('model policy covers exactly the canonical nine phases') : bad(`model policy phases: ${phaseIds.join(',')}`);
-  (policy.mode==='economy' && policy.serviceTier==='default' && policy.limits?.maxPhaseSubagents===2)
-    ? ok('economy policy pins Standard tier and at most two phase subagents') : bad('economy policy global limits invalid');
-  (policy.phases['2'].base.model==='gpt-5.6-sol' && policy.phases['5'].base.model==='gpt-5.6-terra' && policy.phases['5'].base.reasoning==='high')
-    ? ok('high-value design and technical routes use the intended models') : bad('Phase 2/5 model policy drift');
-  (policy.phases['6'].base.model==='gpt-5.6-terra' && policy.phases['8'].base.model==='gpt-5.6-terra')
-    ? ok('listing is not wholly delegated to Luna and release is not permanently on Sol') : bad('Phase 6/8 economy routing drift');
+  (policy.mode==='quality-sol' && policy.serviceTier==='default' && policy.limits?.maxPhaseSubagents===2 && policy.limits?.freshTaskPerPhase===true)
+    ? ok('quality policy pins Standard tier, fresh phase tasks and at most two subagents') : bad('quality policy global limits invalid');
+  Object.values(policy.phases).every(p => p.base.model==='gpt-5.6-sol' && Object.values(p.routes||{}).every(r => r.model==='gpt-5.6-sol'))
+    ? ok('all primary phases and named routes stay on GPT-5.6 Sol') : bad('non-Sol phase route found');
+  (policy.phases['6'].base.reasoning==='medium' && policy.phases['8'].base.reasoning==='medium' && policy.phases['7'].routes['unexplained-failure'].reasoning==='xhigh')
+    ? ok('reasoning effort is reduced for deterministic work and escalated only for hard failures') : bad('reasoning-effort routing drift');
 
   const p1=mk('new-game');
   w(p1,'wiki/design/brief.md','# Brief\n');
@@ -78,7 +78,7 @@ try {
   phase(p6,'start','4');
   let marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));
   marker.state==='in_progress' ? ok('phase-state start writes machine marker') : bad('phase-state start failed');
-  (marker.schemaVersion===2 && marker.modelRuntime?.recommendedCodex?.model==='gpt-5.6-terra' && marker.modelRuntime?.recommendedCodex?.reasoning==='medium' && marker.modelRuntime?.selection?.model===null && marker.modelRuntime?.selection?.source==='unreported' && marker.modelRuntime?.subagents?.limit===2)
+  (marker.schemaVersion===2 && marker.modelRuntime?.recommendedCodex?.model==='gpt-5.6-sol' && marker.modelRuntime?.recommendedCodex?.reasoning==='high' && marker.modelRuntime?.selection?.model===null && marker.modelRuntime?.selection?.source==='unreported' && marker.modelRuntime?.subagents?.limit===2)
     ? ok('phase marker separates the Codex recommendation from an unreported actual model') : bad('phase marker model runtime missing or wrong');
   phase(p6,'block','4','Awaiting target frame');
   marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));

@@ -385,6 +385,12 @@ safe('phase-aware-status-model', () => {
   else ok.push('/status uses canonical 9 phases + machine markers; CLAUDE mutable state is non-authoritative');
 });
 
+safe('project-git-lifecycle', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-project-git.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('local/private Git lifecycle regression failed — run scripts/check-project-git.mjs');
+  else ok.push('project Git lifecycle creates local checkpoints and allows only private GitHub automation');
+});
+
 safe('api-terminal-profiles', () => {
   const r = spawnSync(process.execPath, ['scripts/check-api-terminal-profiles.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('API terminal profile regression failed — run scripts/check-api-terminal-profiles.mjs');

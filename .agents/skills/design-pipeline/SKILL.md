@@ -116,7 +116,7 @@ Plus 1-2 specialists in addition to universals, depending on category:
   - не более двух подагентов на фазу;
   - смежные specialist-роли объединены в workstreams;
   - основной агент выполняет merge и cross-review;
-  - Codex custom agents работают на Terra, даже если parent task запущен на Sol.
+  - Codex custom agents работают на Sol/medium (review/security/architecture — Sol/high), даже если parent task использует другой reasoning effort.
 - **Parallel (только явно)**:
   - 30-40 минут общего времени
   - Каждый specialist работает в своём контексте; это быстрее по времени, но дороже по токенам

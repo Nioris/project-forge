@@ -24,7 +24,7 @@ machine-readable progression state, а сами артефакты остают�
 
 
 **Модели:** Claude `sonnet`, непонятное падение — `opus`. Codex base
-`gpt-5.6-terra/high`; route `unexplained-failure` → `gpt-5.6-sol/high` только после
+`gpt-5.6-sol/high`; route `unexplained-failure` → `gpt-5.6-sol/xhigh` только после
 обычной воспроизводимой диагностики.
 Канон: `status/references/model-policy.json`.
 

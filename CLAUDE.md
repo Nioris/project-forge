@@ -1,4 +1,4 @@
-# Project Forge v4.68.15 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.16 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.16 changelog (Quality Sol + private project Git)
+
+Every Codex phase and generated custom agent now stays on GPT-5.6 Sol/Standard. Reasoning effort remains high for creative and technical work, medium for deterministic listing/release/live work, and reaches xhigh only through named hard-problem routes. Fresh phase tasks, bounded output and a one-high-detail-image rule address the real context amplification that consumed the weekly model budget.
+
+Every new project gets its own local `main` repository. Completing a phase creates a durable checkpoint commit. An explicit workspace policy can create and push each future game/app to a private GitHub repository; Forge refuses public remotes and staged secrets, preserves local commits when the network fails, and never mass-onboards existing projects without an explicit command.
+
 ## v4.68.15 changelog (Windows Yandex release pipeline)
 
 The canonical three-ZIP Yandex builder now works from Windows and accepts an external project root. It uses native filesystem operations and platform-appropriate archive commands; production stays clean, debug contains debugcheck plus cheats, and marketing contains debugcheck, cheats and screenshot helpers.
@@ -474,9 +480,3 @@ ZIP CDN inspection and variant runtime testing no longer depend on Unix `/tmp`, 
 The GigaChat adapter now keeps completed phases immutable and advances phases strictly in order. Durable completed markers are authoritative even after stale runtime state, repeated skill/workspace loads are bounded, corrected verifier reruns clear obsolete failures, and wrong script-vs-skill or HTML-file-vs-project-directory calls are translated to their canonical Forge operations.
 
 Phase 4 accepts valid JPEG/WebP target frames, numbered visual variants and the supported selection locations. Phase 7 recognizes the canonical test/visual-QA skill workflow. Local staging automatically uses the finite AI play mode, shell scripts run through Git Bash, evidence arguments are normalized, and structured `write_file` values are serialized as JSON. Browser helpers now resolve project-local Puppeteer reliably, dismiss dialogs, provide a local Yandex SDK stub and produce a real playable promo recording. Contract: `6.3.6-mature-phase-orchestration`.
-
-## v4.68.13 changelog (GigaChat decision and gate integrity)
-
-Standalone answers to durable GigaChat STOP-points now restore the owning phase, runtime baseline and named-decision state before the answer is consumed. Phase 2 decisions survive across one-shot terminal processes, and the model can no longer overwrite the runtime-owned decision/evidence ledgers directly.
-
-Every `phase-state complete` path, including native `forge_script`, now requires the full Forge gate to be GREEN plus explicit evidence arguments. Decision STOPs automatically persist the machine marker as `blocked` with host `gigachat`; Phase 2 prompts receive deterministic fast-MVP questions/recommendations and exact approval guidance. Phase 2 UI hierarchy matching accepts canonical prefix or suffix filenames, while the prompt-pack blocker names its exact `assets/prompts/*.json` target. Contract: `6.3.5-decision-gate-integrity`.

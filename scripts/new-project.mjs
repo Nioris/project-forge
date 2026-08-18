@@ -5,7 +5,8 @@
  */
 import { existsSync, mkdirSync, writeFileSync, readdirSync, copyFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { checkpointProjectGit } from '../.claude/skills/status/references/project-git.mjs';
 
 const ENGINE = resolve(dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const args = process.argv.slice(2);
@@ -55,11 +56,9 @@ if (missing.length) {
 }
 const nClaude = readdirSync(join(dir, '.claude', 'skills'), { withFileTypes: true }).filter(e => e.isDirectory()).length;
 const nCodex = readdirSync(join(dir, '.agents', 'skills'), { withFileTypes: true }).filter(e => e.isDirectory()).length;
-try {
-  execSync('git init -q', { cwd: dir, stdio: 'ignore' });
-  execSync('git add -A', { cwd: dir, stdio: 'ignore' });
-  execSync('git -c user.email=forge@local -c user.name=Forge commit -q -m "Project created"', { cwd: dir, stdio: 'ignore' });
-} catch {}
+const git = checkpointProjectGit({ projectRoot: dir, message: 'forge: create project', allowRemoteFailure: true });
+if (git.warning) console.warn(`[Forge Git] ${git.warning}`);
 
 console.log(`[OK] Ready: Claude skills=${nClaude}, Codex skills=${nCodex}, universal FORGE.md + GitVerse rules + managed sync manifest present.`);
+console.log(`[OK] Git: ${git.commit ? `local commit ${git.commit}` : 'clean'}${git.pushed ? `; pushed to private ${git.remote.fullName}` : ''}.`);
 console.log(`\nNext:\n  1. Put source/prototype in ${join(dir, 'GameIntegration')}\n  2. cd ${dir}\n  3a. Claude subscription: claude / cf(full) -> ${nextClaude}\n  3b. Claude API: node ../project-forge/scripts/forge-agent.mjs launch claude --profile api --full --project .\n  3c. Codex ChatGPT: codex / cx(full) -> ${nextCodex}\n  3d. Codex API: node ../project-forge/scripts/forge-agent.mjs launch codex --profile api --full --project .\n  3e. GigaChat API: node ../project-forge/scripts/forge-agent.mjs launch gigachat --profile api --full --project .\n  3f. GigaCode CLI: optional/dormant until an executable is available.`);

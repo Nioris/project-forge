@@ -30,8 +30,8 @@ machine-readable progression state, а сами артефакты остают�
 
 
 **Модели:** Claude `sonnet`, `/art-direction` — `opus`. Codex base
-`gpt-5.6-terra/medium`; route `art-direction` → `gpt-5.6-sol/high` только для style bible,
-target frame и визуального направления.
+`gpt-5.6-sol/high`; route `art-direction` → `gpt-5.6-sol/xhigh` только после провала обычной
+проверки style bible, target frame или визуального направления.
 Канон: `status/references/model-policy.json`.
 
 

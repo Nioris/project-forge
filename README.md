@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.15`
+**Current public version:** `v4.68.16`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -127,14 +127,14 @@ $continue
 $status
 ```
 
-For an economy-aware fresh Codex phase, run the policy launcher from the managed project directory:
+For a quality-first fresh Codex phase, run the policy launcher from the managed project directory:
 
 ```powershell
 node ../project-forge/scripts/codex-phase.mjs 1 --cwd .
 node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 ```
 
-It opens a fresh Codex task on the Standard service tier with phase-specific model and reasoning settings: Terra handles normal implementation, Sol covers design and difficult escalations, and Luna is limited to mechanical work. Calling `$phase-*` inside an existing task cannot switch that task's primary model. See `.claude/skills/status/references/MODEL-ROUTING.md` for the complete table and `--route` options.
+It opens a fresh Codex task on the Standard service tier. Every phase uses GPT-5.6 Sol; reasoning is high for creative/technical work and medium for deterministic listing, packaging, and routine metrics. Calling `$phase-*` inside an existing task cannot switch that task's primary model and carries expensive old context. See `.claude/skills/status/references/MODEL-ROUTING.md` for the complete table and `--route` options.
 
 Examples:
 
@@ -148,7 +148,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.15` keeps separate normal-account and API profiles.
+`v4.68.16` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -177,7 +177,22 @@ GigaCode remains an experimental adapter. Forge does not fake CLI availability w
 
 Every GigaChat STOP-point includes a deterministic `How to answer` block: an exact short approval phrase (`утверждаю`) and, when needed, the complete correction format expected by the gate.
 
-Forge allows at most two phase subagents by default and never enables Max/Ultra automatically. These economy limits do not change the Claude or GigaChat workflows.
+Forge allows at most two phase subagents, starts phases as fresh tasks, bounds large tool/image context, and never enables Max/Ultra automatically. These limits do not change the Claude or GigaChat workflows.
+
+## Local Git and private GitHub
+
+Every new project gets its own local Git repository. Completing a Forge phase automatically creates a checkpoint commit. To enable private GitHub creation and push for all future games/apps in one workspace:
+
+```powershell
+node scripts/project-git.mjs configure --owner Nioris
+```
+
+The policy is stored outside the engine in `forge-data/git-policy.json`, so upgrades preserve it. Forge refuses automatic publication to a public repository, checks secret filenames/content before commits, and treats a remote/network failure as a warning while preserving the local checkpoint. Existing projects are onboarded only by an explicit command:
+
+```powershell
+node scripts/git-init-games.mjs --dry
+node scripts/git-init-games.mjs --game my-game
+```
 
 ## Forge behavioral diagnostics
 
@@ -291,7 +306,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.15.md](RELEASE_NOTES_v4.68.15.md) — current release notes
+- [RELEASE_NOTES_v4.68.16.md](RELEASE_NOTES_v4.68.16.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

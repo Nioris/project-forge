@@ -4553,6 +4553,12 @@ GigaChat Phase 1 resume now treats already approved decisions and research artif
 
 Phase markers record `gigachat` as the actual host without inventing a Codex model selection. Memory snapshots discard obsolete nested `STOP:` lines, and exhausted empty/malformed response recovery emits the `GIGA_EMPTY_RESPONSE_LOOP` Forge diagnostic. The adapter contract is `6.3.4-durable-phase-resume`; regression coverage includes approved-state completion, durable metrics provenance, host-only model metadata and transport diagnostics.
 
+## v4.68.13 changelog (GigaChat decision and gate integrity)
+
+Standalone answers to durable GigaChat STOP-points now restore the owning phase, runtime baseline and named-decision state before the answer is consumed. Phase 2 decisions survive across one-shot terminal processes, and the model can no longer overwrite the runtime-owned decision/evidence ledgers directly.
+
+Every `phase-state complete` path, including native `forge_script`, now requires the full Forge gate to be GREEN plus explicit evidence arguments. Decision STOPs automatically persist the machine marker as `blocked` with host `gigachat`; Phase 2 prompts receive deterministic fast-MVP questions/recommendations and exact approval guidance. Phase 2 UI hierarchy matching accepts canonical prefix or suffix filenames, while the prompt-pack blocker names its exact `assets/prompts/*.json` target. Contract: `6.3.5-decision-gate-integrity`.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

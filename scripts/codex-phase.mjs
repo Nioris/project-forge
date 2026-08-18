@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Launch one Project Forge phase in a fresh Codex task using the canonical economy model policy.
+ * Launch one Project Forge phase in a fresh Codex task using the canonical quality-first model policy.
  * This is intentionally a launcher: prose inside an existing task cannot enforce a primary-model switch.
  */
 import { existsSync, readFileSync } from 'node:fs';

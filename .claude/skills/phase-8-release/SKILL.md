@@ -24,8 +24,8 @@ machine-readable progression state, а сами артефакты остают�
 
 
 **Модели:** Claude `sonnet`, отказ модерации — `opus`. Codex base
-`gpt-5.6-terra/medium`; route `gate-failure` → Terra/high, route `moderation-rejection` →
-Sol/high. Не держать всю штатную упаковку на Sol.
+`gpt-5.6-sol/medium`; routes `gate-failure` и `moderation-rejection` → Sol/high.
+Штатная упаковка остаётся на medium, потому что GREEN определяют verifier-скрипты.
 Канон: `status/references/model-policy.json`.
 
 

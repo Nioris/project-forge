@@ -29,8 +29,8 @@ Marker не заменяет evidence и не разрешает переско�
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 
 
-**Модели:** Claude `opus`. Codex `gpt-5.6-terra/high`; route `metrics-conflict` →
-`gpt-5.6-sol/high` только при противоречивых источниках или KPI/content-budget.
+**Модели:** Claude `opus`. Codex `gpt-5.6-sol/high`; route `metrics-conflict` →
+`gpt-5.6-sol/xhigh` только при противоречивых источниках или KPI/content-budget.
 Канон: `status/references/model-policy.json`; Max/Ultra автоматически не включать.
 
 

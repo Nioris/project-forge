@@ -161,6 +161,7 @@
 .agents/skills/status/references/forge-event.mjs
 .agents/skills/status/references/model-policy.json
 .agents/skills/status/references/phase-state.mjs
+.agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
 .agents/skills/steam-sdk-integration/SKILL.md
 .agents/skills/store-creatives/SKILL.md
@@ -382,6 +383,7 @@
 .claude/skills/status/references/forge-event.mjs
 .claude/skills/status/references/model-policy.json
 .claude/skills/status/references/phase-state.mjs
+.claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
 .claude/skills/steam-sdk-integration/SKILL.md
 .claude/skills/store-creatives/SKILL.md
@@ -459,6 +461,7 @@ RELEASE_NOTES_v4.68.12.md
 RELEASE_NOTES_v4.68.13.md
 RELEASE_NOTES_v4.68.14.md
 RELEASE_NOTES_v4.68.15.md
+RELEASE_NOTES_v4.68.16.md
 RELEASE_NOTES_v4.68.2.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
@@ -668,6 +671,7 @@ scripts/check-nested-dirs.mjs
 scripts/check-no-float-money.mjs
 scripts/check-pipeline-state.mjs
 scripts/check-platform-completeness.mjs
+scripts/check-project-git.mjs
 scripts/check-ps1-encoding.mjs
 scripts/check-setup-guide.mjs
 scripts/check-skill-descriptions.mjs
@@ -715,6 +719,7 @@ scripts/openai-image.mjs
 scripts/pack-handoff.mjs
 scripts/platform-detect.js
 scripts/playtest.mjs
+scripts/project-git.mjs
 scripts/record-promo.mjs
 scripts/rotate-changelog.mjs
 scripts/runtime-test.mjs

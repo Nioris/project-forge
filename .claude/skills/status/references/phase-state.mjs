@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Project Forge phase-state writer (v4.68.10).
+ * Project Forge phase-state writer (v4.68.16).
  * Stores machine-readable phase progression in wiki/phases/ without treating chat/wiki prose as authority.
  *
  * Usage from a managed project root:
  *   node .claude/skills/status/references/phase-state.mjs start 1
  *   node .claude/skills/status/references/phase-state.mjs block 1 "Awaiting KPI approval"
  *   node .claude/skills/status/references/phase-state.mjs complete 1 wiki/architecture/metrics.md wiki/design/brief.md
- *   node .claude/skills/status/references/phase-state.mjs start 5 --model gpt-5.6-terra --reasoning high
+ *   node .claude/skills/status/references/phase-state.mjs start 5 --model gpt-5.6-sol --reasoning high
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -143,3 +143,23 @@ if (command === 'start' || command === 'reopen') {
 
 fs.writeFileSync(outPath, JSON.stringify(record, null, 2) + '\n', 'utf8');
 console.log(`[OK] Phase ${phase} ${PHASES[phase]} -> ${record.state}${record.reason ? ` (${record.reason})` : ''}`);
+
+if (command === 'complete') {
+  try {
+    const { checkpointProjectGit } = await import('./project-git.mjs');
+    const git = checkpointProjectGit({
+      projectRoot: root,
+      message: `forge: complete phase ${phase} ${PHASES[phase]}`,
+      allowRemoteFailure: true,
+    });
+    if (git.skipped) console.log(`[Forge Git] skipped: ${git.reason}`);
+    else {
+      const parts = [git.commit ? `commit ${git.commit}` : 'working tree unchanged'];
+      if (git.pushed) parts.push(`pushed private ${git.remote.fullName}`);
+      if (git.warning) parts.push(`remote warning: ${git.warning}`);
+      console.log(`[Forge Git] ${parts.join('; ')}`);
+    }
+  } catch (error) {
+    console.warn(`[Forge Git] local checkpoint warning: ${error.message}`);
+  }
+}

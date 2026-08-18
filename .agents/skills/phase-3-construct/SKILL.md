@@ -25,7 +25,7 @@ machine-readable progression state, а сами артефакты остают�
 
 
 **Модели:** Claude `opus` для сложной логики, `sonnet` для рутины. Codex base
-`gpt-5.6-terra/medium`; route `complex-logic` → `gpt-5.6-sol/high` для экономики,
+`gpt-5.6-sol/high`; route `complex-logic` → `gpt-5.6-sol/xhigh` для экономики,
 мультиплеера, backend architecture или повторного провала.
 Канон: `status/references/model-policy.json`.
 
