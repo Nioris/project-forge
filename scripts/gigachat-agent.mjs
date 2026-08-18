@@ -21,7 +21,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.23';
+const AUDITED_FORGE_VERSION = '4.68.26';
 const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -75,6 +75,7 @@ function lineSlice(text, start = 1, end = null) {
 
 function readFileForModel(a={}){
   const p=safePath(a.path), pathKey=rel(p), text=readText(p);
+  const largeExisting=Buffer.byteLength(text,'utf8')>=32_000;
   const explicit=a.start_line!==undefined || a.end_line!==undefined;
   let start=a.start_line, end=a.end_line;
   if(!explicit && activeDirective){
@@ -88,9 +89,9 @@ function readFileForModel(a={}){
     const next=slice.end<slice.total?slice.end+1:null;
     activeDirective={...activeDirective,readCursors:{...(activeDirective.readCursors||{}),[pathKey]:next||slice.total+1},updatedAt:new Date().toISOString()};
     persistRuntimeEvidenceLedger();
-    return {ok:true,path:pathKey,...slice,auto_paged:true,complete:next===null,next_start_line:next,note:next?`Call read_file with the same path and no line range for the next page starting at line ${next}.`:'Entire file has now been read; do not read it again.'};
+    return {ok:true,path:pathKey,...slice,auto_paged:true,complete:next===null,next_start_line:next,large_existing_source:largeExisting,recommended_skill:largeExisting?'modularize-existing-project':null,note:next?`Call read_file with the same path and no line range for the next page starting at line ${next}.`:'Entire file has now been read; do not read it again.'};
   }
-  return {ok:true,path:pathKey,...slice,auto_paged:false,complete:slice.end>=slice.total,next_start_line:slice.end<slice.total?slice.end+1:null};
+  return {ok:true,path:pathKey,...slice,auto_paged:false,complete:slice.end>=slice.total,next_start_line:slice.end<slice.total?slice.end+1:null,large_existing_source:largeExisting,recommended_skill:largeExisting?'modularize-existing-project':null};
 }
 function walk(dir, depth, base = dir, out = []) {
   if (depth < 0 || out.length >= 1000) return out;
@@ -101,6 +102,67 @@ function walk(dir, depth, base = dir, out = []) {
     if (out.length >= 1000) break;
   }
   return out;
+}
+
+function requestedWorkProgressEntrypoints(request=''){
+  const matches=String(request||'').match(/WorkProgress[\\/][A-Za-z0-9_-]+(?:[\\/][A-Za-z0-9_.\\/-]+\.(?:html?|js|mjs|css))?/gi)||[];
+  return uniquePaths(matches.map(raw=>{
+    const normalized=raw.replace(/\\/g,'/').replace(/[.,;:!?]+$/,'');
+    return /\.(?:html?|js|mjs|css)$/i.test(normalized)?normalized:`${normalized}/index.html`;
+  }));
+}
+
+function requestedLargeWorkProgressSources(request=''){
+  const found=[];
+  for(const path of requestedWorkProgressEntrypoints(request)){
+    let target;try{target=safePath(path);}catch{continue;}
+    let st;try{st=statSync(target);}catch{continue;}
+    if(st.isFile()&&st.size>=32_000) found.push({path:rel(target),bytes:st.size});
+  }
+  return found;
+}
+
+function directTaskMonolithInstruction(items=requestedLargeWorkProgressSources(activeDirective?.request||'')){
+  if(!items.length) return '';
+  const summary=items.map(item=>`${item.path} (${item.bytes} bytes)`).join(', ');
+  return `Large existing source detected: ${summary}. Before feature work, load forge_skill modularize-existing-project, run a baseline check, then execute forge_script with name "scripts/modularize-existing-project.mjs" and args ["${items[0].path}","--apply"]. Verify it with --check and regression playtest before editing the owning modules. Do not reconstruct the monolith with write_file. `;
+}
+
+function moduleRolesForTask(request=''){
+  const roles=new Set(['state-foundation','ui-render','persistence','bootstrap']);
+  if(/гач|gacha|drop|выпад/i.test(String(request||''))) ['production','feedback-bubbles'].forEach(role=>roles.add(role));
+  if(/директор|director|карьер/i.test(String(request||''))) ['career','director-mode','management'].forEach(role=>roles.add(role));
+  if(/drag|merge|слиян|сетк/i.test(String(request||''))) roles.add('drag-merge');
+  return roles;
+}
+
+function preloadedModuleTaskContext(request=''){
+  const manifestPath=safePath('wiki/architecture/modules.json');
+  if(!existsSync(manifestPath)) return '';
+  let manifest;try{manifest=JSON.parse(readText(manifestPath));}catch{return '';}
+  const requested=requestedWorkProgressEntrypoints(request);
+  if(!manifest?.source || !requested.includes(String(manifest.source))) return '';
+  const roles=moduleRolesForTask(request), selected=(manifest.modules||[]).filter(module=>module.type==='js'&&roles.has(module.role));
+  const paths=[manifest.source];
+  const gameDir=rel(dirname(safePath(manifest.source)));
+  const gachaPath=`${gameDir}/gacha.js`;
+  if(/гач|gacha/i.test(String(request||''))&&existsSync(safePath(gachaPath))) paths.push(gachaPath);
+  paths.push(...selected.map(module=>module.path));
+  let used=0;const files=[];
+  for(const path of uniquePaths(paths)){
+    let content;try{content=readText(safePath(path));}catch{continue;}
+    const remaining=24_000-used;if(remaining<=0) break;
+    const bounded=clip(content,Math.min(remaining,9000));
+    used+=bounded.length;
+    files.push(`--- ${path} ---\n${bounded}`);
+  }
+  if(!files.length) return '';
+  const summary=(manifest.modules||[]).map(module=>`${module.order}:${module.role}=${module.path}`).join('\n');
+  return `[FORGE PRELOADED MODULE CONTEXT — do not reread these files]\n`+
+    `Contract source: ${manifest.source}; state owner: ${manifest.state_owner}; persistence owner: ${manifest.persistence_owner}.\n`+
+    `If the task adds a numbered js/styles module, write it once, load it explicitly from ${manifest.source} in the required runtime order, then run modularize-existing-project.mjs ${manifest.source} --refresh followed by --check. Refresh adopts connected modules; it rejects orphan files and preserves the approved relative order. A passing playtest before the new module is loaded is not evidence for this task.\n`+
+    `Approved load order:\n${clip(summary,5000)}\n\n${files.join('\n\n')}\n`+
+    `[END PRELOADED MODULE CONTEXT]\n`;
 }
 function searchText(query, root='.', maxResults=80) {
   const start = safePath(root); const found=[];
@@ -169,6 +231,8 @@ function inspectWorkspaceSource(maxChars=32000) {
     note:'GameIntegration is read-only source. WorkProgress is the active implementation workspace. Analyze/edit the ingested WorkProgress copy.'
   };
 }
+
+function uniquePaths(values=[]){return [...new Set(values.map(String).filter(Boolean))];}
 
 
 function optionalText(path, max=16000) {
@@ -602,7 +666,7 @@ function commandLooksMutating(command=''){
   if(/^(git\s+(status|diff|log)|dir\b|ls\b|find\b|du\b|grep\b|type\b|cat\b)/i.test(c)) return false;
   if(/phase-state\.mjs.*\b(?:start|reopen|block|complete)\b/i.test(c)) return true;
   if(/ai-studio-init\.mjs/i.test(c) && !/--check/i.test(c)) return true;
-  if(/release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
+  if(/integrate-gacha|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
   return false;
 }
 function verifierEntrySuccess(re,phaseOverride=activePhase){
@@ -1973,6 +2037,15 @@ function destructiveFullWriteBlock(path='',content=''){
   if(!activeDirective) return null;
   let p;try{p=safePath(path);}catch{return null;}
   if(!existsSync(p) || !statSync(p).isFile()) return null;
+  try{
+    const contractPath=safePath('wiki/architecture/modules.json');
+    if(existsSync(contractPath)){
+      const contract=JSON.parse(readText(contractPath));
+      const target=rel(p).replace(/\\/g,'/').toLowerCase();
+      const approved=(contract.modules||[]).some(module=>String(module.path||'').replace(/\\/g,'/').toLowerCase()===target);
+      if(approved) return `Full write_file replacement of approved module ${path} is blocked. Its documented symbols and neighboring behavior must be preserved; use one or more targeted replace_text edits. New modules may be created with write_file before contract refresh.`;
+    }
+  }catch{}
   const oldBytes=statSync(p).size, newBytes=Buffer.byteLength(String(content??''));
   const explicitRebuild=/(?:перепиши|пересобери|замени)\s+(?:файл\s+)?(?:полностью|целиком|с\s+нуля)|rebuild\s+(?:the\s+)?file\s+from\s+scratch|replace\s+(?:the\s+)?entire\s+file/i.test(String(activeDirective.request||''));
   if(oldBytes>=32_000 && !explicitRebuild) return `Full write_file replacement of existing large file ${path} (${oldBytes} bytes) is blocked for this direct integration task. Preserve the existing game and use targeted replace_text anchors.`;
@@ -2069,13 +2142,18 @@ function updateDirectiveInput(text='') {
 
 function directiveTaskPrompt(userText='') {
   if(!activeDirective) return String(userText||'');
-  const hints=/гач/i.test(activeDirective.request)?'Для этой задачи сначала загрузи tactical skill gacha-meta; при необходимости затем deepen-game/gameplay-balance. ':'';
+  const hints=/гач/i.test(activeDirective.request)
+    ? 'Для этой задачи сначала загрузи tactical skill gacha-meta; при необходимости затем deepen-game/gameplay-balance. Если modules.json описывает merge-grid с state.grid/saveState, не переписывай утверждённые модули вручную: вызови forge_script name=scripts/integrate-gacha.mjs args=[<каталог игры>], затем refresh/check контракта. Обязательная сфокусированная проверка: forge_script name=scripts/check-gacha-integration.mjs args=[<каталог игры>]. Обычный smoke/playtest не доказывает работу гачи. '
+    :'';
+  const modularization=directTaskMonolithInstruction();
+  const moduleContext=preloadedModuleTaskContext(activeDirective.request);
   return `[FORGE CHANGE REQUEST MODE — AUTHORITATIVE USER TASK]\n`+
     `Текущая прямая задача: ${activeDirective.request}\n`+
     `Последнее сообщение пользователя: ${String(userText||activeDirective.latestUserInput||'').trim()}\n`+
     `Канонический фазовый автопилот временно приостановлен на Phase ${activeDirective.pausedPhase||'?'}. Не продолжай Release и не запускай phase-state/forge_gate/release-* до завершения этой задачи. `+
-    `${hints}Составь необходимое ТЗ внутри рабочих артефактов и сразу реализуй задачу в WorkProgress. Не останавливайся на плане. `+
+    `${modularization}${hints}Составь необходимое ТЗ внутри рабочих артефактов и сразу реализуй задачу в WorkProgress. Не останавливайся на плане. `+
     `После реальных изменений и проверок вызови forge_change_complete с существующими evidence paths и выполненными checks. Если нужен настоящий пользовательский выбор, используй ask_user.\n`+
+    `${moduleContext}`+
     `[END FORGE CHANGE REQUEST MODE]`;
 }
 
@@ -2090,6 +2168,7 @@ function directiveToolBlock(name,a={}) {
   if(name==='run_command'){
     const command=String(a.command||'');
     if(/phase-state\.mjs|scripts[\\/]release-(?:ready|yandex|all|web)|build-yandex-3zips|check-setup-guide/i.test(command)) return `Change request mode blocks phase/release shell command. Finish the direct task first.`;
+    if(/(?:^|[\\/])(?:integrate-gacha|modularize-existing-project|check-gacha-integration|playtest|local-stage)\.mjs\b/i.test(command)) return `Canonical Forge operation/verifier was routed through run_command incorrectly. Use forge_script with the canonical scripts/<name>.mjs and project-relative args so Forge can execute it safely and record exact evidence.`;
   }
   return null;
 }
@@ -2123,12 +2202,36 @@ function completeDirective(a={}) {
     reportForgeBehavior({severity:'error',code:'GIGA_UNVERIFIED_COMPLETION_CLAIM',kind:'evidence_integrity',component:'gigachat-agent',operation:'forge_change_complete',message:'Direct-task completion used checks that are not backed by a successful post-activation command.',expected:'At least one supplied check matching a successful command recorded after direct-task activation.',actual:`supplied=${checks.length}; recorded=${successfulChecks.length}`});
     return {ok:false,error:'None of the supplied checks matches a successful command recorded after this direct task started. Run a real focused verification and pass its exact command in checks.',recorded_successful_checks:successfulChecks.map(v=>v.command)};
   }
+  if(/гач|gacha/i.test(activeDirective.request)){
+    const focused=successfulChecks.some(v=>/check-gacha-integration\.mjs/i.test(String(v.command||'')));
+    const modular=successfulChecks.some(v=>/modularize-existing-project\.mjs/i.test(String(v.command||''))&&/--check\b/i.test(String(v.command||'')));
+    if(!focused || !modular){
+      return {
+        ok:false,
+        error:'Gacha task completion requires both canonical post-change checks: scripts/check-gacha-integration.mjs <game-dir> and scripts/modularize-existing-project.mjs <entrypoint> --check, executed through forge_script. A generic setup-guide/playtest check cannot prove this feature.',
+        missing:[...(!focused?['check-gacha-integration']:[]),...(!modular?['modularization-contract-check']:[])],
+        recorded_successful_checks:successfulChecks.map(v=>v.command),
+      };
+    }
+  }
   const verifiedChecks=[...new Set(matchedChecks.map(v=>v.command))];
   const completed={...activeDirective,status:'complete',completedAt:new Date().toISOString(),summary,evidence:validEvidence,checks:verifiedChecks};
   const resumePhase=completed.pausedPhase||null;
   activeDirective=null;
   persistRuntimeEvidenceLedger();
   return {ok:true,completed_request:completed.request,summary,evidence:validEvidence,checks:verifiedChecks,resume_phase:resumePhase,note:'Direct task completed from recorded evidence. Canonical phase autopilot is available again; it has not been started automatically.'};
+}
+
+function printCompletedDirectiveAndStop(result='') {
+  try {
+    const parsed=typeof result==='string'?JSON.parse(result):result;
+    if(!parsed?.ok || !parsed.completed_request) return false;
+    process.stdout.write(`\n[Forge] Direct task complete; phase autopilot remains paused.\n${parsed.summary}\n`);
+    if(Array.isArray(parsed.evidence)&&parsed.evidence.length) process.stdout.write(`Evidence: ${parsed.evidence.join(', ')}\n`);
+    if(Array.isArray(parsed.checks)&&parsed.checks.length) process.stdout.write(`Checks: ${parsed.checks.join(' | ')}\n`);
+    process.stdout.write(`To return to Phase ${parsed.resume_phase||'?'}, enter /resume-phase explicitly.\n`);
+    return true;
+  } catch { return false; }
 }
 function pendingDecisionPhase(decision=pendingDecision) {
   if(!decision||typeof decision!=='object') return null;
@@ -2616,6 +2719,11 @@ function functionsForRequest(forcedName=null,phaseExecution=false,readOnly=false
   if(forcedName){
     const one=functions.filter(f=>f.name===forcedName);
     return one.length?one:functions;
+  }
+  if(activeDirective){
+    const allowed=new Set(['ask_user','forge_checkpoint','forge_memory_update','forge_skill','forge_skill_done','forge_diagnostic_report','forge_change_complete','read_file','write_file','replace_text','search_text','copy_path','git_diff','forge_script','run_command','gigachat_generate_image','gigachat_generate_3d']);
+    const subset=functions.filter(f=>allowed.has(f.name));
+    return subset.length?subset:functions;
   }
   if(phaseExecution && activePhase===1){
     const allowed=new Set(phase1FunctionNames());
@@ -4153,6 +4261,7 @@ async function turn(text){
       recordOperation(name,a,result);
       const toolSummary = describeToolResult(name, result);
       if (toolSummary) process.stdout.write(`[tool-result] ${toolSummary}\n`);
+      if(name==='forge_change_complete' && printCompletedDirectiveAndStop(result)) return;
       if (name==='forge_gate') {
         try { const g=JSON.parse(result); process.stdout.write(g.ok?'[gate] GREEN\n':`[gate] BLOCKED\n- ${g.blockers.join('\n- ')}\n`); } catch {}
       }
@@ -4264,6 +4373,7 @@ async function turn(text){
         recordOperation(name,a,result);
         const toolSummary=describeToolResult(name,result);
         if(toolSummary) process.stdout.write(`[tool-result] ${toolSummary}\n`);
+        if(name==='forge_change_complete' && printCompletedDirectiveAndStop(result)) return;
         if(name==='forge_gate'){
           try{
             const g=JSON.parse(result);
@@ -4562,9 +4672,16 @@ if (REQUEST_DOCTOR) {
   test('normal WorkProgress game script allowed',()=>counterfeitCanonicalScriptWriteBlock('WorkProgress/demo/gacha.js')===null);
   test('repeated full overwrite stays blocked after reread',()=>{const old=activeDirective;activeDirective={operations:[{tool:'write_file',target:'WorkProgress/demo/gacha.js',at:'2026-08-18T12:00:00Z'}],reads:['WorkProgress/demo/gacha.js']};const blocked=Boolean(repeatedDirectiveOverwriteBlock('WorkProgress/demo/gacha.js'));activeDirective=old;return blocked;});
   test('large existing direct-task file rejects full reconstruction',()=>{const old=activeDirective;activeDirective={request:'добавь функцию в существующий проект',operations:[]};const blocked=Boolean(destructiveFullWriteBlock('scripts/gigachat-agent.mjs','short replacement'));activeDirective=old;return blocked;});
+  test('approved modules require targeted edits',()=>/Full write_file replacement of approved module/.test(destructiveFullWriteBlock.toString()));
   test('direct-task read_file auto-pagination is durable',()=>/readCursors/.test(readFileForModel.toString())&&/already read through line/.test(readFileForModel.toString()));
   test('durable directive snapshot excludes unbounded raw reads',()=>{const old=activeDirective;activeDirective={request:'x',reads:Array(100).fill('large'),operations:[],readCursors:{a:301}};const snapshot=durableDirectiveSnapshot();activeDirective=old;return !Object.prototype.hasOwnProperty.call(snapshot,'reads')&&snapshot.readCursors.a===301;});
   test('direct-task loop circuit breakers installed',()=>/consecutiveDirectiveReads<=12/.test(turn.toString())&&/compactionCount-turnCompactionStart>=4/.test(turn.toString()));
+  test('large direct-task source routes through modularization skill',()=>{const hint=directTaskMonolithInstruction([{path:'WorkProgress/demo/index.html',bytes:90000}]);return /modularize-existing-project/.test(hint)&&/scripts\/modularize-existing-project\.mjs/.test(hint)&&/--apply/.test(hint);});
+  test('monolith routing honors only the explicitly named WorkProgress entrypoint',()=>{const paths=requestedWorkProgressEntrypoints('измени WorkProgress/testgigachat-v4, не трогай соседние варианты');return paths.length===1&&paths[0]==='WorkProgress/testgigachat-v4/index.html';});
+  test('monolith routing does not scan unnamed sibling projects',()=>requestedWorkProgressEntrypoints('добавь функцию в текущую игру').length===0);
+  test('gacha module context selects bounded owning roles',()=>{const roles=moduleRolesForTask('добавь гачу в сетку');return ['state-foundation','ui-render','persistence','bootstrap','production','feedback-bubbles','drag-merge'].every(role=>roles.has(role));});
+  test('direct-task function surface excludes broad rediscovery tools',()=>{const old=activeDirective;activeDirective={request:'x'};const names=functionsForRequest().map(f=>f.name);activeDirective=old;return names.includes('replace_text')&&names.includes('forge_change_complete')&&!names.includes('forge_workspace_inspect')&&!names.includes('list_files')&&!names.includes('forge_context');});
+  test('canonical modularization script resolves for GigaChat',()=>/modularize-existing-project\.mjs$/.test(resolveForgeScript('scripts/modularize-existing-project.mjs').replace(/\\/g,'/')));
   test('direct completion rejects invented check strings',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['visual check passed'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
   test('direct completion accepts exact post-activation command',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===1;});
   test('direct completion rejects stale successful command',()=>{const old=verifierLedger;verifierLedger=new Map([['old',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T11:59:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
@@ -4573,8 +4690,12 @@ if (REQUEST_DOCTOR) {
   test('Phase 8 rejects incomplete new release trio',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip'];const fresh=['Release/demo/yandex/demo-v1.0.1.zip','Release/demo/yandex/demo-v1.0.1-debug.zip'];return !releaseVersionEvidenceFromPaths([...old,...fresh],new Set(old)).ok;});
   test('change request prompt keeps exact task and pauses release',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveTaskPrompt('делай');activeDirective=old;return /добавь гачу/.test(x)&&/не запускай phase-state\/forge_gate\/release-\*/.test(x);});
   test('change request blocks release gate and phase-state',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const a=directiveToolBlock('forge_gate',{phase:8});const b=directiveToolBlock('forge_script',{name:'phase-state.mjs',args:['start','8']});activeDirective=old;return Boolean(a)&&Boolean(b);});
+  test('change request redirects canonical verifiers away from run_command',()=>{const old=activeDirective;activeDirective={request:'добавь гачу'};const blocked=directiveToolBlock('run_command',{command:'node WorkProgress/game/scripts/playtest.mjs .'});activeDirective=old;return /forge_script/.test(blocked||'');});
   test('change request allows tactical gacha skill',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveToolBlock('forge_skill',{name:'gacha-meta'});activeDirective=old;return x===null;});
   test('change completion tool exposed',()=>functions.some(f=>f.name==='forge_change_complete'));
+  test('gacha completion requires focused runtime and module-contract checks',()=>/check-gacha-integration/.test(completeDirective.toString())&&/modularize-existing-project/.test(completeDirective.toString()));
+  test('canonical gacha integrator is recorded as a mutating operation',()=>commandLooksMutating('forge_script scripts/integrate-gacha.mjs WorkProgress/game'));
+  test('successful direct completion terminates turn before phase autopilot',()=>{const source=turn.toString();return (source.match(/forge_change_complete' && printCompletedDirectiveAndStop\(result\)\) return/g)||[]).length===2;});
   test('textual pseudo tool-call rejected',()=>!meaningfulText('< супругиtool_calls>'));
   test('malformed GigaChat pseudo-call parser recovers search',()=>{ const x=parseTextualPseudoToolCall('< выгодныеtool_calls> < выгодныеinvoke name="forge_web_search"> < выгодныеparameter name="query" string="true">idle game retention benchmarks 2026</ выгодныеparameter>'); return x?.name==='forge_web_search' && x?.args?.query==='idle game retention benchmarks 2026'; });
   test('pseudo-call parser rejects unknown tool',()=>!parseTextualPseudoToolCall('< tool_calls>< invoke name="evil_shell">< parameter name="x">1</parameter>'));

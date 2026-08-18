@@ -1,5 +1,6 @@
 ---
 name: forge-diagnostics
+kind: architectural
 description: Record a machine-readable incident when Forge itself behaves incorrectly: malformed phase or STOP output, adapter mismatch, hook/runtime failure, wrong capability mapping, validator contradiction, or unexpected Forge response. Do not use for ordinary bugs in the game or app.
 ---
 

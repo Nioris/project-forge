@@ -88,6 +88,7 @@
 .agents/skills/mobile-adapt/SKILL.md
 .agents/skills/mobile-game-ui/SKILL.md
 .agents/skills/mobile-ready/SKILL.md
+.agents/skills/modularize-existing-project/SKILL.md
 .agents/skills/monetization-design/SKILL.md
 .agents/skills/monetization-strategy/SKILL.md
 .agents/skills/multiplayer/SKILL.md
@@ -310,6 +311,7 @@
 .claude/skills/mobile-adapt/SKILL.md
 .claude/skills/mobile-game-ui/SKILL.md
 .claude/skills/mobile-ready/SKILL.md
+.claude/skills/modularize-existing-project/SKILL.md
 .claude/skills/monetization-design/SKILL.md
 .claude/skills/monetization-strategy/SKILL.md
 .claude/skills/multiplayer/SKILL.md
@@ -470,6 +472,9 @@ RELEASE_NOTES_v4.68.20.md
 RELEASE_NOTES_v4.68.21.md
 RELEASE_NOTES_v4.68.22.md
 RELEASE_NOTES_v4.68.23.md
+RELEASE_NOTES_v4.68.24.md
+RELEASE_NOTES_v4.68.25.md
+RELEASE_NOTES_v4.68.26.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
 RELEASE_NOTES_v4.68.5.md
@@ -674,7 +679,9 @@ scripts/check-drift.mjs
 scripts/check-emoji-coverage.mjs
 scripts/check-external-cdn.mjs
 scripts/check-forge-diagnostics.mjs
+scripts/check-gacha-integration.mjs
 scripts/check-inline-strings.mjs
+scripts/check-modularize-existing-project.mjs
 scripts/check-nested-dirs.mjs
 scripts/check-no-float-money.mjs
 scripts/check-pipeline-state.mjs
@@ -713,6 +720,7 @@ scripts/gigachat-3d.mjs
 scripts/gigachat-agent.mjs
 scripts/gigachat-image.mjs
 scripts/git-init-games.mjs
+scripts/integrate-gacha.mjs
 scripts/lib/codex-cost-report.mjs
 scripts/lib/forge-search.mjs
 scripts/lib/forge-secrets.mjs
@@ -720,6 +728,7 @@ scripts/lib/gigachat-api.mjs
 scripts/local-stage.mjs
 scripts/migrate-sessions.mjs
 scripts/mobile-check.mjs
+scripts/modularize-existing-project.mjs
 scripts/new-game.mjs
 scripts/new-project.mjs
 scripts/open-all-tmux.sh
@@ -727,6 +736,7 @@ scripts/open-all.bat
 scripts/open-all.ps1
 scripts/openai-image.mjs
 scripts/pack-handoff.mjs
+scripts/package-forge.mjs
 scripts/platform-detect.js
 scripts/playtest.mjs
 scripts/project-git.mjs

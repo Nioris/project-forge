@@ -4601,6 +4601,24 @@ GigaChat now has a durable change-request mode for explicit implementation work 
 
 The protection is mechanical rather than prompt-only: phase preflight/gates, `phase-state`, phase skills, release skills, and release packaging are rejected at the tool boundary while the direct task is active, including malformed textual-call recovery. `forge_change_complete` clears the override only after a successful implementation operation, existing evidence paths, and reported verification checks. This prevents a request such as “сделай гачу” from being replaced by a stale Phase 8 release marker after context compaction.
 
+## v4.68.21 changelog (GigaChat evidence-bound status guard)
+
+Real terminal evidence exposed three trust gaps after the direct-task intent fix: GigaChat could clear `forge_change_complete` with invented check descriptions, treat a factual question such as «собрал архивы?» as permission to start Phase 8, and create a counterfeit verifier under `WorkProgress`. Completion checks are now matched to successful commands recorded after the direct task started; unmatched claims remain blocked and produce a diagnostic.
+
+Factual status turns are mechanically read-only: the function surface contains inspection tools only, and the execution boundary rejects mutating recovered pseudo-calls. Canonical-looking verifier/release substitutes under `WorkProgress/<project>/scripts/` are blocked. A repeated full write of the same direct-task file also requires a fresh read after the prior write, preventing context compaction from silently replacing completed work with a shorter reconstruction.
+
+## v4.68.22 changelog (immutable release build versions)
+
+Every canonical Yandex three-ZIP build now creates a new immutable version. The builder scans existing production archives, increments the latest numeric component when no newer version is supplied, and auto-bumps an explicitly repeated or older version. Existing ZIP paths are never unlinked or overwritten. Each successful build prints its exact `BUILD_VERSION` and appends the selected version and three artifact paths to `build-history.json`.
+
+Phase 8 no longer treats a changed hash at an old ZIP path as a fresh release. Its baseline gate requires a newly named production/debug/marketing trio of one version that is higher than the newest version present when the phase started. The canonical release skill now routes all packaging through `build-yandex-3zips.mjs` rather than allowing improvised release scripts.
+
+## v4.68.23 changelog (safe GigaChat large-file integration)
+
+The failed gacha integration exposed a destructive compaction loop: GigaChat repeatedly reread only the first 300 lines of a 93 KB game and used `write_file` five times, eventually shrinking the game to 17 KB. Direct-task reads now auto-page with durable per-file cursors, refuse to restart after EOF, and carry only bounded operation summaries through compaction.
+
+Targeted integration work can no longer fully reconstruct an existing large file unless the user explicitly asks for a complete rebuild. Suspicious shrinkage and every second full overwrite of the same path are blocked before disk mutation. Twelve consecutive reads without an implementation action or four compactions in one direct turn now produce a recoverable diagnostic stop. An explicitly repeated `/do` starts a clean retry.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

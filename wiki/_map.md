@@ -49,8 +49,11 @@
 
 ## Current Status
 
-### Version: v4.68.23 (latest released)
+### Version: v4.68.26 (latest released)
 
+- 2026-08-19: **v4.68.26** — reliable modular GigaChat feature operations: connected-module adoption, orphan/destructive-write guards, terminal `/do` completion, atomic merge-grid gacha integration and focused browser evidence.
+- 2026-08-19: **v4.68.25** — safe post-feature module-contract refresh: recalculate live hashes/symbols/owners while preserving approved paths, order and boundaries.
+- 2026-08-19: **v4.68.24** — deterministic large-game modularization: semantic ordered source extraction, backups, hash-bound contracts, structural verifier, and GigaChat monolith routing.
 - 2026-08-18: **v4.68.23** — safe GigaChat large-file integration: durable auto-pagination, destructive full-write/shrink guards, bounded compaction/read loops, and clean explicit `/do` retries.
 - 2026-08-18: **v4.68.22** — immutable Yandex build versions: automatic numeric increment, no ZIP overwrite, durable build history, and Phase 8 newly named higher-version trio enforcement.
 - 2026-08-18: **v4.68.21** — evidence-bound GigaChat completion, mechanically read-only factual status turns, counterfeit verifier/release-script blocking, and compaction-safe repeat writes.

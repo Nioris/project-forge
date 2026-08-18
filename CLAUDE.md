@@ -1,4 +1,4 @@
-# Project Forge v4.68.23 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.26 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,20 +463,20 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
-## v4.68.23 changelog (safe GigaChat large-file integration)
+## v4.68.26 changelog (reliable modular GigaChat feature operations)
 
-The failed gacha integration exposed a destructive compaction loop: GigaChat repeatedly reread only the first 300 lines of a 93 KB game and used `write_file` five times, eventually shrinking the game to 17 KB. Direct-task reads now auto-page with durable per-file cursors, refuse to restart after EOF, and carry only bounded operation summaries through compaction.
+Real GigaChat forward tests exposed four gaps after modularization: disconnected feature files could escape the contract, an accepted direct task could continue into Phase 8, approved small modules could still be destroyed by full writes, and generic smoke output could falsely stand in for the requested feature. Module refresh now safely adopts only referenced `js/`/`styles/` additions while preserving the prior relative sequence; checks reject both orphan numbered modules and uncontracted references. Approved modules require targeted edits, and successful `forge_change_complete` is now terminal until explicit `/resume-phase`.
 
-Targeted integration work can no longer fully reconstruct an existing large file unless the user explicitly asks for a complete rebuild. Suspicious shrinkage and every second full overwrite of the same path are blocked before disk mutation. Twelve consecutive reads without an implementation action or four compactions in one direct turn now produce a recoverable diagnostic stop. An explicitly repeated `/do` starts a clean retry.
+For existing merge-grid games, `integrate-gacha.mjs` performs state, main persistence, reset, core/integration module and load-order changes atomically with backup evidence. `check-gacha-integration.mjs` proves the actual button/API, grid mutation, main save, full-grid queue, reload restoration and later delivery in a browser. A final real GigaChat `/do` used this path, passed the 20-module contract, focused verifier, playtest and local-stage, then stopped without entering release.
 
-## v4.68.22 changelog (immutable release build versions)
+## v4.68.25 changelog (safe module-contract refresh)
 
-Every canonical Yandex three-ZIP build now creates a new immutable version. The builder scans existing production archives, increments the latest numeric component when no newer version is supplied, and auto-bumps an explicitly repeated or older version. Existing ZIP paths are never unlinked or overwritten. Each successful build prints its exact `BUILD_VERSION` and appends the selected version and three artifact paths to `build-history.json`.
+Forward-testing the new modular workflow exposed a missing post-feature transition: any legitimate module edit correctly made `modules.json` stale, but there was no safe way to accept the new hashes without manual documentation surgery. `modularize-existing-project.mjs --refresh` now recalculates live hashes, sizes, symbols, ownership, storage keys and DOM IDs while preserving the approved module paths and load order.
 
-Phase 8 no longer treats a changed hash at an old ZIP path as a fresh release. Its baseline gate requires a newly named production/debug/marketing trio of one version that is higher than the newest version present when the phase started. The canonical release skill now routes all packaging through `build-yandex-3zips.mjs` rather than allowing improvised release scripts.
+Refresh refuses missing/unreferenced modules, new inline code, syntax errors and hidden boundary changes. The fixture now proves the full lifecycle: stale feature edit fails `--check`, safe refresh records the new symbol surface, and the final check passes.
 
-## v4.68.21 changelog (GigaChat evidence-bound status guard)
+## v4.68.24 changelog (modularize large existing games)
 
-Real terminal evidence exposed three trust gaps after the direct-task intent fix: GigaChat could clear `forge_change_complete` with invented check descriptions, treat a factual question such as «собрал архивы?» as permission to start Phase 8, and create a counterfeit verifier under `WorkProgress`. Completion checks are now matched to successful commands recorded after the direct task started; unmatched claims remain blocked and produce a diagnostic.
+Large monolithic web entrypoints now have a deterministic preprocessing path before feature work. The new `modularize-existing-project` skill and script analyze first, preserve a backup, externalize inline CSS, split classic JavaScript at existing semantic section markers without changing load order, and generate hash-bound machine/human module contracts. `--check` rejects missing, stale, unreferenced or syntactically invalid modules.
 
-Factual status turns are mechanically read-only: the function surface contains inspection tools only, and the execution boundary rejects mutating recovered pseudo-calls. Canonical-looking verifier/release substitutes under `WorkProgress/<project>/scripts/` are blocked. A repeated full write of the same direct-task file also requires a fresh read after the prior write, preventing context compaction from silently replacing completed work with a shorter reconstruction.
+GigaChat direct-task routing detects remaining WorkProgress sources above 32 KB and directs the model through modularization, baseline and regression checks rather than whole-file reconstruction. On the real `testgigachat-v4`, a 93 KB entrypoint became a 3.8 KB shell plus 17 bounded JS modules; canonical playtest, targeted Playwright state/visual verification and local-stage remained error-free.
