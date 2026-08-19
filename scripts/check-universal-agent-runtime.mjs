@@ -41,7 +41,7 @@ function run(label, argv, contains) {
   else ok.push(label);
 }
 run('generic GigaCode skill prompt', ['scripts/forge-agent.mjs','prompt','gigacode','--skill','phase-2-design','--args','.'], 'Read FORGE.md first');
-run('Qwen whole-project dry-run', ['scripts/forge-agent.mjs','start','qwen','--project',ROOT,'--dry-run'], 'qwen3-coder-plus');
+run('Qwen whole-project dry-run', ['scripts/forge-agent.mjs','start','qwen','--project',ROOT,'--dry-run'], 'coder-model');
 run('Gemini whole-project dry-run', ['scripts/forge-agent.mjs','start','gemini','--project',ROOT,'--dry-run'], 'gemini-3.7-flash');
 run('Kimi whole-project dry-run', ['scripts/forge-agent.mjs','start','kimi','--project',ROOT,'--dry-run'], 'bootstrap-then-interactive');
 run('GigaChat image dry-run', ['scripts/gigachat-image.mjs','--prompt','test game icon without text','--output','x.jpg','--dry-run'], 'text2image');

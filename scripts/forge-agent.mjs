@@ -75,6 +75,9 @@ function writeProjectProfile(project, value) {
   renameSync(tmp, path);
   return path;
 }
+function defaultModelFor(agent, profile) {
+  return agent.profileModels?.[profile] || agent.defaultModel || 'provider-default';
+}
 function autonomousPrompt(name, model) {
   return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
 }
@@ -156,6 +159,70 @@ function openCodeEnvironment(agent, project) {
   }
   return env;
 }
+function loopbackEndpoint(urlValue) {
+  try {
+    const url = new URL(urlValue);
+    if (!['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname)) return null;
+    const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+    return Number.isInteger(port) && port > 0 && port <= 65535
+      ? { host: url.hostname.replace(/^\[|\]$/g, ''), port }
+      : null;
+  } catch { return null; }
+}
+function canConnectSync({ host, port }, timeoutMs = 350) {
+  const probe = [
+    "const net=require('node:net');",
+    "const socket=net.createConnection({host:process.argv[1],port:Number(process.argv[2])});",
+    "let done=false; const finish=code=>{if(done)return;done=true;socket.destroy();process.exit(code)};",
+    `socket.setTimeout(${timeoutMs},()=>finish(1));`,
+    "socket.once('connect',()=>finish(0)); socket.once('error',()=>finish(1));",
+  ].join('');
+  const result = spawnSync(process.execPath, ['-e', probe, host, String(port)], {
+    stdio: 'ignore', windowsHide: true, timeout: timeoutMs + 1000,
+  });
+  return result.status === 0;
+}
+function readJsonObject(path) {
+  if (!path || !existsSync(path)) return {};
+  try {
+    const value = JSON.parse(readFileSync(path, 'utf8'));
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch { return {}; }
+}
+function qwenEnvironment(project) {
+  const env = { ...process.env };
+  const userHome = env.USERPROFILE || env.HOME;
+  const userSettings = userHome ? readJsonObject(join(userHome, '.qwen', 'settings.json')) : {};
+  const unavailable = [];
+  for (const [name, server] of Object.entries(userSettings.mcpServers || {})) {
+    const endpoint = loopbackEndpoint(server?.httpUrl || server?.url);
+    if (endpoint && !canConnectSync(endpoint)) unavailable.push(String(name));
+  }
+  if (!unavailable.length) return env;
+
+  ensureDataDirs();
+  const runtimeDir = join(RUNTIME_DIR, 'qwen');
+  mkdirSync(runtimeDir, { recursive: true });
+  const defaultSystemPath = process.platform === 'win32' && env.ProgramData
+    ? join(env.ProgramData, 'qwen-code', 'settings.json')
+    : process.platform === 'darwin'
+      ? '/Library/Application Support/QwenCode/settings.json'
+      : '/etc/qwen-code/settings.json';
+  const baseSystemPath = env.QWEN_CODE_SYSTEM_SETTINGS_PATH || defaultSystemPath;
+  const base = readJsonObject(baseSystemPath);
+  const priorExcluded = Array.isArray(base.mcp?.excluded) ? base.mcp.excluded.map(String) : [];
+  const settings = {
+    ...base,
+    mcp: { ...(base.mcp || {}), excluded: [...new Set([...priorExcluded, ...unavailable])] },
+  };
+  const settingsPath = join(runtimeDir, `settings-${hash(resolve(project)).slice(0, 16)}.json`);
+  const tmp = settingsPath + '.tmp';
+  writeFileSync(tmp, JSON.stringify(settings, null, 2) + '\n', 'utf8');
+  renameSync(tmp, settingsPath);
+  env.QWEN_CODE_SYSTEM_SETTINGS_PATH = settingsPath;
+  console.log(`[Forge] Qwen preflight: unavailable local MCP excluded for this run: ${unavailable.join(', ')}`);
+  return env;
+}
 
 if (cmd === 'list') {
   for (const [name,a] of Object.entries(registry.agents||{})) { const d=detectExecutable(name,a); const secret=a.apiProvider?getProviderSecret(a.apiProvider,ROOT):null; console.log(`${name.padEnd(10)} ${String(a.status).padEnd(20)} ${d.found?'runtime ready':'runtime missing'}${a.apiProvider?`  api:${secret?'configured':'missing'}`:''}`); }
@@ -193,7 +260,7 @@ if (cmd === 'select') {
   const a=getAgent(name); if(!a.wholeProject) fail(`${name} does not use the new whole-project lock. Use its existing launch command.`); const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
   const profile=val('--profile') || a.profiles?.[0] || 'default';
   if(a.profiles && !a.profiles.includes(profile)) fail(`Profile ${profile} is not valid for ${name}. Available: ${a.profiles.join(', ')}`);
-  const model=val('--model') || a.defaultModel || 'provider-default';
+  const model=val('--model') || defaultModelFor(a, profile);
   const path=writeProjectProfile(project,{schemaVersion:1,agent:name,model,profile,locked:true,selectedAt:new Date().toISOString()});
   console.log(`[Forge] Locked ${name} / ${model} for the whole project.`);
   console.log(`[Forge] ${path}`);
@@ -208,7 +275,7 @@ if (cmd === 'start') {
     if(!requestedAgent.wholeProject) fail(`${requested} does not use the new whole-project lock. Use its existing launch command.`);
     if(current?.locked && current.agent!==requested && !has('--reselect')) fail(`Project is locked to ${current.agent}. Use select ${requested} first, or pass --reselect explicitly.`);
     const profile=val('--profile') || (current?.agent===requested?current.profile:null) || requestedAgent.profiles?.[0] || 'default';
-    const model=val('--model') || (current?.agent===requested?current.model:null) || requestedAgent.defaultModel || 'provider-default';
+    const model=val('--model') || (current?.agent===requested?current.model:null) || defaultModelFor(requestedAgent, profile);
     current={schemaVersion:1,agent:requested,model,profile,locked:true,selectedAt:new Date().toISOString()};
     if(!has('--dry-run')) writeProjectProfile(project,current);
   }
@@ -216,7 +283,7 @@ if (cmd === 'start') {
   const a=getAgent(current.agent); if(!a.wholeProject) fail(`Stored agent ${current.agent} does not support whole-project start. Re-run select.`); const profile=current.profile || a.profiles?.[0] || 'default';
   if(a.profiles && !a.profiles.includes(profile)) fail(`Stored profile ${profile} is not valid for ${current.agent}. Re-run select.`);
   const d=detectExecutable(current.agent,a); if(!d.found) fail(`${a.displayName} runtime was not detected. Run: doctor ${current.agent}`,3);
-  const model=val('--model') || current.model || a.defaultModel || 'provider-default';
+  const model=val('--model') || current.model || defaultModelFor(a, profile);
   if(val('--model') && model!==current.model && !has('--reselect')) fail(`Project model is locked to ${current.model}. Use select ${current.agent} --model ${model} first, or pass --reselect.`);
   const full=!has('--safe'); const prompt=autonomousPrompt(current.agent,model);
   const startupInstruction='Read .forge/agent-start.md and execute every instruction in it now.';
@@ -229,7 +296,7 @@ if (cmd === 'start') {
   writeAutonomousPrompt(project,prompt);
   console.log(`[Forge] Whole-project lock: ${a.displayName} / ${model}`);
   console.log(`[Forge] Autonomous interactive run -> ${project}`);
-  const startEnv=a.runtime==='opencode'?openCodeEnvironment(a,project):{...process.env};
+  const startEnv=a.runtime==='opencode'?openCodeEnvironment(a,project):current.agent==='qwen'?qwenEnvironment(project):{...process.env};
   const r=spawnAgent(d.executable,launchArgs,{cwd:project,env:startEnv}); if(r.error) fail(`${a.displayName} launch failed: ${r.error.message}`,4);
   if(a.runtime==='kimi' && r.status===0){
     console.log('[Forge] Kimi bootstrap turn complete; reopening the same project session interactively.');

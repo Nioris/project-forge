@@ -63,7 +63,11 @@
       "executableEnv": "FORGE_QWEN_CLI",
       "fullArgs": ["--approval-mode", "yolo"],
       "profiles": ["oauth", "coding-plan"],
-      "defaultModel": "qwen3-coder-plus",
+      "defaultModel": "coder-model",
+      "profileModels": {
+        "oauth": "coder-model",
+        "coding-plan": "qwen3-coder-plus"
+      },
       "interactivePromptArg": "--prompt-interactive",
       "modelArg": "--model",
       "rules": ["QWEN.md", "FORGE.md", ".claude/skills"]

@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.29`
+**Current public version:** `v4.68.30`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -156,7 +156,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.29` keeps separate normal-account and API profiles.
+`v4.68.30` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -184,11 +184,11 @@ node scripts/forge-agent.mjs start minimax --project ../my-game
 
 # Show the project lock or change it explicitly
 node scripts/forge-agent.mjs profile --project ../my-game
-node scripts/forge-agent.mjs select qwen --model qwen3-coder-plus --project ../my-game
+node scripts/forge-agent.mjs select qwen --profile oauth --model coder-model --project ../my-game
 
 # One-time native CLI authentication
 gemini
-qwen auth qwen-oauth
+qwen  # choose Qwen OAuth in the interactive authorization screen
 kimi login
 
 # Inspect GigaChat web/image search without exposing credentials

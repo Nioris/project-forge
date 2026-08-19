@@ -1,4 +1,4 @@
-# Project Forge v4.68.29 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.30 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.30 changelog (Qwen OAuth preflight correction)
+
+The first real GDD-only Qwen benchmark reached Qwen Code but exposed two adapter assumptions before the first model turn. The free OAuth profile accepts the provider alias `coder-model`, not the Coding Plan identifier `qwen3-coder-plus`; and a stopped user-scoped loopback Unity MCP produced repeated connection noise during authentication.
+
+Qwen model defaults are now profile-aware: OAuth locks `coder-model`, while Coding Plan retains `qwen3-coder-plus`. Before a Qwen launch, Forge probes configured loopback HTTP MCP endpoints and writes a run-scoped high-precedence settings overlay under `forge-data/runtime/`; only unavailable local servers are excluded, existing Qwen user settings remain unchanged, and reachable or remote MCP servers remain available. Windows subprocess regressions verify both the file-backed startup prompt and this MCP isolation. The benchmark remains pending because the provider OAuth token endpoint returned external 502/504 responses.
+
 ## v4.68.29 changelog (Windows-safe whole-project startup prompt)
 
 The first authenticated Qwen launch reached the official Windows npm `.cmd` shim but failed before any model request: shell metacharacters in the long startup prompt were interpreted by `cmd.exe` instead of reaching Qwen as one literal argument.
@@ -474,9 +480,3 @@ Forge now persists the full agent/model-locked startup contract in `.forge/agent
 The first real Qwen-only project exposed a false positive in the local-first Git checkpoint: Forge-managed RuStore payment documentation contains bare PEM header/footer examples, and the secret scanner treated the header alone as a complete private key. New project creation therefore stopped after sync before its initial commit.
 
 PEM detection now requires a matching header/footer and a plausible encoded body. A regression proves that documentation placeholders commit normally while a realistic complete private key remains blocked. The original Forge diagnostic fingerprint is preserved in the failed test project and may be resolved only after the repaired checkpoint succeeds.
-
-## v4.68.27 changelog (one model for the whole project)
-
-Forge can now lock Gemini, Qwen, Kimi K3, DeepSeek, GLM or MiniMax M3 to an entire project through `.forge/agent.json`. The new `select`, `profile` and `start` commands prevent an implicit provider/model switch while preserving one interactive terminal across the canonical nine phases. Gemini and Qwen use their verified native interactive-prompt contracts; Kimi Code performs one bootstrap turn and resumes the same session; DeepSeek, GLM and MiniMax use provider-pinned OpenCode profiles.
-
-Gemini CLI 0.55.1 and Kimi Code 0.37.2 were installed from their official distributions; the existing Qwen Code 0.14.0 and OpenCode 1.15.10 contracts were inspected locally. Windows executable discovery now prefers runnable `.exe`/`.cmd` npm shims. DeepSeek/GLM/MiniMax keys remain outside projects in provider-specific OpenCode credential stores and are stripped from the tool environment. Managed `GEMINI.md`/`QWEN.md`, Dashboard launch buttons, a project-lock schema, documentation and offline regressions cover the new surface. Provider quality parity remains unclaimed until equal full-project benchmarks are run with authenticated accounts.

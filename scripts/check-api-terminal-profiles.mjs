@@ -121,7 +121,7 @@ function runWholeProjectLockRegression(){
   const fixture=mkdtempSync(join(tmpdir(),'forge-agent-lock-'));
   try{
     run('whole-project lock selects Qwen',['scripts/forge-agent.mjs','select','qwen','--project',fixture],{},'Locked qwen');
-    run('whole-project lock status',['scripts/forge-agent.mjs','profile','--project',fixture],{},'Locked model: qwen3-coder-plus');
+    run('whole-project lock status',['scripts/forge-agent.mjs','profile','--project',fixture],{},'Locked model: coder-model');
     const refused=spawnSync(process.execPath,['scripts/forge-agent.mjs','start','gemini','--project',fixture,'--dry-run'],{cwd:ROOT,encoding:'utf8'});
     if(refused.status===0||!`${refused.stdout||''}${refused.stderr||''}`.includes('Project is locked to qwen')) errors.push('whole-project lock allowed an implicit provider switch');
     else ok.push('whole-project lock refuses an implicit provider switch');
@@ -139,12 +139,18 @@ function runWindowsCmdPromptRegression(){
   if(process.platform!=='win32') return;
   const fixture=mkdtempSync(join(tmpdir(),'forge-cmd-prompt-'));
   const shim=join(fixture,'fake-qwen.cmd');
+  const fakeHome=join(fixture,'home');
+  const dataDir=join(fixture,'forge-data');
   try{
-    writeFileSync(shim,'@echo off\r\necho FAKE_QWEN_LITERAL_PROMPT_OK\r\n','utf8');
-    const launched=run('Windows npm cmd receives file-backed startup instruction',['scripts/forge-agent.mjs','start','qwen','--project',fixture],{FORGE_QWEN_CLI:shim},'FAKE_QWEN_LITERAL_PROMPT_OK');
+    mkdirSync(join(fakeHome,'.qwen'),{recursive:true});
+    writeFileSync(join(fakeHome,'.qwen','settings.json'),JSON.stringify({mcpServers:{unityMCP:{url:'http://127.0.0.1:65534/mcp',type:'http'}}},null,2),'utf8');
+    writeFileSync(shim,'@echo off\r\necho FAKE_QWEN_LITERAL_PROMPT_OK\r\nif not defined QWEN_CODE_SYSTEM_SETTINGS_PATH exit /b 7\r\ntype "%QWEN_CODE_SYSTEM_SETTINGS_PATH%"\r\n','utf8');
+    const launched=run('Windows npm cmd receives file-backed startup instruction',['scripts/forge-agent.mjs','start','qwen','--project',fixture],{FORGE_QWEN_CLI:shim,USERPROFILE:fakeHome,FORGE_DATA_DIR:dataDir},'FAKE_QWEN_LITERAL_PROMPT_OK');
     const startup=join(fixture,'.forge','agent-start.md');
     if(launched.r.status===0&&existsSync(startup)&&readFileSync(startup,'utf8').includes('only terminal AI agent')) ok.push('whole-project prompt is durable and shell-metacharacter safe');
     else errors.push('whole-project startup prompt was not written before cmd launch');
+    if(launched.r.status===0&&launched.text.includes('Qwen preflight: unavailable local MCP excluded')&&launched.text.includes('"unityMCP"')) ok.push('Qwen launch excludes unavailable loopback MCP without changing user settings');
+    else errors.push('Qwen launch did not isolate an unavailable loopback MCP');
   }finally{
     rmSync(fixture,{recursive:true,force:true});
   }
@@ -159,6 +165,8 @@ for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi']){
   if(!reg.agents?.[name]?.defaultModel) errors.push(`${name} whole-project default model missing`);
   else ok.push(`${name} whole-project model declared`);
 }
+if(reg.agents?.qwen?.profileModels?.oauth!=='coder-model') errors.push('Qwen OAuth profile does not use coder-model');
+else ok.push('Qwen OAuth profile uses its supported model alias');
 
 const secretProviders=['deepseek','zai','minimax'];
 const secretLib=readFileSync(join(ROOT,'scripts/lib/forge-secrets.mjs'),'utf8');

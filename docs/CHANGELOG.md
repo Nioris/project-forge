@@ -4637,6 +4637,12 @@ Real GigaChat forward tests exposed four gaps after modularization: disconnected
 
 For existing merge-grid games, `integrate-gacha.mjs` performs state, main persistence, reset, core/integration module and load-order changes atomically with backup evidence. `check-gacha-integration.mjs` proves the actual button/API, grid mutation, main save, full-grid queue, reload restoration and later delivery in a browser. A final real GigaChat `/do` used this path, passed the 20-module contract, focused verifier, playtest and local-stage, then stopped without entering release.
 
+## v4.68.27 changelog (one model for the whole project)
+
+Forge can now lock Gemini, Qwen, Kimi K3, DeepSeek, GLM or MiniMax M3 to an entire project through `.forge/agent.json`. The new `select`, `profile` and `start` commands prevent an implicit provider/model switch while preserving one interactive terminal across the canonical nine phases. Gemini and Qwen use their verified native interactive-prompt contracts; Kimi Code performs one bootstrap turn and resumes the same session; DeepSeek, GLM and MiniMax use provider-pinned OpenCode profiles.
+
+Gemini CLI 0.55.1 and Kimi Code 0.37.2 were installed from their official distributions; the existing Qwen Code 0.14.0 and OpenCode 1.15.10 contracts were inspected locally. Windows executable discovery now prefers runnable `.exe`/`.cmd` npm shims. DeepSeek/GLM/MiniMax keys remain outside projects in provider-specific OpenCode credential stores and are stripped from the tool environment. Managed `GEMINI.md`/`QWEN.md`, Dashboard launch buttons, a project-lock schema, documentation and offline regressions cover the new surface. Provider quality parity remains unclaimed until equal full-project benchmarks are run with authenticated accounts.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

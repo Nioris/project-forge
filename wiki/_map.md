@@ -49,7 +49,7 @@
 
 ## Current Status
 
-### Version: v4.68.29 (latest released)
+### Version: v4.68.30 (latest released)
 
 - 2026-08-19: **v4.68.29** — Windows-safe whole-project startup: full agent contract is file-backed and npm `.cmd` shims receive only a short literal instruction; real subprocess regression added.
 - 2026-08-19: **v4.68.28** — project Git hotfix: bare PEM examples in managed documentation no longer trigger false secret blocks, while complete plausible private keys remain blocked by regression.
