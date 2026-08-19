@@ -121,7 +121,7 @@ function runWholeProjectLockRegression(){
   const fixture=mkdtempSync(join(tmpdir(),'forge-agent-lock-'));
   try{
     run('whole-project lock selects Qwen',['scripts/forge-agent.mjs','select','qwen','--project',fixture],{},'Locked qwen');
-    run('whole-project lock status',['scripts/forge-agent.mjs','profile','--project',fixture],{},'Locked model: coder-model');
+    run('whole-project lock status',['scripts/forge-agent.mjs','profile','--project',fixture],{},'Locked model: qwen3-coder-plus');
     const refused=spawnSync(process.execPath,['scripts/forge-agent.mjs','start','gemini','--project',fixture,'--dry-run'],{cwd:ROOT,encoding:'utf8'});
     if(refused.status===0||!`${refused.stdout||''}${refused.stderr||''}`.includes('Project is locked to qwen')) errors.push('whole-project lock allowed an implicit provider switch');
     else ok.push('whole-project lock refuses an implicit provider switch');
@@ -165,8 +165,8 @@ for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi']){
   if(!reg.agents?.[name]?.defaultModel) errors.push(`${name} whole-project default model missing`);
   else ok.push(`${name} whole-project model declared`);
 }
-if(reg.agents?.qwen?.profileModels?.oauth!=='coder-model') errors.push('Qwen OAuth profile does not use coder-model');
-else ok.push('Qwen OAuth profile uses its supported model alias');
+if(reg.agents?.qwen?.profiles?.includes('oauth')||reg.agents?.qwen?.profileModels?.['coding-plan']!=='qwen3-coder-plus') errors.push('Qwen profiles still expose discontinued OAuth or lack the Coding Plan model');
+else ok.push('Qwen exposes current Coding Plan/API profiles without discontinued OAuth');
 
 const secretProviders=['deepseek','zai','minimax'];
 const secretLib=readFileSync(join(ROOT,'scripts/lib/forge-secrets.mjs'),'utf8');

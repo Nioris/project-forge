@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая публичная версия:** `v4.68.30`
+**Текущая публичная версия:** `v4.68.31`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -14,7 +14,7 @@ Project Forge даёт нескольким AI-агентам один общи�
 | OpenAI Codex | ChatGPT · OpenAI API | stable |
 | GigaChat | API через терминальный агент Forge | supported |
 | GigaCode CLI | локальный CLI adapter | experimental / dormant до появления executable |
-| Gemini CLI · Qwen Code · Kimi Code | нативный аккаунт/Coding Plan | experimental, один агент на весь проект |
+| Gemini CLI · Qwen Code · Kimi Code | нативный аккаунт или план/API провайдера | experimental, один агент на весь проект |
 | DeepSeek · GLM · MiniMax M3 | API провайдера через OpenCode | experimental, один агент на весь проект |
 
 > Forge — terminal-first. IDE не обязательна.
@@ -155,7 +155,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.30` обычная авторизация и API-профили остаются разделены.
+В `v4.68.31` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка

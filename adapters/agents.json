@@ -62,11 +62,11 @@
       "executableCandidates": ["qwen"],
       "executableEnv": "FORGE_QWEN_CLI",
       "fullArgs": ["--approval-mode", "yolo"],
-      "profiles": ["oauth", "coding-plan"],
-      "defaultModel": "coder-model",
+      "profiles": ["coding-plan", "api"],
+      "defaultModel": "qwen3-coder-plus",
       "profileModels": {
-        "oauth": "coder-model",
-        "coding-plan": "qwen3-coder-plus"
+        "coding-plan": "qwen3-coder-plus",
+        "api": "qwen3-coder-plus"
       },
       "interactivePromptArg": "--prompt-interactive",
       "modelArg": "--model",

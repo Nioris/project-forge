@@ -1,4 +1,4 @@
-# Project Forge v4.68.30 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.31 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.31 changelog (remove discontinued Qwen OAuth profile)
+
+After Qwen Code updated itself from 0.14.0 to 0.21.14, its current authentication contract reported that the free Qwen OAuth tier was discontinued on 2026-04-15. The previous 1,000-requests/day screen belonged to the stale CLI and cannot produce a model turn now.
+
+Forge no longer offers or defaults to the discontinued OAuth profile. Qwen whole-project locks now expose `coding-plan` and `api`; both default to `qwen3-coder-plus`. Interactive setup uses `/auth` → Alibaba ModelStudio → Coding Plan or Standard API Key. The GDD-only benchmark remains ready but intentionally blocked until one of those paid credentials is configured.
+
 ## v4.68.30 changelog (Qwen OAuth preflight correction)
 
 The first real GDD-only Qwen benchmark reached Qwen Code but exposed two adapter assumptions before the first model turn. The free OAuth profile accepts the provider alias `coder-model`, not the Coding Plan identifier `qwen3-coder-plus`; and a stopped user-scoped loopback Unity MCP produced repeated connection noise during authentication.
@@ -474,9 +480,3 @@ Qwen model defaults are now profile-aware: OAuth locks `coder-model`, while Codi
 The first authenticated Qwen launch reached the official Windows npm `.cmd` shim but failed before any model request: shell metacharacters in the long startup prompt were interpreted by `cmd.exe` instead of reaching Qwen as one literal argument.
 
 Forge now persists the full agent/model-locked startup contract in `.forge/agent-start.md` and sends every CLI a short metacharacter-free instruction to read it. This protects Qwen, Gemini, Kimi and OpenCode launches from Windows command-shell parsing while keeping the complete contract inspectable and durable. A real fake-`.cmd` subprocess regression verifies the launcher and prompt file together.
-
-## v4.68.28 changelog (safe project Git secret scan)
-
-The first real Qwen-only project exposed a false positive in the local-first Git checkpoint: Forge-managed RuStore payment documentation contains bare PEM header/footer examples, and the secret scanner treated the header alone as a complete private key. New project creation therefore stopped after sync before its initial commit.
-
-PEM detection now requires a matching header/footer and a plausible encoded body. A regression proves that documentation placeholders commit normally while a realistic complete private key remains blocked. The original Forge diagnostic fingerprint is preserved in the failed test project and may be resolved only after the repaired checkpoint succeeds.
