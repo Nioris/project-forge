@@ -1,4 +1,4 @@
-# Project Forge v4.68.28 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.29 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.29 changelog (Windows-safe whole-project startup prompt)
+
+The first authenticated Qwen launch reached the official Windows npm `.cmd` shim but failed before any model request: shell metacharacters in the long startup prompt were interpreted by `cmd.exe` instead of reaching Qwen as one literal argument.
+
+Forge now persists the full agent/model-locked startup contract in `.forge/agent-start.md` and sends every CLI a short metacharacter-free instruction to read it. This protects Qwen, Gemini, Kimi and OpenCode launches from Windows command-shell parsing while keeping the complete contract inspectable and durable. A real fake-`.cmd` subprocess regression verifies the launcher and prompt file together.
+
 ## v4.68.28 changelog (safe project Git secret scan)
 
 The first real Qwen-only project exposed a false positive in the local-first Git checkpoint: Forge-managed RuStore payment documentation contains bare PEM header/footer examples, and the secret scanner treated the header alone as a complete private key. New project creation therefore stopped after sync before its initial commit.
@@ -474,9 +480,3 @@ PEM detection now requires a matching header/footer and a plausible encoded body
 Forge can now lock Gemini, Qwen, Kimi K3, DeepSeek, GLM or MiniMax M3 to an entire project through `.forge/agent.json`. The new `select`, `profile` and `start` commands prevent an implicit provider/model switch while preserving one interactive terminal across the canonical nine phases. Gemini and Qwen use their verified native interactive-prompt contracts; Kimi Code performs one bootstrap turn and resumes the same session; DeepSeek, GLM and MiniMax use provider-pinned OpenCode profiles.
 
 Gemini CLI 0.55.1 and Kimi Code 0.37.2 were installed from their official distributions; the existing Qwen Code 0.14.0 and OpenCode 1.15.10 contracts were inspected locally. Windows executable discovery now prefers runnable `.exe`/`.cmd` npm shims. DeepSeek/GLM/MiniMax keys remain outside projects in provider-specific OpenCode credential stores and are stripped from the tool environment. Managed `GEMINI.md`/`QWEN.md`, Dashboard launch buttons, a project-lock schema, documentation and offline regressions cover the new surface. Provider quality parity remains unclaimed until equal full-project benchmarks are run with authenticated accounts.
-
-## v4.68.26 changelog (reliable modular GigaChat feature operations)
-
-Real GigaChat forward tests exposed four gaps after modularization: disconnected feature files could escape the contract, an accepted direct task could continue into Phase 8, approved small modules could still be destroyed by full writes, and generic smoke output could falsely stand in for the requested feature. Module refresh now safely adopts only referenced `js/`/`styles/` additions while preserving the prior relative sequence; checks reject both orphan numbered modules and uncontracted references. Approved modules require targeted edits, and successful `forge_change_complete` is now terminal until explicit `/resume-phase`.
-
-For existing merge-grid games, `integrate-gacha.mjs` performs state, main persistence, reset, core/integration module and load-order changes atomically with backup evidence. `check-gacha-integration.mjs` proves the actual button/API, grid mutation, main save, full-grid queue, reload restoration and later delivery in a browser. A final real GigaChat `/do` used this path, passed the 20-module contract, focused verifier, playtest and local-stage, then stopped without entering release.

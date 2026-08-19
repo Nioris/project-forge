@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.28 (latest released)
+### Version: v4.68.29 (latest released)
 
+- 2026-08-19: **v4.68.29** — Windows-safe whole-project startup: full agent contract is file-backed and npm `.cmd` shims receive only a short literal instruction; real subprocess regression added.
 - 2026-08-19: **v4.68.28** — project Git hotfix: bare PEM examples in managed documentation no longer trigger false secret blocks, while complete plausible private keys remain blocked by regression.
 - 2026-08-19: **v4.68.27** — whole-project single-model locks for Gemini, Qwen, Kimi K3, DeepSeek, GLM and MiniMax M3; native/OpenCode runtimes, isolated provider credentials, Dashboard routing and offline adapter regressions.
 - 2026-08-19: **v4.68.26** — reliable modular GigaChat feature operations: connected-module adoption, orphan/destructive-write guards, terminal `/do` completion, atomic merge-grid gacha integration and focused browser evidence.

@@ -78,6 +78,14 @@ function writeProjectProfile(project, value) {
 function autonomousPrompt(name, model) {
   return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
 }
+function writeAutonomousPrompt(project, prompt) {
+  const path=join(project,'.forge','agent-start.md');
+  mkdirSync(dirname(path),{recursive:true});
+  const tmp=path+'.tmp';
+  writeFileSync(tmp,`# Project Forge whole-project startup\n\n${prompt}\n`,'utf8');
+  renameSync(tmp,path);
+  return path;
+}
 function autonomousLaunchArgs(agent, prompt, model, full) {
   if (agent.runtime === 'opencode') {
     return ['run', '--interactive', ...(full ? ['--dangerously-skip-permissions'] : []), '--model', model, prompt];
@@ -210,12 +218,15 @@ if (cmd === 'start') {
   const d=detectExecutable(current.agent,a); if(!d.found) fail(`${a.displayName} runtime was not detected. Run: doctor ${current.agent}`,3);
   const model=val('--model') || current.model || a.defaultModel || 'provider-default';
   if(val('--model') && model!==current.model && !has('--reselect')) fail(`Project model is locked to ${current.model}. Use select ${current.agent} --model ${model} first, or pass --reselect.`);
-  const full=!has('--safe'); const prompt=autonomousPrompt(current.agent,model); const launchArgs=autonomousLaunchArgs(a,prompt,model,full);
+  const full=!has('--safe'); const prompt=autonomousPrompt(current.agent,model);
+  const startupInstruction='Read .forge/agent-start.md and execute every instruction in it now.';
+  const launchArgs=autonomousLaunchArgs(a,startupInstruction,model,full);
   if(has('--dry-run')){
     const resumeArgs=a.runtime==='kimi'?[...(full?(a.fullArgs||[]):[]),'--continue',...(model&&a.modelArg?[a.modelArg,model]:[])]:null;
     console.log(JSON.stringify({agent:current.agent,model,profile,project,executable:d.executable,args:launchArgs,resumeArgs,promptMode:a.runtime==='kimi'?'bootstrap-then-interactive':'interactive',locked:true},null,2));
     process.exit(0);
   }
+  writeAutonomousPrompt(project,prompt);
   console.log(`[Forge] Whole-project lock: ${a.displayName} / ${model}`);
   console.log(`[Forge] Autonomous interactive run -> ${project}`);
   const startEnv=a.runtime==='opencode'?openCodeEnvironment(a,project):{...process.env};

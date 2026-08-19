@@ -4,7 +4,7 @@
 
 ## Session goal
 
-Ship the first Qwen whole-project field hotfix as Project Forge `v4.68.28`.
+Ship the authenticated Qwen Windows-launch hotfix as Project Forge `v4.68.29`.
 
 ## Active task
 
@@ -57,6 +57,8 @@ Ship the first Qwen whole-project field hotfix as Project Forge `v4.68.28`.
 - [x] Add managed Gemini/Qwen rules, Dashboard launchers, docs and offline regressions.
 - [x] Reproduce the new-project Git checkpoint false positive on managed PEM documentation.
 - [x] Require a plausible complete PEM body while preserving real-secret blocking.
+- [x] Reproduce Windows npm shim metacharacter parsing before the first Qwen model request.
+- [x] Move the full startup contract into a durable project file and pass a safe short CLI instruction.
 
 ## Blockers
 
@@ -77,5 +79,6 @@ No code blocker. Full provider benchmarks require user authentication/keys; offl
 - 2026-08-19: Whole-project mode keeps one agent/model for all nine phases; phase-based model routing remains a later independent feature.
 - 2026-08-19: Provider parity is measured by equal full-project benchmarks, never inferred from a successful CLI launch.
 - 2026-08-19: Secret scanners must distinguish documentation markers from complete credentials without weakening real-key blocking.
+- 2026-08-19: Long model startup contracts are project artifacts, not Windows shell arguments.
 
-<!-- last updated 2026-08-19 during v4.68.28 Qwen field hotfix -->
+<!-- last updated 2026-08-19 during v4.68.29 Qwen Windows-launch hotfix -->

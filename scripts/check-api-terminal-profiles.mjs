@@ -135,6 +135,22 @@ function runWholeProjectLockRegression(){
 }
 runWholeProjectLockRegression();
 
+function runWindowsCmdPromptRegression(){
+  if(process.platform!=='win32') return;
+  const fixture=mkdtempSync(join(tmpdir(),'forge-cmd-prompt-'));
+  const shim=join(fixture,'fake-qwen.cmd');
+  try{
+    writeFileSync(shim,'@echo off\r\necho FAKE_QWEN_LITERAL_PROMPT_OK\r\n','utf8');
+    const launched=run('Windows npm cmd receives file-backed startup instruction',['scripts/forge-agent.mjs','start','qwen','--project',fixture],{FORGE_QWEN_CLI:shim},'FAKE_QWEN_LITERAL_PROMPT_OK');
+    const startup=join(fixture,'.forge','agent-start.md');
+    if(launched.r.status===0&&existsSync(startup)&&readFileSync(startup,'utf8').includes('only terminal AI agent')) ok.push('whole-project prompt is durable and shell-metacharacter safe');
+    else errors.push('whole-project startup prompt was not written before cmd launch');
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runWindowsCmdPromptRegression();
+
 const reg=JSON.parse(readFileSync(join(ROOT,'adapters/agents.json'),'utf8'));
 if(!reg.agents?.claude?.profiles?.includes('api')) errors.push('Claude API profile missing'); else ok.push('Claude API profile declared');
 if(!reg.agents?.codex?.profiles?.includes('api')) errors.push('Codex API profile missing'); else ok.push('Codex API profile declared');

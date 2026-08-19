@@ -4631,6 +4631,12 @@ Forward-testing the new modular workflow exposed a missing post-feature transiti
 
 Refresh refuses missing/unreferenced modules, new inline code, syntax errors and hidden boundary changes. The fixture now proves the full lifecycle: stale feature edit fails `--check`, safe refresh records the new symbol surface, and the final check passes.
 
+## v4.68.26 changelog (reliable modular GigaChat feature operations)
+
+Real GigaChat forward tests exposed four gaps after modularization: disconnected feature files could escape the contract, an accepted direct task could continue into Phase 8, approved small modules could still be destroyed by full writes, and generic smoke output could falsely stand in for the requested feature. Module refresh now safely adopts only referenced `js/`/`styles/` additions while preserving the prior relative sequence; checks reject both orphan numbered modules and uncontracted references. Approved modules require targeted edits, and successful `forge_change_complete` is now terminal until explicit `/resume-phase`.
+
+For existing merge-grid games, `integrate-gacha.mjs` performs state, main persistence, reset, core/integration module and load-order changes atomically with backup evidence. `check-gacha-integration.mjs` proves the actual button/API, grid mutation, main save, full-grid queue, reload restoration and later delivery in a browser. A final real GigaChat `/do` used this path, passed the 20-module contract, focused verifier, playtest and local-stage, then stopped without entering release.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".
