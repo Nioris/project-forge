@@ -449,10 +449,12 @@ CLAUDE.md
 CONTRIBUTING.md
 FORGE.md
 FORGE.project.md
+GEMINI.md
 GUIDE.md
 GameIntegration/README.md
 LICENSE
 NOTICE
+QWEN.md
 README-MEMORY.md
 README.md
 README_RU.md
@@ -475,6 +477,7 @@ RELEASE_NOTES_v4.68.23.md
 RELEASE_NOTES_v4.68.24.md
 RELEASE_NOTES_v4.68.25.md
 RELEASE_NOTES_v4.68.26.md
+RELEASE_NOTES_v4.68.27.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.4.md
 RELEASE_NOTES_v4.68.5.md
@@ -499,6 +502,9 @@ docs/CHANGELOG.md
 docs/CHECKLIST.md
 docs/CODEX-INTEGRATION.md
 docs/FirstDeployServer.md
+docs/GIGACHAT-INTEGRATION-RESULTS-4.68.26.md
+docs/GIGACHAT-ISSUES-AND-FIXES-4.68.26.md
+docs/GIGACODE-CLI-ACCESS-REQUEST-RU.md
 docs/INTEGRATION_GUIDE.md
 docs/KNOWN_ISSUES.md
 docs/MAINTENANCE-4.66.10.md
@@ -512,6 +518,7 @@ docs/UI_CHECKLIST.md
 docs/UNIVERSAL-AGENT-RUNTIME-4.68.0.md
 docs/VERIFICATION_PROTOCOL.md
 docs/VK_PLAYBOOK.md
+docs/WHOLE-PROJECT-AGENTS-4.68.27.md
 extras/README.md
 extras/update-forge.bat
 input/README.md
@@ -642,6 +649,7 @@ platforms/yandex/validators/sdk-timing.mjs
 platforms/yandex/validators/store-listings.mjs
 platforms/yandex/validators/title-format.mjs
 platforms/yandex/validators/trademarks.mjs
+schemas/agent-profile.schema.json
 schemas/ai-prompt.schema.json
 schemas/store-listing.schema.json
 scripts/adapt-skill-to-forge.mjs

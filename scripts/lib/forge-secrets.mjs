@@ -15,6 +15,9 @@ export const PROVIDERS = {
   openai: { file: 'openai.key', env: 'OPENAI_API_KEY', legacy: ['.openai_key'] },
   gigachat: { file: 'gigachat.key', env: 'GIGACHAT_AUTH_KEY', legacy: ['.gigachat_key'] },
   gigasearch: { file: 'gigasearch.key', env: 'GIGASEARCH_API_KEY', legacy: ['.gigasearch_key'] },
+  deepseek: { file: 'deepseek.key', env: 'DEEPSEEK_API_KEY', legacy: ['.deepseek_key'] },
+  zai: { file: 'zai.key', env: 'ZAI_API_KEY', legacy: ['.zai_key'] },
+  minimax: { file: 'minimax.key', env: 'MINIMAX_API_KEY', legacy: ['.minimax_key'] },
 };
 
 export function ensureDataDirs() {

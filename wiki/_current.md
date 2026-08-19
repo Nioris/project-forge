@@ -4,7 +4,7 @@
 
 ## Session goal
 
-Ship reliable modular GigaChat feature operations as Project Forge `v4.68.26`.
+Ship whole-project single-model agents as Project Forge `v4.68.27`.
 
 ## Active task
 
@@ -48,10 +48,17 @@ Ship reliable modular GigaChat feature operations as Project Forge `v4.68.26`.
 - [x] Add safe adoption of newly referenced feature modules while preserving approved relative order.
 - [x] Add atomic merge-grid gacha integration plus a focused browser verifier for grid/save/full-queue/F5 behavior.
 - [x] Complete a real GigaChat `/do` through integrator, contract refresh/check, focused verifier, playtest and local-stage.
+- [x] Document the GigaChat integration results, field failures and Forge mitigations.
+- [x] Prepare a support-ready request for standalone GigaCode CLI access.
+- [x] Add durable project-local agent/model locking with explicit reselection.
+- [x] Add native Gemini, Qwen and Kimi whole-project launch contracts.
+- [x] Add DeepSeek, GLM and MiniMax M3 provider profiles through OpenCode.
+- [x] Keep provider API keys outside projects and out of launched tool environments.
+- [x] Add managed Gemini/Qwen rules, Dashboard launchers, docs and offline regressions.
 
 ## Blockers
 
-No code blocker. No paid GigaChat API call is required for the deterministic routing tests.
+No code blocker. Full provider benchmarks require user authentication/keys; offline adapter verification does not spend provider quota.
 
 ## Last 3 decisions
 
@@ -64,5 +71,8 @@ No code blocker. No paid GigaChat API call is required for the deterministic rou
 - 2026-08-19: Architecture documentation must be refreshable after valid feature edits, but refresh may never silently authorize changed approved relative order.
 - 2026-08-19: GigaChat should select bounded atomic Forge operations for cross-module features; free-form long patches remain a fallback, not the primary construction path.
 - 2026-08-19: Feature completion must be proven by a task-specific runtime contract, not by a generic smoke test that may never execute the new behavior.
+- 2026-08-19: GigaChat integration claims must distinguish proven modular success from the still-failing autonomous GDD-only greenfield case.
+- 2026-08-19: Whole-project mode keeps one agent/model for all nine phases; phase-based model routing remains a later independent feature.
+- 2026-08-19: Provider parity is measured by equal full-project benchmarks, never inferred from a successful CLI launch.
 
-<!-- last updated 2026-08-19 during v4.68.26 modular GigaChat feature release -->
+<!-- last updated 2026-08-19 during v4.68.27 whole-project agent release -->

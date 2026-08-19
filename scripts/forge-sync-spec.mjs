@@ -22,6 +22,8 @@ export const PAYLOAD = [
   ['.codex/config.project.toml', '.codex/config.toml'],
   ['AGENTS.project.md', 'AGENTS.md'],
   ['FORGE.project.md', 'FORGE.md'],
+  ['GEMINI.md', 'GEMINI.md'],
+  ['QWEN.md', 'QWEN.md'],
   ['.gitverse/pr_rules', '.gitverse/pr_rules'],
   ['СПРАВОЧНИК-КОМАНД.md', 'СПРАВОЧНИК-КОМАНД.md'],
   ['platforms/yandex/templates/debugcheck.js', 'debugcheck.js'],
@@ -62,4 +64,3 @@ export function snapshotPayload(root) {
   const expanded = expandPayload(root);
   return expanded.map(item => ({ ...item, content: readFileSync(item.sourceAbs) }));
 }
-

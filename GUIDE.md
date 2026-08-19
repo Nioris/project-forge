@@ -1,4 +1,4 @@
-# Project Forge v4.68.26 — Полная инструкция по работе
+# Project Forge v4.68.27 — Полная инструкция по работе
 
 ## Оглавление
 
@@ -59,7 +59,7 @@ cx
 
 ---
 
-## Выбор terminal-профиля: Claude, Codex, GigaChat или optional GigaCode
+## Выбор terminal-профиля: один агент на весь проект
 
 Одна база Forge, девять фаз и те же STOP-points. Меняется только host/auth profile.
 
@@ -73,6 +73,23 @@ node scripts\forge-agent.mjs launch claude --profile api --full --project .
 node scripts\forge-agent.mjs launch codex --profile api --full --project .
 node scripts\forge-agent.mjs launch gigachat --profile api --full --project .
 node scripts\forge-search-doctor.mjs --project .
+
+# Один выбранный агент и одна модель проходят все девять фаз
+node scripts\forge-agent.mjs start gemini --project .
+node scripts\forge-agent.mjs start qwen --project .
+node scripts\forge-agent.mjs start kimi --project .
+node scripts\forge-agent.mjs start deepseek --project .
+node scripts\forge-agent.mjs start glm --project .
+node scripts\forge-agent.mjs start minimax --project .
+
+# Проверить или явно изменить закрепление
+node scripts\forge-agent.mjs profile --project .
+node scripts\forge-agent.mjs select qwen --model qwen3-coder-plus --project .
+
+# Первичная авторизация нативных CLI выполняется один раз
+gemini
+qwen auth qwen-oauth
+kimi login
 
 # Optional dormant bridge
 node scripts\forge-agent.mjs doctor gigacode
@@ -119,6 +136,9 @@ F:\ProjectForgeUniversal\forge-data\secrets\anthropic.key
 F:\ProjectForgeUniversal\forge-data\secrets\openai.key
 F:\ProjectForgeUniversal\forge-data\secrets\gigachat.key
 F:\ProjectForgeUniversal\forge-data\secrets\gigasearch.key   # optional production search
+F:\ProjectForgeUniversal\forge-data\secrets\deepseek.key
+F:\ProjectForgeUniversal\forge-data\secrets\zai.key
+F:\ProjectForgeUniversal\forge-data\secrets\minimax.key
 ```
 
 Проверка:

@@ -1,4 +1,4 @@
-# Project Forge v4.68.26 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.27 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -463,6 +463,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.27 changelog (one model for the whole project)
+
+Forge can now lock Gemini, Qwen, Kimi K3, DeepSeek, GLM or MiniMax M3 to an entire project through `.forge/agent.json`. The new `select`, `profile` and `start` commands prevent an implicit provider/model switch while preserving one interactive terminal across the canonical nine phases. Gemini and Qwen use their verified native interactive-prompt contracts; Kimi Code performs one bootstrap turn and resumes the same session; DeepSeek, GLM and MiniMax use provider-pinned OpenCode profiles.
+
+Gemini CLI 0.55.1 and Kimi Code 0.37.2 were installed from their official distributions; the existing Qwen Code 0.14.0 and OpenCode 1.15.10 contracts were inspected locally. Windows executable discovery now prefers runnable `.exe`/`.cmd` npm shims. DeepSeek/GLM/MiniMax keys remain outside projects in provider-specific OpenCode credential stores and are stripped from the tool environment. Managed `GEMINI.md`/`QWEN.md`, Dashboard launch buttons, a project-lock schema, documentation and offline regressions cover the new surface. Provider quality parity remains unclaimed until equal full-project benchmarks are run with authenticated accounts.
+
 ## v4.68.26 changelog (reliable modular GigaChat feature operations)
 
 Real GigaChat forward tests exposed four gaps after modularization: disconnected feature files could escape the contract, an accepted direct task could continue into Phase 8, approved small modules could still be destroyed by full writes, and generic smoke output could falsely stand in for the requested feature. Module refresh now safely adopts only referenced `js/`/`styles/` additions while preserving the prior relative sequence; checks reject both orphan numbered modules and uncontracted references. Approved modules require targeted edits, and successful `forge_change_complete` is now terminal until explicit `/resume-phase`.
@@ -474,9 +480,3 @@ For existing merge-grid games, `integrate-gacha.mjs` performs state, main persis
 Forward-testing the new modular workflow exposed a missing post-feature transition: any legitimate module edit correctly made `modules.json` stale, but there was no safe way to accept the new hashes without manual documentation surgery. `modularize-existing-project.mjs --refresh` now recalculates live hashes, sizes, symbols, ownership, storage keys and DOM IDs while preserving the approved module paths and load order.
 
 Refresh refuses missing/unreferenced modules, new inline code, syntax errors and hidden boundary changes. The fixture now proves the full lifecycle: stale feature edit fails `--check`, safe refresh records the new symbol surface, and the final check passes.
-
-## v4.68.24 changelog (modularize large existing games)
-
-Large monolithic web entrypoints now have a deterministic preprocessing path before feature work. The new `modularize-existing-project` skill and script analyze first, preserve a backup, externalize inline CSS, split classic JavaScript at existing semantic section markers without changing load order, and generate hash-bound machine/human module contracts. `--check` rejects missing, stale, unreferenced or syntactically invalid modules.
-
-GigaChat direct-task routing detects remaining WorkProgress sources above 32 KB and directs the model through modularization, baseline and regression checks rather than whole-file reconstruction. On the real `testgigachat-v4`, a 93 KB entrypoint became a 3.8 KB shell plus 17 bounded JS modules; canonical playtest, targeted Playwright state/visual verification and local-stage remained error-free.

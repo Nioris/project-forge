@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.26 (latest released)
+### Version: v4.68.27 (latest released)
 
+- 2026-08-19: **v4.68.27** — whole-project single-model locks for Gemini, Qwen, Kimi K3, DeepSeek, GLM and MiniMax M3; native/OpenCode runtimes, isolated provider credentials, Dashboard routing and offline adapter regressions.
 - 2026-08-19: **v4.68.26** — reliable modular GigaChat feature operations: connected-module adoption, orphan/destructive-write guards, terminal `/do` completion, atomic merge-grid gacha integration and focused browser evidence.
 - 2026-08-19: **v4.68.25** — safe post-feature module-contract refresh: recalculate live hashes/symbols/owners while preserving approved paths, order and boundaries.
 - 2026-08-19: **v4.68.24** — deterministic large-game modularization: semantic ordered source extraction, backups, hash-bound contracts, structural verifier, and GigaChat monolith routing.
@@ -481,6 +482,11 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 10. **MCP integration** — Forge as MCP server providing skills/agents to other Claude instances.
 
 ## Quick Links
+
+### GigaChat / GigaCode field reports
+- [GigaChat integration results](../docs/GIGACHAT-INTEGRATION-RESULTS-4.68.26.md) — implemented adapter capabilities, verified achievements and current maturity boundary
+- [GigaChat issues and fixes](../docs/GIGACHAT-ISSUES-AND-FIXES-4.68.26.md) — field incident catalog, ownership, mitigations and remaining gaps
+- [GigaCode CLI access request](../docs/GIGACODE-CLI-ACCESS-REQUEST-RU.md) — ready-to-send Russian support email
 
 ### Architecture
 - [[architecture/stack]] — full tech stack table

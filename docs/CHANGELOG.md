@@ -4619,6 +4619,12 @@ The failed gacha integration exposed a destructive compaction loop: GigaChat rep
 
 Targeted integration work can no longer fully reconstruct an existing large file unless the user explicitly asks for a complete rebuild. Suspicious shrinkage and every second full overwrite of the same path are blocked before disk mutation. Twelve consecutive reads without an implementation action or four compactions in one direct turn now produce a recoverable diagnostic stop. An explicitly repeated `/do` starts a clean retry.
 
+## v4.68.24 changelog (modularize large existing games)
+
+Large monolithic web entrypoints now have a deterministic preprocessing path before feature work. The new `modularize-existing-project` skill and script analyze first, preserve a backup, externalize inline CSS, split classic JavaScript at existing semantic section markers without changing load order, and generate hash-bound machine/human module contracts. `--check` rejects missing, stale, unreferenced or syntactically invalid modules.
+
+GigaChat direct-task routing detects remaining WorkProgress sources above 32 KB and directs the model through modularization, baseline and regression checks rather than whole-file reconstruction. On the real `testgigachat-v4`, a 93 KB entrypoint became a 3.8 KB shell plus 17 bounded JS modules; canonical playtest, targeted Playwright state/visual verification and local-stage remained error-free.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

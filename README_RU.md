@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая публичная версия:** `v4.68.26`
+**Текущая публичная версия:** `v4.68.27`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -14,6 +14,8 @@ Project Forge даёт нескольким AI-агентам один общи�
 | OpenAI Codex | ChatGPT · OpenAI API | stable |
 | GigaChat | API через терминальный агент Forge | supported |
 | GigaCode CLI | локальный CLI adapter | experimental / dormant до появления executable |
+| Gemini CLI · Qwen Code · Kimi Code | нативный аккаунт/Coding Plan | experimental, один агент на весь проект |
+| DeepSeek · GLM · MiniMax M3 | API провайдера через OpenCode | experimental, один агент на весь проект |
 
 > Forge — terminal-first. IDE не обязательна.
 
@@ -30,6 +32,7 @@ Forge — не отдельный чат. Это runtime вокруг терми
 - штатные режимы Claude Code и Codex;
 - отдельные API-профили Anthropic и OpenAI;
 - собственный терминальный GigaChat-agent;
+- профили «одна модель на весь проект» для Gemini, Qwen, Kimi K3, DeepSeek, GLM и MiniMax M3;
 - AI Studio для prompt compilation, изображений, 3D, Art Director и Visual QA;
 - интеграции и release-проверки платформ;
 - Dashboard, синхронизация проектов, обновление и drift-check управляемых файлов.
@@ -152,7 +155,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.26` обычная авторизация и API-профили остаются разделены.
+В `v4.68.27` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка

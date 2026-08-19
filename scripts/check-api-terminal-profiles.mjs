@@ -96,10 +96,60 @@ function runPhaseResumeEntrypointRegression(){
 }
 runPhaseResumeEntrypointRegression();
 
+function runOpenCodeCredentialIsolationRegression(){
+  const fixture=mkdtempSync(join(tmpdir(),'forge-opencode-auth-'));
+  const dataDir=join(fixture,'forge-data');
+  const fake='test-deepseek-secret-never-print';
+  try{
+    mkdirSync(dataDir,{recursive:true});
+    const prepared=run('DeepSeek isolated OpenCode auth preparation',['scripts/forge-agent.mjs','prepare','deepseek','--project',fixture],{FORGE_DATA_DIR:dataDir,DEEPSEEK_API_KEY:fake},'central isolated store');
+    const authPath=join(dataDir,'runtime','opencode-deepseek','opencode','auth.json');
+    if(prepared.text.includes(fake)) errors.push('OpenCode auth preparation printed the API key');
+    else if(!existsSync(authPath)) errors.push('OpenCode isolated auth.json was not created');
+    else {
+      const auth=JSON.parse(readFileSync(authPath,'utf8'));
+      if(auth.deepseek?.type!=='api'||auth.deepseek?.key!==fake) errors.push('OpenCode isolated auth.json has the wrong contract');
+      else ok.push('OpenCode API key is stored outside the project and not printed');
+    }
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runOpenCodeCredentialIsolationRegression();
+
+function runWholeProjectLockRegression(){
+  const fixture=mkdtempSync(join(tmpdir(),'forge-agent-lock-'));
+  try{
+    run('whole-project lock selects Qwen',['scripts/forge-agent.mjs','select','qwen','--project',fixture],{},'Locked qwen');
+    run('whole-project lock status',['scripts/forge-agent.mjs','profile','--project',fixture],{},'Locked model: qwen3-coder-plus');
+    const refused=spawnSync(process.execPath,['scripts/forge-agent.mjs','start','gemini','--project',fixture,'--dry-run'],{cwd:ROOT,encoding:'utf8'});
+    if(refused.status===0||!`${refused.stdout||''}${refused.stderr||''}`.includes('Project is locked to qwen')) errors.push('whole-project lock allowed an implicit provider switch');
+    else ok.push('whole-project lock refuses an implicit provider switch');
+    run('whole-project lock explicit reselection',['scripts/forge-agent.mjs','select','gemini','--project',fixture],{},'Locked gemini');
+    const saved=JSON.parse(readFileSync(join(fixture,'.forge','agent.json'),'utf8'));
+    if(saved.agent!=='gemini'||saved.model!=='gemini-3.7-flash'||saved.locked!==true) errors.push('whole-project reselection did not persist the expected contract');
+    else ok.push('whole-project explicit reselection is persisted');
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runWholeProjectLockRegression();
+
 const reg=JSON.parse(readFileSync(join(ROOT,'adapters/agents.json'),'utf8'));
 if(!reg.agents?.claude?.profiles?.includes('api')) errors.push('Claude API profile missing'); else ok.push('Claude API profile declared');
 if(!reg.agents?.codex?.profiles?.includes('api')) errors.push('Codex API profile missing'); else ok.push('Codex API profile declared');
 if(!reg.agents?.gigachat?.builtinLauncher) errors.push('GigaChat builtin terminal launcher missing'); else ok.push('GigaChat terminal adapter declared');
+for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi']){
+  if(!reg.agents?.[name]?.defaultModel) errors.push(`${name} whole-project default model missing`);
+  else ok.push(`${name} whole-project model declared`);
+}
+
+const secretProviders=['deepseek','zai','minimax'];
+const secretLib=readFileSync(join(ROOT,'scripts/lib/forge-secrets.mjs'),'utf8');
+for(const provider of secretProviders){
+  if(!secretLib.includes(`${provider}: {`)) errors.push(`${provider} centralized secret declaration missing`);
+  else ok.push(`${provider} centralized secret declaration`);
+}
 
 const forge=readFileSync(join(ROOT,'scripts/forge-agent.mjs'),'utf8');
 if(!forge.includes("login','--with-api-key")) errors.push('Codex API profile does not use stdin --with-api-key login'); else ok.push('Codex API login uses stdin');

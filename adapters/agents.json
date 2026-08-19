@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "agents": {
     "claude": {
       "status": "stable",
@@ -39,6 +39,88 @@
       "fullArgs": [],
       "rules": ["FORGE.md", ".gitverse/pr_rules/forge.md"],
       "notes": "Official public pages confirm a terminal agent, but a public personal Windows CLI distribution is not currently exposed by the GitVerse install page. The bridge stays dormant until an executable is explicitly available."
+    },
+    "gemini": {
+      "status": "experimental",
+      "displayName": "Gemini CLI",
+      "wholeProject": true,
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["gemini"],
+      "executableEnv": "FORGE_GEMINI_CLI",
+      "fullArgs": ["--approval-mode", "yolo", "--skip-trust"],
+      "profiles": ["oauth"],
+      "defaultModel": "gemini-3.7-flash",
+      "interactivePromptArg": "--prompt-interactive",
+      "modelArg": "--model",
+      "rules": ["GEMINI.md", "FORGE.md", ".claude/skills"]
+    },
+    "qwen": {
+      "status": "experimental",
+      "displayName": "Qwen Code",
+      "wholeProject": true,
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["qwen"],
+      "executableEnv": "FORGE_QWEN_CLI",
+      "fullArgs": ["--approval-mode", "yolo"],
+      "profiles": ["oauth", "coding-plan"],
+      "defaultModel": "qwen3-coder-plus",
+      "interactivePromptArg": "--prompt-interactive",
+      "modelArg": "--model",
+      "rules": ["QWEN.md", "FORGE.md", ".claude/skills"]
+    },
+    "deepseek": {
+      "status": "experimental",
+      "displayName": "DeepSeek through OpenCode",
+      "wholeProject": true,
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["opencode"],
+      "executableEnv": "FORGE_OPENCODE_CLI",
+      "runtime": "opencode",
+      "profiles": ["api"],
+      "apiProvider": "deepseek",
+      "defaultModel": "deepseek/deepseek-v4-flash",
+      "rules": ["AGENTS.md", "FORGE.md", ".claude/skills"]
+    },
+    "glm": {
+      "status": "experimental",
+      "displayName": "GLM through OpenCode",
+      "wholeProject": true,
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["opencode"],
+      "executableEnv": "FORGE_OPENCODE_CLI",
+      "runtime": "opencode",
+      "profiles": ["api", "coding-plan"],
+      "apiProvider": "zai",
+      "defaultModel": "zai/glm-5.3",
+      "rules": ["AGENTS.md", "FORGE.md", ".claude/skills"]
+    },
+    "minimax": {
+      "status": "experimental",
+      "displayName": "MiniMax M3 through OpenCode",
+      "wholeProject": true,
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["opencode"],
+      "executableEnv": "FORGE_OPENCODE_CLI",
+      "runtime": "opencode",
+      "profiles": ["api", "token-plan"],
+      "apiProvider": "minimax",
+      "defaultModel": "minimax/MiniMax-M3",
+      "rules": ["AGENTS.md", "FORGE.md", ".claude/skills"]
+    },
+    "kimi": {
+      "status": "experimental",
+      "displayName": "Kimi Code",
+      "wholeProject": true,
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["kimi"],
+      "executableEnv": "FORGE_KIMI_CLI",
+      "fullArgs": ["--auto"],
+      "runtime": "kimi",
+      "profiles": ["oauth"],
+      "defaultModel": "kimi-k3",
+      "modelArg": "--model",
+      "rules": ["AGENTS.md", "FORGE.md", ".claude/skills"],
+      "notes": "Official Kimi Code 0.37+ has verified prompt, continue, auto-permission and model flags. Forge bootstraps one headless turn and then resumes the same session interactively."
     }
   }
 }

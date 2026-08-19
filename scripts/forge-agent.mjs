@@ -6,7 +6,7 @@
  * GigaChat: Forge-owned terminal agent over official GigaChat API function calling.
  * GigaCode: dormant experimental bridge until an official CLI executable is available.
  */
-import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -31,13 +31,25 @@ function locateCommand(name) {
   const tool = process.platform === 'win32' ? 'where.exe' : 'which';
   const r = spawnSync(tool, [name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   if (r.status !== 0) return null;
-  return String(r.stdout || '').split(/\r?\n/).map(x => x.trim()).find(Boolean) || name;
+  const found = String(r.stdout || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  if (process.platform === 'win32') {
+    // npm places an extensionless POSIX shim before the runnable .cmd shim in PATH.
+    // spawnSync cannot execute that extensionless shell script directly on Windows.
+    return found.find(x => /\.(?:exe|cmd|bat)$/i.test(x)) || found[0] || name;
+  }
+  return found[0] || name;
 }
 function detectExecutable(name, agent) {
   if (agent.builtinLauncher) return { executable: process.execPath, source: 'Forge builtin', found: existsSync(join(ROOT, agent.builtinLauncher)) };
   const override = agent.executableEnv && process.env[agent.executableEnv]?.trim();
   if (override) { const located = locateCommand(override); return { executable: located || override, source: agent.executableEnv, found: Boolean(located) }; }
   for (const candidate of agent.executableCandidates || []) { const located = locateCommand(candidate); if (located) return { executable: located, source: 'PATH', found: true }; }
+  if (process.platform === 'win32' && process.env.USERPROFILE) {
+    for (const candidate of agent.executableCandidates || []) {
+      const userInstall = join(process.env.USERPROFILE, `.${candidate}-code`, 'bin', `${candidate}.exe`);
+      if (existsSync(userInstall)) return { executable: userInstall, source: 'user install', found: true };
+    }
+  }
   return { executable: (agent.executableCandidates || [])[0] || null, source: 'not-found', found: false };
 }
 function genericPrompt(skill, invocationArgs = '') {
@@ -48,6 +60,37 @@ function skillCommand(agentName, skill, invocationArgs = '') { const tail = invo
 function needsShell(exe) { return process.platform === 'win32' && /\.(cmd|bat)$/i.test(exe || ''); }
 function spawnAgent(exe, launchArgs, opts={}) { return spawnSync(exe, launchArgs, { cwd: opts.cwd, stdio:'inherit', shell:needsShell(exe), env:opts.env || process.env }); }
 function hash(v) { return createHash('sha256').update(v).digest('hex'); }
+function projectProfilePath(project) { return join(project, '.forge', 'agent.json'); }
+function readProjectProfile(project) {
+  const path = projectProfilePath(project);
+  if (!existsSync(path)) return null;
+  try { return JSON.parse(readFileSync(path, 'utf8')); }
+  catch (e) { fail(`Invalid project agent profile ${path}: ${e.message}`); }
+}
+function writeProjectProfile(project, value) {
+  const path = projectProfilePath(project);
+  mkdirSync(dirname(path), { recursive: true });
+  const tmp = path + '.tmp';
+  writeFileSync(tmp, JSON.stringify(value, null, 2) + '\n', 'utf8');
+  renameSync(tmp, path);
+  return path;
+}
+function autonomousPrompt(name, model) {
+  return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
+}
+function autonomousLaunchArgs(agent, prompt, model, full) {
+  if (agent.runtime === 'opencode') {
+    return ['run', '--interactive', ...(full ? ['--dangerously-skip-permissions'] : []), '--model', model, prompt];
+  }
+  if (agent.runtime === 'kimi') {
+    return [...(full ? (agent.fullArgs || []) : []), ...(model && agent.modelArg ? [agent.modelArg, model] : []), '--prompt', prompt];
+  }
+  const out = full ? [...(agent.fullArgs || [])] : [];
+  if (model && agent.modelArg) out.push(agent.modelArg, model);
+  if (agent.interactivePromptArg) out.push(agent.interactivePromptArg, prompt);
+  else out.push(prompt);
+  return out;
+}
 
 function claudeApiSettings(project) {
   const found = getProviderSecret('anthropic', project); if (!found?.value) fail('Anthropic API key missing. Put it in forge-data/secrets/anthropic.key or set ANTHROPIC_API_KEY.', 5);
@@ -72,6 +115,39 @@ function ensureCodexApiAuth(exe, project) {
   }
   return {home,source:found.source};
 }
+function openCodeProviderConfig(provider) {
+  if (provider === 'zai') return {
+    provider: { zai: { npm: '@ai-sdk/openai-compatible', name: 'Z.ai', options: { baseURL: 'https://api.z.ai/api/paas/v4' }, models: { 'glm-5.3': { name: 'GLM 5.3' } } } },
+  };
+  if (provider === 'minimax') return {
+    provider: { minimax: { npm: '@ai-sdk/anthropic', name: 'MiniMax', options: { baseURL: 'https://api.minimax.io/anthropic' }, models: { 'MiniMax-M3': { name: 'MiniMax M3' } } } },
+  };
+  return null;
+}
+function openCodeEnvironment(agent, project) {
+  const env={...process.env};
+  const provider=agent.apiProvider;
+  const config=openCodeProviderConfig(provider);
+  if(config) env.OPENCODE_CONFIG_CONTENT=JSON.stringify(config);
+  const found=provider?getProviderSecret(provider,project):null;
+  if(found?.value){
+    ensureDataDirs();
+    const dataRoot=join(RUNTIME_DIR,`opencode-${provider}`);
+    const authDir=join(dataRoot,'opencode');
+    mkdirSync(authDir,{recursive:true});
+    writeFileSync(join(authDir,'auth.json'),JSON.stringify({[provider]:{type:'api',key:found.value}},null,2)+'\n',{encoding:'utf8',mode:0o600});
+    env.XDG_DATA_HOME=dataRoot;
+    console.log(`[Forge] OpenCode ${provider} profile -> isolated credential store (${found.source})`);
+  } else {
+    console.log(`[Forge] OpenCode ${provider} profile -> existing OpenCode login/config (central key not configured)`);
+  }
+  for(const spec of Object.values(registry.agents||{})){
+    if(!spec.apiProvider) continue;
+    const providerSpecEnv={deepseek:'DEEPSEEK_API_KEY',zai:'ZAI_API_KEY',minimax:'MINIMAX_API_KEY'}[spec.apiProvider];
+    if(providerSpecEnv) delete env[providerSpecEnv];
+  }
+  return env;
+}
 
 if (cmd === 'list') {
   for (const [name,a] of Object.entries(registry.agents||{})) { const d=detectExecutable(name,a); const secret=a.apiProvider?getProviderSecret(a.apiProvider,ROOT):null; console.log(`${name.padEnd(10)} ${String(a.status).padEnd(20)} ${d.found?'runtime ready':'runtime missing'}${a.apiProvider?`  api:${secret?'configured':'missing'}`:''}`); }
@@ -85,10 +161,76 @@ if (cmd === 'doctor') {
   }
   process.exit(bad?1:0);
 }
+if (cmd === 'profile') {
+  const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
+  const current=readProjectProfile(project);
+  if(!current){ console.log(`[Forge] No locked agent profile in ${project}`); process.exit(1); }
+  console.log(`[Forge] Locked agent: ${current.agent}`);
+  console.log(`[Forge] Locked model: ${current.model}`);
+  console.log(`[Forge] Profile: ${current.profile}`);
+  console.log(`[Forge] Config: ${projectProfilePath(project)}`);
+  process.exit(0);
+}
+if (cmd === 'prepare') {
+  const name=args[1]||fail('Usage: prepare <deepseek|glm|minimax> --project <path>');
+  const a=getAgent(name); if(a.runtime!=='opencode') fail(`${name} does not use an OpenCode API profile.`);
+  const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
+  const env=openCodeEnvironment(a,project);
+  console.log(`[Forge] ${name} provider config: ${env.OPENCODE_CONFIG_CONTENT?'configured':'built-in'}`);
+  console.log(`[Forge] Credential isolation: ${env.XDG_DATA_HOME?'central isolated store':'existing OpenCode login'}`);
+  process.exit(0);
+}
+if (cmd === 'select') {
+  const name=args[1]||fail('Usage: select <agent> --project <path> [--model <id>] [--profile <name>]');
+  const a=getAgent(name); if(!a.wholeProject) fail(`${name} does not use the new whole-project lock. Use its existing launch command.`); const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
+  const profile=val('--profile') || a.profiles?.[0] || 'default';
+  if(a.profiles && !a.profiles.includes(profile)) fail(`Profile ${profile} is not valid for ${name}. Available: ${a.profiles.join(', ')}`);
+  const model=val('--model') || a.defaultModel || 'provider-default';
+  const path=writeProjectProfile(project,{schemaVersion:1,agent:name,model,profile,locked:true,selectedAt:new Date().toISOString()});
+  console.log(`[Forge] Locked ${name} / ${model} for the whole project.`);
+  console.log(`[Forge] ${path}`);
+  process.exit(0);
+}
+if (cmd === 'start') {
+  const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
+  const requested=args[1] && !args[1].startsWith('--') ? args[1] : null;
+  let current=readProjectProfile(project);
+  if(requested){
+    const requestedAgent=getAgent(requested);
+    if(!requestedAgent.wholeProject) fail(`${requested} does not use the new whole-project lock. Use its existing launch command.`);
+    if(current?.locked && current.agent!==requested && !has('--reselect')) fail(`Project is locked to ${current.agent}. Use select ${requested} first, or pass --reselect explicitly.`);
+    const profile=val('--profile') || (current?.agent===requested?current.profile:null) || requestedAgent.profiles?.[0] || 'default';
+    const model=val('--model') || (current?.agent===requested?current.model:null) || requestedAgent.defaultModel || 'provider-default';
+    current={schemaVersion:1,agent:requested,model,profile,locked:true,selectedAt:new Date().toISOString()};
+    if(!has('--dry-run')) writeProjectProfile(project,current);
+  }
+  if(!current) fail('No project agent selected. Use: select <agent> --project <path>');
+  const a=getAgent(current.agent); if(!a.wholeProject) fail(`Stored agent ${current.agent} does not support whole-project start. Re-run select.`); const profile=current.profile || a.profiles?.[0] || 'default';
+  if(a.profiles && !a.profiles.includes(profile)) fail(`Stored profile ${profile} is not valid for ${current.agent}. Re-run select.`);
+  const d=detectExecutable(current.agent,a); if(!d.found) fail(`${a.displayName} runtime was not detected. Run: doctor ${current.agent}`,3);
+  const model=val('--model') || current.model || a.defaultModel || 'provider-default';
+  if(val('--model') && model!==current.model && !has('--reselect')) fail(`Project model is locked to ${current.model}. Use select ${current.agent} --model ${model} first, or pass --reselect.`);
+  const full=!has('--safe'); const prompt=autonomousPrompt(current.agent,model); const launchArgs=autonomousLaunchArgs(a,prompt,model,full);
+  if(has('--dry-run')){
+    const resumeArgs=a.runtime==='kimi'?[...(full?(a.fullArgs||[]):[]),'--continue',...(model&&a.modelArg?[a.modelArg,model]:[])]:null;
+    console.log(JSON.stringify({agent:current.agent,model,profile,project,executable:d.executable,args:launchArgs,resumeArgs,promptMode:a.runtime==='kimi'?'bootstrap-then-interactive':'interactive',locked:true},null,2));
+    process.exit(0);
+  }
+  console.log(`[Forge] Whole-project lock: ${a.displayName} / ${model}`);
+  console.log(`[Forge] Autonomous interactive run -> ${project}`);
+  const startEnv=a.runtime==='opencode'?openCodeEnvironment(a,project):{...process.env};
+  const r=spawnAgent(d.executable,launchArgs,{cwd:project,env:startEnv}); if(r.error) fail(`${a.displayName} launch failed: ${r.error.message}`,4);
+  if(a.runtime==='kimi' && r.status===0){
+    console.log('[Forge] Kimi bootstrap turn complete; reopening the same project session interactively.');
+    const resumeArgs=[...(full?(a.fullArgs||[]):[]),'--continue',...(model&&a.modelArg?[a.modelArg,model]:[])];
+    const resumed=spawnAgent(d.executable,resumeArgs,{cwd:project,env:startEnv}); if(resumed.error) fail(`${a.displayName} interactive resume failed: ${resumed.error.message}`,4); process.exit(resumed.status??0);
+  }
+  process.exit(r.status??0);
+}
 if (cmd === 'prompt' || cmd === 'command') { const name=args[1]||fail(`Usage: ${cmd} <agent> --skill <name> [--args "..."]`); getAgent(name); const skill=val('--skill')||fail('--skill required'); console.log(skillCommand(name,skill,val('--args')||'')); process.exit(0); }
 if (cmd === 'launch') {
   const name=args[1]||fail('Usage: launch <agent> --project <path> [--profile subscription|chatgpt|api] [--full]'); const a=getAgent(name); const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
-  const profile=val('--profile') || (name==='gigachat'?'api':name==='claude'?'subscription':name==='codex'?'chatgpt':'default');
+  const profile=val('--profile') || a.profiles?.[0] || 'default';
   if(a.profiles && !a.profiles.includes(profile)) fail(`Profile ${profile} is not valid for ${name}. Available: ${a.profiles.join(', ')}`);
   const d=detectExecutable(name,a); if(!d.found){ console.error(`[X] ${a.displayName} runtime was not detected.`); if(name==='gigacode') console.error('    GigaCode CLI is optional/dormant; use Claude, Codex or GigaChat API instead.'); process.exit(3); }
   let launchArgs=has('--full')?[...(a.fullArgs||[])]:[]; let env={...process.env}; let exe=d.executable;
@@ -112,4 +254,4 @@ if (cmd === 'launch') {
   console.log(`[Forge] ${a.displayName} [${profile}] -> ${project}`); if(name==='gigacode') console.log('[Forge] GigaCode bridge is dormant/experimental; no undocumented flags are injected.');
   const r=spawnAgent(exe,launchArgs,{cwd:project,env}); if(r.error) fail(`${a.displayName} launch failed: ${r.error.message}`,4); process.exit(r.status??0);
 }
-console.log(`Project Forge universal terminal runtime\n\nCommands:\n  list\n  doctor [agent]\n  launch <agent> --project <path> [--profile ...] [--full]\n  prompt <agent> --skill <name> [--args "..."]\n\nAPI secrets:\n  node scripts/forge-secrets.mjs status`);
+console.log(`Project Forge universal terminal runtime\n\nCommands:\n  list\n  doctor [agent]\n  select <agent> --project <path> [--model <id>] [--profile <name>]\n  profile --project <path>\n  prepare <deepseek|glm|minimax> --project <path>\n  start [agent] --project <path> [--safe] [--reselect] [--dry-run]\n  launch <agent> --project <path> [--profile ...] [--full]\n  prompt <agent> --skill <name> [--args "..."]\n\nAPI secrets:\n  node scripts/forge-secrets.mjs status`);
