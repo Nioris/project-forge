@@ -120,7 +120,9 @@ const SECRET_CONTENT = [
   /gh[pousr]_[A-Za-z0-9]{30,}/,
   /sk-[A-Za-z0-9_-]{24,}/,
   /AIza[0-9A-Za-z_-]{30,}/,
-  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
+  // A bare PEM marker is common in security/payment documentation. Require a
+  // plausible encoded body plus the matching footer before blocking a commit.
+  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\s+[A-Za-z0-9+/=\r\n]{80,}-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
 ];
 
 function stagedFiles(root) {

@@ -31,6 +31,20 @@ try {
   const second = checkpointProjectGit({ projectRoot: project, message: 'forge: phase checkpoint' });
   check(Boolean(second.commit) && second.commit !== first.commit, 'changed project gets a new checkpoint commit');
 
+  fs.mkdirSync(path.join(project, 'docs'), { recursive: true });
+  fs.writeFileSync(path.join(project, 'docs', 'pem-example.md'), 'Example:\n-----BEGIN PRIVATE KEY-----\n<base64 payload>\n-----END PRIVATE KEY-----\n');
+  const docsCommit = checkpointProjectGit({ projectRoot: project, message: 'forge: documentation fixture' });
+  check(Boolean(docsCommit.commit), 'bare PEM documentation markers do not trigger a false secret block');
+
+  const realPem = path.join(project, 'leaked-private-key.txt');
+  fs.writeFileSync(realPem, `-----BEGIN PRIVATE KEY-----\n${'A'.repeat(96)}\n-----END PRIVATE KEY-----\n`);
+  let pemBlocked = false;
+  try { checkpointProjectGit({ projectRoot: project, message: 'forge: must refuse real PEM' }); }
+  catch (error) { pemBlocked = /probable secret content/i.test(error.message); }
+  check(pemBlocked, 'a plausible complete private key is still blocked');
+  fs.rmSync(realPem, { force: true });
+  git('add', '-A');
+
   fs.writeFileSync(path.join(project, '.openai_key'), 'must-not-be-tracked');
   checkpointProjectGit({ projectRoot: project, message: 'forge: ignored secret test' });
   check(!git('status', '--porcelain').stdout.includes('.openai_key'), 'dot-prefixed API key files stay untracked');

@@ -4625,6 +4625,12 @@ Large monolithic web entrypoints now have a deterministic preprocessing path bef
 
 GigaChat direct-task routing detects remaining WorkProgress sources above 32 KB and directs the model through modularization, baseline and regression checks rather than whole-file reconstruction. On the real `testgigachat-v4`, a 93 KB entrypoint became a 3.8 KB shell plus 17 bounded JS modules; canonical playtest, targeted Playwright state/visual verification and local-stage remained error-free.
 
+## v4.68.25 changelog (safe module-contract refresh)
+
+Forward-testing the new modular workflow exposed a missing post-feature transition: any legitimate module edit correctly made `modules.json` stale, but there was no safe way to accept the new hashes without manual documentation surgery. `modularize-existing-project.mjs --refresh` now recalculates live hashes, sizes, symbols, ownership, storage keys and DOM IDs while preserving the approved module paths and load order.
+
+Refresh refuses missing/unreferenced modules, new inline code, syntax errors and hidden boundary changes. The fixture now proves the full lifecycle: stale feature edit fails `--check`, safe refresh records the new symbol surface, and the final check passes.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

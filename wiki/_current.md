@@ -4,7 +4,7 @@
 
 ## Session goal
 
-Ship whole-project single-model agents as Project Forge `v4.68.27`.
+Ship the first Qwen whole-project field hotfix as Project Forge `v4.68.28`.
 
 ## Active task
 
@@ -55,6 +55,8 @@ Ship whole-project single-model agents as Project Forge `v4.68.27`.
 - [x] Add DeepSeek, GLM and MiniMax M3 provider profiles through OpenCode.
 - [x] Keep provider API keys outside projects and out of launched tool environments.
 - [x] Add managed Gemini/Qwen rules, Dashboard launchers, docs and offline regressions.
+- [x] Reproduce the new-project Git checkpoint false positive on managed PEM documentation.
+- [x] Require a plausible complete PEM body while preserving real-secret blocking.
 
 ## Blockers
 
@@ -74,5 +76,6 @@ No code blocker. Full provider benchmarks require user authentication/keys; offl
 - 2026-08-19: GigaChat integration claims must distinguish proven modular success from the still-failing autonomous GDD-only greenfield case.
 - 2026-08-19: Whole-project mode keeps one agent/model for all nine phases; phase-based model routing remains a later independent feature.
 - 2026-08-19: Provider parity is measured by equal full-project benchmarks, never inferred from a successful CLI launch.
+- 2026-08-19: Secret scanners must distinguish documentation markers from complete credentials without weakening real-key blocking.
 
-<!-- last updated 2026-08-19 during v4.68.27 whole-project agent release -->
+<!-- last updated 2026-08-19 during v4.68.28 Qwen field hotfix -->
