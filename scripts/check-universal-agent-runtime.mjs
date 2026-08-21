@@ -17,11 +17,11 @@ for (const rel of [
 
 try {
   const reg = JSON.parse(readFileSync(join(ROOT, 'adapters/agents.json'), 'utf8'));
-  for (const name of ['claude','codex','gigachat','gigacode','gemini','qwen','deepseek','glm','minimax','kimi']) if (!reg.agents?.[name]) errors.push(`adapter missing: ${name}`);
+  for (const name of ['claude','codex','gigachat','gigacode','gemini','qwen','deepseek','glm','minimax','kimi','openrouter']) if (!reg.agents?.[name]) errors.push(`adapter missing: ${name}`);
   if (!String(reg.agents?.gigacode?.status||'').startsWith('experimental')) errors.push('GigaCode adapter must remain explicitly experimental until CLI contract is verified');
   if (!reg.agents?.gigacode?.executableEnv) errors.push('GigaCode adapter lacks executable override env');
   if (reg.schemaVersion < 3) errors.push('agent registry schema must support whole-project model locks');
-  else ok.push('agent registry has stable hosts plus six experimental whole-project agents');
+  else ok.push('agent registry has stable hosts plus seven experimental whole-project agents');
 } catch (e) { errors.push('invalid adapters/agents.json: ' + e.message); }
 
 const spec = readFileSync(join(ROOT, 'scripts/forge-sync-spec.mjs'), 'utf8');
@@ -44,6 +44,8 @@ run('generic GigaCode skill prompt', ['scripts/forge-agent.mjs','prompt','gigaco
 run('Qwen whole-project dry-run', ['scripts/forge-agent.mjs','start','qwen','--project',ROOT,'--dry-run'], 'qwen3-coder-plus');
 run('Gemini whole-project dry-run', ['scripts/forge-agent.mjs','start','gemini','--project',ROOT,'--dry-run'], 'gemini-3.7-flash');
 run('Kimi whole-project dry-run', ['scripts/forge-agent.mjs','start','kimi','--project',ROOT,'--dry-run'], 'bootstrap-then-interactive');
+run('OpenRouter whole-project dry-run', ['scripts/forge-agent.mjs','start','openrouter','--preset','deepseek','--project',ROOT,'--dry-run'], 'openrouter/deepseek/deepseek-v4-flash-0731');
+run('OpenRouter model presets', ['scripts/forge-agent.mjs','presets','openrouter'], 'openrouter/moonshotai/kimi-k3');
 run('GigaChat image dry-run', ['scripts/gigachat-image.mjs','--prompt','test game icon without text','--output','x.jpg','--dry-run'], 'text2image');
 run('GigaChat 3D dry-run', ['scripts/gigachat-3d.mjs','--prompt','simple low poly oil pump game prop','--output','x.fbx','--dry-run'], 'text2model3d');
 run('GigaChat terminal dry-run', ['scripts/gigachat-agent.mjs','--project',ROOT,'--full','--dry-run'], 'network=no');
@@ -61,7 +63,7 @@ const dash = readFileSync(join(ROOT, 'dashboard.html'),'utf8');
 if (!dash.includes("copyProjectLaunch('+ri+',\\'gigacode\\')")) errors.push('dashboard lacks GigaCode project launcher button');
 else ok.push('dashboard exposes GigaCode launcher');
 for (const label of ['Claude API','Codex API','GigaChat API']) { if (!dash.includes(`>${label}</button>`)) errors.push(`dashboard lacks ${label}`); else ok.push(`dashboard exposes ${label}`); }
-for (const label of ['Gemini','Qwen','Kimi K3','DeepSeek','GLM','MiniMax M3']) { if (!dash.includes(`>${label}</button>`)) errors.push(`dashboard lacks ${label}`); else ok.push(`dashboard exposes ${label}`); }
+for (const label of ['Gemini','Qwen','Kimi K3','DeepSeek','GLM','MiniMax M3','OpenRouter']) { if (!dash.includes(`>${label}</button>`)) errors.push(`dashboard lacks ${label}`); else ok.push(`dashboard exposes ${label}`); }
 if (!dash.includes("launch gigacode --project")) errors.push('dashboard GigaCode launcher does not route through forge-agent.mjs');
 else ok.push('dashboard routes GigaCode through universal launcher');
 if (!dash.includes("start '+agent+' --project")) errors.push('dashboard whole-project agents do not route through forge-agent start');

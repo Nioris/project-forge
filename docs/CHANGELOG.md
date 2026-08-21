@@ -4649,6 +4649,12 @@ The first real Qwen-only project exposed a false positive in the local-first Git
 
 PEM detection now requires a matching header/footer and a plausible encoded body. A regression proves that documentation placeholders commit normally while a realistic complete private key remains blocked. The original Forge diagnostic fingerprint is preserved in the failed test project and may be resolved only after the repaired checkpoint succeeds.
 
+## v4.68.29 changelog (Windows-safe whole-project startup prompt)
+
+The first authenticated Qwen launch reached the official Windows npm `.cmd` shim but failed before any model request: shell metacharacters in the long startup prompt were interpreted by `cmd.exe` instead of reaching Qwen as one literal argument.
+
+Forge now persists the full agent/model-locked startup contract in `.forge/agent-start.md` and sends every CLI a short metacharacter-free instruction to read it. This protects Qwen, Gemini, Kimi and OpenCode launches from Windows command-shell parsing while keeping the complete contract inspectable and durable. A real fake-`.cmd` subprocess regression verifies the launcher and prompt file together.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

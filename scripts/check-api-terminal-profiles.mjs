@@ -117,6 +117,28 @@ function runOpenCodeCredentialIsolationRegression(){
 }
 runOpenCodeCredentialIsolationRegression();
 
+function runOpenRouterCredentialIsolationRegression(){
+  const fixture=mkdtempSync(join(tmpdir(),'forge-openrouter-auth-'));
+  const dataDir=join(fixture,'forge-data');
+  const fake='sk-or-test-secret-never-print';
+  try{
+    mkdirSync(dataDir,{recursive:true});
+    const prepared=run('OpenRouter isolated OpenCode auth preparation',['scripts/forge-agent.mjs','prepare','openrouter','--preset','qwen','--project',fixture],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'ZDR required + provider data collection denied');
+    const authPath=join(dataDir,'runtime','opencode-openrouter','opencode','auth.json');
+    if(prepared.text.includes(fake)) errors.push('OpenRouter auth preparation printed the API key');
+    else if(!existsSync(authPath)) errors.push('OpenRouter isolated auth.json was not created');
+    else {
+      const auth=JSON.parse(readFileSync(authPath,'utf8'));
+      if(auth.openrouter?.type!=='api'||auth.openrouter?.key!==fake) errors.push('OpenRouter isolated auth.json has the wrong contract');
+      else if(!prepared.text.includes('provider config: configured')) errors.push('OpenRouter ZDR routing config was not generated');
+      else ok.push('OpenRouter key is isolated and the default launch requires ZDR');
+    }
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runOpenRouterCredentialIsolationRegression();
+
 function runWholeProjectLockRegression(){
   const fixture=mkdtempSync(join(tmpdir(),'forge-agent-lock-'));
   try{
@@ -161,14 +183,16 @@ const reg=JSON.parse(readFileSync(join(ROOT,'adapters/agents.json'),'utf8'));
 if(!reg.agents?.claude?.profiles?.includes('api')) errors.push('Claude API profile missing'); else ok.push('Claude API profile declared');
 if(!reg.agents?.codex?.profiles?.includes('api')) errors.push('Codex API profile missing'); else ok.push('Codex API profile declared');
 if(!reg.agents?.gigachat?.builtinLauncher) errors.push('GigaChat builtin terminal launcher missing'); else ok.push('GigaChat terminal adapter declared');
-for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi']){
+for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi','openrouter']){
   if(!reg.agents?.[name]?.defaultModel) errors.push(`${name} whole-project default model missing`);
   else ok.push(`${name} whole-project model declared`);
 }
+if(reg.agents?.openrouter?.profiles?.[0]!=='zdr'||!reg.agents?.openrouter?.modelPresets?.qwen) errors.push('OpenRouter ZDR profile or model presets missing');
+else ok.push('OpenRouter defaults to ZDR and exposes named model presets');
 if(reg.agents?.qwen?.profiles?.includes('oauth')||reg.agents?.qwen?.profileModels?.['coding-plan']!=='qwen3-coder-plus') errors.push('Qwen profiles still expose discontinued OAuth or lack the Coding Plan model');
 else ok.push('Qwen exposes current Coding Plan/API profiles without discontinued OAuth');
 
-const secretProviders=['deepseek','zai','minimax'];
+const secretProviders=['deepseek','zai','minimax','openrouter'];
 const secretLib=readFileSync(join(ROOT,'scripts/lib/forge-secrets.mjs'),'utf8');
 for(const provider of secretProviders){
   if(!secretLib.includes(`${provider}: {`)) errors.push(`${provider} centralized secret declaration missing`);

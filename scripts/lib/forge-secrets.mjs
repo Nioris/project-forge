@@ -18,6 +18,7 @@ export const PROVIDERS = {
   deepseek: { file: 'deepseek.key', env: 'DEEPSEEK_API_KEY', legacy: ['.deepseek_key'] },
   zai: { file: 'zai.key', env: 'ZAI_API_KEY', legacy: ['.zai_key'] },
   minimax: { file: 'minimax.key', env: 'MINIMAX_API_KEY', legacy: ['.minimax_key'] },
+  openrouter: { file: 'openrouter.key', env: 'OPENROUTER_API_KEY', legacy: ['.openrouter_key'] },
 };
 
 export function ensureDataDirs() {

@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.31`
+**Current public version:** `v4.68.32`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -16,6 +16,7 @@ Project Forge gives several terminal AI agents one shared workflow: the same pha
 | GigaCode CLI | local CLI adapter | experimental / dormant until an executable is available |
 | Gemini CLI · Qwen Code · Kimi Code | native account or provider plan/API | experimental whole-project lock |
 | DeepSeek · GLM · MiniMax M3 | provider API through OpenCode | experimental whole-project lock |
+| OpenRouter through OpenCode | one OpenRouter API key · ZDR by default | experimental whole-project lock |
 
 > Forge is terminal-first. An IDE is optional; the core workflow does not depend on one.
 
@@ -32,7 +33,7 @@ It provides:
 - native Claude Code and Codex launch profiles;
 - optional API profiles for Anthropic and OpenAI;
 - a Forge-owned GigaChat terminal agent;
-- one-model whole-project profiles for Gemini, Qwen, Kimi K3, DeepSeek, GLM and MiniMax M3;
+- one-model whole-project profiles for Gemini, Qwen, Kimi K3, DeepSeek, GLM, MiniMax M3 and OpenRouter;
 - AI Studio workflows for prompt compilation, images, 3D, art direction and visual QA;
 - platform integrations and release checks;
 - dashboard, fleet sync, upgrade and managed-file drift validation.
@@ -156,7 +157,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.31` keeps separate normal-account and API profiles.
+`v4.68.32` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -181,6 +182,12 @@ node scripts/forge-agent.mjs start kimi --project ../my-game
 node scripts/forge-agent.mjs start deepseek --project ../my-game
 node scripts/forge-agent.mjs start glm --project ../my-game
 node scripts/forge-agent.mjs start minimax --project ../my-game
+node scripts/forge-agent.mjs start openrouter --project ../my-game
+
+# One OpenRouter key, one exact model for the whole project
+node scripts/forge-agent.mjs presets openrouter
+node scripts/forge-agent.mjs select openrouter --preset qwen --profile zdr --project ../my-game
+node scripts/forge-agent.mjs start openrouter --project ../my-game
 
 # Show the project lock or change it explicitly
 node scripts/forge-agent.mjs profile --project ../my-game
@@ -198,7 +205,9 @@ node scripts/forge-search-doctor.mjs --project ../my-game
 node scripts/forge-agent.mjs doctor
 ```
 
-The selected whole-project agent and model are stored in `.forge/agent.json`. The same model handles every phase; Forge does not route phases to other providers. Gemini and Qwen start directly in interactive mode. Kimi performs one bootstrap prompt and then reopens that exact session interactively. DeepSeek, GLM and MiniMax run through OpenCode while the chosen provider remains the only model. Their API keys use the central `forge-data/secrets/` store and an isolated OpenCode credential profile.
+The selected whole-project agent and model are stored in `.forge/agent.json`. The same model handles every phase; Forge does not route phases to other providers. Gemini and Qwen start directly in interactive mode. Kimi performs one bootstrap prompt and then reopens that exact session interactively. DeepSeek, GLM, MiniMax and OpenRouter run through OpenCode while the chosen provider remains the only model. Their API keys use the central `forge-data/secrets/` store and an isolated OpenCode credential profile.
+
+OpenRouter uses one `forge-data/secrets/openrouter.key` for named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini and Grok presets. Its default `zdr` profile requires a zero-data-retention endpoint and denies provider data collection. Use `--profile standard` only when you explicitly accept wider endpoint compatibility. Store the key without putting it on a command line: `node scripts/forge-secrets.mjs set openrouter --stdin`.
 
 GigaCode remains an experimental adapter. Forge does not fake CLI availability when no executable is installed.
 

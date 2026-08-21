@@ -1,4 +1,4 @@
-# Project Forge v4.68.31 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.32 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -60,8 +60,12 @@ Terminal API profiles use one canonical secrets directory **outside projects**:
 | `../forge-data/secrets/openai.key` | Codex API profile + optional OpenAI image batch |
 | `../forge-data/secrets/gigachat.key` | GigaChat terminal agent + image/3D providers |
 | `../forge-data/secrets/gigasearch.key` | Optional production GigaSearch provider; not needed for the no-key fallback |
+| `../forge-data/secrets/deepseek.key` | DeepSeek whole-project profile through OpenCode |
+| `../forge-data/secrets/zai.key` | GLM whole-project profile through OpenCode |
+| `../forge-data/secrets/minimax.key` | MiniMax whole-project profile through OpenCode |
+| `../forge-data/secrets/openrouter.key` | OpenRouter whole-project profile: Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini or Grok |
 
-Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY`, `GIGASEARCH_API_KEY` have precedence. Legacy project-local `.openai_key` / `.gigachat_key` / `.gigasearch_key` remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
+Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY`, `GIGASEARCH_API_KEY`, `DEEPSEEK_API_KEY`, `ZAI_API_KEY`, `MINIMAX_API_KEY` and `OPENROUTER_API_KEY` have precedence. Legacy project-local key files remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
 
 Rules:
 1. Never print, log, commit or copy secret values into wiki/config/prompt artifacts.
@@ -463,6 +467,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.32 changelog (OpenRouter whole-project host)
+
+Forge can now run an entire project through one exact OpenRouter model via the installed OpenCode runtime. One central `openrouter.key` exposes named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini and Grok presets; the selected model is persisted in `.forge/agent.json` and cannot change implicitly between phases.
+
+The default `zdr` profile requires a zero-data-retention provider endpoint and denies provider data collection. OpenCode receives the key only through a Forge-owned isolated auth directory outside every game project, and the child environment is scrubbed before launch. The broader `standard` route exists only as an explicit opt-in. Runtime regressions cover secret isolation, ZDR configuration, model preset resolution and whole-project lock behavior.
+
 ## v4.68.31 changelog (remove discontinued Qwen OAuth profile)
 
 After Qwen Code updated itself from 0.14.0 to 0.21.14, its current authentication contract reported that the free Qwen OAuth tier was discontinued on 2026-04-15. The previous 1,000-requests/day screen belonged to the stale CLI and cannot produce a model turn now.
@@ -474,9 +484,3 @@ Forge no longer offers or defaults to the discontinued OAuth profile. Qwen whole
 The first real GDD-only Qwen benchmark reached Qwen Code but exposed two adapter assumptions before the first model turn. The free OAuth profile accepts the provider alias `coder-model`, not the Coding Plan identifier `qwen3-coder-plus`; and a stopped user-scoped loopback Unity MCP produced repeated connection noise during authentication.
 
 Qwen model defaults are now profile-aware: OAuth locks `coder-model`, while Coding Plan retains `qwen3-coder-plus`. Before a Qwen launch, Forge probes configured loopback HTTP MCP endpoints and writes a run-scoped high-precedence settings overlay under `forge-data/runtime/`; only unavailable local servers are excluded, existing Qwen user settings remain unchanged, and reachable or remote MCP servers remain available. Windows subprocess regressions verify both the file-backed startup prompt and this MCP isolation. The benchmark remains pending because the provider OAuth token endpoint returned external 502/504 responses.
-
-## v4.68.29 changelog (Windows-safe whole-project startup prompt)
-
-The first authenticated Qwen launch reached the official Windows npm `.cmd` shim but failed before any model request: shell metacharacters in the long startup prompt were interpreted by `cmd.exe` instead of reaching Qwen as one literal argument.
-
-Forge now persists the full agent/model-locked startup contract in `.forge/agent-start.md` and sends every CLI a short metacharacter-free instruction to read it. This protects Qwen, Gemini, Kimi and OpenCode launches from Windows command-shell parsing while keeping the complete contract inspectable and durable. A real fake-`.cmd` subprocess regression verifies the launcher and prompt file together.

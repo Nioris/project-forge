@@ -125,6 +125,29 @@
       "modelArg": "--model",
       "rules": ["AGENTS.md", "FORGE.md", ".claude/skills"],
       "notes": "Official Kimi Code 0.37+ has verified prompt, continue, auto-permission and model flags. Forge bootstraps one headless turn and then resumes the same session interactively."
+    },
+    "openrouter": {
+      "status": "experimental",
+      "displayName": "OpenRouter through OpenCode",
+      "wholeProject": true,
+      "skillSyntax": "natural-language",
+      "executableCandidates": ["opencode"],
+      "executableEnv": "FORGE_OPENCODE_CLI",
+      "runtime": "opencode",
+      "profiles": ["zdr", "standard"],
+      "apiProvider": "openrouter",
+      "defaultModel": "openrouter/deepseek/deepseek-v4-flash-0731",
+      "modelPresets": {
+        "deepseek": "openrouter/deepseek/deepseek-v4-flash-0731",
+        "qwen": "openrouter/qwen/qwen3-coder-plus",
+        "glm": "openrouter/z-ai/glm-5.3",
+        "kimi": "openrouter/moonshotai/kimi-k3",
+        "minimax": "openrouter/minimax/minimax-m3",
+        "gemini": "openrouter/google/gemini-3.7-flash",
+        "grok": "openrouter/x-ai/grok-4.3"
+      },
+      "rules": ["AGENTS.md", "FORGE.md", ".claude/skills"],
+      "notes": "One OpenRouter key can lock any exact OpenRouter model to the whole project. The default zdr profile requires zero-data-retention endpoints and denies provider data collection; standard must be selected explicitly for wider compatibility."
     }
   }
 }
