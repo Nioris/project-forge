@@ -84,6 +84,14 @@ try {
   check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
     'a document-level no-source disclaimer cannot launder uncited external facts below it');
 
+  const mixedTbd = path.join(tmp, 'mixed-tbd-claim');
+  write(mixedTbd, 'wiki/design/brief.md', validBrief);
+  write(mixedTbd, 'wiki/architecture/metrics.md', validMetrics);
+  write(mixedTbd, 'wiki/research/references.md', '# Research\n\nLocalization: TBD (verified only for Yandex Games as a future platform).\n');
+  result = validatePhaseCompletion({ root: mixedTbd, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
+    'TBD cannot mask an uncited positive verified/requires assertion on the same line');
+
   const contradictory = path.join(tmp, 'contradictory-status');
   write(contradictory, 'wiki/design/brief.md', validBrief);
   write(contradictory, 'wiki/architecture/metrics.md', `---\nstatus: qa_blocked\n---\n${validMetrics}`);

@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.36 (latest released)
+### Version: v4.68.37 (latest released)
 
+- 2026-08-21: **v4.68.37** — `TBD` can no longer hide an uncited positive `verified/confirmed/requires` external assertion on the same research line.
 - 2026-08-21: **v4.68.36** — phase completion rejects blocked/draft evidence status, records the actual whole-project host/model and checkpoints final wiki state in the correct order.
 - 2026-08-21: **v4.68.35** — OpenCode STOP answers resume the same session through a file-backed command; research evidence is checked per line and Qwen receives a bounded `list` compatibility tool.
 - 2026-08-21: **v4.68.34** — evidence-bound experimental agents: phase completion rejects missing/template/unsourced evidence, OpenCode requires 1.18.20+, and Phase 1–7 GitHub push is deferred until verified release.

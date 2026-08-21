@@ -23,11 +23,14 @@ false phase completion, or premature remote publication.
 - [x] Install v4.68.35 and repeat the rejected research correction through Forge resume.
 - [x] Reproduce contradictory `qa_blocked` metrics with a passed phase marker and unknown host/model.
 - [x] Reject blocked/draft evidence and forward actual whole-project runtime identity.
-- [ ] Install v4.68.36 and perform the final Phase 1 consistency revalidation.
+- [x] Install v4.68.36 and perform the final Phase 1 consistency revalidation.
+- [x] Reproduce a positive Yandex assertion hidden inside a localization `TBD` line.
+- [x] Reject mixed TBD + verified/requires external claims.
+- [ ] Install v4.68.37 and remove the final unsupported line through Forge resume.
 
 ## Blockers
 
-No engine blocker. The final verdict depends on the v4.68.36 consistency revalidation.
+No engine blocker. The final verdict depends on the v4.68.37 mixed-assertion revalidation.
 
 ## Last 3 decisions
 
@@ -36,5 +39,6 @@ No engine blocker. The final verdict depends on the v4.68.36 consistency revalid
 - 2026-08-21: Experimental hosts publish the verified Phase 8 result, not intermediate phase claims.
 - 2026-08-21: OpenCode STOP answers resume through a durable file because `run --interactive` is one-turn output, not a persistent terminal conversation.
 - 2026-08-21: A complete marker may not coexist with blocked/draft evidence metadata, and runtime identity must be factual.
+- 2026-08-21: `TBD` describes an unknown value; it cannot authorize a positive external claim elsewhere on the same line.
 
-<!-- last updated 2026-08-21 during v4.68.36 Qwen consistency work -->
+<!-- last updated 2026-08-21 during v4.68.37 Qwen evidence hardening -->

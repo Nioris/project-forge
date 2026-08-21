@@ -1,4 +1,4 @@
-# Project Forge v4.68.36 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.37 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -467,6 +467,13 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.37 changelog (mixed TBD assertion guard)
+
+Phase 1 research validation now rejects a positive external assertion such as `verified`,
+`confirmed` or `requires` even when the same line also contains `TBD`. This closes the final Qwen
+benchmark loophole where an unsupported Yandex claim survived inside a nominally unknown
+localization value.
+
 ## v4.68.36 changelog (phase evidence consistency + runtime identity)
 
 Phase 1 completion now rejects metrics evidence that still declares `draft`, `blocked` or
@@ -485,15 +492,3 @@ The Phase 1 research gate is also line-bound: a document-level «no verified sou
 no longer launder competitor names, dates or market conclusions underneath it. Every detected
 external factual line needs its own URL/local source or an explicit TBD/unverified label. A bounded
 project-local `list` compatibility tool covers Qwen's repeated call to that otherwise absent tool.
-
-## v4.68.34 changelog (evidence-bound experimental agents)
-
-Real Qwen Phase 1 testing proved that successful tool calls do not guarantee evidence discipline.
-Forge now rejects a phase completion before state or Git changes when evidence files are missing,
-the Phase 1 brief is still a template, KPI numbers have neither a URL citation nor an explicit
-hypothesis/TBD label, or runtime acceptance is checked without implementation source. A rejected
-attempt becomes a durable `blocked` marker.
-
-OpenCode whole-project hosts require v1.18.20+ so the built-in tool surface used by the verified
-Qwen path is present. Experimental whole-project agents keep Phase 1–7 checkpoints local; private
-GitHub synchronization is deferred until the verified Phase 8 result.

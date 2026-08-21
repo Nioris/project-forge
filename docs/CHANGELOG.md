@@ -4677,6 +4677,18 @@ Forge no longer offers or defaults to the discontinued OAuth profile. Qwen whole
 
 The first real OpenRouter Qwen smoke test exposed two catalog-level incompatibilities before an autonomous run: `qwen3-coder-plus` had no ZDR endpoint, while `qwen3-coder` returned a raw tool-call payload instead of executing the requested file read through OpenCode. Forge now maps the OpenRouter `qwen` preset to `qwen3-coder-next`, which passed a real ZDR-enforced tool invocation and read the project lock successfully. Privacy is not weakened silently and both failed candidates remain available only through an explicit exact-model selection.
 
+## v4.68.34 changelog (evidence-bound experimental agents)
+
+Real Qwen Phase 1 testing proved that successful tool calls do not guarantee evidence discipline.
+Forge now rejects a phase completion before state or Git changes when evidence files are missing,
+the Phase 1 brief is still a template, KPI numbers have neither a URL citation nor an explicit
+hypothesis/TBD label, or runtime acceptance is checked without implementation source. A rejected
+attempt becomes a durable `blocked` marker.
+
+OpenCode whole-project hosts require v1.18.20+ so the built-in tool surface used by the verified
+Qwen path is present. Experimental whole-project agents keep Phase 1–7 checkpoints local; private
+GitHub synchronization is deferred until the verified Phase 8 result.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

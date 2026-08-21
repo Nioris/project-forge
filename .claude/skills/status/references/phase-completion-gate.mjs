@@ -33,9 +33,10 @@ const NUMBER_PATTERN = /(?:\d[\d.,]*\s*%|[$€₽]\s*\d|\d[\d.,]*\s*(?:руб\.?
 const NON_FACT_PATTERN = /\b(?:TBD|гипотез[аы]?|предположени[ея]|не\s+(?:получен[оы]?|утвержден[оы]?|проверен[оы]?|используется)|unverified|unknown|hypothesis)\b/iu;
 const EXTERNAL_CLAIM_PATTERN = /\b(?:конкурент|рын(?:ок|ка)|каталог|бенчмарк|benchmark|industry|отрасл|монетизац|локализац|требовани[ея]\s+платформ|ARPDAU|retention)\b/iu;
 const EXPLICIT_NO_EXTERNAL_PATTERN = /(?:нет|без|не\s+получен[оы]?|не\s+найден[оы]?|не\s+утвержден[оы]?|единственн\w+\s+проверенн\w+\s+источник|no\s+verified|without\s+external).{0,80}(?:внешн|источник|benchmark|бенчмарк|KPI)/isu;
-const EXTERNAL_FACT_LINE_PATTERN = /(?:\b(?:конкурент|рын(?:ок|ка)|каталог|бенчмарк|benchmark|industry|отрасл|монетизац|локализац|требовани[ея]\s+платформ|table[- ]stakes|users? complain|historical reference|modern web variants?)\b|Nokia\s+Snake|Slither\.io|Snake\.io|Google\s+Snake|Wikipedia)/iu;
+const EXTERNAL_FACT_LINE_PATTERN = /(?:\b(?:конкурент|рын(?:ок|ка)|каталог|бенчмарк|benchmark|industry|отрасл|монетизац|локализац|требовани[ея]\s+платформ|table[- ]stakes|users? complain|historical reference|modern web variants?|verified\s+only)\b|Nokia\s+Snake|Slither\.io|Snake\.io|Google\s+Snake|Yandex\s+Games|Wikipedia)/iu;
 const NEGATED_EXTERNAL_LINE_PATTERN = /(?:\b(?:нет|без|не\s+(?:получ|найд|утверж|провер|использ)|no\s+verified|no\s+reliable|without)\b).*(?:конкурент|рын|каталог|benchmark|бенчмарк|источник|source|KPI|монетизац|локализац|требовани[ея])/iu;
 const LOCAL_SOURCE_PATTERN = /(?:`[^`]*(?:GDD\.md|GameIntegration\/)[^`]*`|\b(?:GDD\.md|GameIntegration\/\S+))/iu;
+const POSITIVE_EXTERNAL_ASSERTION_PATTERN = /\b(?:verified|confirmed|requires?|подтвержден\w*|проверен\w*|требует)\b/iu;
 const RUNTIME_CHECK_PATTERN = /(?:игра\s+(?:открывается|запускается|работает|играбельна)|работа(?:ют|ет)\s+(?:клавиатур|сенсор|пауза|сохран|рестарт)|проход(?:ит|ят)\s+(?:тест|проверк)|переживает\s+перезагруз|responsive|playable|keyboard|touch|localStorage)/iu;
 const IMPLEMENTATION_EXTENSIONS = new Set(['.html', '.js', '.mjs', '.ts', '.tsx', '.jsx', '.css', '.vue', '.svelte']);
 
@@ -128,7 +129,7 @@ function validatePhase1(root, evidence, failures) {
     const uncitedLine = text.split(/\r?\n/).find(line => EXTERNAL_FACT_LINE_PATTERN.test(line)
       && !lineHasCitation(line, refs)
       && !LOCAL_SOURCE_PATTERN.test(line)
-      && !NON_FACT_PATTERN.test(line)
+      && !(NON_FACT_PATTERN.test(line) && !POSITIVE_EXTERNAL_ASSERTION_PATTERN.test(line))
       && !NEGATED_EXTERNAL_LINE_PATTERN.test(line));
     if (uncitedLine) {
       failures.push(`${normalizeRelative(path.relative(root, file))} contains an external factual line without a URL/local source or TBD/unverified label`);
