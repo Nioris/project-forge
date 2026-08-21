@@ -409,6 +409,12 @@ safe('project-git-lifecycle', () => {
   else ok.push('project Git lifecycle creates local checkpoints and allows only private GitHub automation');
 });
 
+safe('phase-completion-gate', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-phase-completion-gate.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('phase completion evidence gate regression failed — run scripts/check-phase-completion-gate.mjs');
+  else ok.push('phase completion rejects missing evidence, invented KPI facts and false acceptance claims');
+});
+
 safe('codex-one-window-pipeline', () => {
   const r = spawnSync(process.execPath, ['scripts/check-codex-pipeline.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('one-window Codex phase orchestration failed — run scripts/check-codex-pipeline.mjs');

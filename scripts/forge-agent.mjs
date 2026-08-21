@@ -13,6 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { getProviderSecret, RUNTIME_DIR, ensureDataDirs } from './lib/forge-secrets.mjs';
 import { applyDefaultSearchEnvironment } from './lib/forge-search.mjs';
+import { inspectRuntimeVersion, runtimeMeetsMinimum } from './lib/runtime-version.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -79,7 +80,7 @@ function defaultModelFor(agent, profile) {
   return agent.profileModels?.[profile] || agent.defaultModel || 'provider-default';
 }
 function autonomousPrompt(name, model) {
-  return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
+  return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. External facts and numeric KPI claims require a real source URL; when no source is available, write TBD or label the value as a hypothesis. Never mark an acceptance checkbox complete unless the referenced implementation exists and the stated verification actually ran. Treat a non-zero phase-state completion command as a hard block: fix its reported evidence failures and never overwrite or reinterpret the marker. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
 }
 function writeAutonomousPrompt(project, prompt) {
   const path=join(project,'.forge','agent-start.md');
@@ -178,6 +179,17 @@ function assertProviderModel(agent, model) {
   if(agent.apiProvider==='openrouter'&&!/^openrouter\/(?:~?[a-z0-9][a-z0-9._-]*\/)?[a-z0-9~][a-z0-9._~:-]*$/i.test(String(model||''))) {
     fail(`OpenRouter model must use the exact OpenCode id openrouter/<author>/<model>; got: ${model}`);
   }
+}
+function assertMinimumRuntime(agent, detected) {
+  const minimum = agent.minimumRuntimeVersion;
+  if (!minimum) return null;
+  const inspected = inspectRuntimeVersion(detected.executable, { shell: needsShell(detected.executable) });
+  if (!inspected.ok) fail(`${agent.displayName} version could not be determined. Expected ${minimum}+ from: ${detected.executable}`, 3);
+  if (!runtimeMeetsMinimum(inspected.version, minimum)) {
+    fail(`${agent.displayName} ${inspected.version} is too old; Project Forge requires ${minimum}+ for reliable built-in tools. Update the runtime and retry.`, 3);
+  }
+  console.log(`[Forge] Runtime preflight: ${agent.displayName} ${inspected.version} (minimum ${minimum})`);
+  return inspected.version;
 }
 function loopbackEndpoint(urlValue) {
   try {
@@ -318,6 +330,7 @@ if (cmd === 'start') {
   const a=getAgent(current.agent); if(!a.wholeProject) fail(`Stored agent ${current.agent} does not support whole-project start. Re-run select.`); const profile=current.profile || a.profiles?.[0] || 'default';
   if(a.profiles && !a.profiles.includes(profile)) fail(`Stored profile ${profile} is not valid for ${current.agent}. Re-run select.`);
   const d=detectExecutable(current.agent,a); if(!d.found) fail(`${a.displayName} runtime was not detected. Run: doctor ${current.agent}`,3);
+  assertMinimumRuntime(a,d);
   const model=val('--model') || current.model || defaultModelFor(a, profile);
   assertProviderModel(a,model);
   if(val('--model') && model!==current.model && !has('--reselect')) fail(`Project model is locked to ${current.model}. Use select ${current.agent} --model ${model} first, or pass --reselect.`);

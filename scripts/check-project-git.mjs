@@ -55,6 +55,11 @@ try {
     && loaded.policy.github.autoCreate && loaded.policy.github.autoPush,
   'workspace policy enables only private auto-create and auto-push');
 
+  fs.writeFileSync(path.join(project, 'local-only.txt'), 'experimental phase checkpoint\n');
+  const deferred = checkpointProjectGit({ projectRoot: project, message: 'forge: experimental local checkpoint', allowRemote: false });
+  check(Boolean(deferred.commit) && deferred.remoteDeferred && !deferred.pushed,
+    'experimental phase checkpoint can defer all GitHub contact while preserving the local commit');
+
   const privateFixture = process.env.FORGE_TEST_PRIVATE_REPO;
   if (privateFixture) {
     const [owner, repository] = privateFixture.split('/');

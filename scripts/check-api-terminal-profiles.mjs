@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { compareVersions, runtimeMeetsMinimum } from './lib/runtime-version.mjs';
 
 const ROOT=resolve(process.cwd()); const errors=[]; const ok=[];
 const need=rel=>existsSync(join(ROOT,rel))?ok.push(rel):errors.push(`${rel} missing`);
@@ -189,6 +190,8 @@ for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi','openrouter
 }
 if(reg.agents?.openrouter?.profiles?.[0]!=='zdr'||reg.agents?.openrouter?.modelPresets?.qwen!=='openrouter/qwen/qwen3-coder-next') errors.push('OpenRouter ZDR profile or verified Qwen Coder Next preset missing');
 else ok.push('OpenRouter defaults to ZDR and exposes the verified Qwen Coder Next preset');
+if(reg.agents?.openrouter?.minimumRuntimeVersion!=='1.18.20'||!runtimeMeetsMinimum('1.18.20','1.18.20')||compareVersions('1.18.19','1.18.20')!==-1) errors.push('OpenCode minimum-version preflight is missing or invalid');
+else ok.push('OpenCode whole-project launch requires the tool-compatible 1.18.20+ runtime');
 if(reg.agents?.qwen?.profiles?.includes('oauth')||reg.agents?.qwen?.profileModels?.['coding-plan']!=='qwen3-coder-plus') errors.push('Qwen profiles still expose discontinued OAuth or lack the Coding Plan model');
 else ok.push('Qwen exposes current Coding Plan/API profiles without discontinued OAuth');
 

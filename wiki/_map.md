@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.33 (latest released)
+### Version: v4.68.34 (latest released)
 
+- 2026-08-21: **v4.68.34** — evidence-bound experimental agents: phase completion rejects missing/template/unsourced evidence, OpenCode requires 1.18.20+, and Phase 1–7 GitHub push is deferred until verified release.
 - 2026-08-21: **v4.68.33** — OpenRouter Qwen preset corrected to tool-verified, ZDR-capable Qwen3 Coder Next after real Plus/Coder smoke tests exposed endpoint and tool-call incompatibilities.
 - 2026-08-21: **v4.68.32** — OpenRouter whole-project host through OpenCode: one central key, exact per-project model lock, Qwen/DeepSeek/GLM/Kimi/MiniMax/Gemini/Grok presets, ZDR by default and isolated credentials.
 - 2026-08-20: **v4.68.31** — removed the discontinued Qwen OAuth profile; current Qwen locks use Coding Plan or ModelStudio API credentials.

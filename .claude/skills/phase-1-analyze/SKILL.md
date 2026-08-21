@@ -27,6 +27,9 @@ node .claude/skills/status/references/phase-state.mjs complete 1 wiki/architectu
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
+Команда `complete` сама отклоняет отсутствующие evidence-файлы, незаполненный бриф, числовые KPI
+без URL-источника/явной метки «гипотеза» и отмеченные выполненными runtime-критерии при отсутствии
+реального кода. При отказе marker остаётся `blocked`, Git checkpoint и удалённый push не выполняются.
 
 
 **Модели:** Claude `opus`. Codex `gpt-5.6-sol/high`; route `metrics-conflict` →

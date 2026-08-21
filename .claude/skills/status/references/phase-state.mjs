@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validatePhaseCompletion } from './phase-completion-gate.mjs';
 
 const PHASES = {
   1: 'Analyze', 2: 'Design', 3: 'Construct', 4: 'Visual', 5: 'Tech',
@@ -134,11 +135,24 @@ if (command === 'start' || command === 'reopen') {
   record.reason = rest.join(' ').trim() || 'Awaiting user decision or required evidence';
   record.completedAt = null;
 } else if (command === 'complete') {
+  const gate = validatePhaseCompletion({ root, phase, evidence: rest });
+  if (!gate.ok) {
+    record.state = 'blocked';
+    record.startedAt = record.startedAt || now;
+    record.completedAt = null;
+    record.reason = `Completion gate rejected: ${gate.failures.join('; ')}`;
+    record.completionGate = { checkedAt: now, status: 'rejected', failures: gate.failures };
+    fs.writeFileSync(outPath, JSON.stringify(record, null, 2) + '\n', 'utf8');
+    console.error(`[BLOCKED] Phase ${phase} ${PHASES[phase]} completion rejected.`);
+    for (const failure of gate.failures) console.error(`  - ${failure}`);
+    process.exit(1);
+  }
   record.state = phase === 9 ? 'ongoing' : 'complete';
   record.startedAt = record.startedAt || now;
   record.completedAt = now;
   record.reason = null;
-  record.evidence = [...new Set(rest.map(x => x.replace(/\\/g, '/')).filter(Boolean))];
+  record.evidence = gate.evidence;
+  record.completionGate = { checkedAt: now, status: 'passed', failures: [] };
 }
 
 fs.writeFileSync(outPath, JSON.stringify(record, null, 2) + '\n', 'utf8');
@@ -151,11 +165,13 @@ if (command === 'complete') {
       projectRoot: root,
       message: `forge: complete phase ${phase} ${PHASES[phase]}`,
       allowRemoteFailure: true,
+      allowRemote: phase >= 8 || !fs.existsSync(path.join(root, '.forge', 'agent.json')),
     });
     if (git.skipped) console.log(`[Forge Git] skipped: ${git.reason}`);
     else {
       const parts = [git.commit ? `commit ${git.commit}` : 'working tree unchanged'];
       if (git.pushed) parts.push(`pushed private ${git.remote.fullName}`);
+      if (git.remoteDeferred) parts.push('private remote deferred until Phase 8');
       if (git.warning) parts.push(`remote warning: ${git.warning}`);
       console.log(`[Forge Git] ${parts.join('; ')}`);
     }

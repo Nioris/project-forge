@@ -161,6 +161,7 @@
 .agents/skills/status/references/MODEL-ROUTING.md
 .agents/skills/status/references/forge-event.mjs
 .agents/skills/status/references/model-policy.json
+.agents/skills/status/references/phase-completion-gate.mjs
 .agents/skills/status/references/phase-state.mjs
 .agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
@@ -384,6 +385,7 @@
 .claude/skills/status/references/MODEL-ROUTING.md
 .claude/skills/status/references/forge-event.mjs
 .claude/skills/status/references/model-policy.json
+.claude/skills/status/references/phase-completion-gate.mjs
 .claude/skills/status/references/phase-state.mjs
 .claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
@@ -481,6 +483,7 @@ RELEASE_NOTES_v4.68.27.md
 RELEASE_NOTES_v4.68.28.md
 RELEASE_NOTES_v4.68.29.md
 RELEASE_NOTES_v4.68.3.md
+RELEASE_NOTES_v4.68.34.md
 RELEASE_NOTES_v4.68.4.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
@@ -694,6 +697,7 @@ scripts/check-inline-strings.mjs
 scripts/check-modularize-existing-project.mjs
 scripts/check-nested-dirs.mjs
 scripts/check-no-float-money.mjs
+scripts/check-phase-completion-gate.mjs
 scripts/check-pipeline-state.mjs
 scripts/check-platform-completeness.mjs
 scripts/check-project-git.mjs
@@ -735,6 +739,7 @@ scripts/lib/codex-cost-report.mjs
 scripts/lib/forge-search.mjs
 scripts/lib/forge-secrets.mjs
 scripts/lib/gigachat-api.mjs
+scripts/lib/runtime-version.mjs
 scripts/local-stage.mjs
 scripts/migrate-sessions.mjs
 scripts/mobile-check.mjs

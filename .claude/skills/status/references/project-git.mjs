@@ -220,7 +220,7 @@ function ensurePrivateGitHub(root, github) {
   return { fullName, url: info.url };
 }
 
-export function checkpointProjectGit({ projectRoot = process.cwd(), message = 'forge: project checkpoint', allowRemoteFailure = true } = {}) {
+export function checkpointProjectGit({ projectRoot = process.cwd(), message = 'forge: project checkpoint', allowRemoteFailure = true, allowRemote = true } = {}) {
   const root = path.resolve(projectRoot);
   if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) throw new Error(`Project folder not found: ${root}`);
   const { policy, sources } = loadProjectGitPolicy(root);
@@ -229,8 +229,12 @@ export function checkpointProjectGit({ projectRoot = process.cwd(), message = 'f
   ensureManagedIgnore(root);
   const initialized = ensureLocalRepository(root);
   const commit = commitCheckpoint(root, initialized ? 'forge: initialize project repository' : message);
-  const result = { root, initialized, commit, pushed: false, remote: null, sources, warning: null };
+  const result = { root, initialized, commit, pushed: false, remote: null, remoteDeferred: false, sources, warning: null };
   if (!policy.github?.enabled) return result;
+  if (!allowRemote) {
+    result.remoteDeferred = true;
+    return result;
+  }
   try {
     const remote = ensurePrivateGitHub(root, policy.github);
     result.remote = remote;

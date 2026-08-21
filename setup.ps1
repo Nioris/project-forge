@@ -15,7 +15,7 @@ Write-Host ""
 
 Write-Host ""
 Write-Host "  ╔══════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "  ║         PROJECT FORGE v4.68.33              ║" -ForegroundColor Cyan
+Write-Host "  ║         PROJECT FORGE v4.68.34              ║" -ForegroundColor Cyan
 Write-Host "  ║   Multi-platform release pipeline     ║" -ForegroundColor Cyan
 Write-Host "  ╚══════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""

@@ -51,8 +51,9 @@ try {
 
   const p3=mk('marker-block');
   w(p3,'WorkProgress/marker-block/ANALYSIS.md','# analysis');
-  w(p3,'wiki/architecture/metrics.md','# metrics');
-  phase(p3,'complete','1','wiki/architecture/metrics.md');
+  w(p3,'wiki/architecture/metrics.md','# Metrics\n\nD1/D7: TBD; verified external sources not obtained.\n\n## Контент-бюджет\n\n| Есть | Дефицит |\n|---|---|\n| Analysis | Implementation |\n');
+  w(p3,'wiki/design/brief.md','# Brief\n\n## Аудитория\nPlayers 12+\n\n## Амбиция\nMVP\n\n## Обещание игры\nFast mastery.\n\n## Отличие\nCompact sessions.\n\n## История\nNo prior prototype.\n');
+  phase(p3,'complete','1','wiki/architecture/metrics.md','wiki/design/brief.md');
   phase(p3,'block','2','Awaiting GDD approval');
   s=snap(p3);
   (s.currentPhase===2 && s.currentState==='blocked' && /GDD approval/.test(s.stopPoint||''))
