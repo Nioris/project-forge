@@ -4689,6 +4689,17 @@ OpenCode whole-project hosts require v1.18.20+ so the built-in tool surface used
 Qwen path is present. Experimental whole-project agents keep Phase 1–7 checkpoints local; private
 GitHub synchronization is deferred until the verified Phase 8 result.
 
+## v4.68.35 changelog (OpenCode STOP resume + source-line gate)
+
+OpenCode `run --interactive` renders one model turn but exits after a Forge STOP; it is not a
+persistent conversational terminal. Forge now exposes `forge-agent resume --answer ...`, stores the
+answer in a project file instead of shell arguments, and continues the exact last OpenCode session.
+
+The Phase 1 research gate is also line-bound: a document-level «no verified sources» disclaimer can
+no longer launder competitor names, dates or market conclusions underneath it. Every detected
+external factual line needs its own URL/local source or an explicit TBD/unverified label. A bounded
+project-local `list` compatibility tool covers Qwen's repeated call to that otherwise absent tool.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

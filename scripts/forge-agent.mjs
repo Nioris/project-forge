@@ -136,10 +136,13 @@ function ensureCodexApiAuth(exe, project) {
   return {home,source:found.source};
 }
 function openCodeProviderConfig(provider, model = null, profile = null) {
+  const agent = { build: { steps: 64 } };
   if (provider === 'zai') return {
+    agent,
     provider: { zai: { npm: '@ai-sdk/openai-compatible', name: 'Z.ai', options: { baseURL: 'https://api.z.ai/api/paas/v4' }, models: { 'glm-5.3': { name: 'GLM 5.3' } } } },
   };
   if (provider === 'minimax') return {
+    agent,
     provider: { minimax: { npm: '@ai-sdk/anthropic', name: 'MiniMax', options: { baseURL: 'https://api.minimax.io/anthropic' }, models: { 'MiniMax-M3': { name: 'MiniMax M3' } } } },
   };
   if (provider === 'openrouter') {
@@ -148,9 +151,9 @@ function openCodeProviderConfig(provider, model = null, profile = null) {
     const routing=profile==='zdr'
       ? {data_collection:'deny',zdr:true}
       : {data_collection:'deny'};
-    return {provider:{openrouter:{models:{[slug]:{options:{provider:routing}}}}}};
+    return {agent,provider:{openrouter:{models:{[slug]:{options:{provider:routing}}}}}};
   }
-  return null;
+  return {agent};
 }
 function openCodeEnvironment(agent, project, { model = null, profile = null } = {}) {
   const env={...process.env};

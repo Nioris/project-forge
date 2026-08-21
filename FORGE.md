@@ -67,6 +67,9 @@ Forge keeps agent semantics separate from billing/authentication:
 OpenCode whole-project hosts return after each model turn. After a Forge STOP, continue the exact
 last session with `forge-agent resume --project <path> --answer "<answer>"`; Forge stores the answer
 in `.forge/agent-resume.md` and passes only a fixed instruction to the provider process.
+Forge caps each OpenCode turn at 64 agentic steps so a provider tool loop is forced back to a text
+response instead of running without a cost boundary. Resume the same session if legitimate work
+remains after that boundary.
 
 API secrets live outside projects under `forge-data/secrets/`; never copy them into project files, wiki, prompts or shell output. Switching profiles must not change the nine-phase state machine or skill semantics.
 

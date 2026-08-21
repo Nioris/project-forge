@@ -1,4 +1,4 @@
-# Project Forge v4.68.37 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.38 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -467,6 +467,13 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.38 changelog (OpenCode loop budget)
+
+OpenCode whole-project turns now have a 64-step agentic ceiling. The project-local `list`
+compatibility tool also suppresses identical successful repeats within the same session. Together
+these safeguards convert provider tool loops into a bounded text handoff instead of unmetered API
+spend; legitimate unfinished work remains resumable in the same session.
+
 ## v4.68.37 changelog (mixed TBD assertion guard)
 
 Phase 1 research validation now rejects a positive external assertion such as `verified`,
@@ -481,14 +488,3 @@ Phase 1 completion now rejects metrics evidence that still declares `draft`, `bl
 resume environments also forward the actual locked host/model into `phase-state`, replacing the
 misleading `unknown` runtime identity observed during the Qwen benchmark. The Phase 1 workflow now
 requires final wiki/status updates before the checkpointing completion command.
-
-## v4.68.35 changelog (OpenCode STOP resume + source-line gate)
-
-OpenCode `run --interactive` renders one model turn but exits after a Forge STOP; it is not a
-persistent conversational terminal. Forge now exposes `forge-agent resume --answer ...`, stores the
-answer in a project file instead of shell arguments, and continues the exact last OpenCode session.
-
-The Phase 1 research gate is also line-bound: a document-level «no verified sources» disclaimer can
-no longer launder competitor names, dates or market conclusions underneath it. Every detected
-external factual line needs its own URL/local source or an explicit TBD/unverified label. A bounded
-project-local `list` compatibility tool covers Qwen's repeated call to that otherwise absent tool.

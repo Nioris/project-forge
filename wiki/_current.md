@@ -26,11 +26,16 @@ false phase completion, or premature remote publication.
 - [x] Install v4.68.36 and perform the final Phase 1 consistency revalidation.
 - [x] Reproduce a positive Yandex assertion hidden inside a localization `TBD` line.
 - [x] Reject mixed TBD + verified/requires external claims.
-- [ ] Install v4.68.37 and remove the final unsupported line through Forge resume.
+- [x] Install v4.68.37 and remove the final unsupported line through Forge resume.
+- [x] Verify the managed OpenCode `list` tool against the live Qwen session.
+- [x] Reproduce Qwen repeating a successful `list` result without producing a final answer.
+- [x] Add per-session identical-list suppression and a 64-step OpenCode turn budget.
+- [x] Release, install and fleet-sync v4.68.38 across all 30 sibling projects.
 
 ## Blockers
 
-No engine blocker. The final verdict depends on the v4.68.37 mixed-assertion revalidation.
+No engine blocker. Qwen Phase 1 is mechanically complete and honest; v4.68.38 is installed and
+packages the verified cost guard discovered by the final compatibility smoke test.
 
 ## Last 3 decisions
 
@@ -40,5 +45,6 @@ No engine blocker. The final verdict depends on the v4.68.37 mixed-assertion rev
 - 2026-08-21: OpenCode STOP answers resume through a durable file because `run --interactive` is one-turn output, not a persistent terminal conversation.
 - 2026-08-21: A complete marker may not coexist with blocked/draft evidence metadata, and runtime identity must be factual.
 - 2026-08-21: `TBD` describes an unknown value; it cannot authorize a positive external claim elsewhere on the same line.
+- 2026-08-21: OpenCode whole-project turns use a 64-step ceiling; repeated successful directory listings are not billable progress.
 
-<!-- last updated 2026-08-21 during v4.68.37 Qwen evidence hardening -->
+<!-- last updated 2026-08-21 during v4.68.38 OpenCode loop hardening -->
