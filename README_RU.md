@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая публичная версия:** `v4.68.32`
+**Текущая публичная версия:** `v4.68.33`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -156,7 +156,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.32` обычная авторизация и API-профили остаются разделены.
+В `v4.68.33` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка
@@ -187,7 +187,7 @@ node scripts/forge-search-doctor.mjs --project ../my-game
 node scripts/forge-agent.mjs doctor
 ```
 
-OpenRouter presets охватывают Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini и Grok. Ключ хранится вне проектов в `forge-data/secrets/openrouter.key`. Профиль `zdr` по умолчанию требует endpoint без хранения данных и запрещает provider data collection; `standard` включается только явно ради более широкой совместимости.
+OpenRouter presets охватывают Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini и Grok. Пресет Qwen использует проверенный инструментами `qwen3-coder-next`; у `qwen3-coder-plus` сейчас нет ZDR-endpoint. Ключ хранится вне проектов в `forge-data/secrets/openrouter.key`. Профиль `zdr` по умолчанию требует endpoint без хранения данных и запрещает provider data collection; `standard` включается только явно ради более широкой совместимости.
 
 GigaCode пока остаётся экспериментальным adapter'ом. Если CLI/executable не установлен, Forge не делает вид, что он доступен.
 

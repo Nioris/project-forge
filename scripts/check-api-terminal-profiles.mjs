@@ -187,8 +187,8 @@ for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi','openrouter
   if(!reg.agents?.[name]?.defaultModel) errors.push(`${name} whole-project default model missing`);
   else ok.push(`${name} whole-project model declared`);
 }
-if(reg.agents?.openrouter?.profiles?.[0]!=='zdr'||!reg.agents?.openrouter?.modelPresets?.qwen) errors.push('OpenRouter ZDR profile or model presets missing');
-else ok.push('OpenRouter defaults to ZDR and exposes named model presets');
+if(reg.agents?.openrouter?.profiles?.[0]!=='zdr'||reg.agents?.openrouter?.modelPresets?.qwen!=='openrouter/qwen/qwen3-coder-next') errors.push('OpenRouter ZDR profile or verified Qwen Coder Next preset missing');
+else ok.push('OpenRouter defaults to ZDR and exposes the verified Qwen Coder Next preset');
 if(reg.agents?.qwen?.profiles?.includes('oauth')||reg.agents?.qwen?.profileModels?.['coding-plan']!=='qwen3-coder-plus') errors.push('Qwen profiles still expose discontinued OAuth or lack the Coding Plan model');
 else ok.push('Qwen exposes current Coding Plan/API profiles without discontinued OAuth');
 
