@@ -1,6 +1,6 @@
 {
   "name": "project-forge",
-  "version": "4.68.35",
+  "version": "4.68.36",
   "description": "Multi-platform game/app bootstrapper with 9-phase Forge core, Claude/Codex subscription + API terminal profiles, GigaChat terminal agent, AI Studio, managed sibling sync and release gates.",
   "author": {
     "name": "Aleksandr Krasnokutskiy / Rodrik LTD",

@@ -213,6 +213,7 @@ if(!forge.includes('apiKeyHelper')) errors.push('Claude API profile does not use
 if(!forge.includes('delete env.ANTHROPIC_API_KEY')) errors.push('Claude API launch leaves ANTHROPIC_API_KEY in child environment'); else ok.push('Claude API key removed from launched tool environment');
 if(!forge.includes("env.NODE_USE_SYSTEM_CA='1'")) errors.push('GigaChat launcher does not enable the Node system CA store before child startup'); else ok.push('GigaChat launcher enables the Node system CA store');
 if(!forge.includes('applyDefaultSearchEnvironment(env)')) errors.push('GigaChat launcher does not apply the shared no-key search fallback'); else ok.push('GigaChat launcher uses the shared no-key search fallback');
+if(!forge.includes('env.FORGE_AI_HOST=agentName')||!forge.includes('env.FORGE_MODEL=model')) errors.push('whole-project runtime identity is not forwarded to phase markers'); else ok.push('whole-project phase markers receive the actual host and model identity');
 if(!existsSync(join(ROOT,'adapters/opencode/tools/list.ts'))) errors.push('OpenCode list compatibility tool missing'); else ok.push('OpenCode exposes a bounded project-local list compatibility tool');
 const giga=readFileSync(join(ROOT,'scripts/gigachat-agent.mjs'),'utf8');
 if(!giga.includes('assertWritablePath(p)')) errors.push('GigaChat direct edits do not enforce protected Forge paths'); else ok.push('GigaChat direct edits enforce protected Forge paths');

@@ -84,6 +84,13 @@ try {
   check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
     'a document-level no-source disclaimer cannot launder uncited external facts below it');
 
+  const contradictory = path.join(tmp, 'contradictory-status');
+  write(contradictory, 'wiki/design/brief.md', validBrief);
+  write(contradictory, 'wiki/architecture/metrics.md', `---\nstatus: qa_blocked\n---\n${validMetrics}`);
+  result = validatePhaseCompletion({ root: contradictory, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /blocked or draft status/.test(item)),
+    'a blocked evidence document cannot coexist with a complete phase marker');
+
   const rejected = spawnSync(process.execPath, [phaseState, 'complete', '1', 'wiki/architecture/metrics.md', 'wiki/design/brief.md'], { cwd: invented, encoding: 'utf8' });
   const rejectedMarker = JSON.parse(fs.readFileSync(path.join(invented, 'wiki', 'phases', 'phase-1.json'), 'utf8'));
   check(rejected.status !== 0 && rejectedMarker.state === 'blocked' && !fs.existsSync(path.join(invented, '.git')),

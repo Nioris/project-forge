@@ -177,6 +177,12 @@ function openCodeEnvironment(agent, project, { model = null, profile = null } = 
   if(provider==='openrouter') console.log(`[Forge] OpenRouter privacy -> ${profile==='zdr'?'ZDR required + provider data collection denied':'provider data collection denied; retention compatibility allowed'}`);
   return env;
 }
+function declareWholeProjectRuntime(env, agentName, model) {
+  env.FORGE_AI_HOST=agentName;
+  env.FORGE_MODEL=model;
+  env.FORGE_MODEL_ENFORCED='1';
+  return env;
+}
 function presetModel(agent, preset) {
   if(!preset) return null;
   const model=agent.modelPresets?.[preset];
@@ -353,7 +359,7 @@ if (cmd === 'start') {
   writeAutonomousPrompt(project,prompt);
   console.log(`[Forge] Whole-project lock: ${a.displayName} / ${model}`);
   console.log(`[Forge] Autonomous interactive run -> ${project}`);
-  const startEnv=a.runtime==='opencode'?openCodeEnvironment(a,project,{model,profile}):current.agent==='qwen'?qwenEnvironment(project):{...process.env};
+  const startEnv=declareWholeProjectRuntime(a.runtime==='opencode'?openCodeEnvironment(a,project,{model,profile}):current.agent==='qwen'?qwenEnvironment(project):{...process.env},current.agent,model);
   const r=spawnAgent(d.executable,launchArgs,{cwd:project,env:startEnv}); if(r.error) fail(`${a.displayName} launch failed: ${r.error.message}`,4);
   if(a.runtime==='kimi' && r.status===0){
     console.log('[Forge] Kimi bootstrap turn complete; reopening the same project session interactively.');
@@ -379,7 +385,7 @@ if (cmd === 'resume') {
   }
   const promptPath=writeResumePrompt(project,answer);
   console.log(`[Forge] Resume ${a.displayName} / ${model} from ${promptPath}`);
-  const env=openCodeEnvironment(a,project,{model,profile:current.profile});
+  const env=declareWholeProjectRuntime(openCodeEnvironment(a,project,{model,profile:current.profile}),current.agent,model);
   const r=spawnAgent(d.executable,launchArgs,{cwd:project,env}); if(r.error) fail(`${a.displayName} resume failed: ${r.error.message}`,4);
   process.exit(r.status??0);
 }

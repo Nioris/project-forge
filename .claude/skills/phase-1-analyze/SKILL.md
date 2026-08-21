@@ -19,7 +19,10 @@ node .claude/skills/status/references/phase-state.mjs start 1
 node .claude/skills/status/references/phase-state.mjs block 1 "KPI Floor/Target/Stretch + 3-month content budget approval"
 ```
 
-Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
+Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы.
+Сначала приведи `wiki/_current.md`, `wiki/_map.md` и статусы evidence-документов в состояние,
+которое не противоречит завершению. Команда ниже делает Git checkpoint сразу после marker; после
+неё не оставляй обязательные wiki-правки незакоммиченными:
 
 ```bash
 node .claude/skills/status/references/phase-state.mjs complete 1 wiki/architecture/metrics.md wiki/design/brief.md

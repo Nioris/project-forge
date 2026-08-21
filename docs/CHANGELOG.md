@@ -4673,6 +4673,10 @@ After Qwen Code updated itself from 0.14.0 to 0.21.14, its current authenticatio
 
 Forge no longer offers or defaults to the discontinued OAuth profile. Qwen whole-project locks now expose `coding-plan` and `api`; both default to `qwen3-coder-plus`. Interactive setup uses `/auth` → Alibaba ModelStudio → Coding Plan or Standard API Key. The GDD-only benchmark remains ready but intentionally blocked until one of those paid credentials is configured.
 
+## v4.68.33 changelog (ZDR-capable Qwen agent preset)
+
+The first real OpenRouter Qwen smoke test exposed two catalog-level incompatibilities before an autonomous run: `qwen3-coder-plus` had no ZDR endpoint, while `qwen3-coder` returned a raw tool-call payload instead of executing the requested file read through OpenCode. Forge now maps the OpenRouter `qwen` preset to `qwen3-coder-next`, which passed a real ZDR-enforced tool invocation and read the project lock successfully. Privacy is not weakened silently and both failed candidates remain available only through an explicit exact-model selection.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

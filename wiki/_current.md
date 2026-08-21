@@ -20,11 +20,14 @@ false phase completion, or premature remote publication.
 - [x] Reproduce OpenCode one-turn exit and Qwen's document-level source laundering.
 - [x] Add file-backed same-session STOP resume and a bounded `list` compatibility tool.
 - [x] Harden Phase 1 research evidence from document-level to line-level validation.
-- [ ] Install v4.68.35 and repeat the rejected research correction through Forge resume.
+- [x] Install v4.68.35 and repeat the rejected research correction through Forge resume.
+- [x] Reproduce contradictory `qa_blocked` metrics with a passed phase marker and unknown host/model.
+- [x] Reject blocked/draft evidence and forward actual whole-project runtime identity.
+- [ ] Install v4.68.36 and perform the final Phase 1 consistency revalidation.
 
 ## Blockers
 
-No engine blocker. The final verdict depends on the v4.68.35 resume + line-source benchmark.
+No engine blocker. The final verdict depends on the v4.68.36 consistency revalidation.
 
 ## Last 3 decisions
 
@@ -32,5 +35,6 @@ No engine blocker. The final verdict depends on the v4.68.35 resume + line-sourc
 - 2026-08-21: Missing external evidence is represented as `TBD`/hypothesis, never filled from model memory.
 - 2026-08-21: Experimental hosts publish the verified Phase 8 result, not intermediate phase claims.
 - 2026-08-21: OpenCode STOP answers resume through a durable file because `run --interactive` is one-turn output, not a persistent terminal conversation.
+- 2026-08-21: A complete marker may not coexist with blocked/draft evidence metadata, and runtime identity must be factual.
 
-<!-- last updated 2026-08-21 during v4.68.35 Qwen resume/source-gate work -->
+<!-- last updated 2026-08-21 during v4.68.36 Qwen consistency work -->

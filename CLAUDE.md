@@ -1,4 +1,4 @@
-# Project Forge v4.68.35 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.36 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -467,6 +467,14 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.36 changelog (phase evidence consistency + runtime identity)
+
+Phase 1 completion now rejects metrics evidence that still declares `draft`, `blocked` or
+`qa_blocked`; a passed marker cannot contradict its own source document. Whole-project launch and
+resume environments also forward the actual locked host/model into `phase-state`, replacing the
+misleading `unknown` runtime identity observed during the Qwen benchmark. The Phase 1 workflow now
+requires final wiki/status updates before the checkpointing completion command.
+
 ## v4.68.35 changelog (OpenCode STOP resume + source-line gate)
 
 OpenCode `run --interactive` renders one model turn but exits after a Forge STOP; it is not a
@@ -489,7 +497,3 @@ attempt becomes a durable `blocked` marker.
 OpenCode whole-project hosts require v1.18.20+ so the built-in tool surface used by the verified
 Qwen path is present. Experimental whole-project agents keep Phase 1–7 checkpoints local; private
 GitHub synchronization is deferred until the verified Phase 8 result.
-
-## v4.68.33 changelog (ZDR-capable Qwen agent preset)
-
-The first real OpenRouter Qwen smoke test exposed two catalog-level incompatibilities before an autonomous run: `qwen3-coder-plus` had no ZDR endpoint, while `qwen3-coder` returned a raw tool-call payload instead of executing the requested file read through OpenCode. Forge now maps the OpenRouter `qwen` preset to `qwen3-coder-next`, which passed a real ZDR-enforced tool invocation and read the project lock successfully. Privacy is not weakened silently and both failed candidates remain available only through an explicit exact-model selection.

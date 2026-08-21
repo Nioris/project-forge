@@ -102,6 +102,9 @@ function validatePhase1(root, evidence, failures) {
   const metrics = safeProjectFile(root, 'wiki/architecture/metrics.md');
   if (metrics) {
     const text = fs.readFileSync(metrics.absolute, 'utf8');
+    if (/^status:\s*(?:qa[_-]?blocked|blocked|draft)\s*$/imu.test(text)) {
+      failures.push('wiki/architecture/metrics.md still declares a blocked or draft status');
+    }
     if (!/контент[- ]бюджет/iu.test(text) || !/дефицит/iu.test(text)) {
       failures.push('wiki/architecture/metrics.md must contain the Phase 1 content budget and deficit');
     }

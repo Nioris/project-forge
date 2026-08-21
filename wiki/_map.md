@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.35 (latest released)
+### Version: v4.68.36 (latest released)
 
+- 2026-08-21: **v4.68.36** — phase completion rejects blocked/draft evidence status, records the actual whole-project host/model and checkpoints final wiki state in the correct order.
 - 2026-08-21: **v4.68.35** — OpenCode STOP answers resume the same session through a file-backed command; research evidence is checked per line and Qwen receives a bounded `list` compatibility tool.
 - 2026-08-21: **v4.68.34** — evidence-bound experimental agents: phase completion rejects missing/template/unsourced evidence, OpenCode requires 1.18.20+, and Phase 1–7 GitHub push is deferred until verified release.
 - 2026-08-21: **v4.68.33** — OpenRouter Qwen preset corrected to tool-verified, ZDR-capable Qwen3 Coder Next after real Plus/Coder smoke tests exposed endpoint and tool-call incompatibilities.
