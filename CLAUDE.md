@@ -1,4 +1,4 @@
-# Project Forge v4.68.34 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.35 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -467,6 +467,17 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.35 changelog (OpenCode STOP resume + source-line gate)
+
+OpenCode `run --interactive` renders one model turn but exits after a Forge STOP; it is not a
+persistent conversational terminal. Forge now exposes `forge-agent resume --answer ...`, stores the
+answer in a project file instead of shell arguments, and continues the exact last OpenCode session.
+
+The Phase 1 research gate is also line-bound: a document-level «no verified sources» disclaimer can
+no longer launder competitor names, dates or market conclusions underneath it. Every detected
+external factual line needs its own URL/local source or an explicit TBD/unverified label. A bounded
+project-local `list` compatibility tool covers Qwen's repeated call to that otherwise absent tool.
+
 ## v4.68.34 changelog (evidence-bound experimental agents)
 
 Real Qwen Phase 1 testing proved that successful tool calls do not guarantee evidence discipline.
@@ -482,15 +493,3 @@ GitHub synchronization is deferred until the verified Phase 8 result.
 ## v4.68.33 changelog (ZDR-capable Qwen agent preset)
 
 The first real OpenRouter Qwen smoke test exposed two catalog-level incompatibilities before an autonomous run: `qwen3-coder-plus` had no ZDR endpoint, while `qwen3-coder` returned a raw tool-call payload instead of executing the requested file read through OpenCode. Forge now maps the OpenRouter `qwen` preset to `qwen3-coder-next`, which passed a real ZDR-enforced tool invocation and read the project lock successfully. Privacy is not weakened silently and both failed candidates remain available only through an explicit exact-model selection.
-
-## v4.68.32 changelog (OpenRouter whole-project host)
-
-Forge can now run an entire project through one exact OpenRouter model via the installed OpenCode runtime. One central `openrouter.key` exposes named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini and Grok presets; the selected model is persisted in `.forge/agent.json` and cannot change implicitly between phases.
-
-The default `zdr` profile requires a zero-data-retention provider endpoint and denies provider data collection. OpenCode receives the key only through a Forge-owned isolated auth directory outside every game project, and the child environment is scrubbed before launch. The broader `standard` route exists only as an explicit opt-in. Runtime regressions cover secret isolation, ZDR configuration, model preset resolution and whole-project lock behavior.
-
-## v4.68.31 changelog (remove discontinued Qwen OAuth profile)
-
-After Qwen Code updated itself from 0.14.0 to 0.21.14, its current authentication contract reported that the free Qwen OAuth tier was discontinued on 2026-04-15. The previous 1,000-requests/day screen belonged to the stale CLI and cannot produce a model turn now.
-
-Forge no longer offers or defaults to the discontinued OAuth profile. Qwen whole-project locks now expose `coding-plan` and `api`; both default to `qwen3-coder-plus`. Interactive setup uses `/auth` → Alibaba ModelStudio → Coding Plan or Standard API Key. The GDD-only benchmark remains ready but intentionally blocked until one of those paid credentials is configured.

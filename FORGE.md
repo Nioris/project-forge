@@ -64,6 +64,10 @@ Forge keeps agent semantics separate from billing/authentication:
 - GigaChat: Forge terminal agent over the official GigaChat API.
 - GigaCode CLI: optional dormant bridge until an executable is actually available.
 
+OpenCode whole-project hosts return after each model turn. After a Forge STOP, continue the exact
+last session with `forge-agent resume --project <path> --answer "<answer>"`; Forge stores the answer
+in `.forge/agent-resume.md` and passes only a fixed instruction to the provider process.
+
 API secrets live outside projects under `forge-data/secrets/`; never copy them into project files, wiki, prompts or shell output. Switching profiles must not change the nine-phase state machine or skill semantics.
 
 ## Multi-agent rule

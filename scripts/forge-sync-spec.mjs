@@ -25,6 +25,7 @@ export const PAYLOAD = [
   ['GEMINI.md', 'GEMINI.md'],
   ['QWEN.md', 'QWEN.md'],
   ['.gitverse/pr_rules', '.gitverse/pr_rules'],
+  ['adapters/opencode/tools', '.opencode/tools'],
   ['СПРАВОЧНИК-КОМАНД.md', 'СПРАВОЧНИК-КОМАНД.md'],
   ['platforms/yandex/templates/debugcheck.js', 'debugcheck.js'],
 ];

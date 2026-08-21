@@ -484,6 +484,7 @@ RELEASE_NOTES_v4.68.28.md
 RELEASE_NOTES_v4.68.29.md
 RELEASE_NOTES_v4.68.3.md
 RELEASE_NOTES_v4.68.34.md
+RELEASE_NOTES_v4.68.35.md
 RELEASE_NOTES_v4.68.4.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
@@ -496,6 +497,7 @@ SECURITY.md
 SUPPORT.md
 WorkProgress/README.md
 adapters/agents.json
+adapters/opencode/tools/list.ts
 asset-library.html
 asset-library.seed.json
 dashboard.html

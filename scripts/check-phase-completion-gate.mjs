@@ -76,6 +76,14 @@ try {
   result = validatePhaseCompletion({ root: falseAcceptance, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
   check(!result.ok && result.failures.some(item => /no implementation source/.test(item)), 'unbuilt runtime acceptance cannot be marked complete');
 
+  const laundered = path.join(tmp, 'laundered-research');
+  write(laundered, 'wiki/design/brief.md', validBrief);
+  write(laundered, 'wiki/architecture/metrics.md', validMetrics);
+  write(laundered, 'wiki/research/references.md', '# Research\n\nNo verified external sources found.\n\n### Historical reference: Nokia Snake (1998)\n- Slither.io is a modern multiplayer variant.\n');
+  result = validatePhaseCompletion({ root: laundered, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
+    'a document-level no-source disclaimer cannot launder uncited external facts below it');
+
   const rejected = spawnSync(process.execPath, [phaseState, 'complete', '1', 'wiki/architecture/metrics.md', 'wiki/design/brief.md'], { cwd: invented, encoding: 'utf8' });
   const rejectedMarker = JSON.parse(fs.readFileSync(path.join(invented, 'wiki', 'phases', 'phase-1.json'), 'utf8'));
   check(rejected.status !== 0 && rejectedMarker.state === 'blocked' && !fs.existsSync(path.join(invented, '.git')),

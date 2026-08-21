@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.34`
+**Current public version:** `v4.68.35`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -157,7 +157,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.34` keeps separate normal-account and API profiles.
+`v4.68.35` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -184,6 +184,9 @@ node scripts/forge-agent.mjs start glm --project ../my-game
 node scripts/forge-agent.mjs start minimax --project ../my-game
 node scripts/forge-agent.mjs start openrouter --project ../my-game
 
+# Continue the same OpenCode session after a Forge STOP
+node scripts/forge-agent.mjs resume --project ../my-game --answer "approve"
+
 # One OpenRouter key, one exact model for the whole project
 node scripts/forge-agent.mjs presets openrouter
 node scripts/forge-agent.mjs select openrouter --preset qwen --profile zdr --project ../my-game
@@ -207,7 +210,7 @@ node scripts/forge-agent.mjs doctor
 
 The selected whole-project agent and model are stored in `.forge/agent.json`. The same model handles every phase; Forge does not route phases to other providers. Gemini and Qwen start directly in interactive mode. Kimi performs one bootstrap prompt and then reopens that exact session interactively. DeepSeek, GLM, MiniMax and OpenRouter run through OpenCode while the chosen provider remains the only model. Their API keys use the central `forge-data/secrets/` store and an isolated OpenCode credential profile.
 
-OpenRouter uses one `forge-data/secrets/openrouter.key` for named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini and Grok presets. The Qwen preset is the tool-verified `qwen3-coder-next`; `qwen3-coder-plus` currently has no ZDR endpoint. The default `zdr` profile requires a zero-data-retention endpoint and denies provider data collection. Use `--profile standard` only when you explicitly accept wider endpoint compatibility. Store the key without putting it on a command line: `node scripts/forge-secrets.mjs set openrouter --stdin`.
+OpenRouter uses one `forge-data/secrets/openrouter.key` for named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini and Grok presets. The Qwen preset is the tool-verified `qwen3-coder-next`; `qwen3-coder-plus` currently has no ZDR endpoint. The default `zdr` profile requires a zero-data-retention endpoint and denies provider data collection. Use `--profile standard` only when you explicitly accept wider endpoint compatibility. Store the key without putting it on a command line: `node scripts/forge-secrets.mjs set openrouter --stdin`. OpenCode returns after each Forge STOP; `forge-agent resume --answer ...` continues its exact last session without putting the answer in provider command arguments.
 
 GigaCode remains an experimental adapter. Forge does not fake CLI availability when no executable is installed.
 

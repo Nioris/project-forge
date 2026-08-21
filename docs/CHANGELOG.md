@@ -4661,6 +4661,18 @@ The first real GDD-only Qwen benchmark reached Qwen Code but exposed two adapter
 
 Qwen model defaults are now profile-aware: OAuth locks `coder-model`, while Coding Plan retains `qwen3-coder-plus`. Before a Qwen launch, Forge probes configured loopback HTTP MCP endpoints and writes a run-scoped high-precedence settings overlay under `forge-data/runtime/`; only unavailable local servers are excluded, existing Qwen user settings remain unchanged, and reachable or remote MCP servers remain available. Windows subprocess regressions verify both the file-backed startup prompt and this MCP isolation. The benchmark remains pending because the provider OAuth token endpoint returned external 502/504 responses.
 
+## v4.68.32 changelog (OpenRouter whole-project host)
+
+Forge can now run an entire project through one exact OpenRouter model via the installed OpenCode runtime. One central `openrouter.key` exposes named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini and Grok presets; the selected model is persisted in `.forge/agent.json` and cannot change implicitly between phases.
+
+The default `zdr` profile requires a zero-data-retention provider endpoint and denies provider data collection. OpenCode receives the key only through a Forge-owned isolated auth directory outside every game project, and the child environment is scrubbed before launch. The broader `standard` route exists only as an explicit opt-in. Runtime regressions cover secret isolation, ZDR configuration, model preset resolution and whole-project lock behavior.
+
+## v4.68.31 changelog (remove discontinued Qwen OAuth profile)
+
+After Qwen Code updated itself from 0.14.0 to 0.21.14, its current authentication contract reported that the free Qwen OAuth tier was discontinued on 2026-04-15. The previous 1,000-requests/day screen belonged to the stale CLI and cannot produce a model turn now.
+
+Forge no longer offers or defaults to the discontinued OAuth profile. Qwen whole-project locks now expose `coding-plan` and `api`; both default to `qwen3-coder-plus`. Interactive setup uses `/auth` → Alibaba ModelStudio → Coding Plan or Standard API Key. The GDD-only benchmark remains ready but intentionally blocked until one of those paid credentials is configured.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

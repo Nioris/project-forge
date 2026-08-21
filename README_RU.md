@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая публичная версия:** `v4.68.34`
+**Текущая публичная версия:** `v4.68.35`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -156,7 +156,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.34` обычная авторизация и API-профили остаются разделены.
+В `v4.68.35` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка
@@ -180,6 +180,9 @@ node scripts/forge-agent.mjs presets openrouter
 node scripts/forge-agent.mjs select openrouter --preset qwen --profile zdr --project ../my-game
 node scripts/forge-agent.mjs start openrouter --project ../my-game
 
+# После STOP продолжить ту же сессию OpenCode
+node scripts/forge-agent.mjs resume --project ../my-game --answer "утверждаю"
+
 # Проверка web/image search без вывода credentials
 node scripts/forge-search-doctor.mjs --project ../my-game
 
@@ -187,7 +190,7 @@ node scripts/forge-search-doctor.mjs --project ../my-game
 node scripts/forge-agent.mjs doctor
 ```
 
-OpenRouter presets охватывают Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini и Grok. Пресет Qwen использует проверенный инструментами `qwen3-coder-next`; у `qwen3-coder-plus` сейчас нет ZDR-endpoint. Ключ хранится вне проектов в `forge-data/secrets/openrouter.key`. Профиль `zdr` по умолчанию требует endpoint без хранения данных и запрещает provider data collection; `standard` включается только явно ради более широкой совместимости.
+OpenRouter presets охватывают Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini и Grok. Пресет Qwen использует проверенный инструментами `qwen3-coder-next`; у `qwen3-coder-plus` сейчас нет ZDR-endpoint. Ключ хранится вне проектов в `forge-data/secrets/openrouter.key`. Профиль `zdr` по умолчанию требует endpoint без хранения данных и запрещает provider data collection; `standard` включается только явно ради более широкой совместимости. После STOP команда `forge-agent resume --answer ...` продолжает последнюю сессию и передаёт ответ через файл, а не через аргументы процесса провайдера.
 
 GigaCode пока остаётся экспериментальным adapter'ом. Если CLI/executable не установлен, Forge не делает вид, что он доступен.
 

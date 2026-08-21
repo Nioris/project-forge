@@ -90,9 +90,17 @@ function writeAutonomousPrompt(project, prompt) {
   renameSync(tmp,path);
   return path;
 }
+function writeResumePrompt(project, instruction) {
+  const path=join(project,'.forge','agent-resume.md');
+  mkdirSync(dirname(path),{recursive:true});
+  const tmp=path+'.tmp';
+  writeFileSync(tmp,`# Project Forge STOP answer / continuation\n\n${instruction.trim()}\n`,'utf8');
+  renameSync(tmp,path);
+  return path;
+}
 function autonomousLaunchArgs(agent, prompt, model, full) {
   if (agent.runtime === 'opencode') {
-    return ['run', '--interactive', ...(full ? ['--dangerously-skip-permissions'] : []), '--model', model, prompt];
+    return ['run', '--interactive', ...(full ? ['--auto'] : []), '--model', model, prompt];
   }
   if (agent.runtime === 'kimi') {
     return [...(full ? (agent.fullArgs || []) : []), ...(model && agent.modelArg ? [agent.modelArg, model] : []), '--prompt', prompt];
@@ -354,6 +362,27 @@ if (cmd === 'start') {
   }
   process.exit(r.status??0);
 }
+if (cmd === 'resume') {
+  const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
+  const current=readProjectProfile(project); if(!current) fail('No project agent selected. Use: select <agent> --project <path>');
+  const a=getAgent(current.agent); if(a.runtime!=='opencode') fail(`resume currently supports OpenCode whole-project hosts; ${current.agent} uses ${a.runtime||'a native runtime'}.`);
+  const answer=val('--answer')||val('--instruction'); if(!answer?.trim()) fail('Usage: resume --project <path> --answer "<STOP answer or continuation>"');
+  const d=detectExecutable(current.agent,a); if(!d.found) fail(`${a.displayName} runtime was not detected. Run: doctor ${current.agent}`,3);
+  assertMinimumRuntime(a,d);
+  const model=current.model||defaultModelFor(a,current.profile);
+  assertProviderModel(a,model);
+  const resumeInstruction='Read .forge/agent-resume.md and execute the user continuation in it. Preserve the current Forge phase and do not start a later phase unless that file explicitly authorizes it.';
+  const launchArgs=['run','--continue','--interactive','--auto','--model',model,resumeInstruction];
+  if(has('--dry-run')){
+    console.log(JSON.stringify({agent:current.agent,model,profile:current.profile,project,executable:d.executable,args:launchArgs,promptMode:'continue-last-session',locked:true},null,2));
+    process.exit(0);
+  }
+  const promptPath=writeResumePrompt(project,answer);
+  console.log(`[Forge] Resume ${a.displayName} / ${model} from ${promptPath}`);
+  const env=openCodeEnvironment(a,project,{model,profile:current.profile});
+  const r=spawnAgent(d.executable,launchArgs,{cwd:project,env}); if(r.error) fail(`${a.displayName} resume failed: ${r.error.message}`,4);
+  process.exit(r.status??0);
+}
 if (cmd === 'prompt' || cmd === 'command') { const name=args[1]||fail(`Usage: ${cmd} <agent> --skill <name> [--args "..."]`); getAgent(name); const skill=val('--skill')||fail('--skill required'); console.log(skillCommand(name,skill,val('--args')||'')); process.exit(0); }
 if (cmd === 'launch') {
   const name=args[1]||fail('Usage: launch <agent> --project <path> [--profile subscription|chatgpt|api] [--full]'); const a=getAgent(name); const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
@@ -381,4 +410,4 @@ if (cmd === 'launch') {
   console.log(`[Forge] ${a.displayName} [${profile}] -> ${project}`); if(name==='gigacode') console.log('[Forge] GigaCode bridge is dormant/experimental; no undocumented flags are injected.');
   const r=spawnAgent(exe,launchArgs,{cwd:project,env}); if(r.error) fail(`${a.displayName} launch failed: ${r.error.message}`,4); process.exit(r.status??0);
 }
-console.log(`Project Forge universal terminal runtime\n\nCommands:\n  list\n  doctor [agent]\n  presets <agent>\n  select <agent> --project <path> [--model <id>|--preset <name>] [--profile <name>]\n  profile --project <path>\n  prepare <deepseek|glm|minimax|openrouter> --project <path> [--preset <name>]\n  start [agent] --project <path> [--safe] [--reselect] [--dry-run]\n  launch <agent> --project <path> [--profile ...] [--full]\n  prompt <agent> --skill <name> [--args "..."]\n\nAPI secrets:\n  node scripts/forge-secrets.mjs status`);
+console.log(`Project Forge universal terminal runtime\n\nCommands:\n  list\n  doctor [agent]\n  presets <agent>\n  select <agent> --project <path> [--model <id>|--preset <name>] [--profile <name>]\n  profile --project <path>\n  prepare <deepseek|glm|minimax|openrouter> --project <path> [--preset <name>]\n  start [agent] --project <path> [--safe] [--reselect] [--dry-run]\n  resume --project <path> --answer "<STOP answer or continuation>" [--dry-run]\n  launch <agent> --project <path> [--profile ...] [--full]\n  prompt <agent> --skill <name> [--args "..."]\n\nAPI secrets:\n  node scripts/forge-secrets.mjs status`);

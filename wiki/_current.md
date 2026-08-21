@@ -16,16 +16,21 @@ false phase completion, or premature remote publication.
 - [x] Require OpenCode 1.18.20+ for whole-project OpenCode hosts.
 - [x] Keep experimental Phase 1–7 checkpoints local and defer GitHub until Phase 8.
 - [x] Add and pass offline regressions for rejected and valid completion paths.
-- [ ] Install v4.68.34 and repeat the real Qwen Phase 1 benchmark.
+- [x] Install v4.68.34 and repeat the real Qwen Phase 1 benchmark.
+- [x] Reproduce OpenCode one-turn exit and Qwen's document-level source laundering.
+- [x] Add file-backed same-session STOP resume and a bounded `list` compatibility tool.
+- [x] Harden Phase 1 research evidence from document-level to line-level validation.
+- [ ] Install v4.68.35 and repeat the rejected research correction through Forge resume.
 
 ## Blockers
 
-No engine blocker. The final verdict depends on the repeated paid OpenRouter model run.
+No engine blocker. The final verdict depends on the v4.68.35 resume + line-source benchmark.
 
 ## Last 3 decisions
 
 - 2026-08-21: A model may propose evidence, but only the phase-state runtime may persist completion.
 - 2026-08-21: Missing external evidence is represented as `TBD`/hypothesis, never filled from model memory.
 - 2026-08-21: Experimental hosts publish the verified Phase 8 result, not intermediate phase claims.
+- 2026-08-21: OpenCode STOP answers resume through a durable file because `run --interactive` is one-turn output, not a persistent terminal conversation.
 
-<!-- last updated 2026-08-21 during v4.68.34 Qwen evidence-gate work -->
+<!-- last updated 2026-08-21 during v4.68.35 Qwen resume/source-gate work -->

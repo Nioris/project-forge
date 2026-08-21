@@ -134,6 +134,10 @@ function runOpenRouterCredentialIsolationRegression(){
       else if(!prepared.text.includes('provider config: configured')) errors.push('OpenRouter ZDR routing config was not generated');
       else ok.push('OpenRouter key is isolated and the default launch requires ZDR');
     }
+    run('OpenRouter same-session STOP resume dry-run',['scripts/forge-agent.mjs','select','openrouter','--preset','qwen','--profile','zdr','--project',fixture],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'Locked openrouter');
+    const resumed=run('OpenRouter same-session STOP resume contract',['scripts/forge-agent.mjs','resume','--project',fixture,'--answer','утверждаю','--dry-run'],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'continue-last-session');
+    if(!resumed.text.includes('--continue')||resumed.text.includes('утверждаю')) errors.push('OpenRouter resume does not use a file-backed same-session continuation');
+    else ok.push('OpenRouter STOP answer stays out of shell args and resumes the last session');
   }finally{
     rmSync(fixture,{recursive:true,force:true});
   }
@@ -209,6 +213,7 @@ if(!forge.includes('apiKeyHelper')) errors.push('Claude API profile does not use
 if(!forge.includes('delete env.ANTHROPIC_API_KEY')) errors.push('Claude API launch leaves ANTHROPIC_API_KEY in child environment'); else ok.push('Claude API key removed from launched tool environment');
 if(!forge.includes("env.NODE_USE_SYSTEM_CA='1'")) errors.push('GigaChat launcher does not enable the Node system CA store before child startup'); else ok.push('GigaChat launcher enables the Node system CA store');
 if(!forge.includes('applyDefaultSearchEnvironment(env)')) errors.push('GigaChat launcher does not apply the shared no-key search fallback'); else ok.push('GigaChat launcher uses the shared no-key search fallback');
+if(!existsSync(join(ROOT,'adapters/opencode/tools/list.ts'))) errors.push('OpenCode list compatibility tool missing'); else ok.push('OpenCode exposes a bounded project-local list compatibility tool');
 const giga=readFileSync(join(ROOT,'scripts/gigachat-agent.mjs'),'utf8');
 if(!giga.includes('assertWritablePath(p)')) errors.push('GigaChat direct edits do not enforce protected Forge paths'); else ok.push('GigaChat direct edits enforce protected Forge paths');
 const openaiImage=readFileSync(join(ROOT,'scripts/openai-image.mjs'),'utf8');
