@@ -1,4 +1,4 @@
-# Project Forge v4.68.9 — Полная инструкция по работе
+# Project Forge v4.68.39 — Полная инструкция по работе
 
 ## Оглавление
 
@@ -59,7 +59,7 @@ cx
 
 ---
 
-## Выбор terminal-профиля: Claude, Codex, GigaChat или optional GigaCode
+## Выбор terminal-профиля: один агент на весь проект
 
 Одна база Forge, девять фаз и те же STOP-points. Меняется только host/auth profile.
 
@@ -74,9 +74,60 @@ node scripts\forge-agent.mjs launch codex --profile api --full --project .
 node scripts\forge-agent.mjs launch gigachat --profile api --full --project .
 node scripts\forge-search-doctor.mjs --project .
 
+# Один выбранный агент и одна модель проходят все девять фаз
+node scripts\forge-agent.mjs start gemini --project .
+node scripts\forge-agent.mjs start qwen --project .
+node scripts\forge-agent.mjs start kimi --project .
+node scripts\forge-agent.mjs start deepseek --project .
+node scripts\forge-agent.mjs start glm --project .
+node scripts\forge-agent.mjs start minimax --project .
+
+# Проверить или явно изменить закрепление
+node scripts\forge-agent.mjs profile --project .
+node scripts\forge-agent.mjs select qwen --model qwen3-coder-plus --project .
+
+# Первичная авторизация нативных CLI выполняется один раз
+gemini
+qwen auth qwen-oauth
+kimi login
+
 # Optional dormant bridge
 node scripts\forge-agent.mjs doctor gigacode
 ```
+
+### Локальный журнал ошибок Forge
+
+ИИ обязана отличать баг проекта от сбоя самого Forge. Неверный фазовый/STOP-формат, ошибка adapter/hook/runtime, противоречивое состояние или неверно заявленная capability записываются в `wiki/diagnostics/forge-events.jsonl`; обычные ошибки игры/приложения — нет. Журнал не содержит полных prompts/выводов и локально исключается из Git.
+
+Чтобы оценить масштаб одной и той же проблемы по всем проектам рядом с движком:
+
+```powershell
+node scripts\audit-forge-diagnostics.mjs --since 30d
+```
+
+Для машинного разбора добавьте `--json`, для всей истории — `--since all`. Исправленный инцидент закрывается только после повторной проверки.
+
+### Качественный запуск фаз Codex без лишнего расхода
+
+Основной способ — одна команда и одно окно на весь проект:
+
+```powershell
+node ..\project-forge\scripts\codex-pipeline.mjs --cwd .
+```
+
+Оркестратор сам определяет текущую фазу. На STOP он принимает ваш ответ и продолжает ту же внутреннюю сессию. После `complete` печатает `Начинаем Phase N? [Y/n]`; ответ `да` запускает новую чистую сессию в том же терминале. Закрывать окно или повторно вводить команду не нужно. Прежний `codex-phase.mjs N --cwd .` остаётся для ручного запуска одной фазы.
+
+Все запуски используют GPT-5.6 Sol на Standard tier и максимум двух субагентов. `high` применяется к анализу, дизайну, реализации, визуалу, интеграциям и QA; листинг, штатная упаковка и обычные метрики идут на Sol `medium`. Max/Ultra остаются только ручным решением. Таблица фаз и эскалаций: `.claude/skills/status/references/MODEL-ROUTING.md`.
+
+### Локальный Git и приватный GitHub для каждой игры
+
+Forge всегда создаёт локальный репозиторий нового проекта, а `phase-state ... complete` автоматически делает checkpoint-коммит. Один раз включите приватную GitHub-политику для workspace:
+
+```powershell
+node scripts\project-git.mjs configure --owner Nioris
+```
+
+Настройка живёт в `forge-data\git-policy.json` вне обновляемого движка. Для каждого следующего проекта Forge создаст private-репозиторий и отправит checkpoint. Public remote, отслеживаемые ключи и вероятные секреты блокируются. Сетевой сбой не уничтожает локальную историю. Существующие проекты подключаются только явно: сначала `node scripts\git-init-games.mjs --dry`, затем `--game имя`.
 
 Ключи хранятся централизованно и не копируются в проекты:
 
@@ -85,6 +136,9 @@ F:\ProjectForgeUniversal\forge-data\secrets\anthropic.key
 F:\ProjectForgeUniversal\forge-data\secrets\openai.key
 F:\ProjectForgeUniversal\forge-data\secrets\gigachat.key
 F:\ProjectForgeUniversal\forge-data\secrets\gigasearch.key   # optional production search
+F:\ProjectForgeUniversal\forge-data\secrets\deepseek.key
+F:\ProjectForgeUniversal\forge-data\secrets\zai.key
+F:\ProjectForgeUniversal\forge-data\secrets\minimax.key
 ```
 
 Проверка:
@@ -94,6 +148,17 @@ node scripts\forge-secrets.mjs status
 ```
 
 Claude API запускается через `apiKeyHelper`. Codex API использует отдельный `CODEX_HOME`, чтобы не перетирать ChatGPT login. GigaChat API запускает Forge-owned REPL с file/search/edit/status/git tools; `--full` дополнительно даёт shell tool. Launcher включает системный CA store для дочернего Node-процесса и, если production GigaSearch явно не настроен, использует no-key fallback `bing-html`. Текущий search provider проверяется через `/search-doctor`. Каждый GigaChat STOP печатает блок `Как ответить` с готовым `утверждаю` и точным форматом для изменений. Значения ключей Forge не печатает и не передаёт как command-line arguments.
+
+Для DeepSeek/GLM/MiniMax/OpenRouter через OpenCode один модельный ход имеет лимит 64 агентных
+итерации. При достижении лимита OpenCode принудительно запрашивает текстовый итог; незавершённую
+полезную работу можно продолжить через `forge-agent resume`. Адаптер `list` также не возвращает
+один и тот же успешный листинг повторно в рамках сессии.
+
+Экспериментальный OpenRouter preset `ox-alpha` бесплатен во время preview, но анонимный провайдер
+сохраняет prompts/completions. Forge механически требует `--profile standard` и разрешает такой
+запуск только на несекретных тестовых проектах без credentials, персональных и закрытых данных.
+
+Если посреди конвейера нужно немедленно реализовать отдельную доработку, используйте `/do <задача>`, например `/do добавь гачу, составь ТЗ, реализуй и протестируй`. Forge сохранит точный запрос, приостановит фазовый автопилот и механически заблокирует случайный переход к release-командам. `/task` показывает активную прямую задачу, `/resume-phase` отменяет override и возвращает управление текущей канонической фазе. Сильные естественные команды вроде «добавь магазин и начинай делать» распознаются автоматически, но `/do` остаётся гарантированным ручным вариантом.
 
 После изменений canonical runtime:
 

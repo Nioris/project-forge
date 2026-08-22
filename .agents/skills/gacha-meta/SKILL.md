@@ -51,3 +51,18 @@ pity-гарантия обязательна; механика подбирае�
 3. Вшей pity + показ шансов + конверсию дублей.
 4. Playtest: крутка работает, награда выдаётся, отказ от RV не ломает, сейв переживает F5.
 5. Числа круток/наград — в metrics.md (RV/DAU должен вырасти к target 2.5).
+
+## Канонический быстрый путь для модульного merge-grid
+
+Если у существующей игры уже есть `wiki/architecture/modules.json`, `state.grid`, `saveState/loadState` и merge-сетка, не реконструируй её модули текстом. Запусти атомарный Forge-интегратор:
+
+```text
+node ../project-forge/scripts/integrate-gacha.mjs WorkProgress/<game>
+node ../project-forge/scripts/modularize-existing-project.mjs WorkProgress/<game>/index.html --refresh
+node ../project-forge/scripts/modularize-existing-project.mjs WorkProgress/<game>/index.html --check
+node ../project-forge/scripts/check-gacha-integration.mjs WorkProgress/<game>
+```
+
+Через GigaChat вызывай эти команды инструментом `forge_script`, передавая имя `scripts/<file>.mjs` и project-relative args. Интегратор одной транзакцией согласует `state.gachaQueue`, основной save/load, reset, core/integration-модули и порядок подключения. Он сохраняет backup и останавливается на неизвестных anchors вместо частичной перезаписи.
+
+Сфокусированный browser-check обязателен: он реально кликает кнопку, проверяет `state.grid`, основной localStorage save, полную сетку, очередь, F5 и выдачу после освобождения клетки. Обычный playtest без клика по гаче не является доказательством этой функции.

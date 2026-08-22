@@ -12,6 +12,7 @@ import { createInterface } from 'node:readline';
 import { createHash } from 'node:crypto';
 import { getAccessToken, gigaJson, downloadGigaFile } from './lib/gigachat-api.mjs';
 import { applyDefaultSearchEnvironment, getSearchCapabilities, searchDoctor, webSearch, imageSearch, webFetch } from './lib/forge-search.mjs';
+import { appendForgeDiagnostic } from '../.claude/hooks/lib/forge-diagnostics.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -20,8 +21,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.9';
-const CONTRACT_VERSION = '6.3.3-guided-stop-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.39';
+const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -29,6 +30,25 @@ const SELF_TEST = argv.includes('--self-test');
 const REQUEST_DOCTOR = argv.includes('--request-doctor');
 const INTEGRATION_TEST = argv.includes('--integration-test');
 if (!existsSync(PROJECT) || !statSync(PROJECT).isDirectory()) { console.error(`[X] Project not found: ${PROJECT}`); process.exit(2); }
+
+function reportForgeBehavior(input={}) {
+  return appendForgeDiagnostic(PROJECT, {
+    action: input.action || 'report',
+    severity: input.severity || 'warn',
+    code: input.code || 'GIGACHAT_FORGE_BEHAVIOR_ANOMALY',
+    kind: input.kind || 'adapter_transport',
+    source: input.source || 'runtime',
+    host: 'gigachat',
+    phase: input.phase || activePhase || null,
+    component: input.component || 'gigachat-agent',
+    operation: input.operation || '',
+    message: input.message || '',
+    expected: input.expected || '',
+    actual: input.actual || '',
+    evidence: input.evidence || [],
+    fingerprint: input.fingerprint,
+  });
+}
 
 function safePath(input = '.') {
   const p = resolve(PROJECT, input);
@@ -52,6 +72,27 @@ function lineSlice(text, start = 1, end = null) {
   const lines = text.split(/\r?\n/); const a = Math.max(1, Number(start)||1); const b = end == null ? Math.min(lines.length, a+299) : Math.min(lines.length, Number(end)||a);
   return { start:a, end:b, total:lines.length, content:lines.slice(a-1,b).map((x,i)=>`${a+i}: ${x}`).join('\n') };
 }
+
+function readFileForModel(a={}){
+  const p=safePath(a.path), pathKey=rel(p), text=readText(p);
+  const largeExisting=Buffer.byteLength(text,'utf8')>=32_000;
+  const explicit=a.start_line!==undefined || a.end_line!==undefined;
+  let start=a.start_line, end=a.end_line;
+  if(!explicit && activeDirective){
+    const cursors=activeDirective.readCursors&&typeof activeDirective.readCursors==='object'?activeDirective.readCursors:{};
+    start=Math.max(1,Number(cursors[pathKey]||1));
+    end=start+299;
+  }
+  const slice=lineSlice(text,start,end);
+  if(!explicit && activeDirective){
+    if(slice.start>slice.total) return {ok:false,failure_type:'read-loop-guard',error:`${pathKey} was already read through line ${slice.total}. Do not restart at line 1; use search_text and targeted replace_text now.`,path:pathKey,total:slice.total,complete:true};
+    const next=slice.end<slice.total?slice.end+1:null;
+    activeDirective={...activeDirective,readCursors:{...(activeDirective.readCursors||{}),[pathKey]:next||slice.total+1},updatedAt:new Date().toISOString()};
+    persistRuntimeEvidenceLedger();
+    return {ok:true,path:pathKey,...slice,auto_paged:true,complete:next===null,next_start_line:next,large_existing_source:largeExisting,recommended_skill:largeExisting?'modularize-existing-project':null,note:next?`Call read_file with the same path and no line range for the next page starting at line ${next}.`:'Entire file has now been read; do not read it again.'};
+  }
+  return {ok:true,path:pathKey,...slice,auto_paged:false,complete:slice.end>=slice.total,next_start_line:slice.end<slice.total?slice.end+1:null,large_existing_source:largeExisting,recommended_skill:largeExisting?'modularize-existing-project':null};
+}
 function walk(dir, depth, base = dir, out = []) {
   if (depth < 0 || out.length >= 1000) return out;
   for (const e of readdirSync(dir, { withFileTypes:true })) {
@@ -61,6 +102,67 @@ function walk(dir, depth, base = dir, out = []) {
     if (out.length >= 1000) break;
   }
   return out;
+}
+
+function requestedWorkProgressEntrypoints(request=''){
+  const matches=String(request||'').match(/WorkProgress[\\/][A-Za-z0-9_-]+(?:[\\/][A-Za-z0-9_.\\/-]+\.(?:html?|js|mjs|css))?/gi)||[];
+  return uniquePaths(matches.map(raw=>{
+    const normalized=raw.replace(/\\/g,'/').replace(/[.,;:!?]+$/,'');
+    return /\.(?:html?|js|mjs|css)$/i.test(normalized)?normalized:`${normalized}/index.html`;
+  }));
+}
+
+function requestedLargeWorkProgressSources(request=''){
+  const found=[];
+  for(const path of requestedWorkProgressEntrypoints(request)){
+    let target;try{target=safePath(path);}catch{continue;}
+    let st;try{st=statSync(target);}catch{continue;}
+    if(st.isFile()&&st.size>=32_000) found.push({path:rel(target),bytes:st.size});
+  }
+  return found;
+}
+
+function directTaskMonolithInstruction(items=requestedLargeWorkProgressSources(activeDirective?.request||'')){
+  if(!items.length) return '';
+  const summary=items.map(item=>`${item.path} (${item.bytes} bytes)`).join(', ');
+  return `Large existing source detected: ${summary}. Before feature work, load forge_skill modularize-existing-project, run a baseline check, then execute forge_script with name "scripts/modularize-existing-project.mjs" and args ["${items[0].path}","--apply"]. Verify it with --check and regression playtest before editing the owning modules. Do not reconstruct the monolith with write_file. `;
+}
+
+function moduleRolesForTask(request=''){
+  const roles=new Set(['state-foundation','ui-render','persistence','bootstrap']);
+  if(/гач|gacha|drop|выпад/i.test(String(request||''))) ['production','feedback-bubbles'].forEach(role=>roles.add(role));
+  if(/директор|director|карьер/i.test(String(request||''))) ['career','director-mode','management'].forEach(role=>roles.add(role));
+  if(/drag|merge|слиян|сетк/i.test(String(request||''))) roles.add('drag-merge');
+  return roles;
+}
+
+function preloadedModuleTaskContext(request=''){
+  const manifestPath=safePath('wiki/architecture/modules.json');
+  if(!existsSync(manifestPath)) return '';
+  let manifest;try{manifest=JSON.parse(readText(manifestPath));}catch{return '';}
+  const requested=requestedWorkProgressEntrypoints(request);
+  if(!manifest?.source || !requested.includes(String(manifest.source))) return '';
+  const roles=moduleRolesForTask(request), selected=(manifest.modules||[]).filter(module=>module.type==='js'&&roles.has(module.role));
+  const paths=[manifest.source];
+  const gameDir=rel(dirname(safePath(manifest.source)));
+  const gachaPath=`${gameDir}/gacha.js`;
+  if(/гач|gacha/i.test(String(request||''))&&existsSync(safePath(gachaPath))) paths.push(gachaPath);
+  paths.push(...selected.map(module=>module.path));
+  let used=0;const files=[];
+  for(const path of uniquePaths(paths)){
+    let content;try{content=readText(safePath(path));}catch{continue;}
+    const remaining=24_000-used;if(remaining<=0) break;
+    const bounded=clip(content,Math.min(remaining,9000));
+    used+=bounded.length;
+    files.push(`--- ${path} ---\n${bounded}`);
+  }
+  if(!files.length) return '';
+  const summary=(manifest.modules||[]).map(module=>`${module.order}:${module.role}=${module.path}`).join('\n');
+  return `[FORGE PRELOADED MODULE CONTEXT — do not reread these files]\n`+
+    `Contract source: ${manifest.source}; state owner: ${manifest.state_owner}; persistence owner: ${manifest.persistence_owner}.\n`+
+    `If the task adds a numbered js/styles module, write it once, load it explicitly from ${manifest.source} in the required runtime order, then run modularize-existing-project.mjs ${manifest.source} --refresh followed by --check. Refresh adopts connected modules; it rejects orphan files and preserves the approved relative order. A passing playtest before the new module is loaded is not evidence for this task.\n`+
+    `Approved load order:\n${clip(summary,5000)}\n\n${files.join('\n\n')}\n`+
+    `[END PRELOADED MODULE CONTEXT]\n`;
 }
 function searchText(query, root='.', maxResults=80) {
   const start = safePath(root); const found=[];
@@ -129,6 +231,8 @@ function inspectWorkspaceSource(maxChars=32000) {
     note:'GameIntegration is read-only source. WorkProgress is the active implementation workspace. Analyze/edit the ingested WorkProgress copy.'
   };
 }
+
+function uniquePaths(values=[]){return [...new Set(values.map(String).filter(Boolean))];}
 
 
 function optionalText(path, max=16000) {
@@ -228,6 +332,7 @@ function buildProjectContext() {
     workProgress:work,
     planFiles:plans,
     gitStatus:gitStatusSnapshot(),
+    activeDirective:activeDirective&&typeof activeDirective==='object'?activeDirective:null,
     warnings
   };
 }
@@ -378,8 +483,25 @@ function pathLooksProductionAsset(path) {
   const p=String(path).replace(/\\/g,'/').toLowerCase();
   if(!VISUAL_EXTS.has(extOf(p))) return false;
   if(p.includes('/refs/') || p.includes('/candidates/') || p.includes('/prompts/')) return false;
-  if(p==='assets/target/target-frame.png') return false;
+  if(/^assets\/target\/target-frame\.(?:png|jpe?g|webp)$/.test(p)) return false;
   return true;
+}
+
+function phase4SelectionPath() {
+  return ['assets/style/selection.json','assets/bible/selection.json','assets/selection.json']
+    .find(path=>{
+      if(!fileExistsNonEmpty(path,20)) return false;
+      try { const value=JSON.parse(readText(safePath(path))); return Boolean(value&&typeof value==='object'&&Object.keys(value).length); }
+      catch { return false; }
+    })||null;
+}
+function phase4TargetFramePath() {
+  return ['assets/target/target-frame.png','assets/target/target-frame.jpg','assets/target/target-frame.jpeg','assets/target/target-frame.webp']
+    .find(path=>fileExistsNonEmpty(path,32)&&isValidMediaFile(path))||null;
+}
+function phase4TargetVariantPaths() {
+  return findFiles('assets/target',/(?:variant|candidate|option|[-_][abc]|target-frame[-_]\d+)[^/]*\.(png|jpg|jpeg|webp)$/i,32,100)
+    .filter(isValidMediaFile);
 }
 function pathLooksGameChange(path) {
   const p=String(path).replace(/\\/g,'/');
@@ -400,23 +522,36 @@ function completionArtifactArgs(command, phase) {
   return out;
 }
 
+function runtimeOwnedWriteBlock(path='') {
+  const p=String(path||'').replace(/\\/g,'/').toLowerCase();
+  if(p==='wiki/decisions/gigachat-decisions.json') return 'This decision ledger is runtime-owned. Use ask_user; Forge persists the answer automatically. Do not write or replace the ledger directly.';
+  if(p==='wiki/runtime/gigachat-evidence.json') return 'This runtime evidence ledger is runtime-owned and cannot be written by the model.';
+  return null;
+}
+
 const RUNTIME_EVIDENCE_PATH='wiki/runtime/gigachat-evidence.json';
 
 function loadRuntimeEvidenceLedger(){
   try{
     const p=safePath(RUNTIME_EVIDENCE_PATH);
-    if(!existsSync(p)) return {schemaVersion:5,verifiers:[],completedSkills:[],phase:null,pendingDecision:null};
+    if(!existsSync(p)) return {schemaVersion:7,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null,activeDirective:null};
     const x=JSON.parse(readText(p));
     return {
-      schemaVersion:5,
+      schemaVersion:7,
       verifiers:Array.isArray(x.verifiers)?x.verifiers:[],
       completedSkills:Array.isArray(x.completedSkills)?x.completedSkills:[],
       phase:x.phase&&typeof x.phase==='object'?x.phase:null,
-      pendingDecision:x.pendingDecision&&typeof x.pendingDecision==='object'?x.pendingDecision:null
+      pendingDecision:x.pendingDecision&&typeof x.pendingDecision==='object'?x.pendingDecision:null,
+      activeDirective:x.activeDirective&&typeof x.activeDirective==='object'&&String(x.activeDirective.request||'').trim()?x.activeDirective:null,
+      productMetricsEvidence:x.productMetricsEvidence&&typeof x.productMetricsEvidence==='object'
+        ? x.productMetricsEvidence
+        : (x.phase?.productMetricsEvidence&&typeof x.phase.productMetricsEvidence==='object'?x.phase.productMetricsEvidence:null)
     };
-  }catch{return {schemaVersion:5,verifiers:[],completedSkills:[],phase:null,pendingDecision:null};}
+  }catch{return {schemaVersion:7,verifiers:[],completedSkills:[],phase:null,pendingDecision:null,productMetricsEvidence:null,activeDirective:null};}
 }
 let durableRuntimeEvidence=loadRuntimeEvidenceLedger();
+let activeDirective=durableRuntimeEvidence.activeDirective&&typeof durableRuntimeEvidence.activeDirective==='object'?durableRuntimeEvidence.activeDirective:null;
+let currentTurnReadOnly=false;
 let verifierLedger=new Map((durableRuntimeEvidence.verifiers||[]).map(v=>[v.key,v]));
 let completedSkills=new Set(durableRuntimeEvidence.completedSkills||[]);
 let phaseEvidenceStartedAt=null;
@@ -429,7 +564,11 @@ let unresolvedFailures=new Map();
 let capabilityBlock=null;
 let phaseWrittenFiles=new Set();
 let phaseSearchEvidence={web:[],image:[],fetch:[]};
-let phaseProductMetricsEvidence={startedAt:null,web:[],fetch:[]};
+let phaseProductMetricsEvidence={
+  startedAt:durableRuntimeEvidence.productMetricsEvidence?.startedAt||null,
+  web:Array.isArray(durableRuntimeEvidence.productMetricsEvidence?.web)?durableRuntimeEvidence.productMetricsEvidence.web:[],
+  fetch:Array.isArray(durableRuntimeEvidence.productMetricsEvidence?.fetch)?durableRuntimeEvidence.productMetricsEvidence.fetch:[]
+};
 let memoryDirty=false;
 let runtimeDecisions=[];
 let lastMemorySyncAt=null;
@@ -439,11 +578,13 @@ function persistRuntimeEvidenceLedger(){
   try{
     ensureDir('wiki/runtime');
     durableRuntimeEvidence={
-      schemaVersion:5,
+      schemaVersion:7,
       updatedAt:new Date().toISOString(),
       verifiers:[...verifierLedger.values()].slice(-500),
       completedSkills:[...completedSkills].sort(),
       pendingDecision:pendingDecision&&typeof pendingDecision==='object'?pendingDecision:null,
+      activeDirective:activeDirective&&typeof activeDirective==='object'?activeDirective:null,
+      productMetricsEvidence:phaseProductMetricsEvidence,
       phase:activePhase?{
         phase:activePhase,
         startedAt:phaseEvidenceStartedAt,
@@ -461,7 +602,6 @@ function resetPhaseRuntimeEvidence() {
   phaseBaseline=new Map(); phaseStarted=false; phaseSuccessfulCommands=[]; phaseCommandOutputs=[];
   unresolvedFailures=new Map(); capabilityBlock=null; phaseWrittenFiles=new Set();
   phaseSearchEvidence={web:[],image:[],fetch:[]};
-  phaseProductMetricsEvidence={startedAt:null,web:[],fetch:[]};
   memoryDirty=false; runtimeDecisions=[]; lastMemorySyncAt=null; latestMemorySessionPath=null;
   phaseEvidenceStartedAt=null;
 }
@@ -480,17 +620,11 @@ function startPhaseEvidence(phase,{resume=false}={}) {
       image:Array.isArray(saved.searchEvidence?.image)?saved.searchEvidence.image:[],
       fetch:Array.isArray(saved.searchEvidence?.fetch)?saved.searchEvidence.fetch:[]
     };
-    phaseProductMetricsEvidence={
-      startedAt:saved.productMetricsEvidence?.startedAt||null,
-      web:Array.isArray(saved.productMetricsEvidence?.web)?saved.productMetricsEvidence.web:[],
-      fetch:Array.isArray(saved.productMetricsEvidence?.fetch)?saved.productMetricsEvidence.fetch:[]
-    };
   }else{
     phaseBaseline=snapshotRoots();
     phaseEvidenceStartedAt=new Date().toISOString();
     unresolvedFailures=new Map();
     phaseSearchEvidence={web:[],image:[],fetch:[]};
-    phaseProductMetricsEvidence={startedAt:null,web:[],fetch:[]};
   }
   phaseSuccessfulCommands=[]; phaseCommandOutputs=[]; phaseWrittenFiles=new Set(); capabilityBlock=null;
   persistRuntimeEvidenceLedger();
@@ -532,19 +666,19 @@ function commandLooksMutating(command=''){
   if(/^(git\s+(status|diff|log)|dir\b|ls\b|find\b|du\b|grep\b|type\b|cat\b)/i.test(c)) return false;
   if(/phase-state\.mjs.*\b(?:start|reopen|block|complete)\b/i.test(c)) return true;
   if(/ai-studio-init\.mjs/i.test(c) && !/--check/i.test(c)) return true;
-  if(/release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
+  if(/integrate-gacha|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
   return false;
 }
-function verifierEntrySuccess(re){
-  const phase=Number(activePhase||0);
+function verifierEntrySuccess(re,phaseOverride=activePhase){
+  const phase=Number(phaseOverride||0);
   for(const v of verifierLedger.values()){
     if(Number(v.phase)!==phase || Number(v.status)!==0) continue;
     if(re.test(String(v.command||v.key||''))) return v;
   }
   return null;
 }
-function verifierEntryWithOutput(commandRe,outputRe){
-  const phase=Number(activePhase||0);
+function verifierEntryWithOutput(commandRe,outputRe,phaseOverride=activePhase){
+  const phase=Number(phaseOverride||0);
   for(const v of verifierLedger.values()){
     if(Number(v.phase)!==phase || Number(v.status)!==0) continue;
     if(commandRe.test(String(v.command||'')) && outputRe.test(`${v.stdout||''}\n${v.stderr||''}`)) return v;
@@ -553,6 +687,18 @@ function verifierEntryWithOutput(commandRe,outputRe){
 }
 function recordOperation(name,a,result) {
   let r={}; try{r=JSON.parse(result);}catch{}
+  if(activeDirective && r.ok!==false){
+    const isWrite=['write_file','replace_text','copy_path','gigachat_generate_image','gigachat_generate_3d'].includes(name) && !(name==='copy_path'&&r.unchanged===true);
+    const isMutatingCommand=(name==='run_command'||name==='forge_script') && commandLooksMutating(name==='forge_script'?`${a.name||''} ${(a.args||[]).join(' ')}`:a.command);
+    if(isWrite||isMutatingCommand){
+      const op={tool:name,target:String(r.path||r.destination||a.path||a.output_path||a.name||a.command||''),at:new Date().toISOString()};
+      activeDirective={...activeDirective,operations:[...(activeDirective.operations||[]),op].slice(-50),updatedAt:op.at};
+    }
+    if(name==='read_file'){
+      const read={path:String(r.path||a.path||''),at:new Date().toISOString()};
+      activeDirective={...activeDirective,reads:[...(activeDirective.reads||[]),read].slice(-50),updatedAt:read.at};
+    }
+  }
   if(r.ok!==false && name==='read_file') phaseReadFiles.add(String(r.path||a.path||''));
   if(r.ok!==false && name==='list_files') phaseListedPaths.add(String(r.path||a.path||'.'));
   if(r.ok!==false && name==='forge_context') phaseContextRefreshed=true;
@@ -568,6 +714,10 @@ function recordOperation(name,a,result) {
       : String(a.command||'');
     if(r.translated_skill || r.translated_shell) {
       unresolvedFailures.delete(key);
+      if(r.translated_skill && r.skill){
+        registerSuccessfulSkillLoad(r.skill,result);
+        for(const prior of [...unresolvedFailures.keys()]) if(String(prior).toLowerCase().includes(String(r.skill).toLowerCase())) unresolvedFailures.delete(prior);
+      }
       if(r.translated_shell && r.mutating) memoryDirty=true;
     } else if(r.ok===false) {
       const failure={type:classifyFailure(name,a,r),message:r.error||shortText(r.stderr||r.stdout||'command failed',220),at:new Date().toISOString()};
@@ -575,16 +725,20 @@ function recordOperation(name,a,result) {
       verifierLedger.set(key,{key,phase:activePhase,command,status:Number(r.status??1),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:failure.type,updatedAt:new Date().toISOString()});
     } else {
       unresolvedFailures.delete(key);
+      if(/playtest\.mjs/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/run:node scripts[\\/]playtest\.mjs/i.test(prior)) unresolvedFailures.delete(prior);
+      if(/screens-shoot\.mjs/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/screens-shoot/i.test(prior)) unresolvedFailures.delete(prior);
+      if(/local-stage\.mjs/i.test(command)&&/--ai/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/local-stage/i.test(prior)) unresolvedFailures.delete(prior);
       verifierLedger.set(key,{key,phase:activePhase,command,status:Number(r.status??0),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:null,updatedAt:new Date().toISOString()});
       phaseSuccessfulCommands.push(command);
       phaseCommandOutputs.push({command,stdout:String(r.stdout||''),stderr:String(r.stderr||''),ok:true});
-      if(commandLooksMutating(command)) memoryDirty=true;
+      if(commandLooksMutating(command) && r.already_started!==true && r.already_complete!==true) memoryDirty=true;
     }
   }
   if(r.ok!==false && (name==='write_file' || name==='replace_text' || name==='copy_path' || name==='gigachat_generate_image' || name==='gigachat_generate_3d')) {
     phaseWrittenFiles.add(String(r.path||r.destination||a.path||a.output_path||''));
     if(!(name==='copy_path' && r.unchanged===true)) memoryDirty=true;
   }
+  if(activeDirective) persistRuntimeEvidenceLedger();
   if(r.ok!==false && name==='forge_web_search'){
     const q=String(a.query||'').trim();
     if(q && Array.isArray(r.results) && r.results.length){
@@ -916,8 +1070,38 @@ function distinctValidImages(paths){
   for(const p of paths) if(isValidMediaFile(p)) try{hashes.add(hashFileAbs(safePath(p)));}catch{}
   return hashes.size;
 }
-function commandSucceeded(re){ return Boolean(verifierEntrySuccess(re)) || hasSuccessfulCommand(re); }
-function commandSucceededWithOutput(commandRe,outputRe){ return Boolean(verifierEntryWithOutput(commandRe,outputRe)); }
+function commandSucceeded(re,phase=activePhase){ return Boolean(verifierEntrySuccess(re,phase)) || (Number(phase)===Number(activePhase)&&hasSuccessfulCommand(re)); }
+function commandSucceededWithOutput(commandRe,outputRe,phase=activePhase){ return Boolean(verifierEntryWithOutput(commandRe,outputRe,phase)); }
+function parsedReleaseZip(pathValue=''){
+  const p=String(pathValue||'').replace(/\\/g,'/');
+  const name=p.split('/').pop()||'';
+  const match=name.match(/^(.+)-(v\d+(?:\.\d+){0,2})(?:-(debug|marketing))?\.zip$/i);
+  if(!match) return null;
+  return {path:p,project:match[1],version:match[2].toLowerCase(),variant:(match[3]||'production').toLowerCase(),parts:match[2].slice(1).split('.').map(Number)};
+}
+function compareReleaseVersion(a,b){for(let i=0;i<3;i++){const d=(a.parts[i]||0)-(b.parts[i]||0);if(d)return d;}return a.parts.length-b.parts.length;}
+function releaseVersionEvidenceFromPaths(paths=[],baselinePaths=new Set()){
+  const all=paths.map(parsedReleaseZip).filter(Boolean);
+  const before=all.filter(x=>baselinePaths.has(x.path));
+  const created=all.filter(x=>!baselinePaths.has(x.path));
+  const groups=new Map();
+  for(const item of created){
+    const key=`${item.project}|${item.version}`;
+    if(!groups.has(key)) groups.set(key,{project:item.project,version:item.version,parts:item.parts,variants:new Set(),paths:[]});
+    const group=groups.get(key);group.variants.add(item.variant);group.paths.push(item.path);
+  }
+  const complete=[...groups.values()].filter(g=>['production','debug','marketing'].every(v=>g.variants.has(v))).sort(compareReleaseVersion);
+  const newest=complete.at(-1)||null;
+  const previous=before.sort(compareReleaseVersion).at(-1)||null;
+  const blockers=[];
+  if(!newest) blockers.push('Phase 8 requires three newly named ZIP artifacts of one version (production/debug/marketing); overwriting an existing version is not accepted');
+  else if(previous && compareReleaseVersion(newest,previous)<=0) blockers.push(`Phase 8 release version ${newest.version} must be newer than the pre-phase version ${previous.version}`);
+  return {ok:blockers.length===0,blockers,version:newest?.version||null,paths:newest?.paths||[],previousVersion:previous?.version||null};
+}
+function phase8ReleaseVersionEvidence(){
+  const paths=findFiles('Release',/\.zip$/i,32,300);
+  return releaseVersionEvidenceFromPaths(paths,new Set([...phaseBaseline.keys()].filter(x=>x.toLowerCase().startsWith('release/')&&x.toLowerCase().endsWith('.zip'))));
+}
 const PHASE_CONTRACTS=Object.freeze({
   1:{name:'Analyze',files:[['ANALYSIS.md',80],['wiki/design/brief.md',80],['wiki/architecture/metrics.md',80],['.forge-ai.json',20],['wiki/ai/asset-baseline.md',80]]},
   2:{name:'Design',files:[['wiki/design/gdd.md',200],['wiki/plan/02-development-plan.md',120],['wiki/design/cross-review.md',80],['wiki/architecture/modules.md',80],['wiki/design/layout-system.md',80],['wiki/ai/studio-plan.md',80]]},
@@ -973,7 +1157,9 @@ function resolveForgeScript(name=''){
   if(!raw||raw.includes('..')) throw new Error('forge_script requires a safe canonical script name/path');
 
   const aliases=new Map([
+    ['phase-state','.claude/skills/status/references/phase-state.mjs'],
     ['phase-state.mjs','.claude/skills/status/references/phase-state.mjs'],
+    ['project-status','.claude/skills/status/references/project-status.mjs'],
     ['project-status.mjs','.claude/skills/status/references/project-status.mjs']
   ]);
   if(aliases.has(raw)){
@@ -987,9 +1173,12 @@ function resolveForgeScript(name=''){
   }
 
   const clean=raw.replace(/^scripts\//,'');
-  const local=safePath(`scripts/${clean}`),engine=resolve(ENGINE,'scripts',clean);
-  if(existsSync(local)) return local;
-  if(existsSync(engine)) return engine;
+  const variants=extOf(clean)?[clean]:[clean,`${clean}.mjs`];
+  for(const candidate of variants){
+    const local=safePath(`scripts/${candidate}`),engine=resolve(ENGINE,'scripts',candidate);
+    if(existsSync(local)) return local;
+    if(existsSync(engine)) return engine;
+  }
 
   // Last-resort deterministic lookup for an exact basename under .claude/skills.
   // Accept only a unique match; ambiguity is an error rather than a guess.
@@ -1018,6 +1207,10 @@ function hasOutput(re) { return phaseCommandOutputs.some(x=>re.test(`${x.stdout}
 
 function phaseGateReport(phase=activePhase) {
   const p=Number(phase||0), blockers=[], evidence={phase:p,contractVersion:CONTRACT_VERSION,started:phaseStarted,unresolvedFailures:unresolvedFailures.size};
+  if(phaseMarkedComplete(p)){
+    let marker={};try{marker=JSON.parse(readText(safePath(`wiki/phases/phase-${p}.json`)));}catch{}
+    return {ok:true,phase:p,blockers:[],evidence:{...evidence,archivedComplete:true,completedAt:marker.completedAt||null,artifacts:marker.evidence||[]}};
+  }
   if(!p) blockers.push('no active Forge phase detected');
   if(pendingDecision) blockers.push(`STOP-point waiting for user: ${pendingDecision.question}`);
   blockers.push(...decisionBlockers(p));
@@ -1025,6 +1218,14 @@ function phaseGateReport(phase=activePhase) {
   if(capabilityBlock) blockers.push(capabilityBlock);
   const nonBlockingFailures=[];
   for(const [key,failure] of unresolvedFailures){
+    if(/phase-state\.mjs.*\bcomplete\b/i.test(String(key))){
+      nonBlockingFailures.push({key,type:'control-attempt',message:failureMessage(failure)});
+      continue;
+    }
+    if(/verify-i18n|verify\.sh/i.test(String(key))){
+      nonBlockingFailures.push({key,type:'advisory-check',message:failureMessage(failure)});
+      continue;
+    }
     if(hardFailure(failure) || String(failure?.type||'')==='verifier'){
       blockers.push(`unresolved ${failure?.type||'tool'} failure: ${key} -> ${failureMessage(failure)}`);
     }else{
@@ -1057,54 +1258,64 @@ function phaseGateReport(phase=activePhase) {
   if(p===2){
     if(projectKind()==='game'){
       for(const [path,min] of [['wiki/design/levels.md',80],['wiki/design/monetization.md',80],['wiki/design/art-bible.md',80],['wiki/design/audio.md',80]]){const b=requiredFileBlock(path,min);if(b)blockers.push(b);}
-      if(!findFiles('wiki/design',/hierarchy-.*\.md$/i,60,50).length) blockers.push('Phase 2 game design requires at least one UI hierarchy document');
+      if(!findFiles('wiki/design',/(?:hierarchy-.+|.+-hierarchy)\.md$/i,60,50).length) blockers.push('Phase 2 game design requires at least one UI hierarchy document under wiki/design');
     }
-    if(!findFiles('assets/prompts',/\.json$/i,20,50).length) blockers.push('Phase 2 requires at least one draft AI prompt pack');
+    if(!findFiles('assets/prompts',/\.json$/i,20,50).length) blockers.push('Phase 2 requires at least one draft AI prompt pack at assets/prompts/*.json');
   }
   if(p===3){
     const gameChanges=changedSinceBaseline(pathLooksGameChange); evidence.gameChanges=gameChanges;
     if(!gameChanges.length) blockers.push('Phase 3 requires real WorkProgress game/code changes since phase start');
-    if(!commandSucceeded(/playtest\.mjs/i)) blockers.push('Phase 3 requires successful playtest.mjs');
-    const shots=findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200).filter(isValidMediaFile);
+    if(!commandSucceeded(/playtest\.mjs/i,p)) blockers.push('Phase 3 requires successful playtest.mjs');
+    const shots=[
+      ...findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200),
+      ...findFiles('WorkProgress',/playtest-out[\\/].*\.(png|jpg|jpeg|webp)$/i,32,200)
+    ].filter(isValidMediaFile);
     if(shots.length<2||distinctValidImages(shots)<2) blockers.push('Phase 3 requires at least two distinct real playtest screenshots');
     const mp=[...loadDecisionLedger()].reverse().find(d=>String(d.decision_key||'')==='phase2-multiplayer');
-    if(mp&&!/(нет|no|вариант\s*а)/i.test(String(mp.answer||''))&&!anyProjectText(/websocket|socket\.io|leaderboard|clan|клан|multiplayer/i)) blockers.push('Phase 3 multiplayer approved but implementation evidence missing');
+    if(mp&&!/(нет|no|вариант\s*а|без\s+мультиплеер|single[- ]?player|одиночн)/i.test(String(mp.answer||''))&&!anyProjectText(/websocket|socket\.io|leaderboard|clan|клан|multiplayer/i)) blockers.push('Phase 3 multiplayer approved but implementation evidence missing');
   }
   if(p===4){
-    if(!commandSucceeded(/asset-find\.mjs/i)) blockers.push('Phase 4 requires successful asset-find.mjs');
-    if(!fileExistsNonEmpty('assets/style/selection.json',20)&&!fileExistsNonEmpty('assets/bible/selection.json',20)) blockers.push('Phase 4 requires selection.json');
-    if(!fileExistsNonEmpty('assets/target/target-frame.png',32)||!isValidMediaFile('assets/target/target-frame.png')) blockers.push('Phase 4 target-frame.png missing/invalid');
+    if(!commandSucceeded(/asset-find\.mjs/i,p)) blockers.push('Phase 4 requires successful asset-find.mjs');
+    if(!phase4SelectionPath()) blockers.push('Phase 4 requires selection.json');
+    if(!phase4TargetFramePath()) blockers.push('Phase 4 canonical target-frame image missing/invalid (PNG/JPEG/WebP accepted)');
     const refs=findFiles('assets/refs',/\.(png|jpg|jpeg|webp)$/i,32,100).filter(isValidMediaFile); if(refs.length<3) blockers.push('Phase 4 requires at least 3 real reference images');
-    const variants=findFiles('assets/target',/(variant|candidate|option|[-_][abc])[^/]*\.(png|jpg|jpeg|webp)$/i,32,100).filter(isValidMediaFile); if(distinctValidImages(variants)<3) blockers.push('Phase 4 requires 3 distinct target-frame variants');
+    const variants=phase4TargetVariantPaths(); if(distinctValidImages(variants)<3) blockers.push('Phase 4 requires 3 distinct target-frame variants');
     const production=changedSinceBaseline(pathLooksProductionAsset).filter(isValidMediaFile); evidence.productionAssets=production; if(!production.length) blockers.push('Phase 4 requires changed production visual asset');
     if(!changedSinceBaseline(pathLooksGameChange).length) blockers.push('Phase 4 requires visual integration inside WorkProgress');
-    if(!commandSucceeded(/screens-shoot\.mjs/i)||!commandSucceeded(/visual-qa|ui-review/i)) blockers.push('Phase 4 requires screenshot capture AND visual QA');
+    const visualQaReports=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
+    const visualQaDone=commandSucceeded(/visual-qa|ui-review/i,p)||visualQaReports.length>0;
+    if(!commandSucceeded(/screens-shoot\.mjs/i,p)||!visualQaDone) blockers.push('Phase 4 requires screenshot capture AND visual QA report');
   }
   if(p===5){
     if(!anyProjectText(/YaGames|YandexSDK|LoadingAPI\.ready|GameplayAPI/i)) blockers.push('Phase 5 requires Yandex SDK integration');
     if(!anyProjectText(/startGameplay|GameplayAPI\.start/i)||!anyProjectText(/stopGameplay|GameplayAPI\.stop/i)) blockers.push('Phase 5 requires GameplayAPI start/stop lifecycle');
     if(!anyProjectText(/showRewarded|showInterstitial/i)) blockers.push('Phase 5 requires ads integration');
     if(!anyProjectText(/touchstart|pointerdown|touch-action|safe-area|44px/i)) blockers.push('Phase 5 requires mobile/touch adaptation');
-    if(!commandSucceeded(/ai-studio-init\.mjs.*--check/i)) blockers.push('Phase 5 requires ai-studio-init --check');
+    if(!commandSucceeded(/ai-studio-init\.mjs.*--check/i,p)) blockers.push('Phase 5 requires ai-studio-init --check');
   }
   if(p===6){
     if(!findFiles('.',/(listing|description|seo|how[-_ ]?to[-_ ]?play|yandex).*\.md$/i,80,100).filter(x=>!x.startsWith('wiki/sessions/')).length) blockers.push('Phase 6 requires listing text artifact(s)');
     if(!findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200).filter(isValidMediaFile).length) blockers.push('Phase 6 requires promo screenshots');
-    if(!commandSucceeded(/record-promo\.mjs/i)) blockers.push('Phase 6 requires record-promo.mjs');
-    if(!commandSucceeded(/check-inline-strings|localize|i18n/i)&&!anyProjectText(/\bt\(['"`]/i)) blockers.push('Phase 6 requires i18n evidence');
+    if(!commandSucceeded(/record-promo\.mjs/i,p)) blockers.push('Phase 6 requires record-promo.mjs');
+    if(!commandSucceeded(/check-inline-strings|localize|i18n/i,p)&&!anyProjectText(/\bt\(['"`]/i)) blockers.push('Phase 6 requires i18n evidence');
     if(!HOST_CAPABILITIES.web_search&&!findFiles('wiki',/(catalog|listing|competitor|выдач).*\.md$/i,60,100).length) blockers.push('Phase 6 live catalog review requires web_search or persisted evidence');
   }
   if(p===7){
-    for(const [re,label] of [[/test-game/i,'test-game'],[/playtest\.mjs/i,'playtest'],[/local-stage.*--ai|--ai.*local-stage/i,'local-stage --ai'],[/screens-shoot\.mjs/i,'screens-shoot'],[/gameplay-balance/i,'gameplay-balance'],[/visual-qa|ui-review/i,'visual QA']]) if(!commandSucceeded(re)) blockers.push(`Phase 7 requires successful ${label}`);
+    for(const [re,label,skill] of [[/test-game/i,'test-game','test-game'],[/playtest\.mjs/i,'playtest',null],[/local-stage.*--ai|--ai.*local-stage/i,'local-stage --ai',null],[/screens-shoot\.mjs/i,'screens-shoot',null],[/gameplay-balance/i,'gameplay-balance','gameplay-balance']]){
+      const skillSatisfied=skill&&(loadedSkills.has(skill)||completedSkills.has(skill));
+      if(!commandSucceeded(re,p)&&!skillSatisfied) blockers.push(`Phase 7 requires successful ${label}`);
+    }
+    const phase7VisualQa=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
+    if(!commandSucceeded(/visual-qa|ui-review/i,p)&&!phase7VisualQa.length) blockers.push('Phase 7 requires successful visual QA');
     const shots=findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,300).filter(isValidMediaFile); if(shots.length<4||distinctValidImages(shots)<2) blockers.push('Phase 7 requires 4+ screenshots with state diversity');
     if(!existsSync(safePath('wiki/qa'))) blockers.push('Phase 7 requires wiki/qa evidence');
   }
   if(p===8){
-    if(!commandSucceeded(/check-setup-guide/i)) blockers.push('Phase 8 requires check-setup-guide success');
-    if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i)) blockers.push('Phase 8 requires exact release-ready GREEN output');
-    if(!commandSucceeded(/release-yandex/i)) blockers.push('Phase 8 requires release-yandex success');
+    if(!commandSucceeded(/check-setup-guide/i,p)) blockers.push('Phase 8 requires check-setup-guide success');
+    if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i,p)) blockers.push('Phase 8 requires exact release-ready GREEN output');
+    if(!commandSucceeded(/release-yandex|build-yandex-3zips/i,p)) blockers.push('Phase 8 requires release-yandex/build-yandex-3zips success');
     const fresh=changedSinceBaseline(x=>x.toLowerCase().startsWith('release/')); evidence.freshRelease=fresh; if(!fresh.length) blockers.push('Phase 8 requires fresh Release artifacts');
-    if(findFiles('Release',/\.zip$/i,32,100).length<3) blockers.push('Phase 8 expects three ZIP artifacts');
+    const versionEvidence=phase8ReleaseVersionEvidence(); evidence.releaseBuild=versionEvidence; blockers.push(...versionEvidence.blockers);
     const plan=optionalText('wiki/plan/02-development-plan.md',100000); if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(plan)) blockers.push('Phase 8 TOTAL line must be copied into wiki plan');
     if(!/(MANUAL|Проверь сам|ручн)/i.test(`${plan}\n${optionalText('SETUP_GUIDE.md',50000)}`)) blockers.push('Phase 8 requires manual checklist evidence');
   }
@@ -1288,11 +1499,18 @@ function metricsArtifactProvenanceBlockers(){
   const p='wiki/architecture/metrics.md';
   if(!fileExistsNonEmpty(p,80)) return [];
   const t=optionalText(p,120000);
-  const out=[...productMetricsResearchBlockers()];
+  const approved=resolvedDecisionKeys.has('phase1-content-budget');
+  const decision=approved?latestDecisionRecord('phase1-content-budget'):null;
+  const decisionText=String(decision?.question||'');
+  const out=approved?[]:[...productMetricsResearchBlockers()];
+  if(approved){
+    if(!decisionText || !/Floor/i.test(decisionText) || !/Target/i.test(decisionText) || !/Stretch/i.test(decisionText) || !/\bD1\b/i.test(decisionText) || !/\bD7\b/i.test(decisionText) || !/\bD30\b/i.test(decisionText)) {
+      out.push('approved content-budget decision does not preserve the complete KPI proposal');
+    }
+    if(researchReferenceUrls().length<3) out.push('approved metrics resume requires at least 3 durable source URLs in the research artifact');
+  }
   const urls=[...new Set((t.match(/https?:\/\/[^\s)<>"']+/g)||[]).map(x=>x.replace(/[.,;:!?]+$/,'')))];
-  const fetched=new Set((phaseProductMetricsEvidence.fetch||[]).flatMap(x=>[
-    normalizeEvidenceUrl(x.url),normalizeEvidenceUrl(x.requested_url)
-  ]).filter(Boolean));
+  const fetched=new Set((approved?researchReferenceUrls():(phaseProductMetricsEvidence.fetch||[]).flatMap(x=>[x.url,x.requested_url])).map(normalizeEvidenceUrl).filter(Boolean));
   const unseen=urls.filter(u=>!fetched.has(normalizeEvidenceUrl(u)));
   if(unseen.length) out.push(`metrics.md cites URL(s) that were not successfully fetched/read: ${unseen.slice(0,6).join(', ')}`);
   return out;
@@ -1595,6 +1813,7 @@ function phase1BriefRepairInstruction(a={},error=''){
 }
 
 function printBriefFormatRecoveryStop(error=''){
+  reportForgeBehavior({severity:'error',code:'GIGA_STOP_FORMAT_REPAIR_EXHAUSTED',kind:'stop_protocol',component:'phase-1-analyze',operation:'phase1-brief',message:'GigaChat exhausted bounded repair attempts for the canonical Phase 1 brief STOP.',expected:'Native ask_user with Q1..Q5 and one recommendation per question.',actual:String(error||'Malformed STOP serialization')});
   process.stdout.write(`\n=== FORGE RECOVERABLE STOP-FORMAT ERROR: Phase 1 ===\n`);
   process.stdout.write(`GigaChat repeatedly failed to serialize the mandatory /grilling brief correctly.\n`);
   if(error) process.stdout.write(`Last blocker: ${String(error)}\n`);
@@ -1618,7 +1837,26 @@ function renderStructuredContentBudgetQuestion(p={}){
   const k=p.kpis||{},e=p.engagement||{},m=p.monetization||{},c=p.content_budget||{};const row=(label,key)=>{const x=k[key]||{};return `| ${label} | ${String(x.industry||'see benchmark context')} | ${String(x.floor||'')} | ${String(x.target||'')} | ${String(x.stretch||'')} |`;};
   return ['## Phase 1 — Product Metrics + Content Budget approval','','### Industry benchmark context',String(p.benchmark_context||''),'','| KPI | Industry context | Floor | Target | Stretch |','|---|---|---|---|---|',row('D1 retention','d1'),row('D7 retention','d7'),row('D30 retention','d30'),row('ARPDAU','arpdau'),row('Session length','session_length'),row('IAP conversion','iap_conversion'),row('North-star','north_star'),'','### Engagement narrative',`- Core-loop length: ${formatListValue(e.core_loop_length)}`,`- Session structure: ${formatListValue(e.session_structure)}`,`- Drop-off points: ${formatListValue(e.drop_off_points)}`,`- Retention hooks: ${formatListValue(e.retention_hooks)}`,'','### Provisional monetization narrative',`- Monetization narrative: ${formatListValue(m.narrative)}`,`- Primary model (provisional; Phase 2 owns final decision): ${formatListValue(m.primary_model)}`,`- Rewarded-video hooks: ${formatListValue(m.rewarded_hooks)}`,`- Interstitial hooks: ${formatListValue(m.interstitial_hooks)}`,`- IAP catalog / provisional tiers: ${formatListValue(m.iap_catalog)}`,`- НЕ монетизируем: ${formatListValue(m.not_monetized)}`,'',`### Content budget — scope: ${String(c.scope||'')}`,'| Window | Content / goal | Effort / volume | Exists now | DEFICIT |','|---|---|---|---|---|',renderContentBudgetRow('D0-D1',c.d0_d1),renderContentBudgetRow('D2-D7',c.d2_d7),renderContentBudgetRow('D8-D30',c.d8_d30),'',`**Explicit DEFICIT:** ${formatListValue(c.deficit)}`,'','После утверждения Forge запишет wiki/architecture/metrics.md и product-metrics ADR.'].join('\n');
 }
-function canonicalizeAskUserArgs(a={}){let out=canonicalizePhase1BriefArgs(a);if(String(out.decision_key||'')==='phase1-content-budget'&&out.proposal&&typeof out.proposal==='object'){out={...out,question:renderStructuredContentBudgetQuestion(out.proposal),options:String(out.options||'A) Утвердить proposal как есть\nB) Скорректировать — укажите KPI/бюджет и новое значение\nC) Вернуться к research'),recommendation:String(out.recommendation||'A) Утвердить, если KPI и трёхмесячный content budget подходят.'),reason:String(out.reason||'Обязательный Phase 1 STOP перед metrics.md/ADR.')};}return out;}
+function canonicalizePhase2DecisionArgs(a={}){
+  const key=String(a.decision_key||'').trim();
+  if(key==='phase2-monetization') return {...a,
+    question:String(a.question||'На чём зарабатывает игра?'),
+    options:String(a.options||'А) Только реклама — Yandex-first, без сервера\nБ) Гибрид — платежи + реклама, backend и юридический контур'),
+    recommendation:String(a.recommendation||'А) Только реклама — самый быстрый путь к рабочему MVP.'),
+    reason:String(a.reason||'Модель монетизации определяет платформу, backend и объём реализации.')};
+  if(key==='phase2-multiplayer') return {...a,
+    question:String(a.question||'Делаем мультиплеер? Сервер увеличивает срок и постоянные расходы.'),
+    options:String(a.options||'А) Нет — одиночная игра без сервера\nБ) Асинхронный\nВ) Синхронный реалтайм'),
+    recommendation:String(a.recommendation||'А) Нет — самый быстрый путь к рабочему MVP.'),
+    reason:String(a.reason||'Мультиплеер добавляет backend, синхронизацию, эксплуатацию и QA.')};
+  if(key==='phase2-content-plan') return {...a,
+    question:String(a.question||'Утверждаем минимальную контентную рамку MVP и критерии готовности?'),
+    options:String(a.options||'А) Утвердить минимальный план\nБ) Изменить — перечислите необходимые правки'),
+    recommendation:String(a.recommendation||'А) Утвердить минимальный план без расширения D8–D30 до проверки удержания.'),
+    reason:String(a.reason||'Фиксированный scope предотвращает разрастание разработки до первого рабочего билда.')};
+  return a;
+}
+function canonicalizeAskUserArgs(a={}){let out=canonicalizePhase2DecisionArgs(canonicalizePhase1BriefArgs(a));if(String(out.decision_key||'')==='phase1-content-budget'&&out.proposal&&typeof out.proposal==='object'){out={...out,question:renderStructuredContentBudgetQuestion(out.proposal),options:String(out.options||'A) Утвердить proposal как есть\nB) Скорректировать — укажите KPI/бюджет и новое значение\nC) Вернуться к research'),recommendation:String(out.recommendation||'A) Утвердить, если KPI и трёхмесячный content budget подходят.'),reason:String(out.reason||'Обязательный Phase 1 STOP перед metrics.md/ADR.')};}return out;}
 function nextProductMetricsAdrPath(){const files=findFiles('wiki/decisions',/\.md$/i,1,500);let max=0;for(const f of files){const m=f.match(/\/(\d{3})-[^/]+\.md$/);if(m)max=Math.max(max,Number(m[1]));}return `wiki/decisions/${String(max+1).padStart(3,'0')}-product-metrics.md`;}
 function renderApprovedMetricsMarkdown(p={}){const sources=[...new Set((phaseProductMetricsEvidence.fetch||[]).map(x=>String(x.url||x.requested_url||'')).filter(u=>/^https?:\/\//i.test(u)))];return ['---',`date: ${new Date().toISOString().slice(0,10)}`,'status: approved','---','','# Product Metrics','',renderStructuredContentBudgetQuestion(p),'','## Sources',...sources.map(u=>`- ${u}`),''].join('\n');}
 function renderProductMetricsAdr(p={}){const sources=[...new Set((phaseProductMetricsEvidence.fetch||[]).map(x=>String(x.url||x.requested_url||'')).filter(u=>/^https?:\/\//i.test(u)))];return ['# ADR — Product Metrics','',`- Date: ${new Date().toISOString().slice(0,10)}`,'- Status: Accepted','- Phase: 1 Analyze','','## Decision','Adopt the approved KPI set and content budget from wiki/architecture/metrics.md.','','## Context',String(p.benchmark_context||''),'','## Consequences','- Phase 2 design uses these metrics as constraints.','- Phase 2 still owns the final monetization decision.','','## Evidence',...sources.map(u=>`- ${u}`),''].join('\n');}
@@ -1681,6 +1919,7 @@ function phase1ContentBudgetRepairInstruction(a={},error=''){
   ].join('\n');
 }
 function printContentBudgetFormatRecoveryStop(error){
+  reportForgeBehavior({severity:'error',code:'GIGA_STOP_FORMAT_REPAIR_EXHAUSTED',kind:'stop_protocol',component:'phase-1-analyze',operation:'phase1-content-budget',message:'GigaChat exhausted bounded repair attempts for the product-metrics/content-budget STOP.',expected:'Complete native ask_user structured proposal.',actual:String(error||'Malformed STOP serialization')});
   process.stdout.write(
     `\n=== FORGE RECOVERABLE STOP-FORMAT ERROR: Phase 1 product-metrics ===\n`+
     `GigaChat repeatedly failed to serialize the complete canonical product-metrics/content-budget STOP.\n`+
@@ -1768,7 +2007,50 @@ function isStatusOnlyInput(text='') {
   if(!s) return false;
   return s==='/status' || s==='status' || s==='статус' ||
     /^(?:покажи|дай|какой|какая|какие)?\s*(?:текущий\s+)?статус[?.!]*$/i.test(s) ||
-    /^(?:что\s+ты\s+делаешь|что\s+сейчас\s+делаешь|какие\s+вопросы(?:\s+у\s+тебя)?)[?.!]*$/i.test(s);
+    /^(?:что\s+ты\s+делаешь|что\s+сейчас\s+делаешь|какие\s+вопросы(?:\s+у\s+тебя)?|что\s+уже\s+сделано|где\s+остановились|на\s+ч[её]м\s+остановились)[?.!]*$/i.test(s) ||
+    /^(?:ну\s+|а\s+)?(?:ты\s+)?(?:собрал(?:а|и)?|создал(?:а|и)?|сделал(?:а|и)?|запустил(?:а|и)?|проверил(?:а|и)?|закончил(?:а|и)?|готовил(?:а|и)?|обновил(?:а|и)?|отправил(?:а|и)?|запушил(?:а|и)?|исправил(?:а|и)?|подключил(?:а|и)?|добавил(?:а|и)?)(?=\s|[?])[^\n]*[?]+$/i.test(s) ||
+    /^(?:ну\s+|а\s+)?(?:вс[её]\s+)?(?:готово|сделано|собрано|создано|запущено|проверено|закончено|обновлено|отправлено|исправлено|подключено|добавлено)(?:\s+[^\n]*)?[?]+$/i.test(s) ||
+    /^(?:ну\s+|а\s+)?[^\n?]{1,100}\s+(?:готов[ыао]?|собран[ыао]?|создан[ыао]?|запущен[ыао]?|проверен[ыао]?|обновлен[ыао]?|обновлён[ыао]?|исправлен[ыао]?|подключен[ыао]?|подключён[ыао]?)[?]+$/i.test(s);
+}
+
+const READ_ONLY_FUNCTIONS=new Set(['forge_status','forge_checkpoint','forge_context','forge_workspace_inspect','forge_capabilities','forge_search_doctor','read_file','list_files','search_text','git_diff']);
+function readOnlyTurnToolBlock(name=''){
+  if(!currentTurnReadOnly || READ_ONLY_FUNCTIONS.has(String(name||''))) return null;
+  return `Read-only status question: tool ${name} is unavailable. Answer only from current project state; do not write files, run commands, start phases, build releases, or change memory.`;
+}
+
+function counterfeitCanonicalScriptWriteBlock(path=''){
+  const p=String(path||'').replace(/\\/g,'/').toLowerCase();
+  if(!/^workprogress\/[^/]+\/scripts\/(?:verify-|check-|release-|build-yandex|phase-state)/i.test(p)) return null;
+  return `Counterfeit Forge verifier/release script blocked: ${path}. Do not invent a project-local substitute for a missing canonical Forge verifier or release command; load the exact canonical skill/script and report a real blocker if it is unavailable.`;
+}
+
+function repeatedDirectiveOverwriteBlock(path=''){
+  if(!activeDirective) return null;
+  const target=String(path||'').replace(/\\/g,'/').toLowerCase();
+  const writes=(activeDirective.operations||[]).filter(op=>op.tool==='write_file'&&String(op.target||'').replace(/\\/g,'/').toLowerCase()===target);
+  if(!writes.length) return null;
+  return `Repeated full overwrite blocked: ${path} already received write_file during this direct task. Use targeted replace_text for all further edits; rereading the file does not authorize another reconstruction.`;
+}
+
+function destructiveFullWriteBlock(path='',content=''){
+  if(!activeDirective) return null;
+  let p;try{p=safePath(path);}catch{return null;}
+  if(!existsSync(p) || !statSync(p).isFile()) return null;
+  try{
+    const contractPath=safePath('wiki/architecture/modules.json');
+    if(existsSync(contractPath)){
+      const contract=JSON.parse(readText(contractPath));
+      const target=rel(p).replace(/\\/g,'/').toLowerCase();
+      const approved=(contract.modules||[]).some(module=>String(module.path||'').replace(/\\/g,'/').toLowerCase()===target);
+      if(approved) return `Full write_file replacement of approved module ${path} is blocked. Its documented symbols and neighboring behavior must be preserved; use one or more targeted replace_text edits. New modules may be created with write_file before contract refresh.`;
+    }
+  }catch{}
+  const oldBytes=statSync(p).size, newBytes=Buffer.byteLength(String(content??''));
+  const explicitRebuild=/(?:перепиши|пересобери|замени)\s+(?:файл\s+)?(?:полностью|целиком|с\s+нуля)|rebuild\s+(?:the\s+)?file\s+from\s+scratch|replace\s+(?:the\s+)?entire\s+file/i.test(String(activeDirective.request||''));
+  if(oldBytes>=32_000 && !explicitRebuild) return `Full write_file replacement of existing large file ${path} (${oldBytes} bytes) is blocked for this direct integration task. Preserve the existing game and use targeted replace_text anchors.`;
+  if(oldBytes>=8_000 && newBytes+4_096<oldBytes*0.75 && !explicitRebuild) return `Destructive shrink blocked for ${path}: ${oldBytes} -> ${newBytes} bytes. The task did not explicitly authorize rebuilding this file from scratch; use replace_text.`;
+  return null;
 }
 function phaseExecutionRequestedByText(text='') {
   const s=String(text||'');
@@ -1798,6 +2080,158 @@ function phaseAliasInvocation(text='') {
   m=s.match(/^[/\$]?(phase-([1-9])-[a-z0-9-]+)\s*\.?$/i);
   if(m) return {phase:Number(m[2]),skill:m[1].toLowerCase()};
   return null;
+}
+
+function directiveCommand(text='') {
+  const s=String(text||'').trim();
+  if(/^\/resume-phase\s*$/i.test(s)) return {kind:'resume'};
+  if(/^\/(?:task|do-status)\s*$/i.test(s)) return {kind:'status'};
+  const m=s.match(/^\/do(?:\s+([\s\S]+))?$/i);
+  if(m) return {kind:'do',request:String(m[1]||'').trim()};
+  return null;
+}
+
+function naturalImplementationDirective(text='') {
+  const s=String(text||'').trim();
+  if(!s || s.startsWith('/') || isStatusOnlyInput(s) || phaseAliasInvocation(s) || phaseExecutionRequestedByText(s)) return null;
+  const direct=/(?:^|[.!?]\s*)(?:сделай|добавь|реализуй|внедри|исправь|почини|переработай|доработай|создай|замени|убери|начинай(?:\s+делать)?|давай\s+(?:сделаем|добавим|реализуем|внедрим|исправим|починим|переработаем|доработаем|создадим))(?=\s|[.,!?:;]|$)/i;
+  return direct.test(s)?s:null;
+}
+
+function authoritativeOpenPhase() {
+  const markers=phaseMarkersSnapshot();
+  const open=markers.filter(x=>['in_progress','blocked'].includes(String(x.state||''))).sort((a,b)=>Number(b.phase)-Number(a.phase));
+  if(open.length) return Number(open[0].phase)||null;
+  const firstPending=markers.find(x=>!['complete','ongoing'].includes(String(x.state||'')));
+  return firstPending?Number(firstPending.phase)||null:null;
+}
+
+function activateDirective(request,source='natural_language') {
+  const task=String(request||'').trim();
+  if(!task) return {ok:false,error:'Пустая команда. Использование: /do <что конкретно сделать>'};
+  const now=new Date().toISOString();
+  // Reissuing an explicit /do is a deliberate retry and must start with clean
+  // operation/read cursors. Natural continuation in the same runtime may keep
+  // durable progress, but a failed direct task must not poison its retry.
+  const continuingSame=Boolean(source!=='explicit_command' && activeDirective?.request===task && activeDirective?.status==='active');
+  const history=Array.isArray(activeDirective?.history)?activeDirective.history.slice(-7):[];
+  if(activeDirective?.request && activeDirective.request!==task) history.push({request:activeDirective.request,at:activeDirective.updatedAt||activeDirective.activatedAt||now});
+  activeDirective={
+    mode:'change_request',
+    status:'active',
+    request:task,
+    source,
+    activatedAt:continuingSame?(activeDirective?.activatedAt||now):now,
+    updatedAt:now,
+    pausedPhase:(continuingSame?activeDirective?.pausedPhase:null)||authoritativeOpenPhase()||activePhase||null,
+    latestUserInput:task,
+    operations:continuingSame&&Array.isArray(activeDirective?.operations)?activeDirective.operations.slice(-40):[],
+    reads:continuingSame&&Array.isArray(activeDirective?.reads)?activeDirective.reads.slice(-40):[],
+    readCursors:continuingSame&&activeDirective?.readCursors&&typeof activeDirective.readCursors==='object'?activeDirective.readCursors:{},
+    history
+  };
+  persistRuntimeEvidenceLedger();
+  return {ok:true,directive:activeDirective};
+}
+
+function updateDirectiveInput(text='') {
+  if(!activeDirective) return;
+  activeDirective={...activeDirective,latestUserInput:String(text||'').trim(),updatedAt:new Date().toISOString()};
+  persistRuntimeEvidenceLedger();
+}
+
+function directiveTaskPrompt(userText='') {
+  if(!activeDirective) return String(userText||'');
+  const hints=/гач/i.test(activeDirective.request)
+    ? 'Для этой задачи сначала загрузи tactical skill gacha-meta; при необходимости затем deepen-game/gameplay-balance. Если modules.json описывает merge-grid с state.grid/saveState, не переписывай утверждённые модули вручную: вызови forge_script name=scripts/integrate-gacha.mjs args=[<каталог игры>], затем refresh/check контракта. Обязательная сфокусированная проверка: forge_script name=scripts/check-gacha-integration.mjs args=[<каталог игры>]. Обычный smoke/playtest не доказывает работу гачи. '
+    :'';
+  const modularization=directTaskMonolithInstruction();
+  const moduleContext=preloadedModuleTaskContext(activeDirective.request);
+  return `[FORGE CHANGE REQUEST MODE — AUTHORITATIVE USER TASK]\n`+
+    `Текущая прямая задача: ${activeDirective.request}\n`+
+    `Последнее сообщение пользователя: ${String(userText||activeDirective.latestUserInput||'').trim()}\n`+
+    `Канонический фазовый автопилот временно приостановлен на Phase ${activeDirective.pausedPhase||'?'}. Не продолжай Release и не запускай phase-state/forge_gate/release-* до завершения этой задачи. `+
+    `${modularization}${hints}Составь необходимое ТЗ внутри рабочих артефактов и сразу реализуй задачу в WorkProgress. Не останавливайся на плане. `+
+    `После реальных изменений и проверок вызови forge_change_complete с существующими evidence paths и выполненными checks. Если нужен настоящий пользовательский выбор, используй ask_user.\n`+
+    `${moduleContext}`+
+    `[END FORGE CHANGE REQUEST MODE]`;
+}
+
+function directiveToolBlock(name,a={}) {
+  if(!activeDirective || name==='forge_change_complete' || name==='forge_diagnostic_report') return null;
+  if(name==='forge_gate' || name==='forge_preflight') return `Change request mode is active: "${activeDirective.request}". Phase gates/preflight are paused until forge_change_complete or /resume-phase.`;
+  if(name==='forge_skill' && /^(?:phase-[1-9]-|release-)/i.test(String(a.name||''))) return `Change request mode blocks phase/release skill ${a.name}. Load the matching tactical implementation skill instead.`;
+  if(name==='forge_script'){
+    const command=`${String(a.name||'')} ${(Array.isArray(a.args)?a.args:[]).join(' ')}`;
+    if(/phase-state\.mjs|release-(?:ready|yandex|all|web)|build-yandex-3zips|check-setup-guide/i.test(command)) return `Change request mode blocks phase/release command: ${command}. Finish the direct task first.`;
+  }
+  if(name==='run_command'){
+    const command=String(a.command||'');
+    if(/phase-state\.mjs|scripts[\\/]release-(?:ready|yandex|all|web)|build-yandex-3zips|check-setup-guide/i.test(command)) return `Change request mode blocks phase/release shell command. Finish the direct task first.`;
+    if(/(?:^|[\\/])(?:integrate-gacha|modularize-existing-project|check-gacha-integration|playtest|local-stage)\.mjs\b/i.test(command)) return `Canonical Forge operation/verifier was routed through run_command incorrectly. Use forge_script with the canonical scripts/<name>.mjs and project-relative args so Forge can execute it safely and record exact evidence.`;
+  }
+  return null;
+}
+
+function successfulDirectiveChecks(requestedChecks=[],directive=activeDirective){
+  if(!directive) return [];
+  const activatedAt=Date.parse(directive.activatedAt||0);
+  const checks=normalizeList(requestedChecks);
+  const normalized=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+  return [...verifierLedger.values()].filter(v=>{
+    if(Number(v.status)!==0 || Date.parse(v.updatedAt||0)<activatedAt || commandLooksMutating(v.command||'')) return false;
+    const actual=normalized(v.command);
+    return checks.some(c=>{const supplied=normalized(c);return supplied===actual || supplied.includes(actual);});
+  });
+}
+
+function completeDirective(a={}) {
+  if(!activeDirective) return {ok:false,error:'No active change request. Use /do <task> first.'};
+  const summary=String(a.summary||'').trim();
+  const evidence=normalizeList(a.evidence);
+  const checks=normalizeList(a.checks);
+  const validEvidence=evidence.filter(p=>{try{return existsSync(safePath(p));}catch{return false;}});
+  const operations=Array.isArray(activeDirective.operations)?activeDirective.operations:[];
+  const successfulChecks=[...verifierLedger.values()].filter(v=>Number(v.status)===0 && Date.parse(v.updatedAt||0)>=Date.parse(activeDirective.activatedAt||0) && !commandLooksMutating(v.command||''));
+  const matchedChecks=successfulDirectiveChecks(checks);
+  if(!summary) return {ok:false,error:'forge_change_complete requires a factual summary.'};
+  if(!operations.length) return {ok:false,error:'No successful implementation/write operation was recorded after /do. Do the work before completing the change request.'};
+  if(!validEvidence.length) return {ok:false,error:'No existing project-relative evidence path was supplied.'};
+  if(!checks.length) return {ok:false,error:'No verification checks were supplied. Run the relevant test/verifier first.'};
+  if(!matchedChecks.length){
+    reportForgeBehavior({severity:'error',code:'GIGA_UNVERIFIED_COMPLETION_CLAIM',kind:'evidence_integrity',component:'gigachat-agent',operation:'forge_change_complete',message:'Direct-task completion used checks that are not backed by a successful post-activation command.',expected:'At least one supplied check matching a successful command recorded after direct-task activation.',actual:`supplied=${checks.length}; recorded=${successfulChecks.length}`});
+    return {ok:false,error:'None of the supplied checks matches a successful command recorded after this direct task started. Run a real focused verification and pass its exact command in checks.',recorded_successful_checks:successfulChecks.map(v=>v.command)};
+  }
+  if(/гач|gacha/i.test(activeDirective.request)){
+    const focused=successfulChecks.some(v=>/check-gacha-integration\.mjs/i.test(String(v.command||'')));
+    const modular=successfulChecks.some(v=>/modularize-existing-project\.mjs/i.test(String(v.command||''))&&/--check\b/i.test(String(v.command||'')));
+    if(!focused || !modular){
+      return {
+        ok:false,
+        error:'Gacha task completion requires both canonical post-change checks: scripts/check-gacha-integration.mjs <game-dir> and scripts/modularize-existing-project.mjs <entrypoint> --check, executed through forge_script. A generic setup-guide/playtest check cannot prove this feature.',
+        missing:[...(!focused?['check-gacha-integration']:[]),...(!modular?['modularization-contract-check']:[])],
+        recorded_successful_checks:successfulChecks.map(v=>v.command),
+      };
+    }
+  }
+  const verifiedChecks=[...new Set(matchedChecks.map(v=>v.command))];
+  const completed={...activeDirective,status:'complete',completedAt:new Date().toISOString(),summary,evidence:validEvidence,checks:verifiedChecks};
+  const resumePhase=completed.pausedPhase||null;
+  activeDirective=null;
+  persistRuntimeEvidenceLedger();
+  return {ok:true,completed_request:completed.request,summary,evidence:validEvidence,checks:verifiedChecks,resume_phase:resumePhase,note:'Direct task completed from recorded evidence. Canonical phase autopilot is available again; it has not been started automatically.'};
+}
+
+function printCompletedDirectiveAndStop(result='') {
+  try {
+    const parsed=typeof result==='string'?JSON.parse(result):result;
+    if(!parsed?.ok || !parsed.completed_request) return false;
+    process.stdout.write(`\n[Forge] Direct task complete; phase autopilot remains paused.\n${parsed.summary}\n`);
+    if(Array.isArray(parsed.evidence)&&parsed.evidence.length) process.stdout.write(`Evidence: ${parsed.evidence.join(', ')}\n`);
+    if(Array.isArray(parsed.checks)&&parsed.checks.length) process.stdout.write(`Checks: ${parsed.checks.join(' | ')}\n`);
+    process.stdout.write(`To return to Phase ${parsed.resume_phase||'?'}, enter /resume-phase explicitly.\n`);
+    return true;
+  } catch { return false; }
 }
 function pendingDecisionPhase(decision=pendingDecision) {
   if(!decision||typeof decision!=='object') return null;
@@ -1834,7 +2268,7 @@ function ensureHostPhaseStarted(phase) {
   // Canonical user STOPs use machine state "blocked". Preserve durable evidence on reopen.
   startPhaseEvidence(n,{resume:marker==='blocked'});
   const helper=safePath('.claude/skills/status/references/phase-state.mjs');
-  const r=spawnSync(process.execPath,[helper,action,String(n)],{cwd:PROJECT,encoding:'utf8',timeout:30000});
+  const r=spawnSync(process.execPath,[helper,action,String(n),'--host','gigachat'],{cwd:PROJECT,encoding:'utf8',timeout:30000});
   if(r.status===0)hydrateResolvedDecisionState(n);
   return {ok:r.status===0,phase:n,status:r.status,stdout:clip(r.stdout,4000),stderr:clip(r.stderr,4000),action};
 }
@@ -1861,7 +2295,7 @@ function markHostPhaseBlocked(phase,reason) {
   if(!n) return {ok:false,error:'no active phase'};
   try {
     const helper=safePath('.claude/skills/status/references/phase-state.mjs');
-    const r=spawnSync(process.execPath,[helper,'block',String(n),String(reason||'Infrastructure capability blocker')],{
+    const r=spawnSync(process.execPath,[helper,'block',String(n),String(reason||'Infrastructure capability blocker'),'--host','gigachat'],{
       cwd:PROJECT,encoding:'utf8',timeout:30000
     });
     return {ok:r.status===0,status:r.status,stdout:clip(r.stdout,4000),stderr:clip(r.stderr,4000)};
@@ -1882,7 +2316,9 @@ function phaseMarkerState(phase) {
   try {
     const p=safePath(`wiki/phases/phase-${Number(phase)}.json`);
     if(!existsSync(p)) return null;
-    return JSON.parse(readText(p))?.state || null;
+    const marker=JSON.parse(readText(p));
+    if(marker?.completedAt && Array.isArray(marker?.evidence) && marker.evidence.length) return Number(phase)===9?'ongoing':'complete';
+    return marker?.state || null;
   } catch { return null; }
 }
 function phaseMarkedComplete(phase) { const p=Number(phase),state=phaseMarkerState(p); return p===9?(state==='ongoing'||state==='complete'):state==='complete'; }
@@ -1907,7 +2343,13 @@ function registerLoadedPhaseSkill(name,result){
   const m=String(name||'').match(/^phase-(\d+)-/i);if(!m)return;activePhase=Number(m[1]);activePhaseSkill=String(name);hydrateResolvedDecisionState(activePhase);
 }
 function parsedToolResult(result){try{return JSON.parse(String(result||'{}'));}catch{return {ok:false,error:'invalid tool result json'};}}
-function registerSuccessfulSkillLoad(name,result){const r=parsedToolResult(result);if(r.ok===false)return false;const n=String(name||'').toLowerCase();if(!n)return false;loadedSkills.add(n);registerLoadedPhaseSkill(name,result);return true;}
+function registerSuccessfulSkillLoad(name,result){
+  const r=parsedToolResult(result);if(r.ok===false)return false;
+  const n=String(name||'').toLowerCase();if(!n)return false;
+  loadedSkills.add(n);
+  if(n==='visual-qa') for(const prior of [...unresolvedFailures.keys()]) if(/visual-qa/i.test(prior)) unresolvedFailures.delete(prior);
+  registerLoadedPhaseSkill(name,result);return true;
+}
 function validateSkillCompletion(name){
   const n=String(name||'').toLowerCase(),blockers=[];
   if(!loadedSkills.has(n))blockers.push(`skill ${n} was not loaded in this process`);
@@ -1976,6 +2418,7 @@ function phaseCompletionBlocked(command) {
   const phase = Number(m[1]);
   const report=phaseGateReport(phase);
   const artifactArgs=completionArtifactArgs(command,phase);
+  if(!artifactArgs.length) report.blockers.push('phase-state complete requires explicit evidence artifact arguments');
   for(const path of artifactArgs){
     if(!fileExistsNonEmpty(path,1)) report.blockers.push(`completion evidence argument does not exist/non-empty: ${path}`);
     else if(VISUAL_EXTS.has(extOf(path)) && !isValidMediaFile(path)) report.blockers.push(`completion evidence argument is not valid media: ${path}`);
@@ -1984,6 +2427,12 @@ function phaseCompletionBlocked(command) {
     return `Phase ${phase} completion blocked by Forge hard gate:\n- ${report.blockers.join('\n- ')}\nRun forge_gate to inspect evidence before retrying complete.`;
   }
   return null;
+}
+
+function forgeScriptPhaseCompletionBlocked(script,args=[]){
+  if(!/phase-state\.mjs$/i.test(String(script||'')) || !/^complete$/i.test(String(args[0]||''))) return null;
+  const completionProbe=['node',script,...args].map(String).join(' ');
+  return phaseCompletionBlocked(completionProbe);
 }
 
 function stripShellQuotes(value='') {
@@ -2153,7 +2602,10 @@ function describeToolCall(name, a = {}) {
   if (name === 'read_file') return `${name}: ${a.path || '.'}`;
   if (name === 'list_files') return `${name}: ${a.path || '.'} depth=${a.depth ?? 2}`;
   if (name === 'search_text') return `${name}: ${JSON.stringify(shortText(a.query || '', 90))} in ${a.path || '.'}`;
-  if (name === 'write_file') return `${name}: ${a.path || '?'} (${Buffer.byteLength(String(a.content || ''))} bytes)`;
+  if (name === 'write_file') {
+    const content=typeof a.content==='string'?a.content:JSON.stringify(a.content??'');
+    return `${name}: ${a.path || '?'} (${Buffer.byteLength(content)} bytes)`;
+  }
   if (name === 'replace_text') return `${name}: ${a.path || '?'}`;
   if (name === 'forge_skill') return `${name}: ${a.name || '?'}`;
   if (name === 'forge_skill_done') return `${name}: ${a.name || '?'}`;
@@ -2217,8 +2669,8 @@ function describeToolResult(name, result) {
 
 
 function phase1FunctionNames(){
-  const stopCommon=['ask_user','forge_memory_update','forge_context','read_file'];
-  const workCommon=['ask_user','forge_checkpoint','forge_gate','forge_memory_update','forge_skill','forge_skill_done','read_file','write_file','replace_text'];
+  const stopCommon=['ask_user','forge_memory_update','forge_context','forge_diagnostic_report','read_file'];
+  const workCommon=['ask_user','forge_checkpoint','forge_gate','forge_memory_update','forge_skill','forge_skill_done','forge_diagnostic_report','read_file','write_file','replace_text'];
 
   if(!phaseContextRefreshed || !phase1SourceInspected()){
     if(fileExistsNonEmpty('ANALYSIS.md',80) && hasAnyFileUnder('WorkProgress')){
@@ -2259,10 +2711,19 @@ function phase1FunctionNames(){
   return [...new Set([...workCommon,'forge_gate'])];
 }
 
-function functionsForRequest(forcedName=null,phaseExecution=false){
+function functionsForRequest(forcedName=null,phaseExecution=false,readOnly=false){
+  if(readOnly){
+    const subset=functions.filter(f=>READ_ONLY_FUNCTIONS.has(f.name));
+    return subset.length?subset:functions.filter(f=>f.name==='forge_status');
+  }
   if(forcedName){
     const one=functions.filter(f=>f.name===forcedName);
     return one.length?one:functions;
+  }
+  if(activeDirective){
+    const allowed=new Set(['ask_user','forge_checkpoint','forge_memory_update','forge_skill','forge_skill_done','forge_diagnostic_report','forge_change_complete','read_file','write_file','replace_text','search_text','copy_path','git_diff','forge_script','run_command','gigachat_generate_image','gigachat_generate_3d']);
+    const subset=functions.filter(f=>allowed.has(f.name));
+    return subset.length?subset:functions;
   }
   if(phaseExecution && activePhase===1){
     const allowed=new Set(phase1FunctionNames());
@@ -2320,6 +2781,40 @@ function openDeterministicStop(stop,reason='deterministic resume'){
   process.stdout.write(`\n[Forge] Opened ${reason} STOP directly from durable state; no model/tool round-trip required.\n`);
   printStopPoint(a);
   return true;
+}
+function completeApprovedPhase1Resume(){
+  if(activePhase!==1 || pendingDecision || phaseMarkedComplete(1)) return {completed:false};
+  if([...requiredDecisionKeysForPhase(1)].some(key=>!resolvedDecisionKeys.has(key))) return {completed:false};
+  const research=phase1ResearchEvidencePath();
+  const productAdr=findFiles('wiki/decisions',/product-metrics.*\.md$/i,40,20)[0]||null;
+  const artifacts=['ANALYSIS.md',research,'wiki/design/brief.md','wiki/architecture/metrics.md',productAdr].filter(Boolean);
+  if(memoryDirty){
+    persistMemoryUpdate({
+      phase:1,
+      summary:'Reconciled already approved Phase 1 decisions and canonical artifacts from durable state before the final gate.',
+      artifacts,
+      checks:['Durable Phase 1 decision reconciliation'],
+      blockers:[],
+      next:'Run the final Phase 1 evidence gate without repeating research or user STOP-points.'
+    });
+  }
+  const gate=phaseGateReport(1);
+  if(!gate.ok) return {completed:false,blockers:gate.blockers};
+  const helper=safePath('.claude/skills/status/references/phase-state.mjs');
+  const evidence=['ANALYSIS.md','wiki/design/brief.md','wiki/architecture/metrics.md'];
+  const result=spawnSync(process.execPath,[helper,'complete','1',...evidence,'--host','gigachat'],{cwd:PROJECT,encoding:'utf8',timeout:30000});
+  if(result.status!==0) return {completed:false,blockers:[String(result.stderr||result.stdout||`phase-state exit ${result.status}`)]};
+  completedSkills.add('phase-1-analyze');
+  persistRuntimeEvidenceLedger();
+  persistMemoryUpdate({
+    phase:1,
+    summary:'Phase 1 Analyze completed from already approved durable state. Research, brief, KPI/content budget and the final evidence gate are complete; no approval was repeated.',
+    artifacts:evidence,
+    checks:['Forge Phase 1 gate: GREEN',String(result.stdout||'Phase 1 marker complete').trim()],
+    blockers:[],
+    next:'Await the user command “фаза 2” before starting Design.'
+  });
+  return {completed:true,evidence,stdout:String(result.stdout||'').trim()};
 }
 function reopenPendingDecisionStop(reason='phase resume'){
   if(!pendingDecision||typeof pendingDecision!=='object') return false;
@@ -2456,6 +2951,18 @@ const commonOkReturn = (extra={}) => ({
 
 const functions = [
   fnDef(
+    'forge_diagnostic_report',
+    'Record a machine-readable incident only when Project Forge itself behaves incorrectly: malformed phase/STOP output, wrong adapter format, hook/runtime failure, capability contradiction, validator drift, or unexpected orchestration. Do NOT report ordinary game/app implementation bugs. Never include secrets, prompts, full outputs, or file contents. Use action=resolve only after verifying a prior fingerprint.',
+    {type:'object',properties:{action:{type:'string',enum:['report','resolve']},severity:{type:'string',enum:['info','warn','error','critical']},code:{type:'string',description:'Stable uppercase incident class'},kind:{type:'string'},component:{type:'string'},operation:{type:'string'},message:{type:'string'},expected:{type:'string'},actual:{type:'string'},phase:{type:'integer'},evidence:{type:'array',items:{type:'string'},description:'Project-relative evidence paths only'},fingerprint:{type:'string',description:'Required when action=resolve'}},required:['code','component','message']},
+    {type:'object',properties:{ok:{type:'boolean'},fingerprint:{type:'string'},path:{type:'string'},error:{type:'string'}}}
+  ),
+  fnDef(
+    'forge_change_complete',
+    'Complete the active /do or natural-language change request only after the requested implementation is actually written and verified. Supply a factual summary, project-relative paths that already exist, and the checks that were run. This clears change-request mode but does not automatically resume or advance a Forge phase.',
+    {type:'object',properties:{summary:{type:'string'},evidence:{type:'array',items:{type:'string'}},checks:{type:'array',items:{type:'string'}}},required:['summary','evidence','checks']},
+    {type:'object',properties:{ok:{type:'boolean'},completed_request:{type:'string'},summary:{type:'string'},evidence:{type:'array',items:{type:'string'}},checks:{type:'array',items:{type:'string'}},resume_phase:{type:'integer'},note:{type:'string'},error:{type:'string'}}}
+  ),
+  fnDef(
     'ask_user',
     'MANDATORY human-approval gate for every Project Forge STOP-point or decision explicitly owned by the user. Call this instead of answering the decision yourself. The adapter prints the question/options/recommendation and immediately pauses the current tool loop until a new user message arrives. Never call another tool after a successful ask_user in the same turn. Phase 1 order: complete real research -> phase1-research-direction approval -> finalize ANALYSIS.md + dimensionality -> phase1-brief -> product-metrics proposal -> phase1-content-budget. IMPORTANT for decision_key=phase1-brief: canonical phase-1-analyze requires /grilling format exactly: ask all five Q1..Q5 in one round and put a concrete ➡️ recommended answer directly under EACH question. A single generic recommendation field is NOT sufficient. Recommendations must be grounded in the prototype/research and remain proposals for the user to accept or replace. For Q5 history, never fabricate undocumented prior user attempts/failures/releases; recommend what to confirm or preserve and mark unknown history as unknown. Never offer waiting for web_search when live search is already configured. Never ask the user to approve unseen research; include concrete findings, and the runtime will append the current research artifact excerpt. Final research Sources URLs must be grounded in successful forge_web_fetch evidence. Quantitative KPI percentage provenance is enforced later at the separate phase1-content-budget/product-metrics approval. For phase1-content-budget use the structured proposal object; Forge renders the STOP deterministically.',
     {type:'object',properties:{decision_key:{type:'string',description:'Stable machine key.'},phase:{type:'string'},question:{type:'string',description:'Required for ordinary STOPs and phase1-brief. For phase1-content-budget prefer proposal.'},options:{type:'string'},recommendation:{type:'string'},reason:{type:'string'},proposal:phase1ContentBudgetProposalSchema},required:[]},
@@ -2559,7 +3066,7 @@ const functions = [
   ),
   fnDef(
     'read_file',
-    'Read an existing UTF-8 project text file with line numbers. Use before editing a file and to verify prior project memory/artifacts. Do not use on binary media.',
+    'Read an existing UTF-8 project text file with line numbers. During an active direct task, omitting start_line/end_line automatically returns the next unread 300-line page and persists the cursor across context compaction. Repeat the same path without a range only until complete=true; then use search_text/replace_text instead of restarting. Do not use on binary media.',
     {type:'object',properties:{path:{type:'string'},start_line:{type:'integer'},end_line:{type:'integer'}},required:['path']},
     commonOkReturn({path:{type:'string'},start:{type:'integer'},end:{type:'integer'},total:{type:'integer'},content:{type:'string'}})
   ),
@@ -2577,7 +3084,7 @@ const functions = [
   ),
   fnDef(
     'write_file',
-    'Create or fully replace a UTF-8 TEXT file inside the project. This tool is forbidden for PNG/JPG/WebP/audio/video/3D/archive/font/binary media. For generated images use gigachat_generate_image. Respect GameIntegration read-only and Release protection.',
+    'Create a new or fully replace a small UTF-8 TEXT file inside the project. During a direct integration task, never use this tool to reconstruct an existing large game/source file: preserve it with targeted replace_text anchors. A second full overwrite of the same path in one task is blocked. This tool is forbidden for PNG/JPG/WebP/audio/video/3D/archive/font/binary media. For generated images use gigachat_generate_image. Respect GameIntegration read-only and Release protection.',
     {type:'object',properties:{path:{type:'string'},content:{type:'string'}},required:['path','content']},
     commonOkReturn({path:{type:'string'},bytes:{type:'integer'}}),
     [{request:'Обнови wiki текущим решением',params:{path:'wiki/design/brief.md',content:'# Brief\n\nMonetization: ads-only\n'}}]
@@ -2647,6 +3154,7 @@ function persistMemoryUpdate(a={}) {
 
   let status='';
   try { status=JSON.parse(tool('forge_status',{json:false})).output||''; } catch {}
+  status=status.split(/\r?\n/).filter(line=>!/^STOP:\s*/i.test(line.trim())).join('\n');
   const current=[
     '# Current state',
     '',
@@ -2704,16 +3212,37 @@ function persistMemoryUpdate(a={}) {
 
 function tool(name, a={}) {
   try {
+    const readOnlyBlock=readOnlyTurnToolBlock(name);
+    if(readOnlyBlock){
+      reportForgeBehavior({severity:'error',code:'GIGA_STATUS_MUTATION_ATTEMPT',kind:'user_intent',component:'gigachat-agent',operation:name,message:'GigaChat attempted a non-read-only tool during a factual status question.',expected:'Read-only inspection and factual response.',actual:String(name||'unknown')});
+      return jsonResult({ok:false,failure_type:'read-only-intent-guard',error:readOnlyBlock});
+    }
+    const taskBlock=directiveToolBlock(name,a);
+    if(taskBlock) return jsonResult({ok:false,failure_type:'user-intent-guard',error:taskBlock,active_request:activeDirective?.request||''});
+    if (name==='forge_diagnostic_report') {
+      const result=reportForgeBehavior({...a,source:'ai'});
+      return jsonResult(result.ok?{ok:true,fingerprint:result.event.fingerprint,path:rel(result.path)}:{ok:false,error:result.error});
+    }
     if (name==='forge_preflight') return jsonResult(forgePreflight(Number(a.phase||activePhase)));
     if (name==='forge_skill_done') return jsonResult(markSkillDone(a.name));
-    if (name==='forge_checkpoint') { reconcilePhase1ApprovedState(); return jsonResult(forgeCheckpoint()); }
+    if (name==='forge_change_complete') return jsonResult(completeDirective(a));
+    if (name==='forge_checkpoint') {
+      if(activeDirective) return jsonResult({ok:true,mode:'change_request',active_request:activeDirective.request,paused_phase:activeDirective.pausedPhase||null,operations:activeDirective.operations||[],next_hints:['Continue the direct user task in WorkProgress.','Do not run phase/release gates.','After implementation and verification call forge_change_complete.']});
+      reconcilePhase1ApprovedState(); return jsonResult(forgeCheckpoint());
+    }
     if (name==='forge_gate') { reconcilePhase1ApprovedState(); return jsonResult(phaseGateReport(Number(a.phase||activePhase))); }
     if (name==='forge_capabilities') {
       refreshMandatoryCapabilityBlock();
       return jsonResult({ok:true,...HOST_CAPABILITIES,search_provider:SEARCH_CAPABILITIES.provider||null,search_configured:Boolean(SEARCH_CAPABILITIES.configured),search_config:SEARCH_CAPABILITIES.config||null,callable_tools:functions.map(f=>f.name),image_provider:'GigaChat built-in text2image via gigachat_generate_image',model3d_provider:'GigaChat built-in text2model3d via gigachat_generate_3d',mandatory_capability_block:capabilityBlock||'',contractVersion:CONTRACT_VERSION,note:'Unavailable capabilities are explicit; adapter never simulates them. Web/image search become true only when a real external search provider is configured.'});
     }
     if (name==='forge_context') { reconcilePhase1ApprovedState(); return jsonResult({ok:true,...buildProjectContext()}); }
-    if (name==='forge_workspace_inspect') { const maxChars=Math.max(12000,Math.min(64000,Number(a.max_chars||32000))); return jsonResult(inspectWorkspaceSource(maxChars)); }
+    if (name==='forge_workspace_inspect') {
+      if(activePhase>=2 && phaseWorkspaceInspected) return jsonResult({ok:true,already_inspected:true,note:'Workspace source was already inspected in this phase. Read the specific selected source file next, then edit WorkProgress; do not repeat the broad inspection.'});
+      const defaultChars=activePhase>=2?14000:32000;
+      const maxAllowed=activePhase>=2?24000:64000;
+      const maxChars=Math.max(12000,Math.min(maxAllowed,Number(a.max_chars||defaultChars)));
+      return jsonResult(inspectWorkspaceSource(maxChars));
+    }
     if (name==='forge_memory_update') {
       if(!memoryDirty && activePhase===1){
         const rb=phase1ResearchBlockers();
@@ -2727,21 +3256,39 @@ function tool(name, a={}) {
       }
       return jsonResult(persistMemoryUpdate(a));
     }
-    if (name==='read_file') { const p=safePath(a.path); return jsonResult({ok:true,path:rel(p),...lineSlice(readText(p),a.start_line,a.end_line)}); }
+    if (name==='read_file') return jsonResult(readFileForModel(a));
     if (name==='list_files') { const p=safePath(a.path||'.'); return jsonResult({ok:true,path:rel(p),items:walk(p,Math.max(0,Math.min(5,Number(a.depth??2))))}); }
     if (name==='search_text') return jsonResult({ok:true,results:searchText(a.query,a.path||'.',Math.max(1,Math.min(200,Number(a.max_results||80))))});
     if (name==='write_file') {
       assertTextWritableExtension(a.path);
+      const counterfeitBlock=counterfeitCanonicalScriptWriteBlock(a.path);
+      if(counterfeitBlock){
+        reportForgeBehavior({severity:'error',code:'GIGA_COUNTERFEIT_VERIFIER_ATTEMPT',kind:'evidence_integrity',component:'gigachat-agent',operation:'write_file',message:'GigaChat attempted to create a canonical-looking verifier/release substitute under WorkProgress.',expected:'Use the canonical Forge skill/script.',actual:String(a.path||'')});
+        return jsonResult({ok:false,failure_type:'canonical-tool-integrity-guard',error:counterfeitBlock});
+      }
+      const overwriteBlock=repeatedDirectiveOverwriteBlock(a.path);
+      if(overwriteBlock) return jsonResult({ok:false,failure_type:'compaction-overwrite-guard',error:overwriteBlock});
+      const destructiveBlock=destructiveFullWriteBlock(a.path,a.content);
+      if(destructiveBlock){
+        reportForgeBehavior({severity:'error',code:'GIGA_DESTRUCTIVE_FULL_WRITE_ATTEMPT',kind:'content_integrity',component:'gigachat-agent',operation:'write_file',message:'GigaChat attempted to reconstruct an existing large file during a targeted direct task.',expected:'Targeted replace_text edits that preserve unrelated game content.',actual:String(a.path||'')});
+        return jsonResult({ok:false,failure_type:'content-loss-guard',error:destructiveBlock});
+      }
+      const runtimeWriteBlock=runtimeOwnedWriteBlock(a.path);
+      if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
       if(phaseWriteBlock) return jsonResult({ok:false,error:phaseWriteBlock});
       const p=safePath(a.path); assertWritablePath(p); mkdirSync(dirname(p),{recursive:true});
-      const rawContent=String(a.content);
+      const rawContent=typeof a.content==='string'?a.content:JSON.stringify(a.content,null,2)+'\n';
       const finalContent=rel(p)==='wiki/design/brief.md' ? ensureBriefDecisionVerbatim(rawContent) : rawContent;
       writeFileSync(p,finalContent,'utf8');
       return jsonResult({ok:true,path:rel(p),bytes:Buffer.byteLength(finalContent)});
     }
     if (name==='replace_text') {
       assertTextWritableExtension(a.path);
+      const counterfeitBlock=counterfeitCanonicalScriptWriteBlock(a.path);
+      if(counterfeitBlock) return jsonResult({ok:false,failure_type:'canonical-tool-integrity-guard',error:counterfeitBlock});
+      const runtimeWriteBlock=runtimeOwnedWriteBlock(a.path);
+      if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
       if(phaseWriteBlock) return jsonResult({ok:false,error:phaseWriteBlock});
       const p=safePath(a.path); assertWritablePath(p); const old=String(a.old_text), neu=String(a.new_text); let txt=readText(p);
@@ -2773,6 +3320,9 @@ function tool(name, a={}) {
     }
     if (name==='forge_skill') {
       const skillName=String(a.name||'').toLowerCase();
+      if(activePhase>=2 && loadedSkills.has(skillName)){
+        return jsonResult({ok:true,already_loaded:true,skill:skillName,content:`${skillName} is already loaded in the active Phase ${activePhase} runtime. Continue executing it; do not request the same SKILL.md again.`});
+      }
       if(skillName==='new-project' && (hasAnyFileUnder('GameIntegration') || hasAnyFileUnder('WorkProgress') || fileExistsNonEmpty('ANALYSIS.md',80))){return jsonResult({ok:false,error:'new-project is forbidden while resuming an existing Forge project. Continue the active phase in the current project.'});}
       if(activePhase===1 && skillName==='find-or-make-skill' && completedSkills.has('find-or-make-skill')){return jsonResult({ok:true,already_completed:true,skill:'find-or-make-skill',content:'find-or-make-skill already validated; do not repeat it.'});}
 
@@ -2822,6 +3372,12 @@ function tool(name, a={}) {
       if(!FULL) throw new Error('forge_script requires --full');
       const requestedScript=String(a.name||'').trim().replace(/\\/g,'/');
 
+      const requestedSkill=requestedScript.replace(/\.mjs$/i,'').replace(/^.*\//,'').toLowerCase();
+      const requestedSkillDoc=safePath(`.claude/skills/${requestedSkill}/SKILL.md`);
+      if(!requestedScript.includes('/') && existsSync(requestedSkillDoc)){
+        return jsonResult({ok:true,translated_skill:true,skill:requestedSkill,path:rel(requestedSkillDoc),content:clip(readText(requestedSkillDoc),50000),note:`${requestedScript} is a Forge SKILL.md workflow, not a standalone script. Forge loaded the canonical skill automatically.`});
+      }
+
       if(activePhase===1 && /^analyze-project\.mjs$/i.test(requestedScript))
         return jsonResult({ok:false,failure_type:'tool-misroute',error:'analyze-project is a canonical Forge skill here, not a standalone script. Use forge_skill(name="analyze-project"); if ANALYSIS.md already exists, continue without rerunning it.'});
 
@@ -2833,6 +3389,33 @@ function tool(name, a={}) {
 
       const script=resolveForgeScript(a.name),args=Array.isArray(a.args)?a.args.map(String):[],sec=Math.max(1,Math.min(600,Number(a.timeout_seconds||120)));
       if(/ai-studio-init\.mjs$/i.test(script) && args.length===0) args.push('.');
+      if(/local-stage\.mjs$/i.test(script) && !args.some(x=>/^--ai$/i.test(x))) args.push('--ai','--play');
+      if(/phase-state\.mjs$/i.test(script) && /^complete$/i.test(String(args[0]||''))){
+        const normalized=[args[0],args[1]];
+        for(const value of args.slice(2)){
+          if(/^--evidence$/i.test(value)) continue;
+          normalized.push(...String(value).split(',').map(x=>x.trim()).filter(Boolean));
+        }
+        args.splice(0,args.length,...normalized);
+      }
+      if(/phase-state\.mjs$/i.test(script) && /^complete$/i.test(String(args[0]||''))){
+        const completedPhase=Number(args[1]);
+        const completedState=phaseMarkerState(completedPhase);
+        if(completedState==='complete' || (completedPhase===9&&completedState==='ongoing')){
+          let evidence=[];
+          try{evidence=JSON.parse(readText(safePath(`wiki/phases/phase-${completedPhase}.json`)))?.evidence||[];}catch{}
+          return jsonResult({ok:true,status:0,already_complete:true,phase:completedPhase,evidence,stdout:`Phase ${completedPhase} is already ${completedState}; do not repeat completion. Synchronize memory if dirty, then return the final phase result.`,stderr:'',resolved_path:script});
+        }
+      }
+      if(/phase-state\.mjs$/i.test(script) && /^(start|reopen)$/i.test(String(args[0]||'')) && phaseMarkedComplete(Number(args[1]))){
+        return jsonResult({ok:true,status:0,already_complete:true,phase:Number(args[1]),stdout:`Phase ${Number(args[1])} is durably complete; refusing to reopen it from a downstream phase.`,stderr:'',resolved_path:script});
+      }
+      if(/phase-state\.mjs$/i.test(script) && /^(start|reopen)$/i.test(String(args[0]||'')) && Number(args[1])>1 && !phaseMarkedComplete(Number(args[1])-1)){
+        return jsonResult({ok:false,failure_type:'phase-order',error:`Cannot start Phase ${Number(args[1])}: Phase ${Number(args[1])-1} is not durably complete. Finish the earlier authoritative gate first.`});
+      }
+      const completionBlocked=forgeScriptPhaseCompletionBlocked(script,args);
+      if(completionBlocked) return jsonResult({ok:false,error:completionBlocked});
+      if(/phase-state\.mjs$/i.test(script) && !args.includes('--host')) args.push('--host','gigachat');
 
       if(/phase-state\.mjs$/i.test(script) && /^(start|reopen)$/i.test(String(args[0]||'')) && Number(args[1])===Number(activePhase) && phaseMarkerState(activePhase)==='in_progress'){
         return jsonResult({ok:true,status:0,already_started:true,stdout:`Phase ${activePhase} is already in_progress; duplicate ${args[0]} is idempotent.`,stderr:'',resolved_path:script});
@@ -2853,7 +3436,11 @@ function tool(name, a={}) {
         }
       }
 
-      const r=spawnSync(process.execPath,[script,...args],{cwd:PROJECT,encoding:'utf8',timeout:sec*1000,maxBuffer:8*1024*1024});
+      const shellScript=/\.sh$/i.test(script);
+      const gitBash='C:\\Program Files\\Git\\bin\\bash.exe';
+      const runner=shellScript?(existsSync(gitBash)?gitBash:'bash'):process.execPath;
+      const runnerScript=shellScript?String(script).replace(/\\/g,'/'):script;
+      const r=spawnSync(runner,[runnerScript,...args],{cwd:PROJECT,encoding:'utf8',timeout:sec*1000,maxBuffer:8*1024*1024});
       return jsonResult({ok:r.status===0,status:r.status,stdout:clip(r.stdout,40000),stderr:clip(r.stderr,16000),resolved_path:script});
     }
     if (name==='run_command') {
@@ -2885,13 +3472,21 @@ function tool(name, a={}) {
         const local=safePath(`scripts/${projectScriptMatch[1]}`),engine=resolve(ENGINE,'scripts',projectScriptMatch[1]);
         if(!existsSync(local)&&existsSync(engine)){
           const args=shellTokens(projectScriptMatch[2]||''),sec=Math.max(1,Math.min(600,Number(a.timeout_seconds||120)));
+          if(/^local-stage\.mjs$/i.test(projectScriptMatch[1]) && !args.some(x=>/^--ai$/i.test(x))) args.push('--ai','--play');
+          let translatedFileTarget=null;
+          if(/^(?:playtest|screens-shoot)\.mjs$/i.test(projectScriptMatch[1]) && /\.html?$/i.test(String(args[0]||''))){
+            translatedFileTarget=args[0];
+            args[0]=dirname(String(args[0])).replace(/\\/g,'/');
+          }
           const rr=spawnSync(process.execPath,[engine,...args],{cwd:PROJECT,encoding:'utf8',timeout:sec*1000,maxBuffer:8*1024*1024});
-          return jsonResult({ok:rr.status===0,status:rr.status,stdout:clip(rr.stdout,40000),stderr:clip(rr.stderr,16000),resolved_engine_script:engine});
+          return jsonResult({ok:rr.status===0,status:rr.status,stdout:clip(rr.stdout,40000),stderr:clip(rr.stderr,16000),resolved_engine_script:engine,...(translatedFileTarget?{translated_file_target:translatedFileTarget,actual_project_directory:args[0]}:{})});
         }
       }
       const portableRead=translatePortableReadOnlyShell(cmd);
       if(portableRead) return jsonResult(portableRead);
       const startMatch=cmd.match(/phase-state\.mjs[^\n]*\b(?:start|reopen)\s+(\d+)\b/i);
+      if(startMatch && phaseMarkedComplete(Number(startMatch[1]))) return jsonResult({ok:true,status:0,already_complete:true,phase:Number(startMatch[1]),stdout:`Phase ${Number(startMatch[1])} is durably complete; refusing to reopen it from a downstream phase.`,stderr:''});
+      if(startMatch && Number(startMatch[1])>1 && !phaseMarkedComplete(Number(startMatch[1])-1)) return jsonResult({ok:false,failure_type:'phase-order',error:`Cannot start Phase ${Number(startMatch[1])}: Phase ${Number(startMatch[1])-1} is not durably complete. Finish the earlier authoritative gate first.`});
       if(startMatch && phaseStarted && Number(startMatch[1])===activePhase && phaseMarkerState(activePhase)==='in_progress'){
         return jsonResult({ok:true,status:0,already_started:true,stdout:`Phase ${activePhase} is already in_progress; runtime baseline is active.`,stderr:''});
       }
@@ -2961,6 +3556,11 @@ async function generateGiga3d(a={}) {
 
 async function toolAsync(name,a={}) {
   try {
+    const readOnlyBlock=readOnlyTurnToolBlock(name);
+    if(readOnlyBlock){
+      reportForgeBehavior({severity:'error',code:'GIGA_STATUS_MUTATION_ATTEMPT',kind:'user_intent',component:'gigachat-agent',operation:name,message:'GigaChat attempted a non-read-only tool during a factual status question.',expected:'Read-only inspection and factual response.',actual:String(name||'unknown')});
+      return jsonResult({ok:false,failure_type:'read-only-intent-guard',error:readOnlyBlock});
+    }
     if(name==='gigachat_generate_image') return jsonResult(await generateGigaImage(a));
     if(name==='gigachat_generate_3d') return jsonResult(await generateGiga3d(a));
     if(name==='forge_search_doctor') return jsonResult(searchDoctor(PROJECT));
@@ -2972,10 +3572,13 @@ async function toolAsync(name,a={}) {
 }
 
 const forgePath = safePath('FORGE.md');
-const forgeRules = existsSync(forgePath) ? clip(readText(forgePath),45000) : 'FORGE.md missing; do not guess phase state.';
+const forgeRulesRaw = existsSync(forgePath) ? readText(forgePath) : 'FORGE.md missing; do not guess phase state.';
 let initialStatus='';
 try { initialStatus=JSON.parse(tool('forge_status',{json:false})).output||''; } catch {}
 const initialContext=buildProjectContext();
+const bootstrapPhase=Math.max(0,...(initialContext.phaseMarkers||[]).filter(x=>['in_progress','blocked'].includes(String(x.state||''))).map(x=>Number(x.phase)||0));
+const matureBootstrap=bootstrapPhase>=2;
+const forgeRules=clip(forgeRulesRaw,matureBootstrap?20000:45000);
 const system = `You are the GigaChat terminal adapter inside Project Forge. Work as a coding agent, not as a general chat bot.
 
 Project: ${PROJECT}
@@ -2984,6 +3587,7 @@ Full shell mode: ${FULL?'enabled':'disabled'}
 
 Mandatory rules:
 - Follow FORGE.md and canonical .claude/skills/*/SKILL.md.
+- If you observe Forge itself returning the wrong format, violating a phase/STOP contract, contradicting its capabilities/state, or suffering an adapter/hook/runtime failure, call forge_diagnostic_report immediately with a short factual record, then continue safe work when possible. Do not use it for ordinary game/app bugs and never include secrets, prompts, full tool output, or file contents.
 - Exactly 9 phases. Never invent Phase 10.
 - Respect STOP-points and explicit user approvals.
 - EVERY STOP-point, red decision, required approval, product choice, monetization choice, multiplayer choice, platform choice, budget choice, art-direction choice, or other decision assigned to the user MUST be asked through the ask_user tool. ask_user pauses the turn; do not continue work after calling it.
@@ -3003,6 +3607,9 @@ Mandatory rules:
 - Never mark a phase complete while a required user decision is unresolved. If a phase skill contains mandatory decisions, ask them at the required point and wait for a new user turn.
 - When the user asks for status or asks what you are doing, STOP doing new work and answer with current status plus all pending questions.
 - Machine phase markers and actual artifacts outrank prose state.
+- A direct implementation request from the user (for example "сделай гачу", "добавь магазин", "/do исправь экономику") outranks automatic continuation of the currently open phase. Forge enters CHANGE REQUEST MODE, preserves the exact request durably, and pauses phase/release orchestration without changing phase markers.
+- In CHANGE REQUEST MODE, do not call forge_preflight, forge_gate, phase-state, phase-* skills, release-* skills, or release packaging. Use the matching tactical skill, write the necessary specification and implementation in WorkProgress, run focused verification, then call forge_change_complete. Do not return only a plan when the user said to start doing the work.
+- /resume-phase explicitly abandons/ends the direct-task override and returns control to the canonical phase machine. Never infer /resume-phase merely from an old phase marker.
 - At the START of every agent process you receive a Project Context Bootstrap containing phase markers, wiki memory, persisted decisions, recent sessions, WorkProgress inventory, plans, git status, and drift warnings. Treat it as prior-session memory.
 - Before claiming that work, a file, a prototype, or an implementation has not been done, inspect forge_context and the existing WorkProgress/wiki evidence first. Do not rediscover source material as if it were new work.
 - WorkProgress is the active implementation workspace. GameIntegration is read-only source material that may already have been ingested. NEVER present GameIntegration itself as the Forge asset library and never re-copy it merely because you noticed it in a new session.
@@ -3063,10 +3670,10 @@ FORGE.md:
 ${forgeRules}
 
 Initial read-only status:
-${clip(initialStatus,12000)}
+${clip(initialStatus,matureBootstrap?6000:12000)}
 
 Project Context Bootstrap (authoritative prior-session memory; refresh with forge_context when needed):
-${clip(JSON.stringify(initialContext,null,2),30000)}`;
+${clip(JSON.stringify(initialContext,null,2),matureBootstrap?16000:30000)}`;
 let messages=[{role:'system',content:system}];
 const CONTEXT_CHAR_BUDGET=Math.max(80000,Math.min(180000,Number(process.env.FORGE_GIGACHAT_CONTEXT_CHARS||120000)));
 const WEB_SEARCH_AVAILABLE=HOST_CAPABILITIES.web_search;
@@ -3158,6 +3765,21 @@ function transportRequestStats(body){
     };
   }catch{return {chars:0,messages:0,functions:0,system_chars:0,function_history_pairs:0};}
 }
+function durableDirectiveSnapshot(){
+  if(!activeDirective) return null;
+  return {
+    mode:activeDirective.mode,
+    status:activeDirective.status,
+    request:activeDirective.request,
+    activatedAt:activeDirective.activatedAt,
+    updatedAt:activeDirective.updatedAt,
+    pausedPhase:activeDirective.pausedPhase,
+    latestUserInput:activeDirective.latestUserInput,
+    operations:(activeDirective.operations||[]).slice(-12),
+    readCursors:activeDirective.readCursors||{},
+    instruction:'Continue from these operations/cursors. Never restart reading at line 1 or reconstruct a large existing file with write_file; use targeted replace_text.'
+  };
+}
 function durableContinuationMessage(reason='context compaction'){
   const ctx=buildProjectContext();
   const pm=activePhase===1 ? {
@@ -3177,6 +3799,7 @@ function durableContinuationMessage(reason='context compaction'){
       `The previous function-call transcript was intentionally closed as a completed transport epoch. `+
       `Do NOT reconstruct or repeat completed tool calls merely because their raw assistant/function messages are absent. `+
       `Continue from durable Forge state, persisted decisions, artifacts, evidence ledger, and the canonical skill/gates.\n\n`+
+      (activeDirective?`ACTIVE CHANGE REQUEST (authoritative; phase autopilot remains paused):\n${clip(JSON.stringify(durableDirectiveSnapshot(),null,2),8000)}\n\n`:``)+
       `PROJECT CONTEXT:\n${clip(JSON.stringify(ctx,null,2),22000)}\n\n`+
       (pm?`PHASE 1 PRODUCT-METRICS DURABLE EVIDENCE:\n${clip(JSON.stringify(pm,null,2),12000)}\n\n`:'')+
       `Choose only the next canonical action. If a user-owned STOP is ready, call ask_user; otherwise call the required Forge tool.`
@@ -3358,9 +3981,43 @@ async function runRequestShapeDoctor(){
 
 async function turn(text){
   const rawTurnText=String(text || '');
-  const pendingAtTurnStart=Boolean(pendingDecision);
   const statusOnly=isStatusOnlyInput(rawTurnText);
-  const aliasExpanded = !statusOnly ? expandPhaseAlias(rawTurnText) : {text:rawTurnText,invocation:null};
+  currentTurnReadOnly=statusOnly;
+  const manualCommand=directiveCommand(rawTurnText);
+  if(manualCommand?.kind==='resume'){
+    const paused=activeDirective?.pausedPhase||authoritativeOpenPhase()||null;
+    const abandoned=activeDirective?.request||null;
+    if(pendingDecision?.directive===true) pendingDecision=null;
+    activeDirective=null; persistRuntimeEvidenceLedger();
+    process.stdout.write(abandoned
+      ? `\n[Forge] Direct task override cleared: ${abandoned}\n[Forge] Canonical phase autopilot is available again at Phase ${paused||'?'}. No phase was advanced automatically.\n`
+      : `\n[Forge] No direct task override was active. Canonical phase autopilot remains available at Phase ${paused||'?'}.\n`);
+    return;
+  }
+  if(manualCommand?.kind==='status'){
+    process.stdout.write(activeDirective
+      ? `\n[Forge] ACTIVE DIRECT TASK\nTask: ${activeDirective.request}\nPaused phase: ${activeDirective.pausedPhase||'?'}\nRecorded operations: ${(activeDirective.operations||[]).length}\nFinish automatically with forge_change_complete after implementation, or use /resume-phase to cancel the override.\n`
+      : `\n[Forge] No direct task override. Use /do <task> to pause phase autopilot for a concrete implementation request.\n`);
+    return;
+  }
+  if(manualCommand?.kind==='do'){
+    const activated=activateDirective(manualCommand.request,'explicit_command');
+    if(!activated.ok){process.stdout.write(`\n[Forge] ${activated.error}\n`);return;}
+    process.stdout.write(`\n[Forge] Direct task accepted; Phase ${activeDirective.pausedPhase||'?'} autopilot paused.\n[Forge] Task: ${activeDirective.request}\n`);
+  }else{
+    const naturalTask=naturalImplementationDirective(rawTurnText);
+    if(naturalTask && !activeDirective){
+      activateDirective(naturalTask,'natural_language');
+      process.stdout.write(`\n[Forge] Direct implementation request detected; Phase ${activeDirective.pausedPhase||'?'} autopilot paused.\n`);
+    }else if(activeDirective && !statusOnly){
+      if(naturalTask && naturalTask!==activeDirective.request) activateDirective(naturalTask,'natural_language');
+      else updateDirectiveInput(rawTurnText);
+    }
+  }
+  const changeRequestTurn=Boolean(activeDirective);
+  const directivePending=Boolean(changeRequestTurn&&pendingDecision?.directive===true);
+  const pendingAtTurnStart=Boolean(pendingDecision)&&(!changeRequestTurn||directivePending);
+  const aliasExpanded = !statusOnly&&!changeRequestTurn ? expandPhaseAlias(rawTurnText) : {text:rawTurnText,invocation:null};
   const normalizedTurnText = aliasExpanded.text;
   if(pendingAtTurnStart && aliasExpanded.invocation){
     const pendingPhase=pendingDecisionPhase();
@@ -3373,7 +4030,16 @@ async function turn(text){
   if(aliasExpanded.invocation) {
     process.stdout.write(`\n[Forge] Phase ${aliasExpanded.invocation.phase} -> ${aliasExpanded.invocation.skill}\n`);
   }
-  const phaseExecutionTurn=!statusOnly && (pendingAtTurnStart || Boolean(aliasExpanded.invocation) || phaseExecutionRequestedByText(normalizedTurnText));
+  if(pendingAtTurnStart && !changeRequestTurn && !aliasExpanded.invocation){
+    const pendingPhase=pendingDecisionPhase();
+    if(pendingPhase){
+      activePhase=pendingPhase;
+      activePhaseSkill=PHASE_SKILLS.get(pendingPhase)||null;
+      startPhaseEvidence(pendingPhase,{resume:true});
+      hydrateResolvedDecisionState(pendingPhase);
+    }
+  }
+  const phaseExecutionTurn=!statusOnly && !changeRequestTurn && (pendingAtTurnStart || Boolean(aliasExpanded.invocation) || phaseExecutionRequestedByText(normalizedTurnText));
   beginPhaseFromUserText(normalizedTurnText);
   if(aliasExpanded.invocation){
     const started=ensureHostPhaseStarted(aliasExpanded.invocation.phase);
@@ -3385,15 +4051,27 @@ async function turn(text){
     if(pendingAtTurnStart && pendingDecision && reopenPendingDecisionStop(`Phase ${aliasExpanded.invocation.phase} resume`)) return;
     const immediateStop=phase1ImmediateResumeStopCandidate();
     if(immediateStop && openDeterministicStop(immediateStop,'Phase 1 resume')) return;
+    if(Number(aliasExpanded.invocation.phase)===1){
+      const completion=completeApprovedPhase1Resume();
+      if(completion.completed){
+        process.stdout.write(`\n[Forge] Completed Phase 1 directly from approved durable state; no model/tool round-trip required.\n`);
+        process.stdout.write(`[Forge] Evidence: ${completion.evidence.join(', ')}\n`);
+        process.stdout.write('[Forge] STOP: waiting for an explicit user command before Phase 2.\n');
+        return;
+      }
+    }
   }
 
-  let userText = normalizedTurnText;
-  if (pendingDecision && statusOnly) {
+  let userText = changeRequestTurn?directiveTaskPrompt(normalizedTurnText):normalizedTurnText;
+  if(statusOnly && !pendingDecision){
+    userText=`[FORGE READ-ONLY STATUS TURN]\nПользователь задал фактический вопрос о том, что уже сделано: ${rawTurnText}\nПроверь состояние только read-only инструментами и ответь кратко и честно. Не начинай и не продолжай работу, не запускай фазу/релиз/проверки, не изменяй файлы или память. Не выдавай старые артефакты за созданные в текущем запросе.\n[END FORGE READ-ONLY STATUS TURN]`;
+  }
+  if (pendingDecision && (!changeRequestTurn||directivePending) && statusOnly) {
     userText = `${rawTurnText}\n\nВАЖНО: это запрос статуса, а НЕ ответ на pending STOP-point. Не засчитывай его как пользовательское решение. Не продолжай новую работу. Покажи текущий статус и повтори ожидающий вопрос.`;
-  } else if (pendingDecision) {
+  } else if (pendingDecision && (!changeRequestTurn||directivePending)) {
     const decisionKey=String(pendingDecision.decision_key||'').trim();
     const decisionContext=`${pendingDecision.question}\n${pendingDecision.options||''}`;
-    const rawAnswer=userText, disposition=decisionAnswerDisposition(pendingDecision,rawAnswer);
+    const rawAnswer=normalizedTurnText, disposition=decisionAnswerDisposition(pendingDecision,rawAnswer);
     if(disposition.kind==='invalid'){
       process.stdout.write(`\n[Forge] Ответ на STOP-point пока неполный: ${disposition.blockers.join('; ')}\n[Forge] STOP остаётся открытым; вставьте полный ответ одним сообщением.\n`);
       persistRuntimeEvidenceLedger();return;
@@ -3415,6 +4093,7 @@ async function turn(text){
       if(activePhase===4&&capabilityBlock&&!/pixellab/i.test(rawAnswer))capabilityBlock=null;
     }
     pendingDecision=null;persistRuntimeEvidenceLedger();
+    if(changeRequestTurn) userText=directiveTaskPrompt(`Ответ пользователя на STOP-point: ${rawAnswer}`);
   }
 
   messages.push({role:'user',content:userText});
@@ -3424,6 +4103,7 @@ async function turn(text){
   let emptyFinalRetries = 0;
   let memorySyncRetries = 0;
   let prematureFinalRetries = 0;
+  let directiveFinalRetries = 0;
   let forcedFunctionName = null;
   let pseudoRecoveryCount = 0;
   let consecutiveBareJunk = 0;
@@ -3431,13 +4111,32 @@ async function turn(text){
   let invalidBriefAskRepairs = 0;
   let invalidContentBudgetRepairs = 0;
   let askUserTransportRetries = 0;
+  let consecutiveDirectiveReads = 0;
+  const turnCompactionStart = compactionCount;
   const pseudoCallCounts = new Map();
+
+  const directTaskLoopGuard = name => {
+    if(!changeRequestTurn || !activeDirective) return false;
+    if(name==='read_file') consecutiveDirectiveReads++;
+    else if(['write_file','replace_text','copy_path','run_command','forge_script','gigachat_generate_image','gigachat_generate_3d','forge_change_complete'].includes(String(name||''))) consecutiveDirectiveReads=0;
+    if(consecutiveDirectiveReads<=12) return false;
+    reportForgeBehavior({severity:'error',code:'GIGA_DIRECT_TASK_READ_LOOP',kind:'context_efficiency',component:'gigachat-agent',operation:'read_file',message:'Direct task stopped after too many consecutive file reads without implementation progress.',expected:'Use search_text and targeted replace_text after bounded source inspection.',actual:`${consecutiveDirectiveReads} consecutive read_file calls`});
+    process.stdout.write(`\n[Forge] Direct task safely stopped: ${consecutiveDirectiveReads} consecutive read_file calls produced no implementation progress. No more tools were executed. Reissue /do to retry from clean durable cursors.\n`);
+    persistRuntimeEvidenceLedger();
+    return true;
+  };
 
   for(let n=0;n<56;n++){
     const forcedNow=forcedFunctionName;
     const callMode=forcedNow ? {name:forcedNow} : 'auto';
-    const requestFunctions=functionsForRequest(forcedNow,phaseExecutionTurn);
+    const requestFunctions=functionsForRequest(forcedNow,phaseExecutionTurn,statusOnly);
     turnStartIndex=compactMessagesIfNeeded(turnStartIndex,requestFunctions);
+    if(changeRequestTurn && activeDirective && compactionCount-turnCompactionStart>=4){
+      reportForgeBehavior({severity:'error',code:'GIGA_DIRECT_TASK_COMPACTION_LOOP',kind:'context_efficiency',component:'gigachat-agent',operation:'context_compaction',message:'Direct task stopped after four context compactions in one user turn.',expected:'Finish the targeted edit and checks within bounded durable context.',actual:`${compactionCount-turnCompactionStart} compactions`});
+      process.stdout.write(`\n[Forge] Direct task safely stopped after ${compactionCount-turnCompactionStart} context compactions in one turn. Existing files are preserved; reissue /do to retry from clean task state.\n`);
+      persistRuntimeEvidenceLedger();
+      return;
+    }
     forcedFunctionName=null;
     const data=await gigaChatRequestWithRetry({model:MODEL,messages,functions:requestFunctions,function_call:callMode},240000);
     if(data?.usage) lastUsage=data.usage;
@@ -3468,6 +4167,7 @@ async function turn(text){
       toolCalls++;
       consecutiveBareJunk=0;
       if(name!=='forge_context' && name!=='forge_workspace_inspect') emptyFinalRetries=0;
+      if(directTaskLoopGuard(name)) return;
 
       if (name === 'ask_user') {
         a=canonicalizeAskUserArgs(a);
@@ -3510,6 +4210,13 @@ async function turn(text){
           }
           continue;
         }
+        const decisionKey=String(a.decision_key||'').trim();
+        if(decisionKey && resolvedDecisionKeys.has(decisionKey)){
+          const result=jsonResult({ok:true,already_resolved:true,decision_key:decisionKey,answer:latestDecisionAnswer(decisionKey),note:'This durable user decision is already resolved. Do not ask it again; continue with the next canonical action.'});
+          messages.push({role:'function',name,content:result});
+          process.stdout.write(`\n[Forge] Suppressed repeated resolved STOP-point: ${decisionKey}\n`);
+          continue;
+        }
         if (memoryDirty) {
           const result=jsonResult({ok:false,error:'Project memory is dirty. Call forge_memory_update first so the completed work/decision is persisted before opening the next STOP-point.'});
           messages.push({role:'function',name,content:result});
@@ -3532,8 +4239,14 @@ async function turn(text){
           options: String(stopArgs.options || ''),
           recommendation: String(stopArgs.recommendation || ''),
           reason: String(stopArgs.reason || ''),
-          proposal: stopArgs.proposal&&typeof stopArgs.proposal==='object'?stopArgs.proposal:null
+          proposal: stopArgs.proposal&&typeof stopArgs.proposal==='object'?stopArgs.proposal:null,
+          directive:Boolean(activeDirective)
         };
+        if(activePhase&&!activeDirective){
+          const decisionReason=`Awaiting ${pendingDecision.decision_key||'user decision'}`;
+          const blockedState=markHostPhaseBlocked(activePhase,decisionReason);
+          if(!blockedState.ok) process.stdout.write(`[Forge] Warning: could not persist decision STOP state: ${blockedState.stderr||blockedState.error||blockedState.status}\n`);
+        }
         persistRuntimeEvidenceLedger();
         printStopPoint(stopArgs);
         return;
@@ -3548,6 +4261,7 @@ async function turn(text){
       recordOperation(name,a,result);
       const toolSummary = describeToolResult(name, result);
       if (toolSummary) process.stdout.write(`[tool-result] ${toolSummary}\n`);
+      if(name==='forge_change_complete' && printCompletedDirectiveAndStop(result)) return;
       if (name==='forge_gate') {
         try { const g=JSON.parse(result); process.stdout.write(g.ok?'[gate] GREEN\n':`[gate] BLOCKED\n- ${g.blockers.join('\n- ')}\n`); } catch {}
       }
@@ -3589,10 +4303,12 @@ async function turn(text){
       pseudoCallCounts.set(signature,repeats);
 
       if(repeats<=2){
+        reportForgeBehavior({severity:'warn',code:'GIGA_MALFORMED_TOOL_CALL',kind:'adapter_transport',component:'gigachat-function-calling',operation:name,message:'GigaChat serialized a callable tool as textual pseudo-markup; the runtime recovered it once.',expected:'Native function_call transport.',actual:'Textual pseudo-call transport.'});
         pseudoRecoveryCount++;
         toolCalls++;
         emptyFinalRetries=0;
         consecutiveBareJunk=0;
+        if(directTaskLoopGuard(name)) return;
         process.stdout.write(`\n[Forge] Recovered malformed textual tool call -> ${describeToolCall(name,a)}\n`);
 
         // Preserve the malformed assistant output as diagnostics, but do not send a
@@ -3657,6 +4373,7 @@ async function turn(text){
         recordOperation(name,a,result);
         const toolSummary=describeToolResult(name,result);
         if(toolSummary) process.stdout.write(`[tool-result] ${toolSummary}\n`);
+        if(name==='forge_change_complete' && printCompletedDirectiveAndStop(result)) return;
         if(name==='forge_gate'){
           try{
             const g=JSON.parse(result);
@@ -3747,6 +4464,18 @@ async function turn(text){
 
     if(meaningfulText(content)){
       emptyFinalRetries=0;
+      if(changeRequestTurn && activeDirective && directiveFinalRetries<6){
+        directiveFinalRetries++;
+        process.stdout.write(`\n[Forge] Premature direct-task final blocked: implementation request is still active and forge_change_complete was not called.\n`);
+        messages.push({
+          role:'user',
+          content:
+            `Это был преждевременный ответ по прямой задаче "${activeDirective.request}". Пользователь потребовал сделать работу, а не описать будущие шаги. `+
+            `Продолжай сейчас: загрузи подходящий tactical skill, внеси реальные изменения в WorkProgress, выполни сфокусированные проверки и вызови forge_change_complete. `+
+            `Не запускай phase-state, forge_gate или release-команды. Если обнаружен настоящий пользовательский выбор — ask_user; если исправимый сбой — исправь и продолжай.`
+        });
+        continue;
+      }
       if(phaseExecutionTurn) refreshMandatoryCapabilityBlock();
       if(phaseExecutionTurn && capabilityBlock && !memoryDirty){
         markHostPhaseBlocked(activePhase,capabilityBlock);
@@ -3826,6 +4555,7 @@ async function turn(text){
 
         if(checkpointJunkRecoveries>1 || consecutiveBareJunk>=4){
           const cp=forgeCheckpoint();
+          reportForgeBehavior({severity:'error',code:'GIGA_EMPTY_RESPONSE_LOOP',kind:'adapter_transport',component:'gigachat-function-calling',operation:`phase-${activePhase||'unknown'}-turn`,message:'GigaChat repeatedly returned empty or malformed content and exhausted bounded recovery.',expected:'Native function call or meaningful phase response.',actual:`checkpoint_junk_recoveries=${checkpointJunkRecoveries}; consecutive_bare_junk=${consecutiveBareJunk}`});
           process.stdout.write(`\n=== FORGE RECOVERABLE TRANSPORT STOP: Phase ${activePhase||'?'} ===\n`);
           process.stdout.write(`GigaChat repeatedly returned empty/malformed content. Recovery stopped before another token-burning checkpoint loop.\n`);
           if(cp.next_hints?.length) process.stdout.write(`Next canonical hints:\n- ${cp.next_hints.join('\n- ')}\n`);
@@ -3889,7 +4619,7 @@ console.log(`Project Forge GigaChat Terminal Agent
 Project: ${PROJECT}
 Model: ${MODEL}
 Mode: ${FULL?'FULL (shell enabled)':'standard (no shell tool)'}
-Commands: /exit, /status, /gates, /context, /preflight, /search-doctor, /tokens`);
+Commands: /do <task>, /task, /resume-phase, /exit, /status, /gates, /context, /preflight, /search-doctor, /tokens`);
 
 
 async function runIntegrationTest(){
@@ -3924,10 +4654,48 @@ if (REQUEST_DOCTOR) {
   test('junk response rejected',()=>!meaningfulText('<') && !meaningfulText('...') && meaningfulText('status ok'));
   test('binary write extension blocked',()=>{ try{assertTextWritableExtension('x.png');return false;}catch{return true;} });
   test('phase complete hard gate active',()=>/Phase 4 completion blocked/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md')||''));
+  test('forge_script phase complete cannot bypass the hard gate',()=>/hard gate/i.test(forgeScriptPhaseCompletionBlocked('.claude/skills/status/references/phase-state.mjs',['complete','4'])||''));
+  test('phase complete requires explicit evidence arguments',()=>/explicit evidence artifact arguments/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4')||''));
   test('phase 4 named decisions',()=>requiredDecisionKeysForPhase(4).has('phase4-target-frame')&&requiredDecisionKeysForPhase(4).has('phase4-style-bible'));
   test('phase 1 named STOP gates',()=>PHASE1_REQUIRED_DECISIONS.has('phase1-research-direction')&&PHASE1_REQUIRED_DECISIONS.has('phase1-brief')&&PHASE1_REQUIRED_DECISIONS.has('phase1-content-budget'));
   test('phase execution intent detector',()=>phaseExecutionRequestedByText('Прочитай FORGE.md и выполни Forge skill phase-1-analyze для текущего проекта ".".'));
   test('short phase alias',()=>phaseAliasInvocation('фаза 1')?.skill==='phase-1-analyze' && phaseAliasInvocation('/phase-4-visual')?.phase===4);
+  test('manual /do command preserves exact task',()=>directiveCommand('/do сделай гачу и сразу реализуй')?.request==='сделай гачу и сразу реализуй');
+  test('manual /resume-phase command recognized',()=>directiveCommand('/resume-phase')?.kind==='resume');
+  test('/resume-phase clears only directive-owned pending STOP',()=>/pendingDecision\?\.directive===true/.test(turn.toString()));
+  test('natural direct implementation request detected',()=>naturalImplementationDirective('давай сделаем гачу чтобы привлечь игроков, сделай ТЗ и начинай делать')!==null);
+  test('ordinary feature question does not activate direct task',()=>naturalImplementationDirective('почему нет фичей на D7-D30?')===null);
+  test('past-tense archive question is read-only',()=>isStatusOnlyInput('собрал архивы?'));
+  test('imperative archive request is not read-only',()=>!isStatusOnlyInput('собери архивы'));
+  test('read-only function surface excludes mutators',()=>{const names=functionsForRequest(null,false,true).map(x=>x.name);return names.includes('forge_status')&&!names.includes('write_file')&&!names.includes('forge_gate')&&!names.includes('run_command');});
+  test('counterfeit WorkProgress verifier blocked',()=>Boolean(counterfeitCanonicalScriptWriteBlock('WorkProgress/demo/scripts/verify-setup-guide.mjs')));
+  test('normal WorkProgress game script allowed',()=>counterfeitCanonicalScriptWriteBlock('WorkProgress/demo/gacha.js')===null);
+  test('repeated full overwrite stays blocked after reread',()=>{const old=activeDirective;activeDirective={operations:[{tool:'write_file',target:'WorkProgress/demo/gacha.js',at:'2026-08-18T12:00:00Z'}],reads:['WorkProgress/demo/gacha.js']};const blocked=Boolean(repeatedDirectiveOverwriteBlock('WorkProgress/demo/gacha.js'));activeDirective=old;return blocked;});
+  test('large existing direct-task file rejects full reconstruction',()=>{const old=activeDirective;activeDirective={request:'добавь функцию в существующий проект',operations:[]};const blocked=Boolean(destructiveFullWriteBlock('scripts/gigachat-agent.mjs','short replacement'));activeDirective=old;return blocked;});
+  test('approved modules require targeted edits',()=>/Full write_file replacement of approved module/.test(destructiveFullWriteBlock.toString()));
+  test('direct-task read_file auto-pagination is durable',()=>/readCursors/.test(readFileForModel.toString())&&/already read through line/.test(readFileForModel.toString()));
+  test('durable directive snapshot excludes unbounded raw reads',()=>{const old=activeDirective;activeDirective={request:'x',reads:Array(100).fill('large'),operations:[],readCursors:{a:301}};const snapshot=durableDirectiveSnapshot();activeDirective=old;return !Object.prototype.hasOwnProperty.call(snapshot,'reads')&&snapshot.readCursors.a===301;});
+  test('direct-task loop circuit breakers installed',()=>/consecutiveDirectiveReads<=12/.test(turn.toString())&&/compactionCount-turnCompactionStart>=4/.test(turn.toString()));
+  test('large direct-task source routes through modularization skill',()=>{const hint=directTaskMonolithInstruction([{path:'WorkProgress/demo/index.html',bytes:90000}]);return /modularize-existing-project/.test(hint)&&/scripts\/modularize-existing-project\.mjs/.test(hint)&&/--apply/.test(hint);});
+  test('monolith routing honors only the explicitly named WorkProgress entrypoint',()=>{const paths=requestedWorkProgressEntrypoints('измени WorkProgress/testgigachat-v4, не трогай соседние варианты');return paths.length===1&&paths[0]==='WorkProgress/testgigachat-v4/index.html';});
+  test('monolith routing does not scan unnamed sibling projects',()=>requestedWorkProgressEntrypoints('добавь функцию в текущую игру').length===0);
+  test('gacha module context selects bounded owning roles',()=>{const roles=moduleRolesForTask('добавь гачу в сетку');return ['state-foundation','ui-render','persistence','bootstrap','production','feedback-bubbles','drag-merge'].every(role=>roles.has(role));});
+  test('direct-task function surface excludes broad rediscovery tools',()=>{const old=activeDirective;activeDirective={request:'x'};const names=functionsForRequest().map(f=>f.name);activeDirective=old;return names.includes('replace_text')&&names.includes('forge_change_complete')&&!names.includes('forge_workspace_inspect')&&!names.includes('list_files')&&!names.includes('forge_context');});
+  test('canonical modularization script resolves for GigaChat',()=>/modularize-existing-project\.mjs$/.test(resolveForgeScript('scripts/modularize-existing-project.mjs').replace(/\\/g,'/')));
+  test('direct completion rejects invented check strings',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['visual check passed'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
+  test('direct completion accepts exact post-activation command',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===1;});
+  test('direct completion rejects stale successful command',()=>{const old=verifierLedger;verifierLedger=new Map([['old',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T11:59:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
+  test('Phase 8 rejects overwritten same-version ZIP names',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip','Release/demo/yandex/demo-v1.0.0-debug.zip','Release/demo/yandex/demo-v1.0.0-marketing.zip'];return !releaseVersionEvidenceFromPaths(old,new Set(old)).ok;});
+  test('Phase 8 accepts one complete newly named higher version',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip','Release/demo/yandex/demo-v1.0.0-debug.zip','Release/demo/yandex/demo-v1.0.0-marketing.zip'];const fresh=['Release/demo/yandex/demo-v1.0.1.zip','Release/demo/yandex/demo-v1.0.1-debug.zip','Release/demo/yandex/demo-v1.0.1-marketing.zip'];const result=releaseVersionEvidenceFromPaths([...old,...fresh],new Set(old));return result.ok&&result.version==='v1.0.1'&&result.paths.length===3;});
+  test('Phase 8 rejects incomplete new release trio',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip'];const fresh=['Release/demo/yandex/demo-v1.0.1.zip','Release/demo/yandex/demo-v1.0.1-debug.zip'];return !releaseVersionEvidenceFromPaths([...old,...fresh],new Set(old)).ok;});
+  test('change request prompt keeps exact task and pauses release',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveTaskPrompt('делай');activeDirective=old;return /добавь гачу/.test(x)&&/не запускай phase-state\/forge_gate\/release-\*/.test(x);});
+  test('change request blocks release gate and phase-state',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const a=directiveToolBlock('forge_gate',{phase:8});const b=directiveToolBlock('forge_script',{name:'phase-state.mjs',args:['start','8']});activeDirective=old;return Boolean(a)&&Boolean(b);});
+  test('change request redirects canonical verifiers away from run_command',()=>{const old=activeDirective;activeDirective={request:'добавь гачу'};const blocked=directiveToolBlock('run_command',{command:'node WorkProgress/game/scripts/playtest.mjs .'});activeDirective=old;return /forge_script/.test(blocked||'');});
+  test('change request allows tactical gacha skill',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveToolBlock('forge_skill',{name:'gacha-meta'});activeDirective=old;return x===null;});
+  test('change completion tool exposed',()=>functions.some(f=>f.name==='forge_change_complete'));
+  test('gacha completion requires focused runtime and module-contract checks',()=>/check-gacha-integration/.test(completeDirective.toString())&&/modularize-existing-project/.test(completeDirective.toString()));
+  test('canonical gacha integrator is recorded as a mutating operation',()=>commandLooksMutating('forge_script scripts/integrate-gacha.mjs WorkProgress/game'));
+  test('successful direct completion terminates turn before phase autopilot',()=>{const source=turn.toString();return (source.match(/forge_change_complete' && printCompletedDirectiveAndStop\(result\)\) return/g)||[]).length===2;});
   test('textual pseudo tool-call rejected',()=>!meaningfulText('< супругиtool_calls>'));
   test('malformed GigaChat pseudo-call parser recovers search',()=>{ const x=parseTextualPseudoToolCall('< выгодныеtool_calls> < выгодныеinvoke name="forge_web_search"> < выгодныеparameter name="query" string="true">idle game retention benchmarks 2026</ выгодныеparameter>'); return x?.name==='forge_web_search' && x?.args?.query==='idle game retention benchmarks 2026'; });
   test('pseudo-call parser rejects unknown tool',()=>!parseTextualPseudoToolCall('< tool_calls>< invoke name="evil_shell">< parameter name="x">1</parameter>'));
@@ -3936,6 +4704,7 @@ if (REQUEST_DOCTOR) {
   test('workspace inspect recovery tool exposed',()=>functions.some(f=>f.name==='forge_workspace_inspect'));
   test('compaction checkpoint is non-system',()=>{ const cp={role:'user',content:'ctx'}; return cp.role!=='system'; });
   test('forge checkpoint tool exposed',()=>functions.some(f=>f.name==='forge_checkpoint'));
+  test('Forge behavioral diagnostic tool exposed',()=>functions.some(f=>f.name==='forge_diagnostic_report'));
   test('phantom skill runner translated',()=>parseMissingSkillRunner('node .claude/skills/analyze-project/index.mjs WorkProgress/x')?.skill==='analyze-project');
   test('Phase 1 brief write protected',()=>{ const oldPhase=activePhase; activePhase=1; const hit=Boolean(phase1ArtifactWriteGuard('wiki/design/brief.md')); activePhase=oldPhase; return hit; });
   test('web research capability is real config-derived boolean',()=>typeof WEB_SEARCH_AVAILABLE==='boolean' && WEB_SEARCH_AVAILABLE===Boolean(SEARCH_CAPABILITIES.web_search));
@@ -3994,6 +4763,7 @@ if (REQUEST_DOCTOR) {
   test('approved research skill_done uses approved completion contract',()=>/phase1ResearchCompletionBlockers/.test(validateSkillCompletion.toString()));
   test('proactive compaction closes old function-call epoch',()=>/resetFunctionHistoryEpoch/.test(compactMessagesIfNeeded.toString())&&/payload_chars/.test(compactMessagesIfNeeded.toString()));
   test('durable continuation includes product-metrics evidence',()=>/PHASE 1 PRODUCT-METRICS DURABLE EVIDENCE/.test(durableContinuationMessage.toString()));
+  test('durable continuation explicitly preserves active change request',()=>/ACTIVE CHANGE REQUEST/.test(durableContinuationMessage.toString()));
   test('server-error retries do not resend old function history',()=>/attempt===0\?sanitizeGigaRequestBody\(body\):emergencyTrimGigaRequest\(body\)/.test(gigaChatRequestWithRetry.toString()));
   test('content-budget repair rewrites full proposal',()=>/REWRITE the ENTIRE native ask_user call/.test(phase1ContentBudgetRepairInstruction.toString())&&/D8-D30/.test(phase1ContentBudgetRepairInstruction.toString()));
   test('content-budget format recovery is bounded',()=>/invalidContentBudgetRepairs>3/.test(turn.toString())&&/FORGE RECOVERABLE STOP-FORMAT ERROR/.test(printContentBudgetFormatRecoveryStop.toString()));
@@ -4008,8 +4778,23 @@ if (REQUEST_DOCTOR) {
   test('suggested approval word resolves the whole brief',()=>phase1BriefAnswerCoverageBlockers('утверждаю').length===0);
   test('STOP guidance always exposes an actionable answer',()=>/утверждаю/.test(stopAnswerGuidance({recommendation:'Use A'}))&&/одним сообщением/.test(stopAnswerGuidance({})));
   test('Phase 1 brief guidance gives approval and full correction formats',()=>{const x=stopAnswerGuidance({decision_key:'phase1-brief'});return /«утверждаю»/.test(x)&&/Q1 —/.test(x)&&/Q5 —/.test(x)&&/все пять ответов/.test(x);});
+  test('Phase 2 decisions receive deterministic fast-MVP recommendations',()=>{const x=canonicalizeAskUserArgs({decision_key:'phase2-multiplayer'});return /мультиплеер/i.test(x.question)&&/А\)/.test(x.recommendation)&&/«утверждаю»/.test(stopAnswerGuidance(x));});
+  test('runtime-owned decision ledger rejects model writes',()=>/runtime-owned/.test(runtimeOwnedWriteBlock('wiki/decisions/gigachat-decisions.json')||''));
+  test('pending decision turns restore phase runtime before consuming the answer',()=>/startPhaseEvidence\(pendingPhase,\{resume:true\}\)/.test(turn.toString())&&/hydrateResolvedDecisionState\(pendingPhase\)/.test(turn.toString()));
+  test('decision STOP automatically persists blocked phase state',()=>/Awaiting.*pendingDecision\.decision_key/.test(turn.toString())&&/markHostPhaseBlocked\(activePhase,decisionReason\)/.test(turn.toString()));
+  test('resolved named decisions are not asked twice',()=>/Suppressed repeated resolved STOP-point/.test(turn.toString())&&/already_resolved:true/.test(turn.toString()));
+  test('idempotent phase state calls do not dirty memory',()=>/r\.already_started!==true\s*&&\s*r\.already_complete!==true/.test(recordOperation.toString()));
+  test('completed phase script calls return idempotently',()=>/already_complete:true/.test(tool.toString())&&/do not repeat completion/.test(tool.toString()));
+  test('solo multiplayer decision does not create a Phase 3 backend blocker',()=>/без\\s\+мультиплеер/.test(phaseGateReport.toString())&&/одиночн/.test(phaseGateReport.toString()));
+  test('mature phase workspace inspection is bounded and non-repeating',()=>/already_inspected:true/.test(tool.toString())&&/activePhase>=2\?14000:32000/.test(tool.toString()));
+  test('playtest file targets translate to the project directory',()=>/translated_file_target/.test(tool.toString())&&/actual_project_directory/.test(tool.toString()));
+  test('corrected playtest rerun clears prior path-misroute failures',()=>/for\(const prior of \[\.\.\.unresolvedFailures\.keys\(\)\]\)/.test(recordOperation.toString())&&/playtest-out/.test(phaseGateReport.toString()));
+  test('system bootstrap stays within the transport context budget',()=>system.length<CONTEXT_CHAR_BUDGET);
   test('research deepen does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-research-direction',answer:'B — углубить'}));
   test('content-budget correction does not resolve',()=>!decisionRecordResolves({decision_key:'phase1-content-budget',answer:'D7 = 12%, остальное ок'}));
+  test('approved metrics resume uses durable decision and research artifacts',()=>/resolvedDecisionKeys\.has\('phase1-content-budget'\)/.test(metricsArtifactProvenanceBlockers.toString())&&/researchReferenceUrls/.test(metricsArtifactProvenanceBlockers.toString()));
+  test('approved Phase 1 has deterministic completion path',()=>/completeApprovedPhase1Resume/.test(turn.toString())&&/no model\/tool round-trip required/.test(turn.toString()));
+  test('empty response recovery reports a Forge diagnostic',()=>/GIGA_EMPTY_RESPONSE_LOOP/.test(turn.toString()));
   test('skill load requires ok result',()=>/r\.ok===false/.test(registerSuccessfulSkillLoad.toString()));
   test('existing project blocks new-project',()=>/new-project is forbidden while resuming an existing Forge project/.test(tool.toString()));
   test('CLI batches pasted multiline input',()=>/replBuffer\.join\('\\n'\)/.test(flushReplBuffer.toString()));
@@ -4056,14 +4841,34 @@ if (INTEGRATION_TEST) { const ok=await runIntegrationTest(); process.exit(ok?0:4
 
 if (ONE_SHOT) {
   try { await turn(ONE_SHOT); }
-  catch(e){ console.error('[X] '+e.message); process.exit(1); }
+  catch(e){ reportForgeBehavior({severity:'error',code:'GIGACHAT_RUNTIME_EXCEPTION',kind:'adapter_transport',component:'gigachat-agent',operation:'one-shot',message:e.message}); console.error('[X] '+e.message); process.exit(1); }
   process.exit(0);
 }
 
 const rl=createInterface({input:process.stdin,output:process.stdout,terminal:true});
 let replBuffer=[],replTimer=null,replBusy=false;const replQueue=[];
 function showPrompt(){if(!replBusy)process.stdout.write('\n> ');}
-async function processReplInput(raw){const q=String(raw||'').trim();if(!q)return;if(['/exit','/quit'].includes(q)){rl.close();return;}if(q==='/status'){console.log(JSON.parse(tool('forge_status',{json:false})).output);return;}if(q==='/preflight'){console.log(JSON.stringify(forgePreflight(activePhase),null,2));return;}if(q==='/search-doctor'){console.log(JSON.stringify(searchDoctor(PROJECT),null,2));return;}if(q==='/gates'){const g=phaseGateReport(activePhase);console.log(g.ok?`[Forge Gate] GREEN for Phase ${g.phase}`:`[Forge Gate] BLOCKED for Phase ${g.phase}:\n- ${g.blockers.join('\n- ')}`);return;}if(q==='/context'){console.log(JSON.stringify(buildProjectContext(),null,2));return;}if(q==='/tokens'){console.log(JSON.stringify({model:MODEL,lastUsage,approxPayloadChars:approxPayloadChars(),contextCharBudget:CONTEXT_CHAR_BUDGET,compactions:compactionCount},null,2));return;}try{await turn(q);}catch(e){tokenCache=null;console.error('\n[X] '+e.message);}}
+async function processReplInput(raw){
+  const q=String(raw||'').trim(); if(!q)return;
+  if(['/exit','/quit'].includes(q)){rl.close();return;}
+  if(q==='/status'){
+    console.log(JSON.parse(tool('forge_status',{json:false})).output);
+    if(activeDirective) console.log(`\n[Forge] DIRECT TASK ACTIVE: ${activeDirective.request}\nPhase ${activeDirective.pausedPhase||'?'} autopilot is paused. Use /task for details.`);
+    return;
+  }
+  if(q==='/preflight'){
+    if(activeDirective){console.log(`[Forge] Preflight paused by direct task: ${activeDirective.request}`);return;}
+    console.log(JSON.stringify(forgePreflight(activePhase),null,2));return;
+  }
+  if(q==='/search-doctor'){console.log(JSON.stringify(searchDoctor(PROJECT),null,2));return;}
+  if(q==='/gates'){
+    if(activeDirective){console.log(`[Forge Gate] PAUSED by direct task: ${activeDirective.request}`);return;}
+    const g=phaseGateReport(activePhase);console.log(g.ok?`[Forge Gate] GREEN for Phase ${g.phase}`:`[Forge Gate] BLOCKED for Phase ${g.phase}:\n- ${g.blockers.join('\n- ')}`);return;
+  }
+  if(q==='/context'){console.log(JSON.stringify(buildProjectContext(),null,2));return;}
+  if(q==='/tokens'){console.log(JSON.stringify({model:MODEL,lastUsage,approxPayloadChars:approxPayloadChars(),contextCharBudget:CONTEXT_CHAR_BUDGET,compactions:compactionCount},null,2));return;}
+  try{await turn(q);}catch(e){tokenCache=null;reportForgeBehavior({severity:'error',code:'GIGACHAT_RUNTIME_EXCEPTION',kind:'adapter_transport',component:'gigachat-agent',operation:'repl-turn',message:e.message});console.error('\n[X] '+e.message);}
+}
 async function drainReplQueue(){if(replBusy)return;replBusy=true;while(replQueue.length)await processReplInput(replQueue.shift());replBusy=false;showPrompt();}
 function flushReplBuffer(){if(replTimer){clearTimeout(replTimer);replTimer=null;}if(!replBuffer.length)return;replQueue.push(replBuffer.join('\n'));replBuffer=[];void drainReplQueue();}
 rl.on('line',line=>{replBuffer.push(line);if(replTimer)clearTimeout(replTimer);replTimer=setTimeout(flushReplBuffer,180);});

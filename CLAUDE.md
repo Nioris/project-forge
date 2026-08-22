@@ -1,4 +1,4 @@
-# Project Forge v4.68.9 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.39 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -60,8 +60,12 @@ Terminal API profiles use one canonical secrets directory **outside projects**:
 | `../forge-data/secrets/openai.key` | Codex API profile + optional OpenAI image batch |
 | `../forge-data/secrets/gigachat.key` | GigaChat terminal agent + image/3D providers |
 | `../forge-data/secrets/gigasearch.key` | Optional production GigaSearch provider; not needed for the no-key fallback |
+| `../forge-data/secrets/deepseek.key` | DeepSeek whole-project profile through OpenCode |
+| `../forge-data/secrets/zai.key` | GLM whole-project profile through OpenCode |
+| `../forge-data/secrets/minimax.key` | MiniMax whole-project profile through OpenCode |
+| `../forge-data/secrets/openrouter.key` | OpenRouter whole-project profile: Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini, Grok or non-confidential Ox Alpha preview |
 
-Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY`, `GIGASEARCH_API_KEY` have precedence. Legacy project-local `.openai_key` / `.gigachat_key` / `.gigasearch_key` remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
+Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY`, `GIGASEARCH_API_KEY`, `DEEPSEEK_API_KEY`, `ZAI_API_KEY`, `MINIMAX_API_KEY` and `OPENROUTER_API_KEY` have precedence. Legacy project-local key files remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
 
 Rules:
 1. Never print, log, commit or copy secret values into wiki/config/prompt artifacts.
@@ -463,20 +467,23 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
-## v4.68.9 changelog (guided STOP answers)
+## v4.68.39 changelog (Ox Alpha retained-data preview)
 
-Every GigaChat `ask_user` STOP now ends with deterministic answer guidance instead of relying on the model to remember response syntax. A recommended decision exposes the exact short approval phrase `утверждаю`; Phase 1 research and content-budget gates also show their correction/deepening form, while the five-question brief prints a complete Q1–Q5 answer template.
+OpenRouter gains an `ox-alpha` whole-project preset for the free anonymous coding preview. Forge
+refuses to run it through the default ZDR profile: selection requires explicit `--profile standard`
+because the upstream provider retains prompts and completions. The preset is therefore restricted
+to non-confidential evaluation projects while keeping the existing 64-step OpenCode turn budget.
 
-The adapter contract is `6.3.3-guided-stop`. Unit tests cover approval/correction guidance and the real terminal subprocess gate asserts that the visible resume STOP contains `Как ответить`, `«утверждаю»` and the full Q1–Q5 correction format.
+## v4.68.38 changelog (OpenCode loop budget)
 
-## v4.68.8 changelog (natural brief acceptance)
+OpenCode whole-project turns now have a 64-step agentic ceiling. The project-local `list`
+compatibility tool also suppresses identical successful repeats within the same session. Together
+these safeguards convert provider tool loops into a bounded text handoff instead of unmetered API
+spend; legitimate unfinished work remains resumable in the same session.
 
-The GigaChat adapter now treats explicit natural-language approval such as `принимаю рекомендации`, `принимаю все рекомендации` and `согласен со всеми рекомендациями` as approval of the complete Phase 1 Q1–Q5 recommendation set. Qualified answers such as `принимаю рекомендации, но Q2 изменить` remain unresolved so corrections are never silently discarded.
+## v4.68.37 changelog (mixed TBD assertion guard)
 
-The adapter contract is `6.3.2-natural-acceptance`. Unit coverage and a real CLI subprocess regression prove that the exact user phrase is persisted, rebuilds all five canonical brief fields and clears the durable pending STOP before the next model request.
-
-## v4.68.7 changelog (GigaChat resume orchestrator)
-
-The Forge-owned GigaChat adapter now carries the cumulative `6.3.1-resume-orchestrator` contract. It fixes the live malformed-`ask_user` const reassignment crash, reopens incomplete Q1–Q5 brief decisions before another model request, reconciles stale Phase 1 state and preserves approved research/product-metrics evidence across compaction and retries.
-
-The permanent capability now includes real web/image search, safe page fetch, a search doctor and offline provider self-test. `forge-agent` enables the Node system CA store before launching the GigaChat child and selects the no-key `bing-html` fallback only when no explicit provider/endpoint exists. The API-profile release gate runs both self-test suites and validates standard/full tool-surface semantics instead of a stale hard-coded count.
+Phase 1 research validation now rejects a positive external assertion such as `verified`,
+`confirmed` or `requires` even when the same line also contains `TBD`. This closes the final Qwen
+benchmark loophole where an unsupported Yandex claim survived inside a nominally unknown
+localization value.

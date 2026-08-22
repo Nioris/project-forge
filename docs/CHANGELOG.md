@@ -3,6 +3,14 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.11 changelog (fleet behavioral diagnostics)
+
+Forge-managed projects now keep a local `wiki/diagnostics/forge-events.jsonl` stream for behavioral defects in Forge itself. Claude/Codex/generic instructions and a native GigaChat function report malformed phase/STOP output, adapter/hook/runtime failures, state/capability contradictions and incorrect Forge formats while excluding ordinary game/app bugs. The dependency-free logger bounds fields, redacts common credentials and the project root, accepts only project-relative evidence, rotates non-destructively and adds a local Git exclude.
+
+`project-status.mjs` shows unresolved counts. `scripts/audit-forge-diagnostics.mjs` scans all managed sibling projects, reconstructs report/resolve state and groups observations by stable code/component/operation so engine maintainers can measure fleet impact while projects continue developing. GigaChat also auto-reports bounded STOP-format exhaustion, malformed textual tool transport and fatal runtime exceptions.
+
+---
+
 ## v4.68.1 changelog (terminal API profiles + GigaChat coding agent)
 
 Claude and Codex now have explicit API launch profiles in addition to their existing subscription/ChatGPT profiles. Keys are centralized outside projects under `forge-data/secrets/`. Claude receives its key through `apiKeyHelper`; Codex receives an isolated API-key auth store under a dedicated `CODEX_HOME`, preventing API mode from replacing the normal ChatGPT login.
@@ -4508,6 +4516,197 @@ The first complete v4.68.4 fleet pass exposed a Windows PowerShell 5.1 encoding 
 The local-first release branch was rebased onto the concurrent public `main` update that adds `.github/workflows/sync-gitverse.yml`. The workflow is now part of the canonical tree and generated MANIFEST instead of being accidentally deleted or omitted by a later local publication.
 
 No engine runtime, sibling payload, phase, skill, agent or platform behavior changes in this patch. v4.68.6 is the final convergence release: verified local sources, release ZIP, Universal installation, sibling fleet and the GitHub publication branch share one versioned state.
+
+## v4.68.7 changelog (GigaChat resume orchestrator)
+
+The Forge-owned GigaChat adapter now carries the cumulative `6.3.1-resume-orchestrator` contract. It fixes the live malformed-`ask_user` const reassignment crash, reopens incomplete Q1–Q5 brief decisions before another model request, reconciles stale Phase 1 state and preserves approved research/product-metrics evidence across compaction and retries.
+
+The permanent capability now includes real web/image search, safe page fetch, a search doctor and offline provider self-test. `forge-agent` enables the Node system CA store before launching the GigaChat child and selects the no-key `bing-html` fallback only when no explicit provider/endpoint exists. The API-profile release gate runs both self-test suites and validates standard/full tool-surface semantics instead of a stale hard-coded count.
+
+## v4.68.8 changelog (natural brief acceptance)
+
+The GigaChat adapter now treats explicit natural-language approval such as `принимаю рекомендации`, `принимаю все рекомендации` and `согласен со всеми рекомендациями` as approval of the complete Phase 1 Q1–Q5 recommendation set. Qualified answers such as `принимаю рекомендации, но Q2 изменить` remain unresolved so corrections are never silently discarded.
+
+The adapter contract is `6.3.2-natural-acceptance`. Unit coverage and a real CLI subprocess regression prove that the exact user phrase is persisted, rebuilds all five canonical brief fields and clears the durable pending STOP before the next model request.
+
+## v4.68.9 changelog (guided STOP answers)
+
+Every GigaChat `ask_user` STOP now ends with deterministic answer guidance instead of relying on the model to remember response syntax. A recommended decision exposes the exact short approval phrase `утверждаю`; Phase 1 research and content-budget gates also show their correction/deepening form, while the five-question brief prints a complete Q1–Q5 answer template.
+
+The adapter contract is `6.3.3-guided-stop`. Unit tests cover approval/correction guidance and the real terminal subprocess gate asserts that the visible resume STOP contains `Как ответить`, `«утверждаю»` and the full Q1–Q5 correction format.
+
+## v4.68.10 changelog (Codex economy routing)
+
+Forge now owns a canonical per-phase Codex policy and a fresh-task launcher. Standard is the default tier; Terra handles normal implementation, Sol handles design and named complex escalations, and Luna is limited to mechanical work. Phase orchestration defaults to at most two Terra/medium subagents; Max/Ultra are never automatic.
+
+`phase-state.mjs` stores the recommended Codex route separately from the runtime selection reported by launcher/CLI evidence, so Claude and GigaChat are never mislabeled as Terra. Dashboard exposes both `$phase-*` and policy-aware launch commands. Regression coverage validates all nine routes, durable escalation metadata and Codex CLI compatibility.
+
+## v4.68.11 changelog (fleet behavioral diagnostics)
+
+Managed projects now keep a dedicated local JSONL incident stream for defects in Forge itself: malformed phase/STOP behavior, adapter/runtime/hook failures, capability or state contradictions, and incorrect returned formats. AI instructions for Claude, Codex, generic agents and the GigaChat native tool all require immediate reporting while explicitly excluding ordinary game/app bugs. Fields are bounded and credential-redacted, evidence stays project-relative, logs rotate non-destructively and remain outside final Git commits.
+
+`$status` exposes the open count, while `scripts/audit-forge-diagnostics.mjs` scans every managed sibling and groups unresolved observations by stable code/component/operation. Incidents are closed by fingerprint only after verification. Hook/runtime failures and bounded GigaChat STOP/transport recovery exhaustion report automatically; a dependency-free regression verifies redaction, deduplication, resolution, local Git exclusion and fleet aggregation.
+
+## v4.68.12 changelog (durable GigaChat phase resume)
+
+GigaChat Phase 1 resume now treats already approved decisions and research artifacts as durable evidence. Product-metrics evidence survives phase switches, the final gate reuses the approved KPI/content-budget decision and cited research, and a fully approved Phase 1 closes deterministically without another model round-trip or repeated user approval.
+
+Phase markers record `gigachat` as the actual host without inventing a Codex model selection. Memory snapshots discard obsolete nested `STOP:` lines, and exhausted empty/malformed response recovery emits the `GIGA_EMPTY_RESPONSE_LOOP` Forge diagnostic. The adapter contract is `6.3.4-durable-phase-resume`; regression coverage includes approved-state completion, durable metrics provenance, host-only model metadata and transport diagnostics.
+
+## v4.68.13 changelog (GigaChat decision and gate integrity)
+
+Standalone answers to durable GigaChat STOP-points now restore the owning phase, runtime baseline and named-decision state before the answer is consumed. Phase 2 decisions survive across one-shot terminal processes, and the model can no longer overwrite the runtime-owned decision/evidence ledgers directly.
+
+Every `phase-state complete` path, including native `forge_script`, now requires the full Forge gate to be GREEN plus explicit evidence arguments. Decision STOPs automatically persist the machine marker as `blocked` with host `gigachat`; Phase 2 prompts receive deterministic fast-MVP questions/recommendations and exact approval guidance. Phase 2 UI hierarchy matching accepts canonical prefix or suffix filenames, while the prompt-pack blocker names its exact `assets/prompts/*.json` target. Contract: `6.3.5-decision-gate-integrity`.
+
+## v4.68.14 changelog (GigaChat mature-phase orchestration)
+
+The GigaChat adapter now keeps completed phases immutable and advances phases strictly in order. Durable completed markers are authoritative even after stale runtime state, repeated skill/workspace loads are bounded, corrected verifier reruns clear obsolete failures, and wrong script-vs-skill or HTML-file-vs-project-directory calls are translated to their canonical Forge operations.
+
+Phase 4 accepts valid JPEG/WebP target frames, numbered visual variants and the supported selection locations. Phase 7 recognizes the canonical test/visual-QA skill workflow. Local staging automatically uses the finite AI play mode, shell scripts run through Git Bash, evidence arguments are normalized, and structured `write_file` values are serialized as JSON. Browser helpers now resolve project-local Puppeteer reliably, dismiss dialogs, provide a local Yandex SDK stub and produce a real playable promo recording. Contract: `6.3.6-mature-phase-orchestration`.
+
+## v4.68.15 changelog (Windows Yandex release pipeline)
+
+The canonical three-ZIP Yandex builder now works from Windows and accepts an external project root. It uses native filesystem operations and platform-appropriate archive commands; production stays clean, debug contains debugcheck plus cheats, and marketing contains debugcheck, cheats and screenshot helpers.
+
+ZIP CDN inspection and variant runtime testing no longer depend on Unix `/tmp`, `unzip`, `cp` or `rm`. Runtime testing extracts the requested archive before Yandex delegation and cleans its temporary directory. Pre-submit path resolution now connects `WorkProgress/<game>-yandex` with `Release/<game>/yandex`, allowing the real localized listings to participate in the gate.
+
+## v4.68.16 changelog (Quality Sol + private project Git)
+
+Every Codex phase and generated custom agent now stays on GPT-5.6 Sol/Standard. Reasoning effort remains high for creative and technical work, medium for deterministic listing/release/live work, and reaches xhigh only through named hard-problem routes. Fresh phase tasks, bounded output and a one-high-detail-image rule address the real context amplification that consumed the weekly model budget.
+
+Every new project gets its own local `main` repository. Completing a phase creates a durable checkpoint commit. An explicit workspace policy can create and push each future game/app to a private GitHub repository; Forge refuses public remotes and staged secrets, preserves local commits when the network fails, and never mass-onboards existing projects without an explicit command.
+
+## v4.68.17 changelog (one-window Codex phases)
+
+Codex development no longer requires closing and reopening a terminal after every phase. `codex-pipeline.mjs` holds one terminal UI while using `codex exec` sessions internally: answers to a real STOP resume the current phase session, but `phase-state complete` discards that session and starts the next phase with clean context after a simple yes/no prompt. `--auto` removes only the between-phase prompt, not real decision gates.
+
+The orchestrator also repairs premature `in_progress` endings with bounded automatic resumes and resolves the installed Windows Codex JS entrypoint directly, avoiding child-process failures from npm `.cmd` wrappers and protected WindowsApps executables.
+
+## v4.68.18 changelog (cost/context-aware Codex orchestration)
+
+The one-window Codex parent now produces a local per-phase cost/context report without adding anything to model context. The exec JSON stream supplies a bounded fallback; local rollout aggregation enriches it with model-response count, cumulative input/cached/output usage, compactions, subagent tree, exact tool-output payload size, and actual root model/reasoning policy. Reports deliberately omit prompts, messages, file contents, rate-limit state, and secrets, and remain local through repository excludes.
+
+Terminal summaries explain cache reuse rather than calling output/input a universal efficiency score. Heuristic warnings cover high-volume context amplification, oversized tool output, model-policy mismatch, unexpected incomplete endings, exec failures, excess subagents, and compactions. Dashboard can load multiple `phase-N-latest.json` reports into comparable cards without receiving implicit filesystem access.
+
+## v4.68.19 changelog (clean Codex launch with optional local MCPs)
+
+The one-window launcher now preflights enabled loopback HTTP MCP endpoints inherited from the user's Codex config. If a local endpoint is unreachable, Forge applies `mcp_servers.<name>.enabled=false` only to child phase/resume commands and prints the decision; it never edits global configuration. This prevents an optional stopped service such as Unity MCP from flooding or aborting an unrelated HTML5 phase. Remote and stdio MCPs are left untouched, reachable loopback endpoints stay enabled, and `--keep-local-mcp` provides an explicit escape hatch.
+
+Child `codex exec` now inherits terminal stdin instead of receiving a closed pipe. A prompt supplied as an argument is therefore no longer accompanied by the misleading `Reading additional input from stdin...` path in an interactive PowerShell launch. Regression fixtures verify start/resume override propagation, selective loopback detection, and the full Phase 1–9 lifecycle.
+
+## v4.68.20 changelog (GigaChat direct-task intent guard)
+
+GigaChat now has a durable change-request mode for explicit implementation work in the middle of the canonical pipeline. `/do <task>` preserves the exact user request across context compaction, pauses automatic phase/release continuation without falsifying phase markers, and injects the direct task as the authoritative current objective. Strong natural-language implementation commands activate the same mode; `/task` exposes it and `/resume-phase` clears it explicitly.
+
+The protection is mechanical rather than prompt-only: phase preflight/gates, `phase-state`, phase skills, release skills, and release packaging are rejected at the tool boundary while the direct task is active, including malformed textual-call recovery. `forge_change_complete` clears the override only after a successful implementation operation, existing evidence paths, and reported verification checks. This prevents a request such as “сделай гачу” from being replaced by a stale Phase 8 release marker after context compaction.
+
+## v4.68.21 changelog (GigaChat evidence-bound status guard)
+
+Real terminal evidence exposed three trust gaps after the direct-task intent fix: GigaChat could clear `forge_change_complete` with invented check descriptions, treat a factual question such as «собрал архивы?» as permission to start Phase 8, and create a counterfeit verifier under `WorkProgress`. Completion checks are now matched to successful commands recorded after the direct task started; unmatched claims remain blocked and produce a diagnostic.
+
+Factual status turns are mechanically read-only: the function surface contains inspection tools only, and the execution boundary rejects mutating recovered pseudo-calls. Canonical-looking verifier/release substitutes under `WorkProgress/<project>/scripts/` are blocked. A repeated full write of the same direct-task file also requires a fresh read after the prior write, preventing context compaction from silently replacing completed work with a shorter reconstruction.
+
+## v4.68.22 changelog (immutable release build versions)
+
+Every canonical Yandex three-ZIP build now creates a new immutable version. The builder scans existing production archives, increments the latest numeric component when no newer version is supplied, and auto-bumps an explicitly repeated or older version. Existing ZIP paths are never unlinked or overwritten. Each successful build prints its exact `BUILD_VERSION` and appends the selected version and three artifact paths to `build-history.json`.
+
+Phase 8 no longer treats a changed hash at an old ZIP path as a fresh release. Its baseline gate requires a newly named production/debug/marketing trio of one version that is higher than the newest version present when the phase started. The canonical release skill now routes all packaging through `build-yandex-3zips.mjs` rather than allowing improvised release scripts.
+
+## v4.68.23 changelog (safe GigaChat large-file integration)
+
+The failed gacha integration exposed a destructive compaction loop: GigaChat repeatedly reread only the first 300 lines of a 93 KB game and used `write_file` five times, eventually shrinking the game to 17 KB. Direct-task reads now auto-page with durable per-file cursors, refuse to restart after EOF, and carry only bounded operation summaries through compaction.
+
+Targeted integration work can no longer fully reconstruct an existing large file unless the user explicitly asks for a complete rebuild. Suspicious shrinkage and every second full overwrite of the same path are blocked before disk mutation. Twelve consecutive reads without an implementation action or four compactions in one direct turn now produce a recoverable diagnostic stop. An explicitly repeated `/do` starts a clean retry.
+
+## v4.68.24 changelog (modularize large existing games)
+
+Large monolithic web entrypoints now have a deterministic preprocessing path before feature work. The new `modularize-existing-project` skill and script analyze first, preserve a backup, externalize inline CSS, split classic JavaScript at existing semantic section markers without changing load order, and generate hash-bound machine/human module contracts. `--check` rejects missing, stale, unreferenced or syntactically invalid modules.
+
+GigaChat direct-task routing detects remaining WorkProgress sources above 32 KB and directs the model through modularization, baseline and regression checks rather than whole-file reconstruction. On the real `testgigachat-v4`, a 93 KB entrypoint became a 3.8 KB shell plus 17 bounded JS modules; canonical playtest, targeted Playwright state/visual verification and local-stage remained error-free.
+
+## v4.68.25 changelog (safe module-contract refresh)
+
+Forward-testing the new modular workflow exposed a missing post-feature transition: any legitimate module edit correctly made `modules.json` stale, but there was no safe way to accept the new hashes without manual documentation surgery. `modularize-existing-project.mjs --refresh` now recalculates live hashes, sizes, symbols, ownership, storage keys and DOM IDs while preserving the approved module paths and load order.
+
+Refresh refuses missing/unreferenced modules, new inline code, syntax errors and hidden boundary changes. The fixture now proves the full lifecycle: stale feature edit fails `--check`, safe refresh records the new symbol surface, and the final check passes.
+
+## v4.68.26 changelog (reliable modular GigaChat feature operations)
+
+Real GigaChat forward tests exposed four gaps after modularization: disconnected feature files could escape the contract, an accepted direct task could continue into Phase 8, approved small modules could still be destroyed by full writes, and generic smoke output could falsely stand in for the requested feature. Module refresh now safely adopts only referenced `js/`/`styles/` additions while preserving the prior relative sequence; checks reject both orphan numbered modules and uncontracted references. Approved modules require targeted edits, and successful `forge_change_complete` is now terminal until explicit `/resume-phase`.
+
+For existing merge-grid games, `integrate-gacha.mjs` performs state, main persistence, reset, core/integration module and load-order changes atomically with backup evidence. `check-gacha-integration.mjs` proves the actual button/API, grid mutation, main save, full-grid queue, reload restoration and later delivery in a browser. A final real GigaChat `/do` used this path, passed the 20-module contract, focused verifier, playtest and local-stage, then stopped without entering release.
+
+## v4.68.27 changelog (one model for the whole project)
+
+Forge can now lock Gemini, Qwen, Kimi K3, DeepSeek, GLM or MiniMax M3 to an entire project through `.forge/agent.json`. The new `select`, `profile` and `start` commands prevent an implicit provider/model switch while preserving one interactive terminal across the canonical nine phases. Gemini and Qwen use their verified native interactive-prompt contracts; Kimi Code performs one bootstrap turn and resumes the same session; DeepSeek, GLM and MiniMax use provider-pinned OpenCode profiles.
+
+Gemini CLI 0.55.1 and Kimi Code 0.37.2 were installed from their official distributions; the existing Qwen Code 0.14.0 and OpenCode 1.15.10 contracts were inspected locally. Windows executable discovery now prefers runnable `.exe`/`.cmd` npm shims. DeepSeek/GLM/MiniMax keys remain outside projects in provider-specific OpenCode credential stores and are stripped from the tool environment. Managed `GEMINI.md`/`QWEN.md`, Dashboard launch buttons, a project-lock schema, documentation and offline regressions cover the new surface. Provider quality parity remains unclaimed until equal full-project benchmarks are run with authenticated accounts.
+
+## v4.68.28 changelog (safe project Git secret scan)
+
+The first real Qwen-only project exposed a false positive in the local-first Git checkpoint: Forge-managed RuStore payment documentation contains bare PEM header/footer examples, and the secret scanner treated the header alone as a complete private key. New project creation therefore stopped after sync before its initial commit.
+
+PEM detection now requires a matching header/footer and a plausible encoded body. A regression proves that documentation placeholders commit normally while a realistic complete private key remains blocked. The original Forge diagnostic fingerprint is preserved in the failed test project and may be resolved only after the repaired checkpoint succeeds.
+
+## v4.68.29 changelog (Windows-safe whole-project startup prompt)
+
+The first authenticated Qwen launch reached the official Windows npm `.cmd` shim but failed before any model request: shell metacharacters in the long startup prompt were interpreted by `cmd.exe` instead of reaching Qwen as one literal argument.
+
+Forge now persists the full agent/model-locked startup contract in `.forge/agent-start.md` and sends every CLI a short metacharacter-free instruction to read it. This protects Qwen, Gemini, Kimi and OpenCode launches from Windows command-shell parsing while keeping the complete contract inspectable and durable. A real fake-`.cmd` subprocess regression verifies the launcher and prompt file together.
+
+## v4.68.30 changelog (Qwen OAuth preflight correction)
+
+The first real GDD-only Qwen benchmark reached Qwen Code but exposed two adapter assumptions before the first model turn. The free OAuth profile accepts the provider alias `coder-model`, not the Coding Plan identifier `qwen3-coder-plus`; and a stopped user-scoped loopback Unity MCP produced repeated connection noise during authentication.
+
+Qwen model defaults are now profile-aware: OAuth locks `coder-model`, while Coding Plan retains `qwen3-coder-plus`. Before a Qwen launch, Forge probes configured loopback HTTP MCP endpoints and writes a run-scoped high-precedence settings overlay under `forge-data/runtime/`; only unavailable local servers are excluded, existing Qwen user settings remain unchanged, and reachable or remote MCP servers remain available. Windows subprocess regressions verify both the file-backed startup prompt and this MCP isolation. The benchmark remains pending because the provider OAuth token endpoint returned external 502/504 responses.
+
+## v4.68.32 changelog (OpenRouter whole-project host)
+
+Forge can now run an entire project through one exact OpenRouter model via the installed OpenCode runtime. One central `openrouter.key` exposes named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini and Grok presets; the selected model is persisted in `.forge/agent.json` and cannot change implicitly between phases.
+
+The default `zdr` profile requires a zero-data-retention provider endpoint and denies provider data collection. OpenCode receives the key only through a Forge-owned isolated auth directory outside every game project, and the child environment is scrubbed before launch. The broader `standard` route exists only as an explicit opt-in. Runtime regressions cover secret isolation, ZDR configuration, model preset resolution and whole-project lock behavior.
+
+## v4.68.31 changelog (remove discontinued Qwen OAuth profile)
+
+After Qwen Code updated itself from 0.14.0 to 0.21.14, its current authentication contract reported that the free Qwen OAuth tier was discontinued on 2026-04-15. The previous 1,000-requests/day screen belonged to the stale CLI and cannot produce a model turn now.
+
+Forge no longer offers or defaults to the discontinued OAuth profile. Qwen whole-project locks now expose `coding-plan` and `api`; both default to `qwen3-coder-plus`. Interactive setup uses `/auth` → Alibaba ModelStudio → Coding Plan or Standard API Key. The GDD-only benchmark remains ready but intentionally blocked until one of those paid credentials is configured.
+
+## v4.68.33 changelog (ZDR-capable Qwen agent preset)
+
+The first real OpenRouter Qwen smoke test exposed two catalog-level incompatibilities before an autonomous run: `qwen3-coder-plus` had no ZDR endpoint, while `qwen3-coder` returned a raw tool-call payload instead of executing the requested file read through OpenCode. Forge now maps the OpenRouter `qwen` preset to `qwen3-coder-next`, which passed a real ZDR-enforced tool invocation and read the project lock successfully. Privacy is not weakened silently and both failed candidates remain available only through an explicit exact-model selection.
+
+## v4.68.34 changelog (evidence-bound experimental agents)
+
+Real Qwen Phase 1 testing proved that successful tool calls do not guarantee evidence discipline.
+Forge now rejects a phase completion before state or Git changes when evidence files are missing,
+the Phase 1 brief is still a template, KPI numbers have neither a URL citation nor an explicit
+hypothesis/TBD label, or runtime acceptance is checked without implementation source. A rejected
+attempt becomes a durable `blocked` marker.
+
+OpenCode whole-project hosts require v1.18.20+ so the built-in tool surface used by the verified
+Qwen path is present. Experimental whole-project agents keep Phase 1–7 checkpoints local; private
+GitHub synchronization is deferred until the verified Phase 8 result.
+
+## v4.68.35 changelog (OpenCode STOP resume + source-line gate)
+
+OpenCode `run --interactive` renders one model turn but exits after a Forge STOP; it is not a
+persistent conversational terminal. Forge now exposes `forge-agent resume --answer ...`, stores the
+answer in a project file instead of shell arguments, and continues the exact last OpenCode session.
+
+The Phase 1 research gate is also line-bound: a document-level «no verified sources» disclaimer can
+no longer launder competitor names, dates or market conclusions underneath it. Every detected
+external factual line needs its own URL/local source or an explicit TBD/unverified label. A bounded
+project-local `list` compatibility tool covers Qwen's repeated call to that otherwise absent tool.
+
+## v4.68.36 changelog (phase evidence consistency + runtime identity)
+
+Phase 1 completion now rejects metrics evidence that still declares `draft`, `blocked` or
+`qa_blocked`; a passed marker cannot contradict its own source document. Whole-project launch and
+resume environments also forward the actual locked host/model into `phase-state`, replacing the
+misleading `unknown` runtime identity observed during the Qwen benchmark. The Phase 1 workflow now
+requires final wiki/status updates before the checkpointing completion command.
 
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 

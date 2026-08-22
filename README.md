@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.9`
+**Current public version:** `v4.68.39`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -14,6 +14,9 @@ Project Forge gives several terminal AI agents one shared workflow: the same pha
 | OpenAI Codex | ChatGPT · OpenAI API | stable |
 | GigaChat | API through Forge terminal agent | supported |
 | GigaCode CLI | local CLI adapter | experimental / dormant until an executable is available |
+| Gemini CLI · Qwen Code · Kimi Code | native account or provider plan/API | experimental whole-project lock |
+| DeepSeek · GLM · MiniMax M3 | provider API through OpenCode | experimental whole-project lock |
+| OpenRouter through OpenCode | one OpenRouter API key · ZDR by default | experimental whole-project lock |
 
 > Forge is terminal-first. An IDE is optional; the core workflow does not depend on one.
 
@@ -24,12 +27,13 @@ Forge is not another chat UI. It is a project runtime around terminal agents.
 It provides:
 
 - **9 canonical phases** from analysis to live operation;
-- **141 canonical skills** plus generated Codex discovery adapters;
+- **142 canonical skills** plus generated Codex discovery adapters;
 - **21 specialized subagents**;
 - shared phase markers, STOP-points and project state across supported hosts;
 - native Claude Code and Codex launch profiles;
 - optional API profiles for Anthropic and OpenAI;
 - a Forge-owned GigaChat terminal agent;
+- one-model whole-project profiles for Gemini, Qwen, Kimi K3, DeepSeek, GLM, MiniMax M3 and OpenRouter;
 - AI Studio workflows for prompt compilation, images, 3D, art direction and visual QA;
 - platform integrations and release checks;
 - dashboard, fleet sync, upgrade and managed-file drift validation.
@@ -127,6 +131,20 @@ $continue
 $status
 ```
 
+For the recommended one-window workflow, run this once from the managed project directory:
+
+```powershell
+node ../project-forge/scripts/codex-pipeline.mjs --cwd .
+```
+
+The terminal remains open for the entire project. Within a phase, Forge resumes the same Codex session after your STOP answer. After a durable `complete`, it asks whether to start the next phase, discards the old session context, and launches a clean one in the same window. Every phase uses GPT-5.6 Sol on Standard; reasoning is high for creative/technical work and medium for deterministic listing, packaging, and routine metrics.
+
+After every completed phase, the parent orchestrator prints and stores a privacy-bounded cost/context report under `wiki/diagnostics/codex-cost/phase-N-latest.json`. When the local Codex rollout is available, it measures model responses, input/cache/output tokens, compactions, subagents, tool-output volume, actual model policy, and unexpected stops. Reports never store prompts, messages, file contents, rate-limit state, or secrets. Open one or more reports in the Dashboard's **Codex Cost / Context** panel to compare phases.
+
+Before the first phase, the launcher checks enabled loopback HTTP MCP endpoints inherited from the user Codex config. An unavailable local endpoint is disabled only for that pipeline run, preventing optional tools such as a stopped Unity MCP from breaking unrelated web-game work; the global config is not modified. Use `--keep-local-mcp` only when an endpoint is expected to become available after launch. Child Codex stdin remains attached to the terminal, so a supplied phase prompt is not misdetected as piped input.
+
+For manual single-phase control, `codex-phase.mjs <1..9>` remains available. See `.claude/skills/status/references/MODEL-ROUTING.md` for the complete table and `--route` options.
+
 Examples:
 
 ```text
@@ -139,7 +157,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.9` keeps separate normal-account and API profiles.
+`v4.68.39` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -157,6 +175,34 @@ node scripts/forge-agent.mjs launch codex --profile api --full --project ../my-g
 # GigaChat — Forge terminal agent through API
 node scripts/forge-agent.mjs launch gigachat --profile api --full --project ../my-game
 
+# Lock one model to the whole project (choose one)
+node scripts/forge-agent.mjs start gemini --project ../my-game
+node scripts/forge-agent.mjs start qwen --project ../my-game
+node scripts/forge-agent.mjs start kimi --project ../my-game
+node scripts/forge-agent.mjs start deepseek --project ../my-game
+node scripts/forge-agent.mjs start glm --project ../my-game
+node scripts/forge-agent.mjs start minimax --project ../my-game
+node scripts/forge-agent.mjs start openrouter --project ../my-game
+
+# Continue the same OpenCode session after a Forge STOP
+node scripts/forge-agent.mjs resume --project ../my-game --answer "approve"
+
+# One OpenRouter key, one exact model for the whole project
+node scripts/forge-agent.mjs presets openrouter
+node scripts/forge-agent.mjs select openrouter --preset qwen --profile zdr --project ../my-game
+# Free anonymous preview; provider retains prompts/completions — non-confidential tests only
+node scripts/forge-agent.mjs select openrouter --preset ox-alpha --profile standard --project ../my-game
+node scripts/forge-agent.mjs start openrouter --project ../my-game
+
+# Show the project lock or change it explicitly
+node scripts/forge-agent.mjs profile --project ../my-game
+node scripts/forge-agent.mjs select qwen --profile coding-plan --model qwen3-coder-plus --project ../my-game
+
+# One-time native CLI authentication
+gemini
+qwen  # /auth -> Alibaba ModelStudio -> Coding Plan or Standard API Key
+kimi login
+
 # Inspect GigaChat web/image search without exposing credentials
 node scripts/forge-search-doctor.mjs --project ../my-game
 
@@ -164,9 +210,45 @@ node scripts/forge-search-doctor.mjs --project ../my-game
 node scripts/forge-agent.mjs doctor
 ```
 
+The selected whole-project agent and model are stored in `.forge/agent.json`. The same model handles every phase; Forge does not route phases to other providers. Gemini and Qwen start directly in interactive mode. Kimi performs one bootstrap prompt and then reopens that exact session interactively. DeepSeek, GLM, MiniMax and OpenRouter run through OpenCode while the chosen provider remains the only model. Their API keys use the central `forge-data/secrets/` store and an isolated OpenCode credential profile.
+
+OpenRouter uses one `forge-data/secrets/openrouter.key` for named Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini, Grok and Ox Alpha presets. The Qwen preset is the tool-verified `qwen3-coder-next`; `qwen3-coder-plus` currently has no ZDR endpoint. The default `zdr` profile requires a zero-data-retention endpoint and denies provider data collection. Ox Alpha is a free anonymous preview whose provider retains prompts/completions, so Forge refuses ZDR selection and requires explicit `--profile standard`; use it only for non-confidential evaluation. Store the key without putting it on a command line: `node scripts/forge-secrets.mjs set openrouter --stdin`. OpenCode returns after each Forge STOP; `forge-agent resume --answer ...` continues its exact last session without putting the answer in provider command arguments. Each OpenCode turn is capped at 64 agentic steps; repeated identical `list` calls are suppressed after the first successful result so a weak model cannot burn an unlimited tool loop.
+
 GigaCode remains an experimental adapter. Forge does not fake CLI availability when no executable is installed.
 
 Every GigaChat STOP-point includes a deterministic `How to answer` block: an exact short approval phrase (`утверждаю`) and, when needed, the complete correction format expected by the gate.
+
+Forge allows at most two phase subagents, starts phases as fresh tasks, bounds large tool/image context, and never enables Max/Ultra automatically. These limits do not change the Claude or GigaChat workflows.
+
+## Local Git and private GitHub
+
+Every new project gets its own local Git repository. Completing a Forge phase automatically creates a checkpoint commit. To enable private GitHub creation and push for all future games/apps in one workspace:
+
+```powershell
+node scripts/project-git.mjs configure --owner Nioris
+```
+
+The policy is stored outside the engine in `forge-data/git-policy.json`, so upgrades preserve it. Forge refuses automatic publication to a public repository, checks secret filenames/content before commits, and treats a remote/network failure as a warning while preserving the local checkpoint. Existing projects are onboarded only by an explicit command:
+
+```powershell
+node scripts/git-init-games.mjs --dry
+node scripts/git-init-games.mjs --game my-game
+```
+
+## Forge behavioral diagnostics
+
+When Forge itself violates a phase/STOP contract, returns the wrong adapter format, suffers a hook/runtime failure, or reports contradictory state/capabilities, the AI records a local structured incident. Ordinary bugs in the game or app are excluded.
+
+Each project stores `wiki/diagnostics/forge-events.jsonl`. Common credentials and the absolute project root are redacted, evidence paths must remain project-relative, and the local log is excluded from Git. Current incidents also appear in `$status`/`/status`.
+
+Audit every managed sibling project from the engine:
+
+```powershell
+node scripts/audit-forge-diagnostics.mjs --since 30d
+node scripts/audit-forge-diagnostics.mjs --since all --json
+```
+
+Repeated observations are grouped by stable error class, component, and operation. A verified fix closes the same fingerprint without deleting its history.
 
 ## API keys and secrets
 
@@ -193,6 +275,8 @@ node scripts/forge-secrets.mjs status
 ```
 
 On GigaChat launch, Forge enables Node's system CA store before the child process starts. If no explicit `FORGE_SEARCH_PROVIDER` or `GIGASEARCH_*` endpoint is configured, the launcher selects the no-key `bing-html` live-search fallback. Explicit production search configuration always wins; use `/search-doctor` in the GigaChat terminal to inspect the active provider.
+
+For an urgent implementation change in the middle of the phase pipeline, use `/do <task>`. The command durably preserves the exact request, pauses phase autopilot, and blocks accidental release routing until the task is implemented and verified. `/task` shows the active direct task; `/resume-phase` clears the override and returns control to the canonical pipeline. Strong natural-language implementation commands are detected too, while `/do` is the deterministic manual form.
 
 The repository `.gitignore` excludes `forge-data/`, `secrets/`, `*.key`, `.env`, provider key files, backups and other local state.
 
@@ -265,7 +349,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.2.md](RELEASE_NOTES_v4.68.2.md) — current release notes
+- [RELEASE_NOTES_v4.68.19.md](RELEASE_NOTES_v4.68.19.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

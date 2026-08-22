@@ -40,36 +40,19 @@
  */
 
 import { createServer } from 'http';
-import { readFileSync, existsSync, statSync } from 'fs';
+import { readFileSync, existsSync, statSync, rmSync } from 'fs';
 import { join, extname, resolve } from 'path';
 
 const args = process.argv.slice(2);
 const dirArg = resolve(args.find(a => !a.startsWith('--')) || 'WorkProgress');
 
-// ── Yandex delegation (REQ-4.4 Probe A + REQ-1.19.2 Probe E live only in the yandex copy) ──
-// The generic behavioral test (this file) does NOT contain the moderation traps. If the target
-// is a Yandex build, hand off to platforms/yandex/scripts/runtime-test.mjs so 4.4 and 1.19 are
-// actually checked. This is why genetic-lab (4.4) and samogonshchik (1.19) slipped: every release
-// skill called THIS generic copy. Delegation makes the right probes run no matter who calls.
+// Yandex delegation happens after optional ZIP extraction below, so the
+// platform runtime receives a real directory instead of a Release folder.
+let yandexRuntimePath = null;
 if (!args.includes('--no-delegate')) {
-  const { existsSync: _ex, readFileSync: _rf, readdirSync: _rd } = await import('fs');
-  const { join: _j, dirname: _dn } = await import('path');
-  const { fileURLToPath: _fup } = await import('url');
-  const _here = _dn(_fup(import.meta.url));
-  const yandexRT = _j(_here, '..', 'platforms', 'yandex', 'scripts', 'runtime-test.mjs');
-  let looksYandex = /yandex/i.test(dirArg);
-  try { // also sniff the build's index.html for the Yandex SDK
-    if (!looksYandex && _ex(_j(dirArg, 'index.html'))) {
-      const h = _rf(_j(dirArg, 'index.html'), 'utf8');
-      looksYandex = /\/sdk\.js|YaGames|games\.s3\.yandex/i.test(h);
-    }
-  } catch {}
-  if (looksYandex && _ex(yandexRT)) {
-    console.log('[INFO] Yandex build detected → delegating to platforms/yandex/scripts/runtime-test.mjs (Probe A REQ-4.4 + Probe E REQ-1.19.2).');
-    const { spawnSync } = await import('child_process');
-    const r = spawnSync(process.execPath, [yandexRT, ...args], { stdio: 'inherit' });
-    process.exit(r.status == null ? 1 : r.status);
-  }
+  const { dirname } = await import('path');
+  const { fileURLToPath } = await import('url');
+  yandexRuntimePath = join(dirname(fileURLToPath(import.meta.url)), '..', 'platforms', 'yandex', 'scripts', 'runtime-test.mjs');
 }
 
 // --variant=production|debug|marketing — if dir is a Release/<project>/<platform>/ folder,
@@ -79,6 +62,13 @@ const VARIANT = variantArg ? variantArg.split('=')[1] : null;
 
 // Resolve directory based on variant
 let dir = dirArg;
+let extractedTempDir = null;
+function cleanupExtractedTemp() {
+  if (!extractedTempDir) return;
+  try { rmSync(extractedTempDir, { recursive: true, force: true }); } catch {}
+  extractedTempDir = null;
+}
+process.on('exit', cleanupExtractedTemp);
 if (VARIANT) {
   // Look for {project}-{version}-{variant}.zip in dirArg
   const fs = await import('fs');
@@ -90,17 +80,41 @@ if (VARIANT) {
     const zipFile = entries.find(f => zipPattern.test(f) && !f.includes('-debug.') === (VARIANT === 'production' || VARIANT === 'marketing'));
     if (zipFile) {
       // Extract к temp dir
-      const tmpDir = `/tmp/runtime-test-${VARIANT}-${Date.now()}`;
+      const os = await import('os');
+      const tmpDir = path.join(os.tmpdir(), `runtime-test-${VARIANT}-${Date.now()}`);
       fs.mkdirSync(tmpDir, { recursive: true });
-      const { execSync } = await import('child_process');
-      execSync(`cd "${tmpDir}" && unzip -oq "${path.join(dirArg, zipFile)}"`, { stdio: 'pipe' });
+      const { spawnSync } = await import('child_process');
+      const windows = process.platform === 'win32';
+      const command = windows ? 'tar.exe' : 'unzip';
+      const zipPath = path.join(dirArg, zipFile);
+      const extractArgs = windows ? ['-xf', zipPath, '-C', tmpDir] : ['-oq', zipPath, '-d', tmpDir];
+      const extracted = spawnSync(command, extractArgs, { encoding: 'utf8' });
+      if (extracted.status !== 0) throw new Error(`${command} failed (${extracted.status}): ${extracted.stderr || extracted.stdout}`);
       dir = tmpDir;
+      extractedTempDir = tmpDir;
       console.log(`[INFO] Testing ${VARIANT} variant from ${zipFile} (extracted к ${tmpDir})`);
     } else {
       console.log(`[!] No zip найден для variant=${VARIANT} в ${dirArg}, falling back к direct dir`);
     }
   } catch (e) {
     console.log(`[!] Variant resolution failed: ${e.message}`);
+  }
+}
+
+if (yandexRuntimePath && existsSync(yandexRuntimePath)) {
+  let looksYandex = /yandex/i.test(dirArg);
+  try {
+    if (!looksYandex && existsSync(join(dir, 'index.html'))) {
+      looksYandex = /\/sdk\.js|YaGames|games\.s3\.yandex/i.test(readFileSync(join(dir, 'index.html'), 'utf8'));
+    }
+  } catch {}
+  if (looksYandex) {
+    console.log('[INFO] Yandex build detected → delegating extracted directory to platform runtime probes.');
+    const { spawnSync } = await import('child_process');
+    const forwarded = args.filter(value => value.startsWith('--') && !value.startsWith('--variant=') && value !== '--no-delegate');
+    const result = spawnSync(process.execPath, [yandexRuntimePath, dir, ...forwarded], { stdio: 'inherit' });
+    cleanupExtractedTemp();
+    process.exit(result.status == null ? 1 : result.status);
   }
 }
 

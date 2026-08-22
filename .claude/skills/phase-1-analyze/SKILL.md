@@ -19,7 +19,10 @@ node .claude/skills/status/references/phase-state.mjs start 1
 node .claude/skills/status/references/phase-state.mjs block 1 "KPI Floor/Target/Stretch + 3-month content budget approval"
 ```
 
-Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
+Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы.
+Сначала приведи `wiki/_current.md`, `wiki/_map.md` и статусы evidence-документов в состояние,
+которое не противоречит завершению. Команда ниже делает Git checkpoint сразу после marker; после
+неё не оставляй обязательные wiki-правки незакоммиченными:
 
 ```bash
 node .claude/skills/status/references/phase-state.mjs complete 1 wiki/architecture/metrics.md wiki/design/brief.md
@@ -27,9 +30,17 @@ node .claude/skills/status/references/phase-state.mjs complete 1 wiki/architectu
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
+Команда `complete` сама отклоняет отсутствующие evidence-файлы, незаполненный бриф, числовые KPI
+без URL-источника/явной метки «гипотеза» и отмеченные выполненными runtime-критерии при отсутствии
+реального кода. При отказе marker остаётся `blocked`, Git checkpoint и удалённый push не выполняются.
+В `wiki/research/*.md` ссылка/локальный источник либо `TBD/не проверено` указываются на той же строке,
+что и внешний факт. Общая приписка «источников нет» в начале документа не разрешает ниже писать
+конкурентов, даты или рыночные выводы из памяти модели.
 
 
-**Модель:** `opus` — считает дефицит и контент-бюджет — ошибка тут стоит недель стройки.
+**Модели:** Claude `opus`. Codex `gpt-5.6-sol/high`; route `metrics-conflict` →
+`gpt-5.6-sol/xhigh` только при противоречивых источниках или KPI/content-budget.
+Канон: `status/references/model-policy.json`; Max/Ultra автоматически не включать.
 
 
 Проходит целиком: прототип → wiki → метрики с контент-бюджетом.

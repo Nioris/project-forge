@@ -13,6 +13,8 @@ import { join, resolve, basename } from 'node:path';
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { extname } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const dir = resolve(process.argv[2] || '.');
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i >= 0 ? process.argv[i + 1] : d; };
@@ -25,7 +27,10 @@ const OUT = join(dir, 'screens', 'review'); mkdirSync(OUT, { recursive: true });
 const MIME = { '.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png',
   '.jpg':'image/jpeg','.mp3':'audio/mpeg','.json':'application/json','.webp':'image/webp','.svg':'image/svg+xml' };
 const server = createServer((req, res) => {
-  const u = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
+  const requestPath = decodeURIComponent(req.url.split('?')[0]);
+  if (requestPath === '/favicon.ico') { res.writeHead(204); res.end(); return; }
+  if (requestPath === '/sdk.js') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end('window.YaGames=window.YaGames||undefined;'); return; }
+  const u = requestPath.replace(/^\/+/, '') || 'index.html';
   try { const b = readFileSync(join(dir, u));
     res.writeHead(200, { 'Content-Type': MIME[extname(u)] || 'application/octet-stream' }); res.end(b);
   } catch { res.writeHead(404); res.end(); }
@@ -33,12 +38,24 @@ const server = createServer((req, res) => {
 
 server.listen(0, async () => {
   const port = server.address().port;
-  let pup; try { pup = await import('puppeteer'); } catch { console.error('[X] npm i puppeteer'); process.exit(2); }
-  const browser = await pup.default.launch({ args: ['--no-sandbox'] });
+  const loadPup = async () => {
+    try { const mod=await import('puppeteer'); return mod.default||mod; }
+    catch { try { return createRequire(join(process.cwd(),'package.json'))('puppeteer'); } catch { return null; } }
+  };
+  let pup=await loadPup();
+  if(!pup){
+    console.error('[screens-shoot] installing puppeteer...');
+    const r=spawnSync('npm',['install','puppeteer','--no-audit','--no-fund'],{stdio:'inherit',shell:true});
+    if(r.status!==0){ console.error('[X] puppeteer install failed'); process.exit(2); }
+    pup=await loadPup();
+  }
+  if(!pup){ console.error('[X] puppeteer installed but cannot be resolved from the project'); process.exit(2); }
+  const browser = await pup.launch({ args: ['--no-sandbox'] });
   const shots = [];
 
   for (const [label, w, h] of [['mobile', mw, mh], ['desktop', dw, dh]]) {
     const page = await browser.newPage();
+    page.on('dialog', async dialog => { try { await dialog.dismiss(); } catch {} });
     await page.setViewport({ width: w, height: h, isMobile: label === 'mobile', hasTouch: label === 'mobile' });
     await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(()=>{});
     await new Promise(r => setTimeout(r, 1800));

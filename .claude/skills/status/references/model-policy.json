@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "policyVersion": "2026-08-18-quality-sol",
+  "mode": "quality-sol",
+  "serviceTier": "default",
+  "limits": {
+    "maxPhaseSubagents": 2,
+    "automaticMax": false,
+    "automaticUltra": false,
+    "maxHighDetailImagesPerTurn": 1,
+    "boundedToolOutput": true,
+    "freshTaskPerPhase": true
+  },
+  "defaultSubagent": {
+    "model": "gpt-5.6-sol",
+    "reasoning": "medium"
+  },
+  "phases": {
+    "1": {
+      "skill": "phase-1-analyze",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "high" },
+      "maxSubagents": 1,
+      "routes": {
+        "metrics-conflict": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "xhigh",
+          "when": "Conflicting benchmark evidence or an unresolved KPI/content-budget contradiction"
+        }
+      }
+    },
+    "2": {
+      "skill": "phase-2-design",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "high" },
+      "maxSubagents": 2,
+      "routes": {}
+    },
+    "3": {
+      "skill": "phase-3-construct",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "high" },
+      "maxSubagents": 2,
+      "routes": {
+        "complex-logic": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "xhigh",
+          "when": "Complex game logic, economy, multiplayer, backend architecture, or repeated implementation failure"
+        }
+      }
+    },
+    "4": {
+      "skill": "phase-4-visual",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "high" },
+      "maxSubagents": 2,
+      "routes": {
+        "art-direction": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "xhigh",
+          "when": "Creating or revising the style bible, target frame, or visual direction after a failed normal review"
+        }
+      }
+    },
+    "5": {
+      "skill": "phase-5-tech",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "high" },
+      "maxSubagents": 2,
+      "routes": {
+        "repeated-failure": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "xhigh",
+          "when": "The same technical gate fails twice after evidence-backed fixes"
+        },
+        "payment-security": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "xhigh",
+          "when": "Payments, secrets, authentication, or non-standard multi-platform SDK conflicts are in scope"
+        }
+      }
+    },
+    "6": {
+      "skill": "phase-6-listing",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "medium" },
+      "maxSubagents": 1,
+      "routes": {
+        "creative-conflict": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "high",
+          "when": "Localization, store positioning, or visual selection has a real unresolved conflict"
+        }
+      }
+    },
+    "7": {
+      "skill": "phase-7-test",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "high" },
+      "maxSubagents": 2,
+      "routes": {
+        "unexplained-failure": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "xhigh",
+          "when": "A reproducible failure remains unexplained after normal diagnostics"
+        }
+      }
+    },
+    "8": {
+      "skill": "phase-8-release",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "medium" },
+      "maxSubagents": 2,
+      "routes": {
+        "gate-failure": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "high",
+          "when": "A release verifier reports a non-trivial FAIL"
+        },
+        "moderation-rejection": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "high",
+          "when": "The platform rejects the build or requirements conflict"
+        }
+      }
+    },
+    "9": {
+      "skill": "phase-9-live",
+      "base": { "model": "gpt-5.6-sol", "reasoning": "medium" },
+      "maxSubagents": 1,
+      "routes": {
+        "causal-analysis": {
+          "kind": "deep-reasoning",
+          "model": "gpt-5.6-sol",
+          "reasoning": "high",
+          "when": "Metrics require causal analysis, experiment redesign, or a non-obvious product decision"
+        }
+      }
+    }
+  }
+}

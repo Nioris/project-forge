@@ -143,6 +143,24 @@ safe('version-consistency', () => {
   else ok.push(`Version ${V} consistent across plugin/marketplace/GUIDE/dashboard`);
 });
 
+// ---- 6b. Release builds must be immutable and version-incrementing -----------------------
+safe('release-versioning', () => {
+  const script=path.join(ROOT,'scripts','build-yandex-3zips.mjs');
+  if(!fs.existsSync(script)){err('canonical build-yandex-3zips.mjs is missing');return;}
+  const result=spawnSync(process.execPath,[script,'--self-test'],{cwd:ROOT,encoding:'utf8'});
+  if(result.status!==0){
+    err(`Yandex release version-selection self-test failed: ${(result.stderr||result.stdout||'unknown').trim()}`);
+    return;
+  }
+  const source=fs.readFileSync(script,'utf8');
+  const adapter=fs.readFileSync(path.join(ROOT,'scripts','gigachat-agent.mjs'),'utf8');
+  if(/unlinkSync\(zipPath\)/.test(source)) err('Yandex builder can still unlink/overwrite an existing ZIP path');
+  else if(!/Refusing to overwrite existing release artifact/.test(source)) err('Yandex builder has no explicit immutable ZIP-path guard');
+  else if(!/build-history\.json/.test(source)) err('Yandex builder does not persist build-history.json');
+  else if(!/newly named ZIP artifacts/.test(adapter)) err('GigaChat Phase 8 gate does not require newly named ZIP artifacts');
+  else ok.push('Yandex builds auto-increment versions, preserve old ZIPs, and Phase 8 requires a newly named trio');
+});
+
 // ---- 7. debugcheck.js must not diverge -----------------------------------------------------
 // The two debugcheck copies (platforms/yandex/templates + templates/html5) MUST be byte-identical.
 // A stale fork is how genetic-lab shipped with a weak 4.4/lang checker and passed Forge but failed
@@ -383,6 +401,24 @@ safe('phase-aware-status-model', () => {
   const r = spawnSync(process.execPath, ['scripts/check-status-phase-model.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('/status 9-phase model regression failed — run scripts/check-status-phase-model.mjs');
   else ok.push('/status uses canonical 9 phases + machine markers; CLAUDE mutable state is non-authoritative');
+});
+
+safe('project-git-lifecycle', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-project-git.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('local/private Git lifecycle regression failed — run scripts/check-project-git.mjs');
+  else ok.push('project Git lifecycle creates local checkpoints and allows only private GitHub automation');
+});
+
+safe('phase-completion-gate', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-phase-completion-gate.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('phase completion evidence gate regression failed — run scripts/check-phase-completion-gate.mjs');
+  else ok.push('phase completion rejects missing evidence, invented KPI facts and false acceptance claims');
+});
+
+safe('codex-one-window-pipeline', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-codex-pipeline.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('one-window Codex phase orchestration failed — run scripts/check-codex-pipeline.mjs');
+  else ok.push('one terminal switches fresh Codex sessions between phases and resumes only open STOPs');
 });
 
 safe('api-terminal-profiles', () => {

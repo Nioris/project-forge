@@ -33,7 +33,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import os from 'node:os';
+import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 const JSON_MODE = args.includes('--json');
@@ -94,12 +95,17 @@ let tmpDir = null;
 
 if (target.endsWith('.zip')) {
   // Extract to temp
-  tmpDir = `/tmp/cdn-check-${Date.now()}`;
+  tmpDir = path.join(os.tmpdir(), `cdn-check-${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
   try {
-    execSync(`cd "${tmpDir}" && unzip -oq "${path.resolve(target)}"`, { stdio: 'pipe' });
+    const windows = process.platform === 'win32';
+    const command = windows ? 'tar.exe' : 'unzip';
+    const extractArgs = windows ? ['-xf', path.resolve(target), '-C', tmpDir] : ['-oq', path.resolve(target), '-d', tmpDir];
+    const result = spawnSync(command, extractArgs, { encoding: 'utf8' });
+    if (result.status !== 0) throw new Error(`${command} failed (${result.status}): ${result.stderr || result.stdout}`);
     scanDir = tmpDir;
   } catch (e) {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
     console.error(`[X] Failed к extract zip: ${e.message}`);
     process.exit(2);
   }
@@ -240,7 +246,7 @@ for (const file of walk(scanDir)) {
 
 // Cleanup tmp
 if (tmpDir) {
-  try { execSync(`rm -rf "${tmpDir}"`, { stdio: 'pipe' }); } catch { /* ignore */ }
+  try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
 }
 
 if (JSON_MODE) {

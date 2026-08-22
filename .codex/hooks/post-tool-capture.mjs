@@ -7,10 +7,14 @@
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { normalizePath, readHookInput, touchedPaths } from './lib.mjs';
+import { appendForgeDiagnostic } from '../../.claude/hooks/lib/forge-diagnostics.mjs';
 
 function pad(n) { return String(n).padStart(2, '0'); }
+let diagnosticRoot = process.cwd();
+try {
 const data = readHookInput();
 const cwd = data.cwd || process.cwd();
+diagnosticRoot = cwd;
 const now = new Date();
 const yyyy = String(now.getFullYear()), mm = pad(now.getMonth() + 1), dd = pad(now.getDate());
 const dir = join(cwd, 'wiki', 'sessions', yyyy, mm);
@@ -27,4 +31,10 @@ if (paths.length) {
   if (command.length > 180) command = command.slice(0, 180) + '…';
   command = command.replace(/`/g, "'");
   if (command) appendFileSync(file, `- ${stamp} **Codex:Bash** \`${command}\`\n`, 'utf8');
+}
+} catch (error) {
+  appendForgeDiagnostic(diagnosticRoot, {
+    severity: 'error', code: 'CODEX_POST_TOOL_CAPTURE_EXCEPTION', kind: 'hook_failure', source: 'hook', host: 'codex',
+    component: 'codex-post-tool-capture', operation: 'capture', message: error?.message || 'Unexpected Codex post-tool hook failure',
+  });
 }

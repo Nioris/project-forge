@@ -28,7 +28,7 @@
 Кратко:
 - **Core**: Node.js 20+, ES modules (.mjs), bash + PowerShell для setup
 - **Tooling**: только встроенные модули Node (`fs`, `path`, `child_process`) — no runtime deps
-- **Skills**: 141 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
+- **Skills**: 142 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
 - **Hooks**: 8 .mjs файлов в `.claude/hooks/`
 - **Agents**: 21 canonical markdown roles в `.claude/agents/` + generated Codex TOML mirrors
 - **Knowledge base**: 61 SKILL.md в `./skills/` (referenced by command skills)
@@ -38,7 +38,7 @@
 
 - **9 platforms** — yandex, vk, telegram, ok, max, rustore, web, steam, vkplay
 - **34 validators** — pre-submit gate per platform
-- **141 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
+- **142 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
 - **8 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous
 - **21 agents** — platform builders + design/art/QA/security/research/AI Studio specialist roles
 - **Dashboard** — `dashboard.html` для project tracking + quick prompt copy
@@ -49,8 +49,38 @@
 
 ## Current Status
 
-### Version: v4.68.9 (latest released)
+### Version: v4.68.39 (latest released)
 
+- 2026-08-22: **v4.68.39** — OpenRouter gains the free `ox-alpha` coding preview preset with a mandatory explicit `standard` profile and non-confidential-data warning because the anonymous provider retains prompts/completions.
+- 2026-08-21: **v4.68.38** — OpenCode whole-project turns are capped at 64 agentic steps; identical successful `list` calls are suppressed per session to bound weak-model tool loops.
+- 2026-08-21: **v4.68.37** — `TBD` can no longer hide an uncited positive `verified/confirmed/requires` external assertion on the same research line.
+- 2026-08-21: **v4.68.36** — phase completion rejects blocked/draft evidence status, records the actual whole-project host/model and checkpoints final wiki state in the correct order.
+- 2026-08-21: **v4.68.35** — OpenCode STOP answers resume the same session through a file-backed command; research evidence is checked per line and Qwen receives a bounded `list` compatibility tool.
+- 2026-08-21: **v4.68.34** — evidence-bound experimental agents: phase completion rejects missing/template/unsourced evidence, OpenCode requires 1.18.20+, and Phase 1–7 GitHub push is deferred until verified release.
+- 2026-08-21: **v4.68.33** — OpenRouter Qwen preset corrected to tool-verified, ZDR-capable Qwen3 Coder Next after real Plus/Coder smoke tests exposed endpoint and tool-call incompatibilities.
+- 2026-08-21: **v4.68.32** — OpenRouter whole-project host through OpenCode: one central key, exact per-project model lock, Qwen/DeepSeek/GLM/Kimi/MiniMax/Gemini/Grok presets, ZDR by default and isolated credentials.
+- 2026-08-20: **v4.68.31** — removed the discontinued Qwen OAuth profile; current Qwen locks use Coding Plan or ModelStudio API credentials.
+- 2026-08-20: **v4.68.30** — corrected Qwen preflight/model routing and isolated unavailable loopback MCP endpoints for each launch.
+- 2026-08-19: **v4.68.29** — Windows-safe whole-project startup: full agent contract is file-backed and npm `.cmd` shims receive only a short literal instruction; real subprocess regression added.
+- 2026-08-19: **v4.68.28** — project Git hotfix: bare PEM examples in managed documentation no longer trigger false secret blocks, while complete plausible private keys remain blocked by regression.
+- 2026-08-19: **v4.68.27** — whole-project single-model locks for Gemini, Qwen, Kimi K3, DeepSeek, GLM and MiniMax M3; native/OpenCode runtimes, isolated provider credentials, Dashboard routing and offline adapter regressions.
+- 2026-08-19: **v4.68.26** — reliable modular GigaChat feature operations: connected-module adoption, orphan/destructive-write guards, terminal `/do` completion, atomic merge-grid gacha integration and focused browser evidence.
+- 2026-08-19: **v4.68.25** — safe post-feature module-contract refresh: recalculate live hashes/symbols/owners while preserving approved paths, order and boundaries.
+- 2026-08-19: **v4.68.24** — deterministic large-game modularization: semantic ordered source extraction, backups, hash-bound contracts, structural verifier, and GigaChat monolith routing.
+- 2026-08-18: **v4.68.23** — safe GigaChat large-file integration: durable auto-pagination, destructive full-write/shrink guards, bounded compaction/read loops, and clean explicit `/do` retries.
+- 2026-08-18: **v4.68.22** — immutable Yandex build versions: automatic numeric increment, no ZIP overwrite, durable build history, and Phase 8 newly named higher-version trio enforcement.
+- 2026-08-18: **v4.68.21** — evidence-bound GigaChat completion, mechanically read-only factual status turns, counterfeit verifier/release-script blocking, and compaction-safe repeat writes.
+- 2026-08-18: **v4.68.20** — durable GigaChat direct-task routing: `/do`, `/task`, `/resume-phase`, natural imperative detection, exact intent preservation across compaction, tool-boundary phase/release blocking, and evidence-gated task completion.
+- 2026-08-18: **v4.68.19** — clean one-window Codex startup: run-local disabling of unreachable loopback HTTP MCPs, preserved global config, terminal stdin inheritance, and selective MCP regression coverage.
+- 2026-08-18: **v4.68.18** — per-phase Codex cost/context reporting from exec JSON plus local rollout telemetry, privacy-bounded local persistence, model/context/tool/stopping warnings, and Dashboard comparison cards.
+- 2026-08-18: **v4.68.17** — one-window Codex lifecycle: STOP answers resume the current phase, complete phases switch to clean internal sessions in the same terminal, premature stops auto-resume, and Windows CLI resolution is reliable.
+- 2026-08-18: **v4.68.16** — Quality-Sol Codex routing on Standard with bounded per-phase context, automatic local Git checkpoints, secret/public-remote guards and opt-in private GitHub creation/push for every future game/app.
+- 2026-08-18: **v4.68.15** — Windows Yandex release pipeline: external project roots, native cross-platform ZIP handling, correct production/debug/marketing contents, ZIP-aware CDN/runtime checks and staging-to-release listing resolution.
+- 2026-08-18: **v4.68.14** — GigaChat mature-phase orchestration: immutable ordered phases, bounded context/skill loading, canonical tool-call recovery, durable verifier evidence, reliable browser QA helpers and real promo capture.
+- 2026-08-18: **v4.68.13** — GigaChat durable-answer integrity and non-bypassable phase completion: pending STOP answers restore phase context, runtime ledgers are protected, decision markers auto-block, and every completion path requires GREEN plus evidence.
+- 2026-08-18: **v4.68.12** — durable GigaChat Phase 1 resume: approved research/KPI decisions survive phase switches, final completion avoids a repeated model turn, host metadata stays honest, stale nested STOP text is removed, and exhausted empty responses are diagnosed.
+- 2026-08-18: **v4.68.11** — local fleet behavioral diagnostics: AI/adapter/hook/runtime incident reporting, secret-redacted JSONL with stable fingerprints and verified resolution, status counters, and a sibling-wide read-only auditor.
+- 2026-08-18: **v4.68.10** — Codex economy routing: Standard tier, per-phase Terra/Sol/Luna policy, policy-aware fresh-task launcher, maximum two Terra/medium subagents, Dashboard launch commands and honest actual-vs-recommended model state.
 - 2026-08-18: **v4.68.9** — GigaChat 6.3.3 guided STOP answers: every user gate prints `Как ответить`, the exact `утверждаю` approval phrase and a decision-specific correction/deepening format; Phase 1 brief includes a complete Q1–Q5 template.
 - 2026-08-18: **v4.68.8** — GigaChat 6.3.2 natural brief acceptance: explicit phrases such as `принимаю рекомендации` approve the complete Q1–Q5 set, while qualified corrections remain unresolved; exact real-entrypoint regression added.
 - 2026-08-18: **v4.68.7** — GigaChat 6.3.1 resume orchestrator: repaired partial Phase 1 decisions and stale runtime evidence, fixed malformed ask_user crash, added live search/fetch + doctor/self-tests, automatic system CA/no-key fallback launcher setup, and semantic API-profile release gates.
@@ -464,6 +494,11 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 10. **MCP integration** — Forge as MCP server providing skills/agents to other Claude instances.
 
 ## Quick Links
+
+### GigaChat / GigaCode field reports
+- [GigaChat integration results](../docs/GIGACHAT-INTEGRATION-RESULTS-4.68.26.md) — implemented adapter capabilities, verified achievements and current maturity boundary
+- [GigaChat issues and fixes](../docs/GIGACHAT-ISSUES-AND-FIXES-4.68.26.md) — field incident catalog, ownership, mitigations and remaining gaps
+- [GigaCode CLI access request](../docs/GIGACODE-CLI-ACCESS-REQUEST-RU.md) — ready-to-send Russian support email
 
 ### Architecture
 - [[architecture/stack]] — full tech stack table

@@ -64,6 +64,10 @@ Forge keeps agent semantics separate from billing/authentication:
 - GigaChat: Forge terminal agent over the official GigaChat API.
 - GigaCode CLI: optional dormant bridge until an executable is actually available.
 
+OpenCode whole-project hosts return after each model turn. After a Forge STOP, continue the exact
+last session with `forge-agent resume --project <path> --answer "<answer>"`; Forge stores the answer
+in `.forge/agent-resume.md` and passes only a fixed instruction to the provider process.
+
 API secrets live outside projects under `forge-data/secrets/`; never copy them into project files, wiki, prompts or shell output. Switching profiles must not change the nine-phase state machine or skill semantics.
 
 ## Multi-agent rule
@@ -84,6 +88,18 @@ Supported Forge provider surfaces can include:
 - additional providers only when explicitly configured.
 
 Never silently fall back to a paid provider. Preserve prompt packs and provenance.
+
+## Forge behavioral diagnostics
+
+If Forge itself behaves incorrectly, record the incident immediately. Examples include malformed phase or STOP output, an adapter returning the wrong format, a hook/runtime failure, a capability contradiction, validator drift, or unexpected orchestration behavior. Do not use this journal for ordinary bugs in the game or app unless Forge caused or misreported them.
+
+From the managed project root, run:
+
+`node .claude/skills/status/references/forge-event.mjs report --severity error --code STABLE_ERROR_CODE --kind phase_protocol --component phase-1-analyze --operation ask-user --message "Short factual description" --expected "Expected Forge behavior" --actual "Observed Forge behavior" --phase 1 --host codex --evidence wiki/phases/phase-1.json`
+
+Continue safe work after recording when possible. Never include secrets, bearer tokens, prompts, full terminal output, or full file contents. Use only project-relative evidence paths. After a verified correction, close the fingerprint with `forge-event.mjs resolve --fingerprint <id> --message "How the correction was verified"`.
+
+The durable machine log is `wiki/diagnostics/forge-events.jsonl`. Use the `forge-diagnostics` skill for the complete protocol.
 
 ## Definition of done
 

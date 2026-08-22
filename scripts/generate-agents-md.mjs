@@ -50,6 +50,14 @@ Forge ships ${agentCount} role definitions in \`.claude/agents/\`; native Codex 
 - Keep parallel write-heavy work separated by files/worktrees; avoid multiple agents editing the same files.
 - Generated \`.codex/agents/*.toml\` translate Claude-only orchestration terms to Codex-native subagent behavior.
 
+## Codex quality and token discipline
+
+- All Forge Codex phases and generated custom agents use GPT-5.6 Sol on Standard tier. Never select Fast automatically.
+- Prefer one-window orchestration with \`node ../project-forge/scripts/codex-pipeline.mjs --cwd .\`. It resumes STOP answers inside a phase and starts a fresh internal session after phase completion; do not carry a multi-phase transcript forward.
+- Use high reasoning for analysis/design/implementation/visual/technical/QA work and medium for deterministic listing, routine release packaging, and ordinary metrics. Max/Ultra and xhigh are never automatic defaults.
+- Keep model-facing tool output bounded: read relevant ranges, summarize large logs, and inspect no more than one high-detail image per turn. Do not feed megabytes of screenshots or terminal output back into the model.
+- Continue autonomously until a real Forge STOP-point, verified completion, or genuine blocker. Do not end a task merely to announce the next implementation step.
+
 ## Hooks and safety
 
 Codex lifecycle hooks are configured in \`.codex/hooks.json\`; Claude Code hooks remain intact in \`.claude/hooks/\`.
@@ -63,6 +71,14 @@ Codex hooks enforce or assist with:
 
 Do not disable hooks to bypass a legitimate Forge invariant. Project-local Codex config/hooks load only for a trusted project.
 
+## Forge behavioral diagnostics
+
+When Forge itself behaves incorrectly—malformed phase/STOP output, wrong adapter format, hook/runtime failure, capability mismatch, validator contradiction, or unexpected orchestration—record it immediately with the \`forge-diagnostics\` skill or:
+
+\`node .claude/skills/status/references/forge-event.mjs report --severity error --code STABLE_ERROR_CODE --kind phase_protocol --component phase-1-analyze --operation ask-user --message "Short factual description" --expected "Expected Forge behavior" --actual "Observed Forge behavior" --phase 1 --host codex --evidence wiki/phases/phase-1.json\`
+
+Do not log ordinary game/app bugs unless Forge caused or misreported them. Continue safe work after recording when possible. Never include secrets, prompts, full terminal output, or full file contents; evidence paths must be project-relative. Resolve a fingerprint only after verification with \`forge-event.mjs resolve --fingerprint <id> --message "Verified correction"\`.
+
 ## Definition of Done
 
 - Run the verifier(s) named by the selected skill.
@@ -73,6 +89,7 @@ Do not disable hooks to bypass a legitimate Forge invariant. Project-local Codex
 - Money values must not use floating-point \`number\` for authoritative amounts; follow the Forge money invariant in the applicable skill/instructions.
 - Persisted-data/UI migrations must account for existing local storage/state.
 - A platform addition is cross-cutting; use the platform-completeness workflow instead of updating only the obvious directory.
+- Completing a phase invokes the local-first Git checkpoint helper. Preserve that checkpoint even if a private GitHub push temporarily fails.
 `;
 
 const engineDoc = `# Project Forge v${plugin.version} — Codex engine instructions

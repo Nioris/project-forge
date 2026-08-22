@@ -69,6 +69,14 @@ File tools are constrained to the selected project. Full mode adds the shell too
 
 The system prompt embeds `FORGE.md` and the initial phase-aware status, so the same 9-phase state model and STOP-point semantics apply.
 
+Direct implementation override commands:
+
+- `/do <task>` — durably preserve an exact implementation request, pause automatic phase/release continuation, implement and verify the task;
+- `/task` — show the active direct task and paused phase;
+- `/resume-phase` — clear the override and make the canonical phase machine available again without advancing it automatically.
+
+Strong natural-language implementation requests are detected too. While a direct task is active, the adapter blocks `forge_gate`, `phase-state`, phase skills, and release commands at the tool boundary so context compaction or malformed function-call recovery cannot redirect the model to Release. The model clears the override through `forge_change_complete` only after recording real implementation operations, existing evidence paths, and verification checks.
+
 ## Dashboard
 
 Per-project launcher buttons:

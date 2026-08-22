@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { compareVersions, runtimeMeetsMinimum } from './lib/runtime-version.mjs';
 
 const ROOT=resolve(process.cwd()); const errors=[]; const ok=[];
 const need=rel=>existsSync(join(ROOT,rel))?ok.push(rel):errors.push(`${rel} missing`);
@@ -96,10 +97,120 @@ function runPhaseResumeEntrypointRegression(){
 }
 runPhaseResumeEntrypointRegression();
 
+function runOpenCodeCredentialIsolationRegression(){
+  const fixture=mkdtempSync(join(tmpdir(),'forge-opencode-auth-'));
+  const dataDir=join(fixture,'forge-data');
+  const fake='test-deepseek-secret-never-print';
+  try{
+    mkdirSync(dataDir,{recursive:true});
+    const prepared=run('DeepSeek isolated OpenCode auth preparation',['scripts/forge-agent.mjs','prepare','deepseek','--project',fixture],{FORGE_DATA_DIR:dataDir,DEEPSEEK_API_KEY:fake},'central isolated store');
+    const authPath=join(dataDir,'runtime','opencode-deepseek','opencode','auth.json');
+    if(prepared.text.includes(fake)) errors.push('OpenCode auth preparation printed the API key');
+    else if(!existsSync(authPath)) errors.push('OpenCode isolated auth.json was not created');
+    else {
+      const auth=JSON.parse(readFileSync(authPath,'utf8'));
+      if(auth.deepseek?.type!=='api'||auth.deepseek?.key!==fake) errors.push('OpenCode isolated auth.json has the wrong contract');
+      else ok.push('OpenCode API key is stored outside the project and not printed');
+    }
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runOpenCodeCredentialIsolationRegression();
+
+function runOpenRouterCredentialIsolationRegression(){
+  const fixture=mkdtempSync(join(tmpdir(),'forge-openrouter-auth-'));
+  const dataDir=join(fixture,'forge-data');
+  const fake='sk-or-test-secret-never-print';
+  try{
+    mkdirSync(dataDir,{recursive:true});
+    const prepared=run('OpenRouter isolated OpenCode auth preparation',['scripts/forge-agent.mjs','prepare','openrouter','--preset','qwen','--project',fixture],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'ZDR required + provider data collection denied');
+    const authPath=join(dataDir,'runtime','opencode-openrouter','opencode','auth.json');
+    if(prepared.text.includes(fake)) errors.push('OpenRouter auth preparation printed the API key');
+    else if(!existsSync(authPath)) errors.push('OpenRouter isolated auth.json was not created');
+    else {
+      const auth=JSON.parse(readFileSync(authPath,'utf8'));
+      if(auth.openrouter?.type!=='api'||auth.openrouter?.key!==fake) errors.push('OpenRouter isolated auth.json has the wrong contract');
+      else if(!prepared.text.includes('provider config: configured')) errors.push('OpenRouter ZDR routing config was not generated');
+      else ok.push('OpenRouter key is isolated and the default launch requires ZDR');
+    }
+    run('OpenRouter same-session STOP resume dry-run',['scripts/forge-agent.mjs','select','openrouter','--preset','qwen','--profile','zdr','--project',fixture],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'Locked openrouter');
+    const resumed=run('OpenRouter same-session STOP resume contract',['scripts/forge-agent.mjs','resume','--project',fixture,'--answer','утверждаю','--dry-run'],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'continue-last-session');
+    if(!resumed.text.includes('--continue')||resumed.text.includes('утверждаю')) errors.push('OpenRouter resume does not use a file-backed same-session continuation');
+    else ok.push('OpenRouter STOP answer stays out of shell args and resumes the last session');
+    const refusedOx=spawnSync(process.execPath,['scripts/forge-agent.mjs','select','openrouter','--preset','ox-alpha','--profile','zdr','--project',fixture],{cwd:ROOT,encoding:'utf8',env:{...process.env,FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake}});
+    if(refusedOx.status===0||!`${refusedOx.stdout||''}${refusedOx.stderr||''}`.includes('retains prompts and completions')) errors.push('Ox Alpha can be selected without explicit retained-data consent');
+    else ok.push('Ox Alpha refuses the ZDR profile with a retained-data warning');
+    run('Ox Alpha explicit standard-profile selection',['scripts/forge-agent.mjs','select','openrouter','--preset','ox-alpha','--profile','standard','--project',fixture],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'Locked openrouter / openrouter/stealth/ox-alpha');
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runOpenRouterCredentialIsolationRegression();
+
+function runWholeProjectLockRegression(){
+  const fixture=mkdtempSync(join(tmpdir(),'forge-agent-lock-'));
+  try{
+    run('whole-project lock selects Qwen',['scripts/forge-agent.mjs','select','qwen','--project',fixture],{},'Locked qwen');
+    run('whole-project lock status',['scripts/forge-agent.mjs','profile','--project',fixture],{},'Locked model: qwen3-coder-plus');
+    const refused=spawnSync(process.execPath,['scripts/forge-agent.mjs','start','gemini','--project',fixture,'--dry-run'],{cwd:ROOT,encoding:'utf8'});
+    if(refused.status===0||!`${refused.stdout||''}${refused.stderr||''}`.includes('Project is locked to qwen')) errors.push('whole-project lock allowed an implicit provider switch');
+    else ok.push('whole-project lock refuses an implicit provider switch');
+    run('whole-project lock explicit reselection',['scripts/forge-agent.mjs','select','gemini','--project',fixture],{},'Locked gemini');
+    const saved=JSON.parse(readFileSync(join(fixture,'.forge','agent.json'),'utf8'));
+    if(saved.agent!=='gemini'||saved.model!=='gemini-3.7-flash'||saved.locked!==true) errors.push('whole-project reselection did not persist the expected contract');
+    else ok.push('whole-project explicit reselection is persisted');
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runWholeProjectLockRegression();
+
+function runWindowsCmdPromptRegression(){
+  if(process.platform!=='win32') return;
+  const fixture=mkdtempSync(join(tmpdir(),'forge-cmd-prompt-'));
+  const shim=join(fixture,'fake-qwen.cmd');
+  const fakeHome=join(fixture,'home');
+  const dataDir=join(fixture,'forge-data');
+  try{
+    mkdirSync(join(fakeHome,'.qwen'),{recursive:true});
+    writeFileSync(join(fakeHome,'.qwen','settings.json'),JSON.stringify({mcpServers:{unityMCP:{url:'http://127.0.0.1:65534/mcp',type:'http'}}},null,2),'utf8');
+    writeFileSync(shim,'@echo off\r\necho FAKE_QWEN_LITERAL_PROMPT_OK\r\nif not defined QWEN_CODE_SYSTEM_SETTINGS_PATH exit /b 7\r\ntype "%QWEN_CODE_SYSTEM_SETTINGS_PATH%"\r\n','utf8');
+    const launched=run('Windows npm cmd receives file-backed startup instruction',['scripts/forge-agent.mjs','start','qwen','--project',fixture],{FORGE_QWEN_CLI:shim,USERPROFILE:fakeHome,FORGE_DATA_DIR:dataDir},'FAKE_QWEN_LITERAL_PROMPT_OK');
+    const startup=join(fixture,'.forge','agent-start.md');
+    if(launched.r.status===0&&existsSync(startup)&&readFileSync(startup,'utf8').includes('only terminal AI agent')) ok.push('whole-project prompt is durable and shell-metacharacter safe');
+    else errors.push('whole-project startup prompt was not written before cmd launch');
+    if(launched.r.status===0&&launched.text.includes('Qwen preflight: unavailable local MCP excluded')&&launched.text.includes('"unityMCP"')) ok.push('Qwen launch excludes unavailable loopback MCP without changing user settings');
+    else errors.push('Qwen launch did not isolate an unavailable loopback MCP');
+  }finally{
+    rmSync(fixture,{recursive:true,force:true});
+  }
+}
+runWindowsCmdPromptRegression();
+
 const reg=JSON.parse(readFileSync(join(ROOT,'adapters/agents.json'),'utf8'));
 if(!reg.agents?.claude?.profiles?.includes('api')) errors.push('Claude API profile missing'); else ok.push('Claude API profile declared');
 if(!reg.agents?.codex?.profiles?.includes('api')) errors.push('Codex API profile missing'); else ok.push('Codex API profile declared');
 if(!reg.agents?.gigachat?.builtinLauncher) errors.push('GigaChat builtin terminal launcher missing'); else ok.push('GigaChat terminal adapter declared');
+for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi','openrouter']){
+  if(!reg.agents?.[name]?.defaultModel) errors.push(`${name} whole-project default model missing`);
+  else ok.push(`${name} whole-project model declared`);
+}
+if(reg.agents?.openrouter?.profiles?.[0]!=='zdr'||reg.agents?.openrouter?.modelPresets?.qwen!=='openrouter/qwen/qwen3-coder-next') errors.push('OpenRouter ZDR profile or verified Qwen Coder Next preset missing');
+else ok.push('OpenRouter defaults to ZDR and exposes the verified Qwen Coder Next preset');
+if(reg.agents?.openrouter?.modelPresets?.['ox-alpha']!=='openrouter/stealth/ox-alpha'||reg.agents?.openrouter?.requiredProfilesByModel?.['openrouter/stealth/ox-alpha']!=='standard') errors.push('Ox Alpha preset or standard-only privacy guard missing');
+else ok.push('OpenRouter exposes Ox Alpha only through explicit retained-data standard profile');
+if(reg.agents?.openrouter?.minimumRuntimeVersion!=='1.18.20'||!runtimeMeetsMinimum('1.18.20','1.18.20')||compareVersions('1.18.19','1.18.20')!==-1) errors.push('OpenCode minimum-version preflight is missing or invalid');
+else ok.push('OpenCode whole-project launch requires the tool-compatible 1.18.20+ runtime');
+if(reg.agents?.qwen?.profiles?.includes('oauth')||reg.agents?.qwen?.profileModels?.['coding-plan']!=='qwen3-coder-plus') errors.push('Qwen profiles still expose discontinued OAuth or lack the Coding Plan model');
+else ok.push('Qwen exposes current Coding Plan/API profiles without discontinued OAuth');
+
+const secretProviders=['deepseek','zai','minimax','openrouter'];
+const secretLib=readFileSync(join(ROOT,'scripts/lib/forge-secrets.mjs'),'utf8');
+for(const provider of secretProviders){
+  if(!secretLib.includes(`${provider}: {`)) errors.push(`${provider} centralized secret declaration missing`);
+  else ok.push(`${provider} centralized secret declaration`);
+}
 
 const forge=readFileSync(join(ROOT,'scripts/forge-agent.mjs'),'utf8');
 if(!forge.includes("login','--with-api-key")) errors.push('Codex API profile does not use stdin --with-api-key login'); else ok.push('Codex API login uses stdin');
@@ -108,6 +219,15 @@ if(!forge.includes('apiKeyHelper')) errors.push('Claude API profile does not use
 if(!forge.includes('delete env.ANTHROPIC_API_KEY')) errors.push('Claude API launch leaves ANTHROPIC_API_KEY in child environment'); else ok.push('Claude API key removed from launched tool environment');
 if(!forge.includes("env.NODE_USE_SYSTEM_CA='1'")) errors.push('GigaChat launcher does not enable the Node system CA store before child startup'); else ok.push('GigaChat launcher enables the Node system CA store');
 if(!forge.includes('applyDefaultSearchEnvironment(env)')) errors.push('GigaChat launcher does not apply the shared no-key search fallback'); else ok.push('GigaChat launcher uses the shared no-key search fallback');
+if(!forge.includes('env.FORGE_AI_HOST=agentName')||!forge.includes('env.FORGE_MODEL=model')) errors.push('whole-project runtime identity is not forwarded to phase markers'); else ok.push('whole-project phase markers receive the actual host and model identity');
+const listToolPath=join(ROOT,'adapters/opencode/tools/list.ts');
+if(!existsSync(listToolPath)) errors.push('OpenCode list compatibility tool missing'); else {
+  const listTool=readFileSync(listToolPath,'utf8');
+  if(!listTool.includes('lastSuccessfulTargetBySession')||!listTool.includes('Repeated list call blocked')) errors.push('OpenCode list tool does not suppress identical successful repeats');
+  else ok.push('OpenCode exposes a bounded project-local list tool with repeat suppression');
+}
+if(!forge.includes("const agent = { build: { steps: 64 } }")) errors.push('OpenCode whole-project agent has no per-turn step budget');
+else ok.push('OpenCode whole-project turns are capped at 64 agentic steps');
 const giga=readFileSync(join(ROOT,'scripts/gigachat-agent.mjs'),'utf8');
 if(!giga.includes('assertWritablePath(p)')) errors.push('GigaChat direct edits do not enforce protected Forge paths'); else ok.push('GigaChat direct edits enforce protected Forge paths');
 const openaiImage=readFileSync(join(ROOT,'scripts/openai-image.mjs'),'utf8');

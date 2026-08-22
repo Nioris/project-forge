@@ -158,14 +158,28 @@ Re-run pre-submit после создания listings — он проверяе
 
 ТОЛЬКО после 0 blockers во всех трёх слоях:
 
+Каждый запуск сборки ОБЯЗАН создавать новую версию. Канонический сборщик сам находит
+максимальную существующую версию и повышает последний числовой компонент. Старые ZIP
+никогда не перезаписываются. Явно переданное старое/текущее значение автоматически
+поднимается до следующего.
+
+```bash
+node scripts/build-yandex-3zips.mjs {Game} --root .
+```
+
+В конце команда обязана вывести `BUILD_VERSION: v...` и записать
+`Release/{Game}/yandex/build-history.json`. Используй именно выведенную версию во всех
+последующих sanity-check, SETUP_GUIDE и wiki-записях.
+
 ```
 Release/{Game}/yandex/
 ├── {Game}-v{N}.zip            # production — чистая игра
 ├── {Game}-v{N}-debug.zip      # + debugcheck.js v2.6
-└── {Game}-v{N}-marketing.zip  # + cheats-base.js + debugcheck.js
+└── {Game}-v{N}-marketing.zip  # + debugcheck.js + cheats-base.js + screenshots.js
 ```
 
-Используй `platforms/yandex/scripts/build-release.sh` или пиши `scripts/build-{game}.mjs` (шаблоны — в legacy YBuilder: `scripts/build-circle2048.mjs` и прочие).
+Не придумывай локальный `release-yandex.mjs`/`verify-*.mjs` и не пиши собственный ZIP-сборщик:
+используй только канонический `scripts/build-yandex-3zips.mjs`.
 
 **Inlining gotcha:** `content.replace(/<\/script>/gi, '<\\/script>')` ОБЯЗАТЕЛЬНО — иначе debug/cheats ломаются без console-ошибки.
 
@@ -201,6 +215,8 @@ unzip -p Release/{Game}/yandex/{Game}-v{N}-marketing.zip index.html | grep -cE "
 - [ ] 0 blockers в pre-submit + smoke + runtime перед любым ZIP
 - [ ] 13 `store-listing-{lang}.json` файлов созданы
 - [ ] 3 ZIP'а с правильным содержимым
+- [ ] версия ZIP выше всех существовавших до запуска фазы; старые ZIP не перезаписаны
+- [ ] `build-history.json` содержит новую версию и три новых пути артефактов
 - [ ] `SETUP_GUIDE.md` описывает какой ZIP куда
 - [ ] wiki обновлена, задача закрыта
 
@@ -215,4 +231,3 @@ The skill enforces:
 - **Motion + spatial composition:** animations that feel intentional, not decorative
 
 Invoke with: `Use the frontend-design skill to build the store listing page for this game.` Skip this step only when the game already has a design system in place that you're preserving.
-

@@ -15,6 +15,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, extname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const argv = process.argv.slice(2);
 const dir = resolve(argv.find(a => !a.startsWith('--')) || '.');
@@ -27,22 +28,33 @@ if (!existsSync(join(dir, 'index.html'))) { console.error('[X] index.html not fo
 mkdirSync(OUT, { recursive: true });
 
 // puppeteer auto-install (same policy as runtime-test: a missing dep must not silently skip tests)
-async function getPup() {
-  try { return await import('puppeteer'); }
+async function loadPup() {
+  try { const mod = await import('puppeteer'); return mod.default || mod; }
   catch {
-    console.error('[playtest] installing puppeteer...');
-    const r = spawnSync('npm', ['install', 'puppeteer', '--no-audit', '--no-fund'], { stdio: 'inherit', shell: true });
-    if (r.status !== 0) { console.error('[X] puppeteer install failed'); process.exit(2); }
-    return await import('puppeteer');
+    try { return createRequire(join(process.cwd(), 'package.json'))('puppeteer'); }
+    catch { return null; }
   }
+}
+async function getPup() {
+  const existing = await loadPup();
+  if (existing) return existing;
+  console.error('[playtest] installing puppeteer...');
+  const r = spawnSync('npm', ['install', 'puppeteer', '--no-audit', '--no-fund'], { stdio: 'inherit', shell: true });
+  if (r.status !== 0) { console.error('[X] puppeteer install failed'); process.exit(2); }
+  const installed = await loadPup();
+  if (!installed) { console.error('[X] puppeteer installed but cannot be resolved from the project'); process.exit(2); }
+  return installed;
 }
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.mp3': 'audio/mpeg', '.json': 'application/json', '.svg': 'image/svg+xml',
   '.webp': 'image/webp', '.woff2': 'font/woff2' };
 const server = createServer((req, res) => {
-  const p = join(dir, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html');
-  try { res.writeHead(200, { 'Content-Type': MIME[extname(p)] || 'application/octet-stream' }); res.end(readFileSync(p)); }
+  const requestPath = decodeURIComponent(req.url.split('?')[0]);
+  if (requestPath === '/favicon.ico') { res.writeHead(204); res.end(); return; }
+  if (requestPath === '/sdk.js') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end('window.YaGames=window.YaGames||undefined;'); return; }
+  const p = join(dir, requestPath.replace(/^\/+/, '') || 'index.html');
+  try { const body = readFileSync(p); res.writeHead(200, { 'Content-Type': MIME[extname(p)] || 'application/octet-stream' }); res.end(body); }
   catch { res.writeHead(404); res.end(); }
 });
 
@@ -57,7 +69,7 @@ const shot = async (page, name) => {
 server.listen(0, async () => {
   const url = `http://127.0.0.1:${server.address().port}/index.html`;
   const pup = await getPup();
-  const browser = await pup.default.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
+  const browser = await pup.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
