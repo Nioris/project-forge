@@ -73,6 +73,10 @@ remains after that boundary.
 
 API secrets live outside projects under `forge-data/secrets/`; never copy them into project files, wiki, prompts or shell output. Switching profiles must not change the nine-phase state machine or skill semantics.
 
+Anonymous retained-data previews such as OpenRouter Ox Alpha are evaluation-only. Forge requires
+their explicit `standard` profile and they must receive no confidential source, personal data,
+credentials or business-critical material.
+
 ## Multi-agent rule
 
 Parallelize only independent work. Read-only reviewers can run freely. Writers must own different files/directories or separate worktrees. One file has one writer at a time. The orchestrator merges evidence and runs the final verifier.

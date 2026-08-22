@@ -138,6 +138,10 @@ function runOpenRouterCredentialIsolationRegression(){
     const resumed=run('OpenRouter same-session STOP resume contract',['scripts/forge-agent.mjs','resume','--project',fixture,'--answer','утверждаю','--dry-run'],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'continue-last-session');
     if(!resumed.text.includes('--continue')||resumed.text.includes('утверждаю')) errors.push('OpenRouter resume does not use a file-backed same-session continuation');
     else ok.push('OpenRouter STOP answer stays out of shell args and resumes the last session');
+    const refusedOx=spawnSync(process.execPath,['scripts/forge-agent.mjs','select','openrouter','--preset','ox-alpha','--profile','zdr','--project',fixture],{cwd:ROOT,encoding:'utf8',env:{...process.env,FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake}});
+    if(refusedOx.status===0||!`${refusedOx.stdout||''}${refusedOx.stderr||''}`.includes('retains prompts and completions')) errors.push('Ox Alpha can be selected without explicit retained-data consent');
+    else ok.push('Ox Alpha refuses the ZDR profile with a retained-data warning');
+    run('Ox Alpha explicit standard-profile selection',['scripts/forge-agent.mjs','select','openrouter','--preset','ox-alpha','--profile','standard','--project',fixture],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'Locked openrouter / openrouter/stealth/ox-alpha');
   }finally{
     rmSync(fixture,{recursive:true,force:true});
   }
@@ -194,6 +198,8 @@ for(const name of ['gemini','qwen','deepseek','glm','minimax','kimi','openrouter
 }
 if(reg.agents?.openrouter?.profiles?.[0]!=='zdr'||reg.agents?.openrouter?.modelPresets?.qwen!=='openrouter/qwen/qwen3-coder-next') errors.push('OpenRouter ZDR profile or verified Qwen Coder Next preset missing');
 else ok.push('OpenRouter defaults to ZDR and exposes the verified Qwen Coder Next preset');
+if(reg.agents?.openrouter?.modelPresets?.['ox-alpha']!=='openrouter/stealth/ox-alpha'||reg.agents?.openrouter?.requiredProfilesByModel?.['openrouter/stealth/ox-alpha']!=='standard') errors.push('Ox Alpha preset or standard-only privacy guard missing');
+else ok.push('OpenRouter exposes Ox Alpha only through explicit retained-data standard profile');
 if(reg.agents?.openrouter?.minimumRuntimeVersion!=='1.18.20'||!runtimeMeetsMinimum('1.18.20','1.18.20')||compareVersions('1.18.19','1.18.20')!==-1) errors.push('OpenCode minimum-version preflight is missing or invalid');
 else ok.push('OpenCode whole-project launch requires the tool-compatible 1.18.20+ runtime');
 if(reg.agents?.qwen?.profiles?.includes('oauth')||reg.agents?.qwen?.profileModels?.['coding-plan']!=='qwen3-coder-plus') errors.push('Qwen profiles still expose discontinued OAuth or lack the Coding Plan model');

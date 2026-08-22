@@ -4,8 +4,8 @@
 
 ## Session goal
 
-Validate Qwen through OpenRouter as a whole-project Forge agent without allowing unsupported facts,
-false phase completion, or premature remote publication.
+Benchmark the free OpenRouter Ox Alpha retained-data preview on a clean GDD-only Snake project
+through Phase 1–3, without weakening evidence, privacy or Git publication gates.
 
 ## Active task
 
@@ -31,11 +31,16 @@ false phase completion, or premature remote publication.
 - [x] Reproduce Qwen repeating a successful `list` result without producing a final answer.
 - [x] Add per-session identical-list suppression and a 64-step OpenCode turn budget.
 - [x] Release, install and fleet-sync v4.68.38 across all 30 sibling projects.
+- [x] Verify official Ox Alpha capabilities and retained-data policy.
+- [x] Add the exact `openrouter/stealth/ox-alpha` preset with a standard-only privacy guard.
+- [x] Release, install and fleet-sync v4.68.39.
+- [x] Create and lock clean non-confidential `ox-alpha-snake-test` to Ox Alpha / standard.
+- [ ] Run and evaluate canonical Phase 1–3.
 
 ## Blockers
 
-No engine blocker. Qwen Phase 1 is mechanically complete and honest; v4.68.38 is installed and
-packages the verified cost guard discovered by the final compatibility smoke test.
+No engine blocker. Ox Alpha is free during preview but retains prompts/completions; the benchmark
+must stay confined to the intentionally public, synthetic Snake GDD.
 
 ## Last 3 decisions
 
@@ -46,5 +51,6 @@ packages the verified cost guard discovered by the final compatibility smoke tes
 - 2026-08-21: A complete marker may not coexist with blocked/draft evidence metadata, and runtime identity must be factual.
 - 2026-08-21: `TBD` describes an unknown value; it cannot authorize a positive external claim elsewhere on the same line.
 - 2026-08-21: OpenCode whole-project turns use a 64-step ceiling; repeated successful directory listings are not billable progress.
+- 2026-08-22: Retained-data models require an explicit non-ZDR profile and may receive only non-confidential evaluation material.
 
-<!-- last updated 2026-08-21 during v4.68.38 OpenCode loop hardening -->
+<!-- last updated 2026-08-22 during v4.68.39 Ox Alpha benchmark setup -->

@@ -4700,6 +4700,14 @@ no longer launder competitor names, dates or market conclusions underneath it. E
 external factual line needs its own URL/local source or an explicit TBD/unverified label. A bounded
 project-local `list` compatibility tool covers Qwen's repeated call to that otherwise absent tool.
 
+## v4.68.36 changelog (phase evidence consistency + runtime identity)
+
+Phase 1 completion now rejects metrics evidence that still declares `draft`, `blocked` or
+`qa_blocked`; a passed marker cannot contradict its own source document. Whole-project launch and
+resume environments also forward the actual locked host/model into `phase-state`, replacing the
+misleading `unknown` runtime identity observed during the Qwen benchmark. The Phase 1 workflow now
+requires final wiki/status updates before the checkpointing completion command.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

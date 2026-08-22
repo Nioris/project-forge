@@ -197,6 +197,12 @@ function assertProviderModel(agent, model) {
     fail(`OpenRouter model must use the exact OpenCode id openrouter/<author>/<model>; got: ${model}`);
   }
 }
+function assertModelProfile(agent, model, profile) {
+  const required=agent.requiredProfilesByModel?.[model];
+  if(required && profile!==required) {
+    fail(`${model} requires the explicit ${required} profile because its provider retains prompts and completions. Use only non-confidential evaluation data: --profile ${required}`);
+  }
+}
 function assertMinimumRuntime(agent, detected) {
   const minimum = agent.minimumRuntimeVersion;
   if (!minimum) return null;
@@ -302,6 +308,7 @@ if (cmd === 'prepare') {
   const profile=val('--profile')||a.profiles?.[0]||'default';
   const model=val('--model')||presetModel(a,val('--preset'))||defaultModelFor(a,profile);
   assertProviderModel(a,model);
+  assertModelProfile(a,model,profile);
   const env=openCodeEnvironment(a,project,{model,profile});
   console.log(`[Forge] ${name} provider config: ${env.OPENCODE_CONFIG_CONTENT?'configured':'built-in'}`);
   console.log(`[Forge] Credential isolation: ${env.XDG_DATA_HOME?'central isolated store':'existing OpenCode login'}`);
@@ -312,7 +319,10 @@ if (cmd === 'presets') {
   const a=getAgent(name); const entries=Object.entries(a.modelPresets||{});
   if(!entries.length) fail(`${name} has no named model presets.`);
   console.log(`[Forge] ${a.displayName} model presets:`);
-  for(const [preset,model] of entries) console.log(`  ${preset.padEnd(10)} ${model}`);
+  for(const [preset,model] of entries) {
+    const required=a.requiredProfilesByModel?.[model];
+    console.log(`  ${preset.padEnd(10)} ${model}${required?`  [requires --profile ${required}; retained data]`:''}`);
+  }
   process.exit(0);
 }
 if (cmd === 'select') {
@@ -322,6 +332,7 @@ if (cmd === 'select') {
   if(a.profiles && !a.profiles.includes(profile)) fail(`Profile ${profile} is not valid for ${name}. Available: ${a.profiles.join(', ')}`);
   const model=val('--model') || presetModel(a,val('--preset')) || defaultModelFor(a, profile);
   assertProviderModel(a,model);
+  assertModelProfile(a,model,profile);
   const path=writeProjectProfile(project,{schemaVersion:1,agent:name,model,profile,locked:true,selectedAt:new Date().toISOString()});
   console.log(`[Forge] Locked ${name} / ${model} for the whole project.`);
   console.log(`[Forge] ${path}`);
@@ -339,6 +350,7 @@ if (cmd === 'start') {
     const requestedPreset=presetModel(requestedAgent,val('--preset'));
     const model=val('--model') || requestedPreset || (current?.agent===requested?current.model:null) || defaultModelFor(requestedAgent, profile);
     assertProviderModel(requestedAgent,model);
+    assertModelProfile(requestedAgent,model,profile);
     if(requestedPreset&&current?.agent===requested&&current.model!==model&&!has('--reselect')) fail(`Project model is locked to ${current.model}. Use select ${requested} --preset ${val('--preset')} first, or pass --reselect.`);
     current={schemaVersion:1,agent:requested,model,profile,locked:true,selectedAt:new Date().toISOString()};
     if(!has('--dry-run')) writeProjectProfile(project,current);
@@ -350,6 +362,7 @@ if (cmd === 'start') {
   assertMinimumRuntime(a,d);
   const model=val('--model') || current.model || defaultModelFor(a, profile);
   assertProviderModel(a,model);
+  assertModelProfile(a,model,profile);
   if(val('--model') && model!==current.model && !has('--reselect')) fail(`Project model is locked to ${current.model}. Use select ${current.agent} --model ${model} first, or pass --reselect.`);
   const full=!has('--safe'); const prompt=autonomousPrompt(current.agent,model);
   const startupInstruction='Read .forge/agent-start.md and execute every instruction in it now.';
@@ -380,6 +393,7 @@ if (cmd === 'resume') {
   assertMinimumRuntime(a,d);
   const model=current.model||defaultModelFor(a,current.profile);
   assertProviderModel(a,model);
+  assertModelProfile(a,model,current.profile);
   const resumeInstruction='Read .forge/agent-resume.md and execute the user continuation in it. Preserve the current Forge phase and do not start a later phase unless that file explicitly authorizes it.';
   const launchArgs=['run','--continue','--interactive','--auto','--model',model,resumeInstruction];
   if(has('--dry-run')){

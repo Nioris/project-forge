@@ -1,4 +1,4 @@
-# Project Forge v4.68.38 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.39 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -63,7 +63,7 @@ Terminal API profiles use one canonical secrets directory **outside projects**:
 | `../forge-data/secrets/deepseek.key` | DeepSeek whole-project profile through OpenCode |
 | `../forge-data/secrets/zai.key` | GLM whole-project profile through OpenCode |
 | `../forge-data/secrets/minimax.key` | MiniMax whole-project profile through OpenCode |
-| `../forge-data/secrets/openrouter.key` | OpenRouter whole-project profile: Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini or Grok |
+| `../forge-data/secrets/openrouter.key` | OpenRouter whole-project profile: Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini, Grok or non-confidential Ox Alpha preview |
 
 Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY`, `GIGASEARCH_API_KEY`, `DEEPSEEK_API_KEY`, `ZAI_API_KEY`, `MINIMAX_API_KEY` and `OPENROUTER_API_KEY` have precedence. Legacy project-local key files remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
 
@@ -467,6 +467,13 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.39 changelog (Ox Alpha retained-data preview)
+
+OpenRouter gains an `ox-alpha` whole-project preset for the free anonymous coding preview. Forge
+refuses to run it through the default ZDR profile: selection requires explicit `--profile standard`
+because the upstream provider retains prompts and completions. The preset is therefore restricted
+to non-confidential evaluation projects while keeping the existing 64-step OpenCode turn budget.
+
 ## v4.68.38 changelog (OpenCode loop budget)
 
 OpenCode whole-project turns now have a 64-step agentic ceiling. The project-local `list`
@@ -480,11 +487,3 @@ Phase 1 research validation now rejects a positive external assertion such as `v
 `confirmed` or `requires` even when the same line also contains `TBD`. This closes the final Qwen
 benchmark loophole where an unsupported Yandex claim survived inside a nominally unknown
 localization value.
-
-## v4.68.36 changelog (phase evidence consistency + runtime identity)
-
-Phase 1 completion now rejects metrics evidence that still declares `draft`, `blocked` or
-`qa_blocked`; a passed marker cannot contradict its own source document. Whole-project launch and
-resume environments also forward the actual locked host/model into `phase-state`, replacing the
-misleading `unknown` runtime identity observed during the Qwen benchmark. The Phase 1 workflow now
-requires final wiki/status updates before the checkpointing completion command.
