@@ -41,6 +41,47 @@
         "resumePolicy": { "enum": ["user_answer", "agent_retry", "environment_change", "none"] }
       }
     },
+    "verification": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["status", "startedAt", "completedAt", "items"],
+      "properties": {
+        "status": { "enum": ["passed", "failed", "environment_failure", "contract_error"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status", "exitCode", "durationMs", "timedOut", "issues"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+              "status": { "enum": ["passed", "failed", "environment_failure"] },
+              "exitCode": { "type": ["integer", "null"], "minimum": 0, "maximum": 255 },
+              "durationMs": { "type": "integer", "minimum": 0, "maximum": 3600000 },
+              "timedOut": { "type": "boolean" },
+              "issues": {
+                "type": "array",
+                "maxItems": 50,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["file", "line", "rule", "message"],
+                  "properties": {
+                    "file": { "anyOf": [{ "$ref": "#/$defs/projectPath" }, { "type": "null" }] },
+                    "line": { "type": ["integer", "null"], "minimum": 1 },
+                    "rule": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._-]{1,120}$" },
+                    "message": { "type": "string", "minLength": 1, "maxLength": 500 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "createdAt": { "type": "string", "format": "date-time" }
   }
 }

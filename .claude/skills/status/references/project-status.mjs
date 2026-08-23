@@ -243,12 +243,16 @@ const result = {
       status: activeTaskRun.task.status,
       currentNode: activeTaskRun.state.currentNode,
       goal: activeTaskRun.task.goal,
+      verifiers: activeTaskRun.task.verifiers,
+      verificationTarget: activeTaskRun.task.verificationTarget || '.',
     } : null,
     latestResult: latestTaskRun?.lastResult ? {
       taskId: latestTaskRun.task.id,
       status: latestTaskRun.lastResult.status,
       code: latestTaskRun.lastResult.code,
       failureType: latestTaskRun.lastResult.failure?.type || null,
+      verificationStatus: latestTaskRun.lastResult.verification?.status || null,
+      verifierCount: latestTaskRun.lastResult.verification?.items?.length || 0,
       createdAt: latestTaskRun.lastResult.createdAt,
     } : null,
     source: '.forge/runs (supplemental; never phase progression)',
@@ -273,6 +277,7 @@ for (const p of phaseRows) console.log(`${icon(p.state)} ${p.phase} ${p.name}${p
 console.log(`AI Studio: config=${aiConfig ? 'yes' : 'no'} style=${styleBibleState} prompts=${promptCount} approved=${approvedCount} visualQA=${visualQaCount}`);
 console.log(`Health: viewport=${health.viewport} touch=${health.touchAction} sdkInit=${health.yandexInit} ready=${health.loadingReady} i18n=${health.i18nRuntime} builds=${health.builds}`);
 console.log(`Forge diagnostics: open=${diagnostics.open.length} critical=${diagnostics.counts.critical} error=${diagnostics.counts.error} warn=${diagnostics.counts.warn} parseErrors=${diagnostics.parseErrors.length}`);
-if (activeTaskRun) console.log(`Task: ${activeTaskRun.task.id} mode=${activeTaskRun.task.mode} node=${activeTaskRun.state.currentNode} status=${activeTaskRun.task.status}`);
+if (activeTaskRun) console.log(`Task: ${activeTaskRun.task.id} mode=${activeTaskRun.task.mode} node=${activeTaskRun.state.currentNode} status=${activeTaskRun.task.status} verifiers=${activeTaskRun.task.verifiers.join(',') || 'none'}`);
+if (latestTaskRun?.lastResult?.verification) console.log(`Task verification: ${latestTaskRun.lastResult.verification.status} checks=${latestTaskRun.lastResult.verification.items.length}`);
 if (stopPoint) console.log(`STOP: ${stopPoint}`);
 for (const w of warnings) console.log(`WARN: ${w}`);

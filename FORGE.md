@@ -54,6 +54,13 @@ Each transition consumes a typed `RunResult` and a fixed `FailureType`. User dec
 stop explicitly. Codex correlates phase results to the exact model turn through `attemptId`.
 Natural-language question detection exists only as a named legacy fallback.
 
+When a change graph enters a `verifier` node, the runtime owns deterministic check execution. It loads
+only Task-enabled, read-only project checks from the installed engine's `mcp-server/verifiers.json`,
+normalizes bounded issues into `RunResult.verification`, and routes PASS/FAIL/environment outcomes without
+asking the model to interpret raw stdout. A project-local registry is untrusted. Never edit a verifier
+plan after the Task has left an agent node, and never treat a stale `.verify.lock` as permission to start a
+second verifier; inspect the owning process before removing an abandoned lock.
+
 Task read/write scopes are validated declarations, not a substitute for workspace protection or
 host sandboxing. Host guards remain authoritative until scoped tool enforcement and file leases ship.
 

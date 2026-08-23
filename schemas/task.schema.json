@@ -38,7 +38,8 @@
         }
       }
     },
-    "verifiers": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }, "maxItems": 100 },
+    "verifiers": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }, "maxItems": 20 },
+    "verificationTarget": { "$ref": "#/$defs/projectPath" },
     "status": { "enum": ["pending", "running", "waiting", "blocked", "completed", "cancelled"] },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" }

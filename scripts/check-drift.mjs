@@ -447,6 +447,12 @@ safe('durable-execution-graph', () => {
   else ok.push('Task and RunResult drive five bounded durable workflow graphs without replacing phase state');
 });
 
+safe('durable-task-verifier-runner', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-task-verifier-runner.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('Task verifier/repair runtime regression failed — run scripts/check-task-verifier-runner.mjs');
+  else ok.push('registered read-only verifiers drive normalized bounded Task repair loops');
+});
+
 safe('codex-one-window-pipeline', () => {
   const r = spawnSync(process.execPath, ['scripts/check-codex-pipeline.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('one-window Codex phase orchestration failed — run scripts/check-codex-pipeline.mjs');

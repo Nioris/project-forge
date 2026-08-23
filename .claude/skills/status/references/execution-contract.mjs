@@ -56,7 +56,7 @@ function validatePathList(value, label, errors) {
 export function validateTask(task) {
   const errors = [];
   if (!isObject(task)) return ['Task must be an object'];
-  checkKeys(task, new Set(['schemaVersion', 'id', 'mode', 'phase', 'goal', 'skill', 'scope', 'acceptance', 'verifiers', 'status', 'createdAt', 'updatedAt']), 'Task', errors);
+  checkKeys(task, new Set(['schemaVersion', 'id', 'mode', 'phase', 'goal', 'skill', 'scope', 'acceptance', 'verifiers', 'verificationTarget', 'status', 'createdAt', 'updatedAt']), 'Task', errors);
   if (task.schemaVersion !== 1) errors.push('Task schemaVersion must be 1');
   if (!TASK_ID_RE.test(String(task.id || ''))) errors.push('Task id is invalid');
   if (!TASK_MODES.includes(task.mode)) errors.push(`Task mode is invalid: ${task.mode}`);
@@ -77,8 +77,9 @@ export function validateTask(task) {
     if (!boundedString(item.text, 1000)) errors.push('Task acceptance text must contain 1..1000 characters');
     if (!['pending', 'satisfied'].includes(item.status)) errors.push(`Task acceptance status is invalid: ${item.status}`);
   }
-  if (!Array.isArray(task.verifiers) || task.verifiers.length > 100
-    || task.verifiers.some(item => !/^[a-z0-9][a-z0-9-]*$/.test(String(item)))) errors.push('Task verifiers must contain safe verifier ids');
+  if (!Array.isArray(task.verifiers) || task.verifiers.length > 20
+    || task.verifiers.some(item => !/^[a-z0-9][a-z0-9-]*$/.test(String(item)))) errors.push('Task verifiers must contain at most 20 safe verifier ids');
+  if (task.verificationTarget !== undefined && !normalizeProjectPath(task.verificationTarget)) errors.push('Task verificationTarget must be a safe project-relative path');
   if (!TASK_STATUSES.includes(task.status)) errors.push(`Task status is invalid: ${task.status}`);
   if (!validDate(task.createdAt) || !validDate(task.updatedAt)) errors.push('Task timestamps must be ISO date-time strings');
   return errors;
@@ -87,7 +88,7 @@ export function validateTask(task) {
 export function validateRunResult(result) {
   const errors = [];
   if (!isObject(result)) return ['RunResult must be an object'];
-  checkKeys(result, new Set(['schemaVersion', 'taskId', 'node', 'attemptId', 'status', 'code', 'message', 'host', 'phase', 'evidence', 'checks', 'failure', 'stop', 'createdAt']), 'RunResult', errors);
+  checkKeys(result, new Set(['schemaVersion', 'taskId', 'node', 'attemptId', 'status', 'code', 'message', 'host', 'phase', 'evidence', 'checks', 'failure', 'stop', 'verification', 'createdAt']), 'RunResult', errors);
   if (result.schemaVersion !== 1) errors.push('RunResult schemaVersion must be 1');
   if (!TASK_ID_RE.test(String(result.taskId || ''))) errors.push('RunResult taskId is invalid');
   if (!NODE_ID_RE.test(String(result.node || ''))) errors.push('RunResult node is invalid');
@@ -116,6 +117,34 @@ export function validateRunResult(result) {
       if (!CODE_RE.test(String(result.stop.code || ''))) errors.push('RunResult stop code is invalid');
       if (result.stop.decisionKey !== null && (typeof result.stop.decisionKey !== 'string' || result.stop.decisionKey.length > 160)) errors.push('RunResult stop decisionKey is invalid');
       if (!RESUME_POLICIES.includes(result.stop.resumePolicy)) errors.push(`RunResult resumePolicy is invalid: ${result.stop.resumePolicy}`);
+    }
+  }
+  if (result.verification !== undefined && result.verification !== null) {
+    const verification = result.verification;
+    if (!isObject(verification)) errors.push('RunResult verification must be null or an object');
+    else {
+      checkKeys(verification, new Set(['status', 'startedAt', 'completedAt', 'items']), 'RunResult verification', errors);
+      if (!['passed', 'failed', 'environment_failure', 'contract_error'].includes(verification.status)) errors.push('RunResult verification.status is invalid');
+      if (!validDate(verification.startedAt) || !validDate(verification.completedAt)) errors.push('RunResult verification timestamps must be ISO date-time strings');
+      if (!Array.isArray(verification.items) || verification.items.length > 20) errors.push('RunResult verification.items must contain at most 20 entries');
+      else for (const item of verification.items) {
+        if (!isObject(item)) { errors.push('RunResult verification item must be an object'); continue; }
+        checkKeys(item, new Set(['id', 'status', 'exitCode', 'durationMs', 'timedOut', 'issues']), 'RunResult verification item', errors);
+        if (!/^[a-z0-9][a-z0-9-]*$/.test(String(item.id || ''))) errors.push('RunResult verifier id is invalid');
+        if (!['passed', 'failed', 'environment_failure'].includes(item.status)) errors.push('RunResult verifier status is invalid');
+        if (item.exitCode !== null && (!Number.isInteger(item.exitCode) || item.exitCode < 0 || item.exitCode > 255)) errors.push('RunResult verifier exitCode is invalid');
+        if (!Number.isInteger(item.durationMs) || item.durationMs < 0 || item.durationMs > 3_600_000) errors.push('RunResult verifier durationMs is invalid');
+        if (typeof item.timedOut !== 'boolean') errors.push('RunResult verifier timedOut must be boolean');
+        if (!Array.isArray(item.issues) || item.issues.length > 50) errors.push('RunResult verifier issues must contain at most 50 entries');
+        else for (const issue of item.issues) {
+          if (!isObject(issue)) { errors.push('RunResult verifier issue must be an object'); continue; }
+          checkKeys(issue, new Set(['file', 'line', 'rule', 'message']), 'RunResult verifier issue', errors);
+          if (issue.file !== null && !normalizeProjectPath(issue.file)) errors.push('RunResult verifier issue.file is invalid');
+          if (issue.line !== null && (!Number.isInteger(issue.line) || issue.line < 1)) errors.push('RunResult verifier issue.line is invalid');
+          if (issue.rule !== null && !/^[A-Za-z0-9._-]{1,120}$/.test(String(issue.rule || ''))) errors.push('RunResult verifier issue.rule is invalid');
+          if (!boundedString(issue.message, 500)) errors.push('RunResult verifier issue.message must contain 1..500 characters');
+        }
+      }
     }
   }
   if (FAILURE_RESULTS.has(result.status) && !isObject(result.failure)) errors.push(`${result.status} requires failure metadata`);
@@ -274,6 +303,7 @@ export function makeTask(input = {}) {
       id: String(item?.id || `AC-${index + 1}`), text: String(item?.text || item || '').trim(), status: item?.status || 'pending',
     })),
     verifiers: uniqueStrings(input.verifiers),
+    verificationTarget: normalizeProjectPath(input.verificationTarget == null ? '.' : input.verificationTarget),
     status: input.status || 'running',
     createdAt: input.createdAt || now,
     updatedAt: now,
@@ -359,6 +389,7 @@ export function makeRunResult(input = {}) {
       decisionKey: input.stop.decisionKey == null ? null : String(input.stop.decisionKey),
       resumePolicy: input.stop.resumePolicy || 'none',
     },
+    verification: input.verification == null ? null : input.verification,
     createdAt: input.createdAt || new Date().toISOString(),
   };
   return assertValid(result, validateRunResult, 'RunResult');
@@ -420,6 +451,38 @@ export function recordTaskResult({ projectRoot, taskId, result, workflowDir = WO
       },
       lastResult: normalized,
       events: [...(run.events || []), event].slice(-100),
+    };
+    atomicWriteJson(file, updated);
+    return updated;
+  });
+}
+
+/**
+ * Attach a bounded, host-derived verifier plan while an agent still owns a Task.
+ * The plan never comes from a model-authored run result: adapters derive it from
+ * canonical commands they have already recorded in their own durable ledger.
+ */
+export function configureTaskVerifierPlan({ projectRoot, taskId, verifiers, verificationTarget = '.', workflowDir = WORKFLOW_DIR } = {}) {
+  const root = path.resolve(projectRoot || process.cwd());
+  const file = taskRunPath(root, taskId);
+  return withTaskRunLock(file, () => {
+    const run = readTaskRun(root, taskId);
+    if (!run) throw new Error(`Task run not found: ${taskId}`);
+    const workflow = loadWorkflow(run.workflow.id, workflowDir);
+    const node = workflow.nodes[run.state.currentNode];
+    if (!node || node.type !== 'agent') {
+      throw new Error(`Task verifier plan can only be configured at an agent node (current: ${run.state.currentNode})`);
+    }
+    const nextVerifiers = uniqueStrings(verifiers);
+    if (!nextVerifiers.length) throw new Error('Task verifier plan must contain at least one verifier');
+    const target = normalizeProjectPath(verificationTarget);
+    if (!target) throw new Error('Task verificationTarget is unsafe');
+    const now = new Date().toISOString();
+    const task = assertValid({ ...run.task, verifiers: nextVerifiers, verificationTarget: target, updatedAt: now }, validateTask, 'Task verifier plan');
+    const updated = {
+      ...run,
+      task,
+      events: [...(run.events || []), { event: 'verifier_plan_configured', node: run.state.currentNode, verifiers: nextVerifiers, verificationTarget: target, at: now }].slice(-100),
     };
     atomicWriteJson(file, updated);
     return updated;
@@ -492,6 +555,8 @@ export function formatTaskRun(run) {
     `Mode: ${run.task.mode}${run.task.phase ? ` | Phase ${run.task.phase}` : ''}`,
     `Node: ${run.state.currentNode} | Workflow: ${run.workflow.id}`,
     `Goal: ${run.task.goal}`,
+    `Verifier plan: ${run.task.verifiers.length ? run.task.verifiers.join(', ') : 'none'} | Target: ${run.task.verificationTarget || '.'}`,
     result ? `Last result: ${result.status} (${result.code})` : 'Last result: none',
-  ].join('\n');
+    result?.verification ? `Verification: ${result.verification.status} (${result.verification.items.length} check(s))` : null,
+  ].filter(Boolean).join('\n');
 }

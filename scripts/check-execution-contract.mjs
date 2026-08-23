@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
-  FAILURE_TYPES, TASK_MODES, atomicWriteJson, ensurePhaseTaskRun, loadWorkflow, makeRunResult, makeTask,
+  FAILURE_TYPES, TASK_MODES, atomicWriteJson, configureTaskVerifierPlan, ensurePhaseTaskRun, loadWorkflow, makeRunResult, makeTask,
   readTaskRun, recordTaskResult, startTaskRun, taskRunPath, validateRunResult, validateTask, validateWorkflow,
 } from '../.claude/skills/status/references/execution-contract.mjs';
 
@@ -52,6 +52,8 @@ const validTask = makeTask({
 check(validateTask(validTask).length === 0, 'Task contract accepts a bounded project-relative scope');
 check(throws(() => makeTask({ ...validTask, id: 'unsafe-task', scope: { read: ['../outside'], write: [] } })), 'Task contract rejects traversal scope');
 check(throws(() => makeTask({ ...validTask, id: 'drive-relative-task', scope: { read: ['C:outside'], write: [] } })), 'Task contract rejects drive-relative scope');
+check(throws(() => makeTask({ ...validTask, id: 'unsafe-verification-target', verificationTarget: '../outside' })),
+  'Task contract rejects an unsafe verification target');
 check(validateRunResult({ ...resultFor({ task: validTask, state: { currentNode: 'implement' } }, 'completed'), status: 'invented' }).length > 0, 'RunResult rejects unknown statuses');
 const validFailureResult = resultFor({ task: validTask, state: { currentNode: 'implement' } }, 'retryable_failure', {
   failure: { type: 'CODE_ERROR', retryable: true, message: 'bad' },
@@ -59,6 +61,13 @@ const validFailureResult = resultFor({ task: validTask, state: { currentNode: 'i
 check(FAILURE_TYPES.length === 9 && validateRunResult({
   ...validFailureResult, failure: { ...validFailureResult.failure, type: 'NOT_A_FAILURE_TYPE' },
 }).length > 0, 'RunResult rejects unknown FailureType');
+check(validateRunResult({
+  ...resultFor({ task: validTask, state: { currentNode: 'verify' } }, 'completed'),
+  verification: { status: 'passed', startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), items: [{
+    id: 'fixture', status: 'passed', exitCode: 0, durationMs: 1, timedOut: false,
+    issues: [{ file: '../outside', line: 1, rule: 'FIXTURE', message: 'unsafe' }],
+  }] },
+}).length > 0, 'RunResult rejects unsafe normalized verifier evidence');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-execution-contract-'));
 try {
@@ -75,6 +84,9 @@ try {
 
   let run = startTaskRun({ projectRoot: tmp, task: validTask });
   check(run.state.currentNode === 'implement' && run.task.status === 'running', 'change Task starts at the declarative implement node');
+  run = configureTaskVerifierPlan({ projectRoot: tmp, taskId: run.task.id, verifiers: ['fixture-check'], verificationTarget: '.' });
+  check(run.task.verifiers[0] === 'fixture-check' && run.task.verificationTarget === '.'
+    && run.events.at(-1).event === 'verifier_plan_configured', 'host can attach a bounded verifier plan before implementation completes');
   check(fs.readFileSync(markerPath, 'utf8') === markerBefore, 'creating a Task does not mutate canonical phase state');
   check(fs.readFileSync(path.join(tmp, '.git', 'info', 'exclude'), 'utf8').includes('.forge/runs/'), 'durable local runs are excluded from project Git');
 
@@ -86,6 +98,8 @@ try {
 
   run = recordTaskResult({ projectRoot: tmp, taskId: run.task.id, result: resultFor(run, 'completed') });
   check(run.state.currentNode === 'verify', 'completed implementation advances to verifier node');
+  check(throws(() => configureTaskVerifierPlan({ projectRoot: tmp, taskId: run.task.id, verifiers: ['fixture-check'] })),
+    'verifier plan cannot be changed once the verifier node owns the Task');
   run = recordTaskResult({ projectRoot: tmp, taskId: run.task.id, result: resultFor(run, 'retryable_failure', {
     code: 'FIXTURE_VERIFIER_FAILED', failure: { type: 'VERIFIER_FAILURE', retryable: true, message: 'Fixture verifier failed' },
   }) });

@@ -171,6 +171,27 @@ Marker **не заменяет evidence**: ставь `complete` только п
 Codex связывает marker/RunResult с текущим запуском через `attemptId`; вопросительный текст — только
 legacy fallback. `.forge/runs/` принадлежит runtime и никогда не редактируется агентом вручную.
 
+## Verifier-driven change Tasks (v4.68.43+)
+
+У `change`-задачи может быть host-owned план из зарегистрированных read-only проверок и один
+project-relative target. Оператор/adapter создаёт его так:
+
+```bash
+node scripts/forge-workflow.mjs create --mode change --goal "Fix UI strings" --phase 5 \
+  --write WorkProgress/game/** --verifier inline-strings --verifier-target WorkProgress/game
+```
+
+Когда `result ... --status completed` переводит такую Task из `implement` или `repair` в узел
+`verify`, runtime **сам** запускает проверки. Второй ручной вызов не нужен. PASS ведёт в `done`,
+exit 1 — в ограниченный `repair`, timeout/exit 2 — в infrastructure `blocked`. Команда
+`node scripts/forge-workflow.mjs verify --task <id> --project .` остаётся для восстановления Task,
+которая уже находится в `verify`; произвольный `--registry` в production запрещён.
+
+План проверок не берётся из текста модели и не меняется после выхода из agent-node. Исполняются
+только `taskRunner`-проверки из установленного `mcp-server/verifiers.json`; реестр внутри проекта
+не является доверенным. Нормализованные проблемы видны в секции EXECUTION через
+`RunResult.verification`.
+
 ## Дополнительные правила
 
 - Future absence ≠ defect. До Ф5 `YaGames.init()` может отсутствовать совершенно нормально.

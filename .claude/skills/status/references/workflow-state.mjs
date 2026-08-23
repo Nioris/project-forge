@@ -4,8 +4,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   cancelTaskRun, formatTaskRun, listTaskRuns, makeRunResult, makeTask, readTaskRun,
-  recordTaskResult, startTaskRun,
+  loadWorkflow, recordTaskResult, startTaskRun,
 } from './execution-contract.mjs';
+import { formatTaskVerification, runTaskVerifiers } from './verifier-runner.mjs';
 
 function option(args, name) {
   const direct = args.find(value => value.startsWith(`--${name}=`));
@@ -36,7 +37,10 @@ function defaultFailure(status, message, type = null, retryable = null) {
   return { type: inferred, retryable: retryable ?? ['retryable_failure', 'provider_failure'].includes(status), message };
 }
 
-export function runWorkflowCli(args = process.argv.slice(2), { cwd = process.cwd(), stdout = console.log } = {}) {
+export function runWorkflowCli(args = process.argv.slice(2), {
+  cwd = process.cwd(), stdout = console.log, setExitCode = code => { process.exitCode = code; },
+  allowUntrustedRegistry = false,
+} = {}) {
   const command = args[0] || 'help';
   const projectRoot = path.resolve(option(args, 'project') || cwd);
   const json = args.includes('--json');
@@ -54,10 +58,28 @@ export function runWorkflowCli(args = process.argv.slice(2), { cwd = process.cwd
       scope: { read: list(options(args, 'read').length ? options(args, 'read') : ['**']), write: list(options(args, 'write')) },
       acceptance,
       verifiers: list(options(args, 'verifier')),
+      verificationTarget: option(args, 'verifier-target') || '.',
     });
     const run = startTaskRun({ projectRoot, task });
     stdout(json ? JSON.stringify(run, null, 2) : formatTaskRun(run));
     return run;
+  }
+  if (command === 'verify') {
+    const taskId = option(args, 'task');
+    if (!taskId) throw new Error('Usage: workflow-state.mjs verify --task ID [--registry PATH]');
+    const registryPath = option(args, 'registry');
+    if (registryPath && !allowUntrustedRegistry) {
+      throw new Error('Explicit verifier registry is disabled outside the Forge test/developer harness.');
+    }
+    const outcome = runTaskVerifiers({
+      projectRoot,
+      taskId,
+      registryPath,
+      allowUntrustedRegistry,
+    });
+    stdout(json ? JSON.stringify(outcome, null, 2) : formatTaskVerification(outcome));
+    setExitCode(outcome.exitCode);
+    return outcome;
   }
   if (command === 'result') {
     const taskId = option(args, 'task');
@@ -85,7 +107,23 @@ export function runWorkflowCli(args = process.argv.slice(2), { cwd = process.cwd
         owner: 'user', code, decisionKey: option(args, 'decision-key'), resumePolicy: 'user_answer',
       } : null,
     });
-    const run = recordTaskResult({ projectRoot, taskId, result });
+    let run = recordTaskResult({ projectRoot, taskId, result });
+    const workflow = loadWorkflow(run.workflow.id);
+    const nextNode = workflow.nodes[run.state.currentNode];
+    if (nextNode?.type === 'verifier' && run.task.verifiers.length > 0) {
+      const registryPath = option(args, 'registry');
+      if (registryPath && !allowUntrustedRegistry) {
+        throw new Error('Explicit verifier registry is disabled outside the Forge test/developer harness.');
+      }
+      const outcome = runTaskVerifiers({
+        projectRoot,
+        taskId,
+        registryPath,
+        allowUntrustedRegistry,
+      });
+      run = outcome.run;
+      setExitCode(outcome.exitCode);
+    }
     stdout(json ? JSON.stringify(run, null, 2) : formatTaskRun(run));
     return run;
   }
@@ -103,7 +141,7 @@ export function runWorkflowCli(args = process.argv.slice(2), { cwd = process.cwd
     stdout(json ? JSON.stringify(run, null, 2) : formatTaskRun(run));
     return run;
   }
-  stdout('Project Forge workflow runtime\n\nCommands:\n  create --mode MODE --goal "..." [--phase N] [--skill ID]\n  result --task ID --status STATUS --code CODE --message "..."\n  status [--task ID] [--json]\n  resume --task ID [--json]\n  cancel --task ID');
+  stdout('Project Forge workflow runtime\n\nCommands:\n  create --mode MODE --goal "..." [--phase N] [--skill ID] [--verifier ID] [--verifier-target PATH]\n  result --task ID --status STATUS --code CODE --message "..."\n  verify --task ID [--json]\n  status [--task ID] [--json]\n  resume --task ID [--json]\n  cancel --task ID');
   return null;
 }
 

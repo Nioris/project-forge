@@ -14,8 +14,9 @@ import { getAccessToken, gigaJson, downloadGigaFile } from './lib/gigachat-api.m
 import { applyDefaultSearchEnvironment, getSearchCapabilities, searchDoctor, webSearch, imageSearch, webFetch } from './lib/forge-search.mjs';
 import { appendForgeDiagnostic } from '../.claude/hooks/lib/forge-diagnostics.mjs';
 import {
-  cancelTaskRun, listTaskRuns, makeRunResult, makeTask, readTaskRun, recordTaskResult, startTaskRun,
+  cancelTaskRun, configureTaskVerifierPlan, listTaskRuns, makeRunResult, makeTask, readTaskRun, recordTaskResult, startTaskRun,
 } from '../.claude/skills/status/references/execution-contract.mjs';
+import { runTaskVerifiers } from '../.claude/skills/status/references/verifier-runner.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -24,7 +25,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.42';
+const AUDITED_FORGE_VERSION = '4.68.43';
 const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -2258,6 +2259,44 @@ function successfulDirectiveChecks(requestedChecks=[],directive=activeDirective)
   });
 }
 
+// A direct-task verifier plan is host-owned.  We derive it only from an exact
+// successful canonical command in the durable ledger; free-form model text is
+// deliberately not enough to make the runner execute anything.
+function directiveVerifierTargetFromCommand(command='',scriptName='') {
+  const scriptRe=new RegExp(`${scriptName.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}\\s+([\"'][^\"']+[\"']|[^\\s]+)`,'i');
+  const match=scriptRe.exec(String(command||''));
+  if(!match) return null;
+  const raw=String(match[1]||'').trim().replace(/^['\"]|['\"]$/g,'');
+  if(!raw || raw.startsWith('-')) return null;
+  try{
+    const local=relative(PROJECT,safePath(raw)).replaceAll('\\','/');
+    return local||'.';
+  }catch{return null;}
+}
+
+function knownDirectiveVerifierPlan(successfulChecks=[]) {
+  for(const entry of successfulChecks){
+    if(/(?:^|[\\/])check-gacha-integration\.mjs\b/i.test(String(entry.command||''))){
+      const verificationTarget=directiveVerifierTargetFromCommand(entry.command,'check-gacha-integration.mjs');
+      if(verificationTarget) return {verifiers:['gacha-integration'],verificationTarget,checks:[entry.command]};
+    }
+  }
+  return null;
+}
+
+function configureDirectiveVerifierPlan(plan){
+  if(!plan||!activeDirective?.taskId) return null;
+  try{
+    const run=configureTaskVerifierPlan({projectRoot:PROJECT,taskId:activeDirective.taskId,verifiers:plan.verifiers,verificationTarget:plan.verificationTarget});
+    activeDirective={...activeDirective,workflowNode:run.state.currentNode,updatedAt:new Date().toISOString()};
+    persistRuntimeEvidenceLedger();
+    return run;
+  }catch(error){
+    reportForgeBehavior({severity:'error',code:'GIGA_VERIFIER_PLAN_FAILURE',kind:'runtime_state',component:'gigachat-agent',operation:'configure-directive-verifier-plan',message:'Could not attach the host-derived verifier plan to the durable direct Task.',expected:'A verifier plan derived from an exact canonical successful check.',actual:String(error?.message||error)});
+    return {error:String(error?.message||error)};
+  }
+}
+
 function completeDirective(a={}) {
   if(!activeDirective) return {ok:false,error:'No active change request. Use /do <task> first.'};
   const summary=String(a.summary||'').trim();
@@ -2303,10 +2342,34 @@ function completeDirective(a={}) {
     }
   }
   const verifiedChecks=[...new Set(matchedChecks.map(v=>v.command))];
+  const verifierPlan=knownDirectiveVerifierPlan(successfulChecks);
+  if(verifierPlan){
+    const configured=configureDirectiveVerifierPlan(verifierPlan);
+    if(configured?.error) return {ok:false,error:`Could not configure automatic verifier plan: ${configured.error}`};
+  }
   let runtime=recordDirectiveRunResult({
     status:'completed',code:'CHANGE_IMPLEMENTED',message:summary,evidence:validEvidence,checks:verifiedChecks,
   });
   if(!runtime.ok) return {ok:false,error:`Could not persist implementation result: ${runtime.error}`};
+  if(verifierPlan){
+    let outcome;
+    try{
+      outcome=runTaskVerifiers({projectRoot:PROJECT,taskId:runtime.run.task.id});
+      activeDirective={...activeDirective,taskId:outcome.run.task.id,workflowNode:outcome.run.state.currentNode,updatedAt:new Date().toISOString()};
+      persistRuntimeEvidenceLedger();
+    }catch(error){
+      reportForgeBehavior({severity:'error',code:'GIGA_VERIFIER_RUNNER_FAILURE',kind:'runtime_state',component:'gigachat-agent',operation:'run-directive-verifiers',message:'The automatic direct-task verifier runner could not complete.',expected:'A durable verifier result at the verify node.',actual:String(error?.message||error)});
+      return {ok:false,error:`Automatic verification could not run: ${String(error?.message||error)}`,workflow_node:activeDirective?.workflowNode||'verify'};
+    }
+    if(outcome.run.state.currentNode!=='done'){
+      return {ok:false,error:outcome.result.message,workflow_node:outcome.run.state.currentNode,verification:outcome.report,repair_required:outcome.run.state.currentNode==='repair'};
+    }
+    const completed={...activeDirective,status:'complete',completedAt:new Date().toISOString(),summary,evidence:validEvidence,checks:[...new Set([...verifiedChecks,...verifierPlan.checks])],verification:outcome.report};
+    const resumePhase=completed.pausedPhase||null;
+    activeDirective=null;
+    persistRuntimeEvidenceLedger();
+    return {ok:true,completed_request:completed.request,summary,evidence:validEvidence,checks:completed.checks,resume_phase:resumePhase,note:'Direct task completed from recorded evidence and the automatic registered verifier. Canonical phase autopilot is available again; it has not been started automatically.'};
+  }
   runtime=recordDirectiveRunResult({
     status:'completed',code:'CHANGE_VERIFIED',message:'Focused post-change verification passed',evidence:validEvidence,checks:verifiedChecks,
   });
@@ -4790,6 +4853,10 @@ if (REQUEST_DOCTOR) {
   test('direct task persists exact intent before graph creation',()=>activateDirective.toString().indexOf('persistRuntimeEvidenceLedger')<activateDirective.toString().indexOf('ensureDirectiveTaskRuntime'));
   test('orphan direct Task can be reattached after restart',()=>/listTaskRuns/.test(ensureDirectiveTaskRuntime.toString())&&/recovered/.test(ensureDirectiveTaskRuntime.toString()));
   test('direct completion records implementation then verification nodes',()=>((completeDirective.toString().match(/recordDirectiveRunResult/g)||[]).length>=2)&&/CHANGE_IMPLEMENTED/.test(completeDirective.toString())&&/CHANGE_VERIFIED/.test(completeDirective.toString()));
+  test('direct completion dispatches a registered verifier plan automatically',()=>/configureDirectiveVerifierPlan/.test(completeDirective.toString())&&/runTaskVerifiers/.test(completeDirective.toString())&&/configureTaskVerifierPlan/.test(configureDirectiveVerifierPlan.toString()));
+  test('gacha verifier plan comes only from an exact canonical ledger command',()=>{const plan=knownDirectiveVerifierPlan([{command:'forge_script scripts/check-gacha-integration.mjs WorkProgress/demo-game',status:0}]);return plan?.verifiers?.[0]==='gacha-integration'&&plan.verificationTarget==='WorkProgress/demo-game'&&knownDirectiveVerifierPlan([{command:'node scripts/playtest.mjs WorkProgress/demo-game',status:0}])===null;});
+  test('gacha verifier target preserves a quoted project-relative path',()=>directiveVerifierTargetFromCommand('forge_script scripts/check-gacha-integration.mjs "WorkProgress/demo game"','check-gacha-integration.mjs')==='WorkProgress/demo game');
+  test('gacha verifier target rejects escaped command arguments',()=>directiveVerifierTargetFromCommand('forge_script scripts/check-gacha-integration.mjs ../outside','check-gacha-integration.mjs')===null);
   test('failed focused verification enters durable repair',()=>/CHANGE_VERIFICATION_FAILED/.test(completeDirective.toString())&&/retryable_failure/.test(completeDirective.toString()));
   test('exhausted direct Task requires explicit retry',()=>/repair budget is exhausted/.test(turn.toString())&&/explicit \/do/.test(turn.toString()));
   test('manual /resume-phase command recognized',()=>directiveCommand('/resume-phase')?.kind==='resume');

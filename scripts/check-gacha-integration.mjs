@@ -70,8 +70,14 @@ await new Promise((resolveListen, reject) => {
 
 const errors = [];
 let browser;
+let watchdogFired = false;
+const watchdog = setTimeout(() => {
+  watchdogFired = true;
+  try { browser?.process()?.kill('SIGKILL'); } catch {}
+  try { if (server.listening) server.close(); } catch {}
+}, 100_000);
 try {
-  browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+  browser = await puppeteer.launch({ args: ['--no-sandbox'], timeout: 30_000 });
   const page = await browser.newPage();
   page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
   page.on('console', message => { if (message.type() === 'error') errors.push(`console.error: ${message.text()}`); });
@@ -150,6 +156,22 @@ try {
   console.error(`[X] ${error.message}`);
   process.exitCode = 1;
 } finally {
-  if (browser) await browser.close();
-  await new Promise(resolveClose => server.close(resolveClose));
+  clearTimeout(watchdog);
+  if (browser) {
+    let closed = false;
+    try {
+      await Promise.race([
+        browser.close().then(() => { closed = true; }),
+        new Promise(resolveWait => setTimeout(resolveWait, 5_000)),
+      ]);
+    } catch {}
+    if (!closed) {
+      try { browser.process()?.kill('SIGKILL'); } catch {}
+    }
+  }
+  if (server.listening) await new Promise(resolveClose => server.close(() => resolveClose()));
+  if (watchdogFired) {
+    console.error('[X] gacha verifier watchdog stopped a hung browser check');
+    process.exitCode = 2;
+  }
 }
