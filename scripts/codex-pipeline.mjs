@@ -21,7 +21,7 @@ import {
   observeExecTelemetry,
   savePhaseCostReport,
 } from './lib/codex-cost-report.mjs';
-import { latestPhaseRunResult } from '../.claude/skills/status/references/execution-contract.mjs';
+import { atomicWriteJson, ensurePhaseTaskRun, latestPhaseRunResult } from '../.claude/skills/status/references/execution-contract.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -54,6 +54,36 @@ export function readPhaseMarker(projectRoot, phase) {
   const file = path.join(projectRoot, 'wiki', 'phases', `phase-${phase}.json`);
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
   catch { return { phase, name: PHASE_NAMES[phase], state: 'pending', reason: null }; }
+}
+
+/** Persist host-owned Task identity before Codex receives any tool-capable prompt. */
+export function bindPhaseTaskMarker(projectRoot, phase, taskRun) {
+  const root = path.resolve(projectRoot);
+  const file = path.join(root, 'wiki', 'phases', `phase-${phase}.json`);
+  const previous = readPhaseMarker(root, phase);
+  const now = new Date().toISOString();
+  const marker = {
+    ...previous,
+    schemaVersion: Math.max(3, Number(previous.schemaVersion) || 0),
+    phase: Number(phase),
+    name: previous.name || PHASE_NAMES[phase],
+    state: previous.state || 'pending',
+    startedAt: previous.startedAt || null,
+    updatedAt: now,
+    completedAt: previous.completedAt || null,
+    reason: previous.reason || null,
+    block: previous.block || null,
+    evidence: Array.isArray(previous.evidence) ? previous.evidence : [],
+    execution: {
+      ...(previous.execution && typeof previous.execution === 'object' ? previous.execution : {}),
+      taskId: taskRun.task.id,
+      workflow: taskRun.workflow.id,
+      currentNode: taskRun.state.currentNode,
+      status: taskRun.state.status,
+    },
+  };
+  atomicWriteJson(file, marker);
+  return marker;
 }
 
 export function currentProjectPhase(projectRoot) {
@@ -390,12 +420,25 @@ export async function runPipeline({
   try {
     while (phase <= 9) {
       const initial = firstExecArgs(policy, phase, root, null, mcpOverrides);
+      // Bind the durable phase Task before model tool access. Native Codex file hooks
+      // inherit this immutable identity and reject writes outside its declared scope.
+      const existingMarker = readPhaseMarker(root, phase);
+      const taskRun = ensurePhaseTaskRun({
+        projectRoot: root,
+        phase,
+        phaseName: PHASE_NAMES[phase],
+        taskId: existingMarker?.execution?.taskId || null,
+      });
+      bindPhaseTaskMarker(root, phase, taskRun);
       const phaseEnv = {
         ...process.env,
         FORGE_AI_HOST: 'codex', FORGE_MODEL: initial.selected.model,
         FORGE_REASONING_EFFORT: initial.selected.reasoning, FORGE_SERVICE_TIER: policy.serviceTier,
         FORGE_MODEL_ROUTE: initial.routeId, FORGE_MODEL_ENFORCED: '1',
         FORGE_MAX_PHASE_SUBAGENTS: String(Math.min(policy.limits.maxPhaseSubagents, initial.phasePolicy.maxSubagents)),
+        FORGE_TASK_ID: taskRun.task.id,
+        FORGE_TASK_SCOPE_ENFORCE: '1',
+        FORGE_TASK_CONTRACT_HASH: taskRun.task.contract?.hash || '',
       };
       console.log(`\n[Forge] Phase ${phase} ${PHASE_NAMES[phase]} — NEW clean Codex session`);
       console.log(`[Forge] ${initial.selected.model}/${initial.selected.reasoning}, tier=${policy.serviceTier}`);

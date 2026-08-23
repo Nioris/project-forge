@@ -471,6 +471,12 @@ safe('codex-one-window-pipeline', () => {
   else ok.push('one terminal switches fresh Codex sessions between phases and resumes only open STOPs');
 });
 
+safe('native-task-write-scope', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-task-scope-guard.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('native Task write-scope guard failed — run scripts/check-task-scope-guard.mjs');
+  else ok.push('Codex and GigaChat native writes obey durable Task scope and fail closed on escapes');
+});
+
 safe('api-terminal-profiles', () => {
   const r = spawnSync(process.execPath, ['scripts/check-api-terminal-profiles.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('API terminal profile regression failed — run scripts/check-api-terminal-profiles.mjs');

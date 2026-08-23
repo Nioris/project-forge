@@ -139,7 +139,7 @@ function executionResult({ status, code, message, failure = null, stop = null, e
     projectRoot: root,
     phase,
     phaseName: PHASES[phase],
-    taskId: prev.execution?.taskId || null,
+    taskId: prev.execution?.taskId || process.env.FORGE_TASK_ID || null,
     forceNew,
   });
   const result = makeRunResult({

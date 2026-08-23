@@ -1,4 +1,4 @@
-# Project Forge v4.68.44 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.45 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -459,9 +459,16 @@ exact attempt ID where the adapter supports it.
 
 Only `contract_version: 1` grants automatic skill authority. Task stores its id/hash and rejects drift;
 legacy Markdown stays manual-only. Agent results are advisory: only host operations, evidence, the
-trusted registry and RunResult may close work. Write scope is not yet a sandbox or file lease. See
-`wiki/decisions/033-machine-contract-authority.md`.
+trusted registry and RunResult may close work. Guarded native tools enforce write scope; this is not a
+complete shell sandbox or file lease. See `wiki/decisions/033-machine-contract-authority.md`.
 *(Established v4.68.44 Machine-readable Skill/Agent Contracts.)*
+
+### 23. Native Task writes are host-authorized and fail closed
+
+Bind the exact Task before native writes. Every target must remain inside the real project path and match
+Task scope; one invalid target rejects the operation. Codex/GigaChat share the guard, and active GigaChat
+blocks raw shell. Codex shell/external CLIs still require a worktree + accepted diff.
+*(Established v4.68.45 Host-enforced native Task write scope.)*
 
 ### Adding new lessons — process
 
@@ -486,6 +493,11 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.45 changelog (host-enforced native Task write scope)
+
+Codex binds the phase Task before tools and rejects native writes outside scope. GigaChat guards its
+writes and blocks raw shell during Tasks. Escape regressions include a live Codex smoke.
+
 ## v4.68.44 changelog (machine-readable Skill/Agent contracts)
 
 Eleven canonical skills now expose strict phase/mode, scope, STOP and trusted-verifier contracts; all
@@ -501,12 +513,3 @@ dependency failures become infrastructure blockers. Only Task-enabled read-only 
 Forge registry can execute, project-local registries are untrusted, targets remain project-relative, and
 token-owned locks prevent duplicate verifier runs. GigaChat direct gacha work derives an exact host-owned
 plan from its successful canonical ledger check and uses the same runtime instead of accepting model prose.
-
-## v4.68.42 changelog (durable execution graph)
-
-Added strict Task, RunResult, FailureType and workflow schemas plus five restart-safe execution
-graphs for phase, change, review, diagnose and release work. Local graph state uses atomic writes,
-transition locks and bounded retries without competing with the canonical nine phases. Codex now
-routes exact-attempt structured STOP/results before legacy text heuristics, restores user STOPs before
-launching a model, and never advances from a supplemental completed result alone. GigaChat direct
-tasks persist intent before graph creation, recover orphan runs and record failed verification as repair.

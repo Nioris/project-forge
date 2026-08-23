@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.44 (latest released)
+### Version: v4.68.45 (latest released)
 
+- 2026-08-23: **v4.68.45** — Guarded Codex/GigaChat native writes now inherit the exact durable Task scope; mixed/escaped targets and raw GigaChat shell fail closed, with an authenticated isolated Codex smoke.
 - 2026-08-23: **v4.68.44** — Strict Skill/Agent contracts bind executable eligibility and provenance to durable Tasks; GigaChat verifier authority now comes only from structured successful host operations, never model prose.
 - 2026-08-23: **v4.68.43** — Registered deterministic Task checks now dispatch automatically at `verify`, normalize failures into bounded repair evidence, trust only the installed engine registry, and power GigaChat's direct gacha repair loop.
 - 2026-08-23: **v4.68.42** — Strict Task/RunResult contracts and five durable execution graphs add restart-safe STOP/repair routing with exact Codex attempt correlation while nine phase markers remain the only global progression.
@@ -510,6 +511,8 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 - [[architecture/data-flow]] — how Forge processes a project from sources to release
 
 ### Key decisions (selected)
+- [[decisions/034-native-task-write-boundary]] — guarded native writes inherit durable Task scope; full shell isolation remains a worktree boundary
+- [[decisions/033-machine-contract-authority]] — runtime authority comes only from declared contracts and host-recorded operations
 - [[decisions/032-trusted-verifier-repair-runtime]] — verifier execution trusts only the installed engine registry and routes outcomes mechanically
 - [[decisions/031-durable-execution-graph]] — Task graphs are supplemental; only nine phase markers own global progression
 - [[decisions/001-three-folder-discipline]] — GameIntegration / WorkProgress / Release separation
@@ -527,6 +530,8 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 
 ### Plans
 - [[plan/v4.8-roadmap]] — backlog details
+- [[plan/B3-006-task-write-scope-guard]] — v4.68.45 host-enforced native Task write scope
+- [[plan/B3-005-machine-capability-contracts]] — v4.68.44 Skill/Agent contract authority
 - [[plan/B3-004-verifier-repair-runtime]] — v4.68.43 automatic deterministic verify/repair runtime
 - [[plan/B3-003-durable-execution-graph]] — v4.68.42 Task/RunResult and graph foundation
 

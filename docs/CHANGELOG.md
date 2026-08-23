@@ -4743,6 +4743,15 @@ counterfeit evidence can no longer advance durable state. The old seven-step pip
 now only a compatibility view over canonical nine-phase status, and MCP exposes a bounded read-only
 verifier surface from an explicit registry instead of exporting every `check-*.mjs` script.
 
+## v4.68.42 changelog (durable execution graph)
+
+Added strict Task, RunResult, FailureType and workflow schemas plus five restart-safe execution
+graphs for phase, change, review, diagnose and release work. Local graph state uses atomic writes,
+transition locks and bounded retries without competing with the canonical nine phases. Codex now
+routes exact-attempt structured STOP/results before legacy text heuristics, restores user STOPs before
+launching a model, and never advances from a supplemental completed result alone. GigaChat direct
+tasks persist intent before graph creation, recover orphan runs and record failed verification as repair.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

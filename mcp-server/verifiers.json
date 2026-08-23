@@ -39,6 +39,7 @@
     { "id": "sync-snapshot", "script": "scripts/check-sync-snapshot.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "sync-spec", "script": "scripts/check-sync-spec.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "sync-status", "script": "scripts/check-sync-status.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 60000, "phases": [], "category": "forge-regression" },
+    { "id": "task-scope-guard", "script": "scripts/check-task-scope-guard.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "task-verifier-runner", "script": "scripts/check-task-verifier-runner.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "universal-agent-runtime", "script": "scripts/check-universal-agent-runtime.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "update-surface", "script": "scripts/check-update-surface.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },

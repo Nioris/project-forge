@@ -13,6 +13,17 @@ export function readHookInput() {
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
+/** Emit the structured Codex PreToolUse denial understood by current CLI releases. */
+export function writePreToolDeny(reason) {
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: String(reason || 'Blocked by Project Forge policy.'),
+    },
+  }) + '\n');
+}
+
 /** Extract file paths touched by an apply_patch command. */
 export function extractPatchPaths(command = '') {
   const paths = new Set();

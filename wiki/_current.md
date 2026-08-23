@@ -4,10 +4,18 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.44 Machine-readable Skill/Agent Contracts: strict capability eligibility,
-Task-bound contract provenance and host-owned verifier authority without trusting model prose.
+Ship Project Forge v4.68.45 Host-enforced native Task write scope: bind exact durable Tasks before
+model tools and reject supported Codex/GigaChat writes outside their declared SkillContract scope.
 
 ## Active task
+
+- [x] Bind each Codex phase Task before the first model/tool round-trip.
+- [x] Enforce durable Task scope for Codex native file tools and GigaChat native writes.
+- [x] Reject escaped/mixed paths, terminal Tasks, stale contracts, verifier shadows and raw GigaChat shell.
+- [x] Prove allowed and mixed denied writes through an authenticated isolated Codex Sol smoke.
+- [x] Validate generated surfaces, package, install, synchronize and publish v4.68.45.
+
+### Previous v4.68.44 release
 
 - [x] Add strict SkillContract v1 and AgentContract/AgentResult schemas and validators.
 - [x] Migrate status, Phases 1–9, gacha-meta and five core subagent roles.
@@ -83,7 +91,7 @@ Task-bound contract provenance and host-owned verifier authority without trustin
 
 ## Blockers
 
-No v4.68.44 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+No v4.68.45 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
 Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
@@ -105,5 +113,7 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Verifier execution trusts only Task-enabled read-only checks from the installed engine registry; project-local registries cannot extend execution.
 - 2026-08-23: Deterministic verifier failures return to the shared repair budget; environment failures block without model reinterpretation.
 - 2026-08-23: Only a declared SkillContract plus a structured successful host operation may grant automatic verifier authority; model prose is advisory.
+- 2026-08-23: Every target in one guarded native write is checked; one escaped or unknown target rejects the entire operation.
+- 2026-08-23: Active GigaChat Tasks block raw shell fail-closed; Codex shell isolation remains a disposable-worktree follow-up.
 
-<!-- last updated 2026-08-23 after releasing v4.68.44 Machine-readable Skill/Agent Contracts -->
+<!-- last updated 2026-08-23 after releasing v4.68.45 Host-enforced native Task write scope -->

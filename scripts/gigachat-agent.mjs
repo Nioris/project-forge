@@ -18,6 +18,7 @@ import {
 } from '../.claude/skills/status/references/execution-contract.mjs';
 import { deriveVerifierPlanFromOperations, runTaskVerifiers } from '../.claude/skills/status/references/verifier-runner.mjs';
 import { readSkillContract } from '../.claude/skills/status/references/skill-contract.mjs';
+import { resolveActiveTaskScope, assertTaskWrite } from '../.claude/skills/status/references/task-scope-guard.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -26,12 +27,13 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.44';
+const AUDITED_FORGE_VERSION = '4.68.45';
 const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
 const SELF_TEST = argv.includes('--self-test');
+const SCOPE_SHADOW_PROBE = process.env.FORGE_SCOPE_SHADOW_PROBE === '1';
 const REQUEST_DOCTOR = argv.includes('--request-doctor');
 const INTEGRATION_TEST = argv.includes('--integration-test');
 if (!existsSync(PROJECT) || !statSync(PROJECT).isDirectory()) { console.error(`[X] Project not found: ${PROJECT}`); process.exit(2); }
@@ -68,6 +70,139 @@ function assertWritablePath(p) {
   if (segments.includes('gameintegration')) throw new Error('Forge workspace discipline: GameIntegration/ is read-only; edit WorkProgress/ instead.');
   const ri = segments.indexOf('release');
   if (ri >= 0 && segments.length - ri - 1 > 0) throw new Error('Forge workspace discipline: Release/ content is protected; edit WorkProgress/ and let release skills publish builds.');
+}
+
+// Native GigaChat file tools do not pass through Codex's PreToolUse hooks.
+// They therefore consult the same durable Task/SkillContract scope guard
+// immediately before model-initiated filesystem writes. Runtime bookkeeping
+// (phase markers, durable ledgers, session capture) deliberately does not use
+// these helpers: it is host-owned lifecycle state, not model-authored work.
+function activeTaskScopeForModel() {
+  return resolveActiveTaskScope({
+    projectRoot: PROJECT,
+    taskId: activeDirective?.taskId || process.env.FORGE_TASK_ID || null,
+    phase: activePhase || null,
+  });
+}
+function taskScopeIsActive(scope) {
+  return Boolean(scope?.active || scope?.enforced || scope?.taskId || scope?.task?.id);
+}
+function reportTaskScopeDenied(operation, target, reason) {
+  reportForgeBehavior({
+    severity:'warn', code:'GIGA_TASK_SCOPE_DENIED', kind:'policy_guard', component:'gigachat-agent', operation,
+    message:'GigaChat model-initiated mutation was denied by the active durable Task scope.',
+    expected:'Write only within the active Task SkillContract scope or use a declared read-only verifier/lifecycle operation.',
+    actual:`target=${String(target || '?').slice(0,300)}; reason=${String(reason || '').slice(0,700)}`,
+  });
+}
+function assertModelTaskWrite(pathInput, operation) {
+  const target = rel(safePath(pathInput));
+  let result;
+  try {
+    result = assertTaskWrite({
+      projectRoot: PROJECT,
+      taskId: activeDirective?.taskId || process.env.FORGE_TASK_ID || null,
+      target,
+      operation,
+      phase: activePhase || null,
+    });
+  } catch (error) {
+    reportTaskScopeDenied(operation,target,error?.message || error);
+    throw error;
+  }
+  if (result === false || result?.ok === false || result?.allowed === false) {
+    const reason=result?.error || result?.reason || `Task scope blocks ${operation} for ${target}`;
+    reportTaskScopeDenied(operation,target,reason);
+    throw new Error(reason);
+  }
+  return target;
+}
+function taskScopeDeny(operation, target, reason) {
+  reportTaskScopeDenied(operation,target,reason);
+  return reason;
+}
+function declaredReadOnlyForgeVerifier(scriptPath) {
+  let registry;
+  try { registry = JSON.parse(readFileSync(resolve(ENGINE, 'mcp-server', 'verifiers.json'), 'utf8')); }
+  catch { return false; }
+  const resolved = resolve(scriptPath);
+  return Array.isArray(registry?.verifiers) && registry.verifiers.some(entry => {
+    if (entry?.mutates !== false || typeof entry?.script !== 'string') return false;
+    const enginePath = resolve(ENGINE, entry.script);
+    return resolved === enginePath;
+  });
+}
+function taskScopedAssertTargets(targets, operation) {
+  try {
+    for (const target of targets) assertModelTaskWrite(target, operation);
+    return null;
+  } catch (error) {
+    return String(error?.message || error);
+  }
+}
+function taskScopedShellMutationBlock(command, operation='run_command') {
+  const scope = activeTaskScopeForModel();
+  if (!taskScopeIsActive(scope)) return null;
+  const cmd = String(command || '').trim();
+  return taskScopeDeny(operation,cmd,`Active Task scope ${scope?.taskId || scope?.task?.id || 'guarded'} blocks raw ${operation} execution fail-closed. Use bounded Forge read tools, a portable translated operation, a native scoped write tool, or forge_script for a declared lifecycle/verifier operation.`);
+}
+function forgeScriptTargetArg(args=[]) {
+  const valueFlags = new Set(['--out','--port','--lang','--states','--mobile','--desktop','--clicks','--keys']);
+  for (let index=0; index<args.length; index++) {
+    const value=String(args[index] || '');
+    if (valueFlags.has(value.toLowerCase())) { index++; continue; }
+    if (!value.startsWith('--')) return value;
+  }
+  return '.';
+}
+function taskScopedForgeScriptBlock(scriptPath, args=[]) {
+  const scope = activeTaskScopeForModel();
+  if (!taskScopeIsActive(scope)) return null;
+  if (/phase-state\.mjs$/i.test(String(scriptPath || ''))) return null; // host-owned durable phase lifecycle
+  if (/project-status\.mjs$/i.test(String(scriptPath || '')) || declaredReadOnlyForgeVerifier(scriptPath)) return null;
+  const base = String(scriptPath || '').replace(/\\/g, '/').split('/').pop().toLowerCase();
+  const positional = forgeScriptTargetArg(args);
+  let target;
+  try { target = rel(safePath(positional)); }
+  catch (error) { return taskScopeDeny('forge_script',positional,`Forge Task scope blocks unsafe forge_script target: ${String(error?.message || error)}`); }
+  const targetDir = /\.html?$/i.test(target) ? rel(dirname(safePath(target))) : target;
+  if (base === 'integrate-gacha.mjs') {
+    const denied = taskScopedAssertTargets([
+      `${targetDir}/index.html`, `${targetDir}/js/01-state-foundation.js`, `${targetDir}/js/14-persistence.js`,
+      `${targetDir}/js/13-reset.js`, `${targetDir}/js/18-gacha-integration.js`, `${targetDir}/js/19-gacha-core.js`,
+      'wiki/runtime/gacha-backups/.forge-scope-probe',
+    ], 'forge_script:integrate-gacha');
+    return denied ? taskScopeDeny('forge_script:integrate-gacha',targetDir,`Forge Task scope blocks integrate-gacha: ${denied}`) : null;
+  }
+  if (base === 'modularize-existing-project.mjs') {
+    if (!args.some(arg => /^--(?:apply|refresh)$/i.test(String(arg)))) return null;
+    const denied = taskScopedAssertTargets([
+      /\.html?$/i.test(target) ? target : `${targetDir}/index.html`, `${targetDir}/js/.forge-scope-probe`,
+      `${targetDir}/css/.forge-scope-probe`, 'wiki/architecture/modules.json', 'wiki/architecture/modules.md',
+      'wiki/runtime/modularize-backups/.forge-scope-probe',
+    ], 'forge_script:modularize-existing-project');
+    return denied ? taskScopeDeny('forge_script:modularize-existing-project',targetDir,`Forge Task scope blocks modularize-existing-project: ${denied}`) : null;
+  }
+  if (base === 'ai-studio-init.mjs') {
+    const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
+    const denied = taskScopedAssertTargets([
+      `${rootPrefix}.forge-ai.json`, `${rootPrefix}assets/style/STYLE-BIBLE.md`, `${rootPrefix}assets/prompts/.forge-scope-probe`,
+      `${rootPrefix}assets/generated/candidates/.forge-scope-probe`, `${rootPrefix}assets/generated/approved/.forge-scope-probe`,
+      `${rootPrefix}wiki/ai/.forge-scope-probe`, `${rootPrefix}wiki/ai/art-reviews/.forge-scope-probe`, `${rootPrefix}wiki/qa/.forge-scope-probe`,
+    ], 'forge_script:ai-studio-init');
+    return denied ? taskScopeDeny('forge_script:ai-studio-init',targetDir,`Forge Task scope blocks ai-studio-init: ${denied}`) : null;
+  }
+  if (base === 'local-stage.mjs') {
+    if (!args.some(arg => /^--ai$/i.test(String(arg)))) return null;
+    const outIndex = args.findIndex(arg => /^--out$/i.test(String(arg)));
+    const outEquals = args.find(arg => /^--out=.+/i.test(String(arg)));
+    const output = outEquals ? String(outEquals).slice('--out='.length)
+      : outIndex >= 0 && args[outIndex + 1] ? String(args[outIndex + 1]) : `${targetDir}/stage-out`;
+    const outputRoot=rel(safePath(output));
+    const denied = taskScopedAssertTargets([`${outputRoot}/rt.json`,`${outputRoot}/stage.png`], 'forge_script:local-stage');
+    return denied ? taskScopeDeny('forge_script:local-stage',output,`Forge Task scope blocks local-stage output: ${denied}`) : null;
+  }
+  return taskScopeDeny('forge_script',base,`Active Task scope ${scope?.taskId || scope?.task?.id || 'guarded'} blocks unclassified forge_script ${base || 'unknown'} because its write targets are not declared. Use a registered read-only verifier or a native scoped write tool.`);
 }
 
 function clip(text, max = 30000) { const s = String(text ?? ''); return s.length > max ? s.slice(0, max) + `\n...[truncated ${s.length-max} chars]` : s; }
@@ -1171,6 +1306,10 @@ function contradictedCapabilityBlock(reason=''){
 function resolveForgeScript(name=''){
   const raw=String(name||'').trim().replace(/\\/g,'/');
   if(!raw||raw.includes('..')) throw new Error('forge_script requires a safe canonical script name/path');
+  // Once a durable Task is active, canonical Forge scripts must come from the
+  // trusted engine rather than a project-local shadow with the same filename.
+  // Legacy sessions retain their local-first compatibility below.
+  const scopedTask=taskScopeIsActive(activeTaskScopeForModel());
 
   const aliases=new Map([
     ['phase-state','.claude/skills/status/references/phase-state.mjs'],
@@ -1179,11 +1318,19 @@ function resolveForgeScript(name=''){
     ['project-status.mjs','.claude/skills/status/references/project-status.mjs']
   ]);
   if(aliases.has(raw)){
+    if(scopedTask){
+      const engineAlias=resolve(ENGINE,aliases.get(raw));
+      if(existsSync(engineAlias)) return engineAlias;
+    }
     const p=safePath(aliases.get(raw));
     if(existsSync(p)) return p;
   }
 
   if(raw.startsWith('.claude/')){
+    if(scopedTask){
+      const enginePath=resolve(ENGINE,raw);
+      if(existsSync(enginePath)) return enginePath;
+    }
     const p=safePath(raw);
     if(existsSync(p)) return p;
   }
@@ -1192,6 +1339,7 @@ function resolveForgeScript(name=''){
   const variants=extOf(clean)?[clean]:[clean,`${clean}.mjs`];
   for(const candidate of variants){
     const local=safePath(`scripts/${candidate}`),engine=resolve(ENGINE,'scripts',candidate);
+    if(scopedTask&&existsSync(engine)) return engine;
     if(existsSync(local)) return local;
     if(existsSync(engine)) return engine;
   }
@@ -2723,9 +2871,9 @@ function translatePortableReadOnlyShell(command='') {
   m=s.match(/^\[\s+-f\s+(.+?)\s+\]\s*$/);
   if(m){const path=stripShellQuotes(m[1]),exists=fileExistsNonEmpty(path,1);return {ok:exists,translated_shell:true,status:exists?0:1,stdout:'',stderr:exists?'':'file missing',note:'portable test -f translation'};}
   m=s.match(/^mkdir\s+-p\s+(.+?)\s*$/i);
-  if(m){const path=stripShellQuotes(m[1]);ensureDir(path);return {ok:true,translated_shell:true,mutating:true,status:0,stdout:'',stderr:'',note:'portable mkdir -p translation'};}
+  if(m){const path=stripShellQuotes(m[1]);const target=safePath(path);assertWritablePath(target);assertModelTaskWrite(rel(target),'run_command:portable-mkdir');if(!existsSync(target))mkdirSync(target,{recursive:true});return {ok:true,translated_shell:true,mutating:true,status:0,stdout:'',stderr:'',note:'portable mkdir -p translation'};}
   m=s.match(/^cp\s+-r\s+(.+?)\s+(.+?)\s*$/i);
-  if(m){const src=safePath(stripShellQuotes(m[1])),dst=safePath(stripShellQuotes(m[2]));assertWritablePath(dst);mkdirSync(dirname(dst),{recursive:true});cpSync(src,dst,{recursive:true,force:true,errorOnExist:false});return {ok:true,translated_shell:true,mutating:true,status:0,stdout:'',stderr:'',source:rel(src),destination:rel(dst),note:'portable cp -r translation'};}
+  if(m){const src=safePath(stripShellQuotes(m[1])),dst=safePath(stripShellQuotes(m[2]));assertWritablePath(dst);assertModelTaskWrite(rel(dst),'run_command:portable-copy');mkdirSync(dirname(dst),{recursive:true});cpSync(src,dst,{recursive:true,force:true,errorOnExist:false});return {ok:true,translated_shell:true,mutating:true,status:0,stdout:'',stderr:'',source:rel(src),destination:rel(dst),note:'portable cp -r translation'};}
   return null;
 }
 
@@ -3486,7 +3634,7 @@ function tool(name, a={}) {
       if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
       if(phaseWriteBlock) return jsonResult({ok:false,error:phaseWriteBlock});
-      const p=safePath(a.path); assertWritablePath(p); mkdirSync(dirname(p),{recursive:true});
+      const p=safePath(a.path); assertWritablePath(p); assertModelTaskWrite(rel(p),'write_file'); mkdirSync(dirname(p),{recursive:true});
       const rawContent=typeof a.content==='string'?a.content:JSON.stringify(a.content,null,2)+'\n';
       const finalContent=rel(p)==='wiki/design/brief.md' ? ensureBriefDecisionVerbatim(rawContent) : rawContent;
       writeFileSync(p,finalContent,'utf8');
@@ -3500,7 +3648,7 @@ function tool(name, a={}) {
       if(runtimeWriteBlock) return jsonResult({ok:false,error:runtimeWriteBlock});
       const phaseWriteBlock=phase1ArtifactWriteGuard(a.path);
       if(phaseWriteBlock) return jsonResult({ok:false,error:phaseWriteBlock});
-      const p=safePath(a.path); assertWritablePath(p); const old=String(a.old_text), neu=String(a.new_text); let txt=readText(p);
+      const p=safePath(a.path); assertWritablePath(p); assertModelTaskWrite(rel(p),'replace_text'); const old=String(a.old_text), neu=String(a.new_text); let txt=readText(p);
       const first=txt.indexOf(old); if(first<0) throw new Error('old_text not found'); if(txt.indexOf(old,first+old.length)>=0) throw new Error('old_text occurs more than once');
       txt=txt.slice(0,first)+neu+txt.slice(first+old.length);
       if(rel(p)==='wiki/design/brief.md') txt=ensureBriefDecisionVerbatim(txt);
@@ -3512,6 +3660,7 @@ function tool(name, a={}) {
       const dst=safePath(a.destination);
       if(!existsSync(src)) throw new Error(`copy_path source does not exist: ${a.source}`);
       assertWritablePath(dst);
+      assertModelTaskWrite(rel(dst),'copy_path');
       mkdirSync(dirname(dst),{recursive:true});
       const st=statSync(src);
       if(st.isFile() && existsSync(dst)){
@@ -3605,6 +3754,8 @@ function tool(name, a={}) {
       const script=resolveForgeScript(a.name),args=Array.isArray(a.args)?a.args.map(String):[],sec=Math.max(1,Math.min(600,Number(a.timeout_seconds||120)));
       if(/ai-studio-init\.mjs$/i.test(script) && args.length===0) args.push('.');
       if(/local-stage\.mjs$/i.test(script) && !args.some(x=>/^--ai$/i.test(x))) args.push('--ai','--play');
+      const taskScopeBlock=taskScopedForgeScriptBlock(script,args);
+      if(taskScopeBlock) return jsonResult({ok:false,failure_type:'task-scope-guard',error:taskScopeBlock});
       if(/phase-state\.mjs$/i.test(script) && /^complete$/i.test(String(args[0]||''))){
         const normalized=[args[0],args[1]];
         for(const value of args.slice(2)){
@@ -3682,6 +3833,10 @@ function tool(name, a={}) {
           note:`Forge blocked a hallucinated/nonexistent skill runner (${missingRunner.runner}). This skill is defined by SKILL.md. Execute the canonical SKILL.md steps through available Forge tools; do not retry an invented index.mjs.`
         });
       }
+      const portableRead=translatePortableReadOnlyShell(cmd);
+      if(portableRead) return jsonResult(portableRead);
+      const taskScopeBlock=taskScopedShellMutationBlock(cmd,'run_command');
+      if(taskScopeBlock) return jsonResult({ok:false,failure_type:'task-scope-guard',error:taskScopeBlock});
       const projectScriptMatch=cmd.match(/^node\s+["']?scripts[\\/]([^'"\s]+)["']?(?:\s+([\s\S]*))?$/i);
       if(projectScriptMatch){
         const local=safePath(`scripts/${projectScriptMatch[1]}`),engine=resolve(ENGINE,'scripts',projectScriptMatch[1]);
@@ -3697,8 +3852,6 @@ function tool(name, a={}) {
           return jsonResult({ok:rr.status===0,status:rr.status,stdout:clip(rr.stdout,40000),stderr:clip(rr.stderr,16000),resolved_engine_script:engine,...(translatedFileTarget?{translated_file_target:translatedFileTarget,actual_project_directory:args[0]}:{})});
         }
       }
-      const portableRead=translatePortableReadOnlyShell(cmd);
-      if(portableRead) return jsonResult(portableRead);
       const startMatch=cmd.match(/phase-state\.mjs[^\n]*\b(?:start|reopen)\s+(\d+)\b/i);
       if(startMatch && phaseMarkedComplete(Number(startMatch[1]))) return jsonResult({ok:true,status:0,already_complete:true,phase:Number(startMatch[1]),stdout:`Phase ${Number(startMatch[1])} is durably complete; refusing to reopen it from a downstream phase.`,stderr:''});
       if(startMatch && Number(startMatch[1])>1 && !phaseMarkedComplete(Number(startMatch[1])-1)) return jsonResult({ok:false,failure_type:'phase-order',error:`Cannot start Phase ${Number(startMatch[1])}: Phase ${Number(startMatch[1])-1} is not durably complete. Finish the earlier authoritative gate first.`});
@@ -3721,7 +3874,7 @@ async function generateGigaImage(a={}) {
   const requested=String(a.output_path||'').trim().replace(/\\/g,'/');
   if(!prompt) throw new Error('gigachat_generate_image requires prompt');
   if(!requested) throw new Error('gigachat_generate_image requires output_path');
-  const requestedAbs=safePath(requested); assertWritablePath(requestedAbs);
+  const requestedAbs=safePath(requested); assertWritablePath(requestedAbs); assertModelTaskWrite(rel(requestedAbs),'gigachat_generate_image');
   const reqExt=extOf(requested);
   if(reqExt && !['.png','.jpg','.jpeg','.webp','.gif'].includes(reqExt)) throw new Error('Image output_path must use an image extension such as .png/.jpg/.webp or have no extension');
 
@@ -3738,10 +3891,11 @@ async function generateGigaImage(a={}) {
   const actualExt=detectImageBufferExt(buffer);
   if(!actualExt) throw new Error('Downloaded GigaChat image has an unrecognized/invalid image signature');
   const finalRel=withDetectedExtension(requested,actualExt);
-  const finalAbs=safePath(finalRel); assertWritablePath(finalAbs); mkdirSync(dirname(finalAbs),{recursive:true});
+  const finalAbs=safePath(finalRel); assertWritablePath(finalAbs); assertModelTaskWrite(rel(finalAbs),'gigachat_generate_image'); mkdirSync(dirname(finalAbs),{recursive:true});
   writeFileSync(finalAbs,buffer);
   if(!isValidMediaFile(finalRel)) throw new Error(`Saved GigaChat image failed media validation: ${finalRel}`);
   const provenanceRel=`${finalRel}.provenance.json`;
+  assertModelTaskWrite(provenanceRel,'gigachat_generate_image:provenance');
   const provenance={schemaVersion:1,provider:'gigachat',builtinFunction:'text2image',model:MODEL,purpose:String(a.purpose||''),prompt,fileId,functionsStateId:msg?.functions_state_id||null,generatedAt:new Date().toISOString(),requestedPath:requested,actualPath:finalRel,format:actualExt.slice(1),bytes:buffer.length};
   writeFileSync(safePath(provenanceRel),JSON.stringify(provenance,null,2)+'\n','utf8');
   return {ok:true,path:finalRel,requested_path:requested,file_id:fileId,format:actualExt.slice(1),bytes:buffer.length,provenance:provenanceRel,functions_state_id:msg?.functions_state_id||null,...(finalRel!==requested?{warning:`GigaChat returned ${actualExt}; saved with matching real extension instead of requested path.`}:{})};
@@ -3754,7 +3908,7 @@ async function generateGiga3d(a={}) {
   if(!requested) throw new Error('gigachat_generate_3d requires output_path');
   if(extOf(requested) && extOf(requested)!=='.fbx') throw new Error('3D output_path must end in .fbx or have no extension');
   if(!extOf(requested)) requested+='.fbx';
-  const outAbs=safePath(requested); assertWritablePath(outAbs);
+  const outAbs=safePath(requested); assertWritablePath(outAbs); assertModelTaskWrite(rel(outAbs),'gigachat_generate_3d');
   const data=await gigaJson(await token(),'/v1/chat/completions',{model:MODEL,messages:[{role:'user',content:prompt}],functions:[{name:'text2model3d'}],function_call:'auto'},420000);
   const msg=data?.choices?.[0]?.message;
   const content=String(msg?.content||'');
@@ -3764,6 +3918,7 @@ async function generateGiga3d(a={}) {
   if(!isValidFbxBuffer(buffer)) throw new Error('Downloaded GigaChat 3D payload does not look like an FBX file');
   mkdirSync(dirname(outAbs),{recursive:true}); writeFileSync(outAbs,buffer);
   const provenanceRel=`${requested}.provenance.json`;
+  assertModelTaskWrite(provenanceRel,'gigachat_generate_3d:provenance');
   const provenance={schemaVersion:1,provider:'gigachat',builtinFunction:'text2model3d',model:MODEL,purpose:String(a.purpose||''),prompt,fileId,functionsStateId:msg?.functions_state_id||null,generatedAt:new Date().toISOString(),actualPath:requested,bytes:buffer.length};
   writeFileSync(safePath(provenanceRel),JSON.stringify(provenance,null,2)+'\n','utf8');
   return {ok:true,path:requested,file_id:fileId,bytes:buffer.length,provenance:provenanceRel,functions_state_id:msg?.functions_state_id||null};
@@ -4891,7 +5046,47 @@ if (REQUEST_DOCTOR) {
 } else if (SELF_TEST) {
   const checks=[];
   const test=(name,fn)=>{ try{ if(!fn()) throw new Error('false'); checks.push(`[OK] ${name}`); } catch(e){ checks.push(`[FAIL] ${name}: ${e.message}`); process.exitCode=1; } };
+  if (SCOPE_SHADOW_PROBE) {
+    if (resolve(PROJECT) === resolve(ENGINE)) {
+      console.error('[X] FORGE_SCOPE_SHADOW_PROBE refuses the Forge engine root. Run it only in an empty temporary project.');
+      process.exit(2);
+    }
+    const shadow=safePath('scripts/check-gacha-integration.mjs');
+    if (existsSync(shadow)) {
+      console.error('[X] FORGE_SCOPE_SHADOW_PROBE refuses to overwrite an existing project script.');
+      process.exit(2);
+    }
+    const trusted=resolve(ENGINE,'scripts','check-gacha-integration.mjs');
+    const trustedHash=createHash('sha256').update(readFileSync(trusted)).digest('hex');
+    mkdirSync(dirname(shadow),{recursive:true});
+    writeFileSync(shadow,'// untrusted local shadow fixture\n','utf8');
+    const task=makeTask({id:`giga-shadow-${randomUUID().replaceAll('-','').slice(0,18)}`,mode:'change',phase:null,goal:'Verify scoped canonical script provenance',scope:{read:['**'],write:['WorkProgress/**']}});
+    const run=startTaskRun({projectRoot:PROJECT,task});
+    const priorDirective=activeDirective;
+    activeDirective={taskId:run.task.id,request:'scope shadow probe',pausedPhase:null};
+    const selected=resolveForgeScript('scripts/check-gacha-integration.mjs');
+    const escapedShell=taskScopedShellMutationBlock(`node -e "require('fs').writeFileSync('Release/pwn','x')"`);
+    const unclassifiedShell=taskScopedShellMutationBlock('powershell -Command Set-Content Release/pwn x');
+    activeDirective=priorDirective;
+    test('active Task resolves registered verifier from trusted engine despite local shadow',()=>selected===resolve(ENGINE,'scripts','check-gacha-integration.mjs'));
+    test('scope shadow probe leaves canonical verifier hash unchanged',()=>createHash('sha256').update(readFileSync(trusted)).digest('hex')===trustedHash);
+    test('active Task blocks unclassified shell execution fail-closed',()=>/blocks raw run_command execution fail-closed/.test(escapedShell||'')&&/blocks raw run_command execution fail-closed/.test(unclassifiedShell||''));
+    console.log(checks.join('\n'));
+    process.exit(process.exitCode||0);
+  }
   test('junk response rejected',()=>!meaningfulText('<') && !meaningfulText('...') && meaningfulText('status ok'));
+  test('Task scope guard keeps no-active-task compatibility',()=>!taskScopeIsActive(null)&&!taskScopeIsActive({active:false}));
+  test('Task scope guard recognizes an active durable Task',()=>taskScopeIsActive({active:true,taskId:'Task-guard-fixture'}));
+  test('native write_file and replace_text use Task scope guard',()=>/assertModelTaskWrite\(rel\(p\),'write_file'\)/.test(tool.toString())&&/assertModelTaskWrite\(rel\(p\),'replace_text'\)/.test(tool.toString()));
+  test('copy destination and portable filesystem translations use Task scope guard',()=>/assertModelTaskWrite\(rel\(dst\),'copy_path'\)/.test(tool.toString())&&/run_command:portable-mkdir/.test(translatePortableReadOnlyShell.toString())&&/run_command:portable-copy/.test(translatePortableReadOnlyShell.toString()));
+  test('Giga media output and provenance use Task scope guard',()=>/gigachat_generate_image:provenance/.test(generateGigaImage.toString())&&/gigachat_generate_3d:provenance/.test(generateGiga3d.toString()));
+  test('guarded Task blocks raw shell fail-closed and unclassified forge scripts',()=>/blocks raw/.test(taskScopedShellMutationBlock.toString())&&/taskScopedShellMutationBlock/.test(tool.toString())&&/taskScopedForgeScriptBlock/.test(tool.toString())&&/blocks unclassified forge_script/.test(taskScopedForgeScriptBlock.toString()));
+  test('only registered read-only verifier scripts bypass the scoped forge-script block',()=>/declaredReadOnlyForgeVerifier/.test(taskScopedForgeScriptBlock.toString())&&/mutates !== false/.test(declaredReadOnlyForgeVerifier.toString()));
+  test('active Task trusts engine verifier scripts, never project-local shadows',()=>!/projectPath/.test(declaredReadOnlyForgeVerifier.toString())&&/scopedTask&&existsSync\(engine\)/.test(resolveForgeScript.toString()));
+  test('scoped canonical mutators enumerate their output roots',()=>{const x=taskScopedForgeScriptBlock.toString();return /gacha-backups/.test(x)&&/modularize-backups/.test(x)&&/\.forge-ai\.json/.test(x)&&/stage-out/.test(x)&&/stage\.png/.test(x);});
+  test('scoped output maps handle nested AI Studio targets and --out=value',()=>{const x=taskScopedForgeScriptBlock.toString();return /rootPrefix/.test(x)&&/--out=/.test(x)&&forgeScriptTargetArg(['--out','Release/escape','WorkProgress/game'])==='WorkProgress/game'&&forgeScriptTargetArg(['--out=Release/escape','WorkProgress/game'])==='WorkProgress/game';});
+  test('Task scope denials emit bounded Forge diagnostics',()=>/GIGA_TASK_SCOPE_DENIED/.test(reportTaskScopeDenied.toString())&&/slice\(0,700\)/.test(reportTaskScopeDenied.toString())&&/taskScopeDeny/.test(taskScopedForgeScriptBlock.toString()));
+  test('phase lifecycle exception is forge_script-only, not a shell substring bypass',()=>!/phase-state/.test(taskScopedShellMutationBlock.toString())&&/phase-state\\\.mjs/.test(taskScopedForgeScriptBlock.toString()));
   test('binary write extension blocked',()=>{ try{assertTextWritableExtension('x.png');return false;}catch{return true;} });
   test('phase complete hard gate active',()=>/Phase 4 completion blocked/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md')||''));
   test('forge_script phase complete cannot bypass the hard gate',()=>/hard gate/i.test(forgeScriptPhaseCompletionBlocked('.claude/skills/status/references/phase-state.mjs',['complete','4'])||''));

@@ -6,14 +6,16 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
-  classifyAfterTurn, classifyTurnResult, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
+  bindPhaseTaskMarker, classifyAfterTurn, classifyTurnResult, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
   resolveCodexLauncher, resumeExecArgs, runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
+import { ensurePhaseTaskRun, readTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
 import {
   auditRolloutFile, buildPhaseCostReport, createExecTelemetry, formatPhaseCostReport,
   observeExecTelemetry, savePhaseCostReport,
 } from './lib/codex-cost-report.mjs';
 
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
 const check = (condition, message) => {
   console.log(`  ${condition ? '✓' : '✗'} ${message}`);
@@ -157,6 +159,16 @@ try {
     && (dry.stdout.match(/fresh-session=yes/g) || []).length === 8,
   'dry run shows one fresh session for every remaining phase without calling a model');
 
+  const prebound = ensurePhaseTaskRun({ projectRoot: tmp, phase: 2, phaseName: 'Design' });
+  const boundMarker = bindPhaseTaskMarker(tmp, 2, prebound);
+  const phaseState = spawnSync(process.execPath, [path.join(REPO_ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs'), 'start', '2', '--host', 'codex'], {
+    cwd: tmp, encoding: 'utf8', env: { ...process.env, FORGE_RUN_ATTEMPT_ID: 'codex-prebound-task-fixture' },
+  });
+  const afterPhaseState = JSON.parse(fs.readFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), 'utf8'));
+  check(boundMarker.execution.taskId === prebound.task.id && phaseState.status === 0
+    && afterPhaseState.execution.taskId === prebound.task.id && readTaskRun(tmp, prebound.task.id)?.task.id === prebound.task.id,
+  'host pre-binds the phase Task in the marker and phase-state reuses that exact durable Task');
+
   const fake = path.join(tmp, 'fake-codex.mjs');
   fs.writeFileSync(fake, `
 import fs from 'node:fs'; import path from 'node:path';
@@ -169,6 +181,7 @@ if(args[0]==='mcp'&&args[1]==='list'){
   ])); process.exit(0);
 }
 fs.appendFileSync(path.join(root,'model-launch-count'),'1\\n');
+if(process.env.FORGE_TASK_SCOPE_ENFORCE==='1'&&/^phase-\\d+-/.test(process.env.FORGE_TASK_ID||'')&&/^[a-f0-9]{64}$/.test(process.env.FORGE_TASK_CONTRACT_HASH||'')) fs.writeFileSync(path.join(root,'task-scope-env-ok'),'yes');
 const prompt=args.at(-1)||''; const m=prompt.match(/\\$phase-(\\d+)-/); const phase=Number(m?.[1]||1); const resumed=args[0]==='exec'&&args[1]==='resume';
 if(args.includes('mcp_servers.unityMCP.enabled=false')) fs.writeFileSync(path.join(root,'mcp-override-ok'),'yes');
 fs.mkdirSync(path.join(root,'wiki','phases'),{recursive:true});
@@ -240,6 +253,8 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
     'full loop resumes one STOP inside Phase 1, then launches clean sessions through Phase 9');
   check(fs.existsSync(path.join(tmp, 'mcp-override-ok')),
     'full pipeline applies the unavailable local MCP override to real phase launches');
+  check(fs.existsSync(path.join(tmp, 'task-scope-env-ok')),
+    'phase launch pre-binds a durable Task identity and contract hash before model access');
   check(Array.from({ length: 9 }, (_, i) => i + 1).every(phase =>
     fs.existsSync(path.join(tmp, 'wiki', 'diagnostics', 'codex-cost', `phase-${phase}-latest.json`))),
     'one-window pipeline saves a local cost/context report after every completed phase');

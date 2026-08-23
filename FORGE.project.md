@@ -61,8 +61,12 @@ asking the model to interpret raw stdout. A project-local registry is untrusted.
 plan after the Task has left an agent node, and never treat a stale `.verify.lock` as permission to start a
 second verifier; inspect the owning process before removing an abandoned lock.
 
-Task read/write scopes are validated declarations, not a substitute for workspace protection or
-host sandboxing. Host guards remain authoritative until scoped tool enforcement and file leases ship.
+Task read/write scopes are executable host authority for guarded native file operations. The Codex
+pipeline binds the exact phase Task before native `Edit`, `Write` or `apply_patch`, and GigaChat checks
+its text/copy/media/portable writes plus classified Forge-script outputs against the same durable scope.
+Unknown targets, stale contract provenance, terminal Tasks, lexical escapes and junction/symlink
+escapes fail closed. This is not an operating-system sandbox: arbitrary Codex shell code and external
+whole-project CLIs still require a disposable task worktree and host-accepted diff boundary.
 
 ### Executable skill and agent contracts
 

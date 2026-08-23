@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.44`
+**Current public version:** `v4.68.45`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -95,6 +95,12 @@ Other skills remain fully available for explicit use but are manual-only until t
 
 Core subagent roles use typed Builder/Reviewer/Researcher contracts. Their structured reports help the
 orchestrator merge work, but only host-recorded operations, evidence and verifier results can complete a Task.
+
+The Codex phase pipeline now binds that Task before the model receives native file tools. Its hook rejects
+`Edit`, `Write` and `apply_patch` targets outside the declared write scope; GigaChat applies the same guard
+to its native writes and classified Forge scripts, and blocks raw shell execution while a Task is active.
+Path validation also rejects junction/symlink escapes. This is a native tool boundary, not an OS sandbox:
+arbitrary Codex shell code and external whole-project CLIs still need an isolated worktree and accepted diff.
 
 ## Quick start
 
@@ -185,7 +191,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.44` keeps separate normal-account and API profiles.
+`v4.68.45` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -377,7 +383,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.19.md](RELEASE_NOTES_v4.68.19.md) — current release notes
+- [RELEASE_NOTES_v4.68.45.md](RELEASE_NOTES_v4.68.45.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

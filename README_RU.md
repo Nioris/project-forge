@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая публичная версия:** `v4.68.44`
+**Текущая публичная версия:** `v4.68.45`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -96,6 +96,12 @@ STOP-точки, риск и доверенный набор проверок. F
 Основные субагенты используют типизированные Builder/Reviewer/Researcher-контракты. Их отчёты
 помогают оркестратору, но Task закрывают только записанные хостом операции, evidence и verifiers.
 
+Codex pipeline теперь связывает Task до того, как модель получает нативные файловые инструменты.
+Hook отклоняет `Edit`, `Write` и `apply_patch` вне объявленного write scope; GigaChat применяет тот же
+guard к нативным записям и классифицированным Forge scripts, а при активном Task блокирует raw shell.
+Проверка путей также закрывает junction/symlink-выходы. Это граница нативных tools, не OS sandbox:
+произвольный Codex shell и внешние whole-project CLI требуют изолированного worktree и принятого diff.
+
 ## Быстрый старт
 
 Нужно:
@@ -184,7 +190,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.44` обычная авторизация и API-профили остаются разделены.
+В `v4.68.45` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка
@@ -342,7 +348,7 @@ dashboard.html    локальный Dashboard
 - [GUIDE.md](GUIDE.md) — полное руководство
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — справочник команд
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.15.md](RELEASE_NOTES_v4.68.15.md) — изменения текущей версии
+- [RELEASE_NOTES_v4.68.45.md](RELEASE_NOTES_v4.68.45.md) — изменения текущей версии
 - [SECURITY.md](SECURITY.md) — правила по секретам и безопасности
 - [CONTRIBUTING.md](CONTRIBUTING.md) — правила contribution
 - [ROADMAP.md](ROADMAP.md) — публичное направление развития

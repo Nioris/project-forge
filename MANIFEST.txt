@@ -177,6 +177,7 @@
 .agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
 .agents/skills/status/references/skill-contract.mjs
+.agents/skills/status/references/task-scope-guard.mjs
 .agents/skills/status/references/verifier-runner.mjs
 .agents/skills/status/references/workflow-state.mjs
 .agents/skills/status/references/workflows/change.json
@@ -420,6 +421,7 @@
 .claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
 .claude/skills/status/references/skill-contract.mjs
+.claude/skills/status/references/task-scope-guard.mjs
 .claude/skills/status/references/verifier-runner.mjs
 .claude/skills/status/references/workflow-state.mjs
 .claude/skills/status/references/workflows/change.json
@@ -470,9 +472,11 @@
 .codex/config.project.toml
 .codex/config.toml
 .codex/hooks.json
+.codex/hooks/bash-safety.mjs
 .codex/hooks/lib.mjs
 .codex/hooks/plan-check.mjs
 .codex/hooks/post-tool-capture.mjs
+.codex/hooks/task-scope.mjs
 .codex/hooks/workspace-discipline.mjs
 .gitattributes
 .github/ISSUE_TEMPLATE/bug_report.yml
@@ -533,6 +537,7 @@ RELEASE_NOTES_v4.68.41.md
 RELEASE_NOTES_v4.68.42.md
 RELEASE_NOTES_v4.68.43.md
 RELEASE_NOTES_v4.68.44.md
+RELEASE_NOTES_v4.68.45.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
@@ -771,6 +776,7 @@ scripts/check-store-listing.mjs
 scripts/check-sync-snapshot.mjs
 scripts/check-sync-spec.mjs
 scripts/check-sync-status.mjs
+scripts/check-task-scope-guard.mjs
 scripts/check-task-verifier-runner.mjs
 scripts/check-universal-agent-runtime.mjs
 scripts/check-update-surface.mjs
@@ -804,6 +810,7 @@ scripts/lib/forge-secrets.mjs
 scripts/lib/gigachat-api.mjs
 scripts/lib/release-zip-selection.mjs
 scripts/lib/runtime-version.mjs
+scripts/live-codex-task-scope-smoke.mjs
 scripts/local-stage.mjs
 scripts/migrate-sessions.mjs
 scripts/mobile-check.mjs
@@ -969,6 +976,7 @@ wiki/decisions/030-claude-md-soft-limit.md
 wiki/decisions/031-durable-execution-graph.md
 wiki/decisions/032-trusted-verifier-repair-runtime.md
 wiki/decisions/033-machine-contract-authority.md
+wiki/decisions/034-native-task-write-boundary.md
 wiki/decisions/_template.md
 wiki/deploy-log.md
 wiki/features/_template.md
@@ -980,6 +988,7 @@ wiki/plan/B3-002-state-integrity.md
 wiki/plan/B3-003-durable-execution-graph.md
 wiki/plan/B3-004-verifier-repair-runtime.md
 wiki/plan/B3-005-machine-capability-contracts.md
+wiki/plan/B3-006-task-write-scope-guard.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md
