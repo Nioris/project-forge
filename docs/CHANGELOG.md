@@ -4729,6 +4729,12 @@ refuses to run it through the default ZDR profile: selection requires explicit `
 because the upstream provider retains prompts and completions. The preset is therefore restricted
 to non-confidential evaluation projects while keeping the existing 64-step OpenCode turn budget.
 
+## v4.68.40 changelog (newest release archive runtime gate)
+
+Variant-aware runtime QA now selects the highest numeric release version rather than the first ZIP
+returned by the filesystem. Production, debug and marketing archives are matched exactly, and a
+dedicated regression guards unsorted directory entries plus numeric ordering such as v1.10 over v1.9.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

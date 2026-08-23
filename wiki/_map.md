@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.42 (latest released)
+### Version: v4.68.43 (latest released)
 
+- 2026-08-23: **v4.68.43** — Registered deterministic Task checks now dispatch automatically at `verify`, normalize failures into bounded repair evidence, trust only the installed engine registry, and power GigaChat's direct gacha repair loop.
 - 2026-08-23: **v4.68.42** — Strict Task/RunResult contracts and five durable execution graphs add restart-safe STOP/repair routing with exact Codex attempt correlation while nine phase markers remain the only global progression.
 - 2026-08-23: **v4.68.41** — All nine phases use executable evidence contracts; the legacy seven-step checker delegates to canonical status and MCP exposes only registered read-only verifiers.
 - 2026-08-23: **v4.68.40** — Runtime QA selects the highest numeric ZIP version for the exact production/debug/marketing variant; unsorted and v1.10-vs-v1.9 regressions are release-gated.
@@ -508,6 +509,7 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 - [[architecture/data-flow]] — how Forge processes a project from sources to release
 
 ### Key decisions (selected)
+- [[decisions/032-trusted-verifier-repair-runtime]] — verifier execution trusts only the installed engine registry and routes outcomes mechanically
 - [[decisions/031-durable-execution-graph]] — Task graphs are supplemental; only nine phase markers own global progression
 - [[decisions/001-three-folder-discipline]] — GameIntegration / WorkProgress / Release separation
 - [[decisions/002-knowledge-base-vs-skills]] — `.claude/skills/` (commands) vs `./skills/` (KB)
@@ -524,6 +526,7 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 
 ### Plans
 - [[plan/v4.8-roadmap]] — backlog details
+- [[plan/B3-004-verifier-repair-runtime]] — v4.68.43 automatic deterministic verify/repair runtime
 - [[plan/B3-003-durable-execution-graph]] — v4.68.42 Task/RunResult and graph foundation
 
 ### Memory

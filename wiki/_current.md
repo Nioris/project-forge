@@ -4,10 +4,19 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.42 Durable Execution Graph: formal Task/RunResult/FailureType contracts,
-restart-safe workflow state and structured turn routing on top of the canonical nine phases.
+Ship Project Forge v4.68.43 Verifier-Driven Repair Runtime: trusted deterministic check execution,
+normalized failure evidence and automatic bounded repair on top of the durable Task graph.
 
 ## Active task
+
+- [x] Add strict Task verifier plans and structured RunResult verification evidence.
+- [x] Execute only trusted Task-enabled read-only checks from the installed engine registry.
+- [x] Route PASS/FAIL/environment into done/repair/blocked with the shared retry budget.
+- [x] Auto-dispatch verifier nodes from workflow results and GigaChat direct gacha tasks.
+- [x] Add registry, target, output normalization, lock ownership and adapter regressions.
+- [x] Validate generated surfaces, package, install, synchronize and publish v4.68.43.
+
+### Previous v4.68.42 release
 
 - [x] Define host-neutral Task, RunResult and workflow schemas.
 - [x] Implement durable graph state and five runtime-enforced execution modes.
@@ -66,8 +75,9 @@ restart-safe workflow state and structured turn routing on top of the canonical 
 
 ## Blockers
 
-No engine blocker. Ox Alpha is free during preview but retains prompts/completions; the benchmark
-must stay confined to the intentionally public, synthetic Snake GDD.
+No v4.68.43 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
+Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
 ## Last 3 decisions
 
@@ -84,5 +94,7 @@ must stay confined to the intentionally public, synthetic Snake GDD.
 - 2026-08-23: Task graphs are supplemental execution state; the canonical nine phase markers remain the only global progression.
 - 2026-08-23: Structured Codex STOP/results are trusted by exact per-turn attempt ID; timestamp/text matching is legacy fallback only.
 - 2026-08-23: A passed phase marker is persisted before its supplemental completed RunResult, and only that marker may advance the pipeline.
+- 2026-08-23: Verifier execution trusts only Task-enabled read-only checks from the installed engine registry; project-local registries cannot extend execution.
+- 2026-08-23: Deterministic verifier failures return to the shared repair budget; environment failures block without model reinterpretation.
 
-<!-- last updated 2026-08-23 after releasing v4.68.42 Durable Execution Graph -->
+<!-- last updated 2026-08-23 after releasing v4.68.43 Verifier-Driven Repair Runtime -->

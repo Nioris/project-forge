@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.42`
+**Current public version:** `v4.68.43`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -80,6 +80,11 @@ and infrastructure failures stop explicitly instead of being mistaken for a chat
 Local graph state lives in `.forge/runs/`, is excluded from Git, and is shown by `/status` only as
 supplemental execution state. It can never advance a phase without the canonical phase completion
 contract. For manual inspection use `node scripts/forge-workflow.mjs status --project .`.
+
+For direct `change` Tasks, the workflow can run an engine-declared verifier plan automatically. Registered
+read-only checks turn PASS into `done`, deterministic failures into a bounded `repair → verify` loop, and
+timeouts or missing dependencies into an explicit infrastructure stop. Only the installed Forge registry is
+trusted; a project cannot make an arbitrary local script executable by writing its own registry.
 
 ## Quick start
 
@@ -170,7 +175,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.42` keeps separate normal-account and API profiles.
+`v4.68.43` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription

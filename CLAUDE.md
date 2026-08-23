@@ -1,4 +1,4 @@
-# Project Forge v4.68.42 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.43 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -478,6 +478,15 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.43 changelog (verifier-driven repair runtime)
+
+Change Tasks now execute registered deterministic checks automatically when the graph enters `verify`.
+PASS reaches `done`; normalized verifier failures return to the shared bounded repair loop; timeout and
+dependency failures become infrastructure blockers. Only Task-enabled read-only checks from the installed
+Forge registry can execute, project-local registries are untrusted, targets remain project-relative, and
+token-owned locks prevent duplicate verifier runs. GigaChat direct gacha work derives an exact host-owned
+plan from its successful canonical ledger check and uses the same runtime instead of accepting model prose.
+
 ## v4.68.42 changelog (durable execution graph)
 
 Added strict Task, RunResult, FailureType and workflow schemas plus five restart-safe execution
@@ -494,9 +503,3 @@ evidence paths and phase-specific project checks. Missing, irrelevant, directory
 counterfeit evidence can no longer advance durable state. The old seven-step pipeline checker is
 now only a compatibility view over canonical nine-phase status, and MCP exposes a bounded read-only
 verifier surface from an explicit registry instead of exporting every `check-*.mjs` script.
-
-## v4.68.40 changelog (newest release archive runtime gate)
-
-Variant-aware runtime QA now selects the highest numeric release version rather than the first ZIP
-returned by the filesystem. Production, debug and marketing archives are matched exactly, and a
-dedicated regression guards unsorted directory entries plus numeric ordering such as v1.10 over v1.9.
