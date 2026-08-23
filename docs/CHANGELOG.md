@@ -4779,6 +4779,13 @@ Copied phase runtimes gained installed sibling-engine lookup, fixing Phase Task 
 App chats without copying the verifier registry into managed games. Verifier-node contract revalidation
 was completed in the follow-up v4.68.47 immutable build.
 
+## v4.68.47 changelog (complete portable contract authority)
+
+Verifier-node SkillContract revalidation now uses the same trusted installed engine as registry
+execution and Task creation. Managed projects cannot self-promote through their folder name or a local
+`FORGE_ENGINE_ROOT`; case folding is Windows-only. The copied-runtime regression now reaches `done`
+through a contracted verifier while tampered local contracts and registries remain ineffective.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

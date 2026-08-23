@@ -1,4 +1,4 @@
-# Project Forge v4.68.49 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.50 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -493,6 +493,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.50 changelog (marker-authoritative status progression)
+
+`$status` now uses artifact inference only for projects with zero valid phase markers. In a modern
+marker-managed project, the first missing marker remains the current gate; later visual/SDK/listing/QA
+artifacts are reported as evidence ahead of gate without silently completing or skipping phases.
+
 ## v4.68.49 changelog (complete Unicode evidence classification)
 
 Unicode-aware Russian KPI/research enforcement now distinguishes document-level market vocabulary from
@@ -506,10 +512,3 @@ Phase 1 KPI and research validation now uses Unicode token boundaries instead of
 ASCII-oriented `\b`/`\w`. Russian hypothesis/no-evidence wording works directly, while unsupported
 Cyrillic KPI and external-market claims are rejected. Inflected research terms and positive Russian
 confirmations are covered by regression tests without weakening existing English checks.
-
-## v4.68.47 changelog (complete portable contract authority)
-
-Verifier-node SkillContract revalidation now uses the same trusted installed engine as registry
-execution and Task creation. Managed projects cannot self-promote through their folder name or a local
-`FORGE_ENGINE_ROOT`; case folding is Windows-only. The copied-runtime regression now reaches `done`
-through a contracted verifier while tampered local contracts and registries remain ineffective.

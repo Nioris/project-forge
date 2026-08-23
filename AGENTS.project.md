@@ -1,6 +1,6 @@
-# Project Forge v4.68.49 — Codex project runtime instructions
+# Project Forge v4.68.50 — Codex project runtime instructions
 
-<!-- GENERATED from Forge canonical sources; claude-hash:1bc7977d2cacea88; target:project; do not edit by hand. -->
+<!-- GENERATED from Forge canonical sources; claude-hash:00c801b551dc49f6; target:project; do not edit by hand. -->
 
 This project is managed by Project Forge. The copied `.claude/*`, Codex adapter files, `FORGE.md`, and GitVerse rules come from one Forge engine and are intended to stay behaviorally aligned across supported hosts. Root `CLAUDE.md` belongs to this project and may contain additional project-specific rules.
 

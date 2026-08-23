@@ -4,11 +4,20 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.49 complete Unicode-aware Phase 1 evidence validation so Russian KPI
-hypotheses work without English workaround labels, factual claims remain evidence-bound and internal
-Retention/research headings do not create false rejection.
+Ship Project Forge v4.68.50 so marker-managed projects cannot skip unstarted phases through legacy
+artifact inference, while downstream artifacts remain visible as evidence ahead of the current gate.
 
 ## Active task
+
+- [x] Reproduce Card Chaos reporting Phase 6 after completing only the Phase 1–3 marker chain.
+- [x] Record `STATUS_MARKER_FALLBACK_LEAK` in Forge Diagnostics.
+- [x] Make the first missing marker authoritative once a project contains any valid phase marker.
+- [x] Preserve downstream artifact visibility without allowing it to advance progression.
+- [x] Add a deterministic mixed marker/artifact regression.
+- [x] Bump, validate, package, install and synchronize v4.68.50 across 32 sibling projects.
+- [ ] Commit and publish the verified v4.68.50 engine release.
+
+### Previous v4.68.49 release
 
 - [x] Reproduce the CardGame Phase 1 rejection of a standalone Russian `гипотеза` label.
 - [x] Replace ASCII word boundaries with Unicode-aware token handling across related Phase 1 checks.
@@ -119,7 +128,7 @@ Retention/research headings do not create false rejection.
 
 ## Blockers
 
-No v4.68.49 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+No v4.68.50 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
 Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
@@ -145,5 +154,6 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Active GigaChat Tasks block raw shell fail-closed; Codex shell isolation remains a disposable-worktree follow-up.
 - 2026-08-23: Human-language evidence tokens use Unicode letter/mark/number boundaries; ASCII `\b`/`\w` is not valid authority for Cyrillic gates.
 - 2026-08-23: Document-level market vocabulary and line-level external facts are separate classifications; an internal Retention heading is not itself sourced research.
+- 2026-08-23: Once any valid phase marker exists, every missing phase marker remains an unpassed gate; legacy artifact inference may describe later evidence but never advance marker-managed progression.
 
-<!-- last updated 2026-08-23 after releasing v4.68.49 complete Unicode evidence classification -->
+<!-- last updated 2026-08-23 after installing and fleet-syncing v4.68.50 marker-authoritative status progression -->

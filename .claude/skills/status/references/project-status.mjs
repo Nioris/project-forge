@@ -161,31 +161,35 @@ for (const [n, name] of PHASES) {
 
 const warnings = [];
 const phaseRows = [];
+const markerManaged = explicit.size > 0;
 let currentPhase = 1;
 let foundCurrent = false;
 for (const [n, name] of PHASES) {
   const marker = explicit.get(n);
+  const artifactState = fallback[n].complete ? (n === 9 ? 'ongoing' : 'complete')
+    : fallback[n].partial ? 'partial' : 'pending';
   let state;
-  let source = marker ? 'marker' : 'inferred';
+  let source = marker ? 'marker' : markerManaged ? 'marker-absent' : 'inferred';
   let reason = marker?.reason || null;
   const ev = marker?.evidence?.length ? marker.evidence : fallback[n].evidence;
   if (marker) state = marker.state;
-  else if (fallback[n].complete) state = n === 9 ? 'ongoing' : 'complete';
-  else if (fallback[n].partial) state = 'partial';
-  else state = 'pending';
+  else if (markerManaged) state = 'pending';
+  else state = artifactState;
 
   if (!foundCurrent && !['complete'].includes(state)) {
     currentPhase = n;
     foundCurrent = true;
   }
-  phaseRows.push({ phase: n, name, state, source, reason, evidence: ev });
+  phaseRows.push({ phase: n, name, state, source, reason, evidence: ev, artifactState });
 }
 if (!foundCurrent) currentPhase = 9;
 
 // Do not report future-phase absences as defects. They are simply not reached yet.
 for (const row of phaseRows) {
   if (row.phase > currentPhase && row.state === 'pending') row.state = 'not_reached';
-  if (row.phase > currentPhase && ['partial', 'complete', 'ongoing'].includes(row.state)) {
+  const artifactAheadOfGate = row.source === 'marker-absent'
+    && ['partial', 'complete', 'ongoing'].includes(row.artifactState);
+  if (row.phase > currentPhase && (['partial', 'complete', 'ongoing'].includes(row.state) || artifactAheadOfGate)) {
     warnings.push(`Phase ${row.phase} ${row.name} has downstream evidence while current phase is ${currentPhase}; keep the earlier gate authoritative.`);
     row.aheadOfGate = true;
   }

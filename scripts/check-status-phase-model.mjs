@@ -95,6 +95,48 @@ try {
   s.currentPhase===1 ? ok('downstream SDK evidence cannot skip missing Phase 1 gate') : bad(`gate hole skipped to Phase ${s.currentPhase}`);
   s.warnings.length>0 ? ok('downstream evidence ahead of gate is surfaced as warning') : bad('downstream evidence warning missing');
 
+  // A project can have valid completed markers up to Phase 3 while files for later
+  // phases already exist (for example, from an imported prototype).  In that mixed
+  // state the first missing marker is the authoritative gate: fallback must only
+  // describe the evidence, never silently advance past it.
+  const pMixed=mk('marker-gap-with-downstream-artifacts');
+  w(pMixed,'wiki/features/game-analysis.md','# Analysis\n');
+  w(pMixed,'wiki/architecture/metrics.md','# Metrics\n\n## Контент-бюджет\nНабор карт, интерфейс боя и короткая обучающая сессия входят в MVP.\n\n## Дефицит\nОтсутствуют только финальные иллюстрации, поэтому используем временные читаемые элементы.\n\nВсе целевые значения являются гипотезами для последующего теста.\n');
+  w(pMixed,'wiki/design/brief.md','# Brief\n\n## Аудитория\nИгроки, которым нравятся короткие тактические карточные сессии.\n\n## Амбиция\nРабочий MVP с одним боем и понятной обратной связью.\n\n## Обещание игры\nКаждый ход даёт ясный выбор между атакой и защитой.\n\n## Отличие\nКарты меняют темп боя без сложной меты.\n\n## История\nЭто самостоятельный тестовый проект.\n');
+  w(pMixed,'wiki/design/gdd.md','# GDD\n\nИгрок начинает матч с картами в руке, разыгрывает одну карту и завершает ход. Соперник отвечает простой стратегией. Победа достигается снижением здоровья противника до нуля. Интерфейс показывает здоровье, ману, руку, журнал действий и понятную кнопку окончания хода. Карты имеют стоимость и текст эффекта. MVP использует одну колоду и один короткий матч; баланс и контент расширяются после плейтеста.\n');
+  w(pMixed,'wiki/plan/02-development-plan.md','# Development plan\n\n1. Реализовать состояние матча и проверку правил.\n2. Показать руку, здоровье и доступные действия.\n3. Добавить ход ИИ и экран результата.\n4. Проверить сценарий победы, поражения и перезапуска.\n\nПлан относится к MVP и не содержит незавершённых шаблонных разделов.\n');
+  w(pMixed,'wiki/testing.md','# Testing\n\nАвтоматический сценарий запускает матч, разыгрывает карту, передаёт ход и проверяет отсутствие ошибок. Отчёт фиксирует живой requestAnimationFrame и пустой список консольных ошибок. Ручная проверка подтверждает читаемость руки, кнопки окончания хода и экрана результата на портретном экране.\n');
+  w(pMixed,'GameIntegration/runtime.js',`<meta name="viewport"><style>*{touch-action:none}</style>\nYaGames.init();\nLoadingAPI.ready();\nconst language = ysdk.environment.i18n.lang;\nconst I18N = {};\n`);
+  w(pMixed,'WorkProgress/runtime.js','export const startMatch = () => ({ turn: 1, playerHealth: 20, enemyHealth: 20 });\n');
+  w(pMixed,'playtest-out/report.json',JSON.stringify({rafAlive:true,errors:[],actions:['start','play-card','end-turn']}));
+  phase(pMixed,'complete','1','wiki/features/game-analysis.md','wiki/architecture/metrics.md','wiki/design/brief.md');
+  phase(pMixed,'complete','2','wiki/design/gdd.md','wiki/plan/02-development-plan.md');
+  phase(pMixed,'complete','3','wiki/plan/02-development-plan.md','wiki/testing.md');
+  for (const n of [1,2,3]) {
+    const mixedMarker=JSON.parse(fs.readFileSync(path.join(pMixed,'wiki/phases',`phase-${n}.json`),'utf8'));
+    (mixedMarker.schemaVersion===3 && mixedMarker.state==='complete')
+      ? ok(`mixed-mode fixture has a valid schema v3 completion marker for Phase ${n}`)
+      : bad(`mixed-mode fixture Phase ${n} marker is not schema v3 complete`);
+  }
+  // Legacy inference sees a completed visual pass: direction + target frame +
+  // an approved asset. This must be deterministic and must not depend on mtime ordering.
+  w(pMixed,'wiki/design/art-direction-card-chaos.md','# Art direction\n');
+  w(pMixed,'wiki/design/target-frame.md','# Target frame\n');
+  w(pMixed,'assets/generated/approved/phase4-card.png','approved-fixture');
+  // The existing runtime strings deliberately satisfy every Phase 5 legacy health signal.
+  // This is Phase 6 evidence, intentionally incomplete because no listing exists.
+  w(pMixed,'Release/SETUP_GUIDE.md','# Setup guide\n');
+  s=snap(pMixed);
+  const mixed4=s.phases.find(row=>row.phase===4);
+  const mixed5=s.phases.find(row=>row.phase===5);
+  const mixed6=s.phases.find(row=>row.phase===6);
+  (s.currentPhase===4 && s.currentState==='pending' && mixed4?.source==='marker-absent')
+    ? ok('a missing Phase 4 marker remains the authoritative pending gate despite complete legacy evidence')
+    : bad(`marker gap skipped the Phase 4 gate: phase=${s.currentPhase}, state=${s.currentState}, source=${mixed4?.source}`);
+  (mixed5?.state==='not_reached' && mixed5?.aheadOfGate===true && mixed6?.aheadOfGate===true && s.warnings.length>=2)
+    ? ok('Phase 5 completion and Phase 6 partial evidence are warned as ahead of the missing marker gate')
+    : bad(`downstream marker-gap evidence was not safely fenced: p5=${mixed5?.state}/${mixed5?.aheadOfGate}, p6=${mixed6?.state}/${mixed6?.aheadOfGate}`);
+
   const p6=mk('phase-writer');
   phase(p6,'start','4');
   let marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));
