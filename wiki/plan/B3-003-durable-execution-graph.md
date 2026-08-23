@@ -1,7 +1,7 @@
 ---
 id: B3-003
 title: Durable execution graph foundation
-status: in_progress
+status: done
 started: 2026-08-23
 deps: [B3-002]
 files:
@@ -89,9 +89,15 @@ state before repair loops or a Dashboard view can be trusted.
 - [x] Phase start/block/answer/reopen/complete emits correlated structured RunResult and graph transitions.
 - [x] Codex prioritizes exact-attempt structured RunResult; natural-language question detection is legacy fallback only.
 - [x] Retry/decision/terminal transitions are bounded and mechanically regression-tested.
-- [ ] Forge adapters, docs, package and synchronized sibling projects ship as v4.68.42.
+- [x] Forge adapters, docs, package and synchronized sibling projects ship as v4.68.42.
 
 ## Notes
 
 This is the graph/runtime foundation, not a visual node editor. Verifier-driven automatic repair and
 file leases build on this contract in subsequent releases.
+
+## Release verification
+
+Released on 2026-08-23 as `project-forge-v4.68.42.zip`. The immutable archive passed extraction
+verification, the installed engine passed drift/Codex/dashboard/MCP gates, and all 31 sibling
+projects reported `missing=0`, `outdated=0`, `stale=0` after synchronization.

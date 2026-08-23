@@ -13,7 +13,7 @@ restart-safe workflow state and structured turn routing on top of the canonical 
 - [x] Implement durable graph state and five runtime-enforced execution modes.
 - [x] Connect `phase-state`, Codex and GigaChat routing to structured RunResult.
 - [x] Add bounded transition, restart, exact-attempt and legacy-fallback regressions.
-- [ ] Validate, package, install, synchronize and publish v4.68.42.
+- [x] Validate, package, install, synchronize and publish v4.68.42.
 
 ### Previous v4.68.41 release
 
@@ -85,4 +85,4 @@ must stay confined to the intentionally public, synthetic Snake GDD.
 - 2026-08-23: Structured Codex STOP/results are trusted by exact per-turn attempt ID; timestamp/text matching is legacy fallback only.
 - 2026-08-23: A passed phase marker is persisted before its supplemental completed RunResult, and only that marker may advance the pipeline.
 
-<!-- last updated 2026-08-23 while implementing v4.68.42 Durable Execution Graph -->
+<!-- last updated 2026-08-23 after releasing v4.68.42 Durable Execution Graph -->
