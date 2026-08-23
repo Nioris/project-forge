@@ -1,7 +1,7 @@
 ---
 id: B3-002
 title: Canonical nine-phase state integrity
-status: in_progress
+status: complete
 started: 2026-08-23
 deps: []
 files:
@@ -76,10 +76,15 @@ provide directories even though the central gate accepts only regular files.
 - [x] Phase 2–9 regressions reject missing, irrelevant and counterfeit completion evidence.
 - [x] `check-pipeline-state.mjs` reports the canonical nine phases without a second progression model.
 - [x] MCP verifier exposure is registry-driven; internal/deprecated checks cannot be called as tools.
-- [ ] Required Forge, adapter, MCP and packaging checks pass for v4.68.41.
-- [ ] v4.68.41 is installed/synced locally and merged to GitHub main with a successful GitVerse mirror.
+- [x] Required Forge, adapter, MCP and packaging checks pass for v4.68.41.
+- [x] v4.68.41 is installed/synced locally and merged to GitHub main with a successful GitVerse mirror.
 
 ## Notes
 
 Workflow graph remains the next layer. It will be built on top of these contracts rather than
 encoding the legacy state ambiguity.
+
+Released from commit `9af7945`; the immutable ZIP SHA-256 is
+`2683E775904AE086554186C4B1D9C3AEB70975CF0B892959F448E6DCB42B10E8`. Local installation and all
+31 sibling-project audits passed, and GitHub Actions run `32627250644` mirrored the release to
+GitVerse successfully.

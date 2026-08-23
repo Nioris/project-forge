@@ -14,7 +14,7 @@ progression model, and an explicit public MCP verifier surface.
 - [x] Reject missing, irrelevant, directory-only and counterfeit evidence in Phase 2–9 regressions.
 - [x] Convert the legacy pipeline checker into a nine-phase project-status compatibility view.
 - [x] Replace automatic `check-*.mjs` MCP export with an explicit read-only registry.
-- [ ] Bump, validate, package, install and publish v4.68.41.
+- [x] Bump, validate, package, install and publish v4.68.41.
 
 ### Previous v4.68.40 release
 
@@ -74,4 +74,4 @@ must stay confined to the intentionally public, synthetic Snake GDD.
 - 2026-08-23: Release runtime tests choose the highest numeric ZIP version for one exact variant; directory order is never release order.
 - 2026-08-23: Nine phase contracts are the only completion authority; compatibility views and MCP tools derive from that state and cannot invent another progression model.
 
-<!-- last updated 2026-08-23 while validating v4.68.41 State Integrity -->
+<!-- last updated 2026-08-23 after v4.68.41 install, 31-project sync, GitHub main fast-forward and successful GitVerse mirror -->
