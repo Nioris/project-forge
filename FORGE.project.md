@@ -61,6 +61,10 @@ asking the model to interpret raw stdout. A project-local registry is untrusted.
 plan after the Task has left an agent node, and never treat a stale `.verify.lock` as permission to start a
 second verifier; inspect the owning process before removing an abandoned lock.
 
+A copied managed runtime resolves this authority from host-owned `FORGE_ENGINE_ROOT` or the standard
+sibling `project-forge` installation. Missing external authority is an infrastructure error; copying
+`mcp-server/verifiers.json` into a game or forging local engine markers never grants execution rights.
+
 Task read/write scopes are executable host authority for guarded native file operations. The Codex
 pipeline binds the exact phase Task before native `Edit`, `Write` or `apply_patch`, and GigaChat checks
 its text/copy/media/portable writes plus classified Forge-script outputs against the same durable scope.

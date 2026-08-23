@@ -11,6 +11,9 @@ import {
   loadWorkflow, makeRunResult, normalizeProjectPath, readTaskRun, recordTaskResult, taskRunPath,
 } from './execution-contract.mjs';
 import { assertSkillTaskCompatibility, readSkillContract } from './skill-contract.mjs';
+import {
+  resolveTrustedForgeEngineRoot, sameResolvedPath, trustedForgeRegistryPath,
+} from './forge-engine-root.mjs';
 
 const MODULE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const MAX_TASK_VERIFIERS = 20;
@@ -27,37 +30,20 @@ function inside(root, candidate) {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
-function isCanonicalEngineRoot(root) {
-  return existsSync(path.join(root, '.claude-plugin', 'plugin.json'))
-    && existsSync(path.join(root, 'mcp-server', 'verifiers.json'));
-}
-
-function registryCandidates(projectRoot) {
-  const root = path.resolve(projectRoot || process.cwd());
-  const candidates = [];
-  if (process.env.FORGE_ENGINE_ROOT) candidates.push(path.join(path.resolve(process.env.FORGE_ENGINE_ROOT), 'mcp-server', 'verifiers.json'));
-  // A project being verified is untrusted input. Do not execute a registry it
-  // happens to contain: only the installed Forge engine may define scripts.
-  candidates.push(path.join(MODULE_ROOT, 'mcp-server', 'verifiers.json'));
-  candidates.push(path.join(path.dirname(root), 'project-forge', 'mcp-server', 'verifiers.json'));
-  return [...new Set(candidates)].filter(candidate => isCanonicalEngineRoot(path.resolve(path.dirname(candidate), '..')));
-}
-
 export function resolveVerifierRegistry(projectRoot, explicitPath = null, { allowUntrustedRegistry = false } = {}) {
   if (explicitPath) {
     const resolved = path.resolve(explicitPath);
     if (!allowUntrustedRegistry) {
-      const engineRoot = path.resolve(path.dirname(resolved), '..');
-      if (!isCanonicalEngineRoot(engineRoot)) {
+      const trusted = trustedForgeRegistryPath({ projectRoot, moduleRoot: MODULE_ROOT });
+      if (!sameResolvedPath(resolved, trusted)) {
         throw new Error('Explicit verifier registry is not trusted. Use the installed Forge engine registry.');
       }
     }
     if (!existsSync(resolved)) throw new Error(`Explicit verifier registry is unavailable: ${resolved}`);
     return resolved;
   }
-  const found = registryCandidates(projectRoot).find(candidate => existsSync(candidate));
-  if (!found) throw new Error('Forge verifier registry is unavailable. Set FORGE_ENGINE_ROOT or install the sibling project-forge engine.');
-  return found;
+  const engineRoot = resolveTrustedForgeEngineRoot({ projectRoot, moduleRoot: MODULE_ROOT });
+  return path.join(engineRoot, 'mcp-server', 'verifiers.json');
 }
 
 function validateTaskRunnerMetadata(entry) {
@@ -367,7 +353,7 @@ export function runTaskVerifiers({ projectRoot, taskId, registryPath = null, all
     if (run.task.verifiers.length > MAX_TASK_VERIFIERS) return recordContractFailure(root, run, `Task verifier plan exceeds ${MAX_TASK_VERIFIERS} checks.`);
     if (run.task.contract?.kind === 'skill') {
       try {
-        const contract = readSkillContract(MODULE_ROOT, run.task.contract.id, { requireDeclared: true });
+        const contract = readSkillContract(registry.engineRoot, run.task.contract.id, { requireDeclared: true });
         if (contract.hash !== run.task.contract.hash || contract.schemaVersion !== run.task.contract.version) {
           return recordContractFailure(root, run, `Task SkillContract changed after Task creation: ${contract.id}`);
         }

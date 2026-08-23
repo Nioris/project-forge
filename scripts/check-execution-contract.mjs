@@ -227,6 +227,89 @@ try {
   } finally {
     fs.rmSync(phaseFixture, { recursive: true, force: true });
   }
+
+  const managedFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-managed-runtime-'));
+  try {
+    const installedEngine = path.join(managedFixture, 'project-forge');
+    const managedProject = path.join(managedFixture, 'card-game');
+    fs.symlinkSync(ROOT, installedEngine, process.platform === 'win32' ? 'junction' : 'dir');
+    fs.cpSync(path.join(ROOT, '.claude', 'skills', 'status'), path.join(managedProject, '.claude', 'skills', 'status'), { recursive: true });
+    fs.cpSync(path.join(ROOT, '.claude', 'skills', 'phase-1-analyze'), path.join(managedProject, '.claude', 'skills', 'phase-1-analyze'), { recursive: true });
+    fs.cpSync(path.join(ROOT, '.claude', 'skills', 'gacha-meta'), path.join(managedProject, '.claude', 'skills', 'gacha-meta'), { recursive: true });
+    const localSkill = path.join(managedProject, '.claude', 'skills', 'phase-1-analyze', 'SKILL.md');
+    fs.writeFileSync(localSkill, fs.readFileSync(localSkill, 'utf8').replace('contract_version: 1', 'contract_version: 999'));
+    const localGachaSkill = path.join(managedProject, '.claude', 'skills', 'gacha-meta', 'SKILL.md');
+    fs.writeFileSync(localGachaSkill, fs.readFileSync(localGachaSkill, 'utf8').replace('contract_version: 1', 'contract_version: 999'));
+    fs.writeFileSync(path.join(managedProject, '.forge-managed.json'), JSON.stringify({ forgeVersion: 'fixture' }));
+    fs.mkdirSync(path.join(managedProject, '.claude-plugin'), { recursive: true });
+    fs.mkdirSync(path.join(managedProject, 'mcp-server'), { recursive: true });
+    fs.mkdirSync(path.join(managedProject, 'scripts'), { recursive: true });
+    fs.writeFileSync(path.join(managedProject, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'project-forge' }));
+    fs.writeFileSync(path.join(managedProject, 'mcp-server', 'verifiers.json'), JSON.stringify({ schemaVersion: 1, verifiers: [] }));
+    fs.writeFileSync(path.join(managedProject, 'scripts', 'forge-sync-spec.mjs'), '// untrusted fixture\n');
+
+    const portablePhaseScript = path.join(managedProject, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
+    const managedEnv = { ...process.env, FORGE_RUN_ATTEMPT_ID: 'fixture-managed-runtime' };
+    delete managedEnv.FORGE_ENGINE_ROOT;
+    const portable = spawnSync(process.execPath, [portablePhaseScript, 'start', '1', '--host', 'codex'], {
+      cwd: managedProject, encoding: 'utf8', env: managedEnv,
+    });
+    let portableMarker = null;
+    let portableRun = null;
+    try {
+      portableMarker = JSON.parse(fs.readFileSync(path.join(managedProject, 'wiki', 'phases', 'phase-1.json'), 'utf8'));
+      portableRun = JSON.parse(fs.readFileSync(taskRunPath(managedProject, portableMarker.execution?.taskId), 'utf8'));
+    } catch {}
+    check(portable.status === 0 && portableMarker?.execution?.resultStatus === 'in_progress'
+      && portableRun?.task?.contract?.id === 'phase-1-analyze',
+    'copied managed runtime binds a phase Task through the trusted sibling engine and ignores project-local authority');
+
+    const verifierSmoke = path.join(managedProject, 'managed-verifier-smoke.mjs');
+    fs.writeFileSync(verifierSmoke, `
+import { makeRunResult, makeTask, recordTaskResult, startTaskRun } from './.claude/skills/status/references/execution-contract.mjs';
+import { runTaskVerifiers } from './.claude/skills/status/references/verifier-runner.mjs';
+const root=process.cwd();
+let run=startTaskRun({projectRoot:root,task:makeTask({id:'task-managed-verifier-smoke',mode:'change',phase:8,goal:'Verify trusted portable contract',skill:'gacha-meta',acceptance:[{id:'AC-1',text:'Trusted verifier passes',status:'pending'}],verifiers:['gacha-integration']})});
+run=recordTaskResult({projectRoot:root,taskId:run.task.id,result:makeRunResult({taskId:run.task.id,node:run.state.currentNode,status:'completed',code:'FIXTURE_IMPLEMENTED',message:'Fixture implemented',host:'fixture',phase:8})});
+const outcome=runTaskVerifiers({projectRoot:root,taskId:run.task.id,spawn:()=>({status:0,stdout:JSON.stringify({ok:true,issues:[]}),stderr:'',error:null})});
+console.log(JSON.stringify({exitCode:outcome.exitCode,node:outcome.run.state.currentNode,contract:outcome.run.task.contract?.id}));
+`);
+    const verifiedPortable = spawnSync(process.execPath, [verifierSmoke], {
+      cwd: managedProject, encoding: 'utf8', env: managedEnv,
+    });
+    check(verifiedPortable.status === 0 && /"exitCode":0/.test(verifiedPortable.stdout)
+      && /"node":"done"/.test(verifiedPortable.stdout) && /"contract":"gacha-meta"/.test(verifiedPortable.stdout),
+    'copied verifier runtime revalidates the SkillContract and registry through the same trusted sibling engine');
+  } finally {
+    fs.rmSync(managedFixture, { recursive: true, force: true });
+  }
+
+  const isolatedFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-untrusted-runtime-'));
+  try {
+    const isolatedProject = path.join(isolatedFixture, 'project-forge');
+    fs.cpSync(path.join(ROOT, '.claude', 'skills', 'status'), path.join(isolatedProject, '.claude', 'skills', 'status'), { recursive: true });
+    fs.writeFileSync(path.join(isolatedProject, '.forge-managed.json'), JSON.stringify({ forgeVersion: 'fixture' }));
+    fs.mkdirSync(path.join(isolatedProject, '.claude-plugin'), { recursive: true });
+    fs.mkdirSync(path.join(isolatedProject, 'mcp-server'), { recursive: true });
+    fs.mkdirSync(path.join(isolatedProject, 'scripts'), { recursive: true });
+    fs.writeFileSync(path.join(isolatedProject, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'project-forge' }));
+    fs.writeFileSync(path.join(isolatedProject, 'mcp-server', 'verifiers.json'), JSON.stringify({ schemaVersion: 1, verifiers: [] }));
+    fs.writeFileSync(path.join(isolatedProject, 'scripts', 'forge-sync-spec.mjs'), '// untrusted fixture\n');
+    const isolatedEnv = { ...process.env };
+    delete isolatedEnv.FORGE_ENGINE_ROOT;
+    const isolated = spawnSync(process.execPath, [
+      path.join(isolatedProject, '.claude', 'skills', 'status', 'references', 'phase-state.mjs'), 'start', '1', '--host', 'codex',
+    ], { cwd: isolatedProject, encoding: 'utf8', env: isolatedEnv });
+    check(isolated.status !== 0 && /Forge engine is unavailable/.test(`${isolated.stdout}\n${isolated.stderr}`),
+      'a managed project named project-forge cannot turn its own fake registry into engine authority');
+    const localOverride = spawnSync(process.execPath, [
+      path.join(isolatedProject, '.claude', 'skills', 'status', 'references', 'phase-state.mjs'), 'start', '1', '--host', 'codex',
+    ], { cwd: isolatedProject, encoding: 'utf8', env: { ...isolatedEnv, FORGE_ENGINE_ROOT: isolatedProject } });
+    check(localOverride.status !== 0 && /Forge engine is unavailable/.test(`${localOverride.stdout}\n${localOverride.stderr}`),
+      'FORGE_ENGINE_ROOT cannot promote an in-project fake registry for a managed project');
+  } finally {
+    fs.rmSync(isolatedFixture, { recursive: true, force: true });
+  }
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

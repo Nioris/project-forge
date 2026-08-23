@@ -1,4 +1,4 @@
-# Project Forge v4.68.45 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.47 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -493,23 +493,20 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.47 changelog (complete portable contract authority)
+
+Verifier-node SkillContract revalidation now uses the same trusted installed engine as registry
+execution and Task creation. Managed projects cannot self-promote through their folder name or a local
+`FORGE_ENGINE_ROOT`; case folding is Windows-only. The copied-runtime regression now reaches `done`
+through a contracted verifier while tampered local contracts and registries remain ineffective.
+
+## v4.68.46 changelog (portable phase Task engine lookup)
+
+Copied phase runtimes gained installed sibling-engine lookup, fixing Phase Task creation in ordinary
+App chats without copying the verifier registry into managed games. Verifier-node contract revalidation
+was completed in the follow-up v4.68.47 immutable build.
+
 ## v4.68.45 changelog (host-enforced native Task write scope)
 
 Codex binds the phase Task before tools and rejects native writes outside scope. GigaChat guards its
 writes and blocks raw shell during Tasks. Escape regressions include a live Codex smoke.
-
-## v4.68.44 changelog (machine-readable Skill/Agent contracts)
-
-Eleven canonical skills now expose strict phase/mode, scope, STOP and trusted-verifier contracts; all
-others remain manual-only. Durable Tasks preserve contract identity/hash and reject drift. GigaChat
-derives gacha verification only from successful structured host operations, never model prose. Five
-core subagent roles also validate typed advisory Builder/Reviewer/Researcher results.
-
-## v4.68.43 changelog (verifier-driven repair runtime)
-
-Change Tasks now execute registered deterministic checks automatically when the graph enters `verify`.
-PASS reaches `done`; normalized verifier failures return to the shared bounded repair loop; timeout and
-dependency failures become infrastructure blockers. Only Task-enabled read-only checks from the installed
-Forge registry can execute, project-local registries are untrusted, targets remain project-relative, and
-token-owned locks prevent duplicate verifier runs. GigaChat direct gacha work derives an exact host-owned
-plan from its successful canonical ledger check and uses the same runtime instead of accepting model prose.

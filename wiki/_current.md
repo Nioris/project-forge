@@ -4,10 +4,24 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.45 Host-enforced native Task write scope: bind exact durable Tasks before
-model tools and reject supported Codex/GigaChat writes outside their declared SkillContract scope.
+Ship Project Forge v4.68.47 complete portable managed-runtime engine authority: allow an ordinary copied phase
+runtime to bind exact SkillContracts without trusting code or verifier metadata inside the game.
 
 ## Active task
+
+- [x] Reproduce `SKILL_CONTRACT_VERIFIER_REGISTRY_MISSING` in the copied CardGameRoblox runtime.
+- [x] Resolve SkillContract/verifier authority through one trusted installed-engine resolver.
+- [x] Keep project-local registries outside the managed sync and reject forged local engine authority.
+- [x] Add copied-runtime sibling fallback and missing-engine fail-closed regressions.
+- [x] Validate generated surfaces, package, install, synchronize and publish v4.68.47.
+
+### Previous v4.68.46 release
+
+- [x] Add installed sibling-engine fallback to copied phase Task creation.
+- [x] Keep `mcp-server/verifiers.json` out of managed project sync.
+- [x] Package and install the immutable intermediate v4.68.46 build before verifier-node review.
+
+### Previous v4.68.45 release
 
 - [x] Bind each Codex phase Task before the first model/tool round-trip.
 - [x] Enforce durable Task scope for Codex native file tools and GigaChat native writes.
@@ -91,7 +105,7 @@ model tools and reject supported Codex/GigaChat writes outside their declared Sk
 
 ## Blockers
 
-No v4.68.45 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+No v4.68.47 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
 Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
@@ -116,4 +130,4 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Every target in one guarded native write is checked; one escaped or unknown target rejects the entire operation.
 - 2026-08-23: Active GigaChat Tasks block raw shell fail-closed; Codex shell isolation remains a disposable-worktree follow-up.
 
-<!-- last updated 2026-08-23 after releasing v4.68.45 Host-enforced native Task write scope -->
+<!-- last updated 2026-08-23 after releasing v4.68.47 complete portable managed-runtime engine authority -->

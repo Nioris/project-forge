@@ -161,6 +161,7 @@
 .agents/skills/status/references/MODEL-ROUTING.md
 .agents/skills/status/references/agent-contract.mjs
 .agents/skills/status/references/execution-contract.mjs
+.agents/skills/status/references/forge-engine-root.mjs
 .agents/skills/status/references/forge-event.mjs
 .agents/skills/status/references/model-policy.json
 .agents/skills/status/references/phase-completion-gate.mjs
@@ -405,6 +406,7 @@
 .claude/skills/status/references/MODEL-ROUTING.md
 .claude/skills/status/references/agent-contract.mjs
 .claude/skills/status/references/execution-contract.mjs
+.claude/skills/status/references/forge-engine-root.mjs
 .claude/skills/status/references/forge-event.mjs
 .claude/skills/status/references/model-policy.json
 .claude/skills/status/references/phase-completion-gate.mjs
@@ -538,6 +540,8 @@ RELEASE_NOTES_v4.68.42.md
 RELEASE_NOTES_v4.68.43.md
 RELEASE_NOTES_v4.68.44.md
 RELEASE_NOTES_v4.68.45.md
+RELEASE_NOTES_v4.68.46.md
+RELEASE_NOTES_v4.68.47.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
@@ -989,6 +993,7 @@ wiki/plan/B3-003-durable-execution-graph.md
 wiki/plan/B3-004-verifier-repair-runtime.md
 wiki/plan/B3-005-machine-capability-contracts.md
 wiki/plan/B3-006-task-write-scope-guard.md
+wiki/plan/B3-007-portable-engine-authority.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md

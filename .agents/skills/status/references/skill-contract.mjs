@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveTrustedForgeEngineRoot } from './forge-engine-root.mjs';
 
 export const SKILL_CONTRACT_VERSION = 1;
 export const SKILL_MODES = Object.freeze(['phase', 'change', 'review', 'diagnose', 'release']);
@@ -11,7 +12,11 @@ export const SHELL_RISKS = Object.freeze(['none', 'read', 'write', 'elevated']);
 export const EXTERNAL_RISKS = Object.freeze(['none', 'read', 'write']);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const DEFAULT_FORGE_ROOT = path.resolve(HERE, '../../../..');
+const MODULE_FORGE_ROOT = path.resolve(HERE, '../../../..');
+export const DEFAULT_FORGE_ROOT = resolveTrustedForgeEngineRoot({
+  projectRoot: process.cwd(),
+  moduleRoot: MODULE_FORGE_ROOT,
+});
 const ID_RE = /^[a-z0-9][a-z0-9-]*$/;
 const REQUIREMENT_RE = /^[a-z][a-z0-9-]*:[a-z0-9][a-z0-9._-]*$/;
 const STOP_RE = /^[a-z][a-z0-9._-]*$/;
@@ -87,7 +92,8 @@ function safeContractPath(value, { allowGlob = true } = {}) {
 }
 
 function loadVerifierMap(root) {
-  const file = path.join(root, 'mcp-server', 'verifiers.json');
+  const engineRoot = resolveTrustedForgeEngineRoot({ projectRoot: root, moduleRoot: MODULE_FORGE_ROOT });
+  const file = path.join(engineRoot, 'mcp-server', 'verifiers.json');
   const parsed = JSON.parse(readFileSync(file, 'utf8'));
   if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.verifiers)) throw new Error('Verifier registry contract is invalid');
   return new Map(parsed.verifiers.map(entry => [entry.id, entry]));
@@ -141,7 +147,8 @@ function resolveCompletion(root, skillName, relativePath, phases, errors) {
 }
 
 export function inspectSkillContract(root, skillName) {
-  const forgeRoot = path.resolve(root || DEFAULT_FORGE_ROOT);
+  const requestedRoot = path.resolve(root || DEFAULT_FORGE_ROOT);
+  const forgeRoot = resolveTrustedForgeEngineRoot({ projectRoot: requestedRoot, moduleRoot: MODULE_FORGE_ROOT });
   const id = String(skillName || '').trim().toLowerCase();
   if (!ID_RE.test(id)) throw new Error(`Unsafe skill id: ${skillName}`);
   const source = path.join(forgeRoot, '.claude', 'skills', id, 'SKILL.md');

@@ -4752,6 +4752,22 @@ routes exact-attempt structured STOP/results before legacy text heuristics, rest
 launching a model, and never advances from a supplemental completed result alone. GigaChat direct
 tasks persist intent before graph creation, recover orphan runs and record failed verification as repair.
 
+## v4.68.43 changelog (verifier-driven repair runtime)
+
+Change Tasks now execute registered deterministic checks automatically when the graph enters `verify`.
+PASS reaches `done`; normalized verifier failures return to the shared bounded repair loop; timeout and
+dependency failures become infrastructure blockers. Only Task-enabled read-only checks from the installed
+Forge registry can execute, project-local registries are untrusted, targets remain project-relative, and
+token-owned locks prevent duplicate verifier runs. GigaChat direct gacha work derives an exact host-owned
+plan from its successful canonical ledger check and uses the same runtime instead of accepting model prose.
+
+## v4.68.44 changelog (machine-readable Skill/Agent contracts)
+
+Eleven canonical skills now expose strict phase/mode, scope, STOP and trusted-verifier contracts; all
+others remain manual-only. Durable Tasks preserve contract identity/hash and reject drift. GigaChat
+derives gacha verification only from successful structured host operations, never model prose. Five
+core subagent roles also validate typed advisory Builder/Reviewer/Researcher results.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".
