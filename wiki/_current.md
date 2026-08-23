@@ -15,7 +15,7 @@ local Universal fleet, and fast-forward the verified result to GitHub `main`.
 - [x] Bump and document Project Forge v4.68.40.
 - [x] Pass release validators and package verification.
 - [x] Install/sync ProjectForgeUniversal and verify the deployed version.
-- [ ] Push the working branch and fast-forward GitHub `main`.
+- [x] Push the working branch and fast-forward GitHub `main`.
 
 ### Previous Ox Alpha benchmark
 
@@ -62,5 +62,6 @@ must stay confined to the intentionally public, synthetic Snake GDD.
 - 2026-08-21: `TBD` describes an unknown value; it cannot authorize a positive external claim elsewhere on the same line.
 - 2026-08-21: OpenCode whole-project turns use a 64-step ceiling; repeated successful directory listings are not billable progress.
 - 2026-08-22: Retained-data models require an explicit non-ZDR profile and may receive only non-confidential evaluation material.
+- 2026-08-23: Release runtime tests choose the highest numeric ZIP version for one exact variant; directory order is never release order.
 
-<!-- last updated 2026-08-23 during v4.68.40 runtime release selection fix -->
+<!-- last updated 2026-08-23 after v4.68.40 install, fleet sync and GitHub main fast-forward -->

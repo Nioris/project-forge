@@ -1,7 +1,7 @@
 ---
 id: B3-001
 title: Runtime-test selects the newest release archive
-status: in_progress
+status: done
 started: 2026-08-23
 deps: []
 files:
@@ -54,7 +54,7 @@ can validate stale code and create a false release result.
 - [x] The regression is part of the normal Forge drift audit and the helper is included in MANIFEST/package output.
 - [x] Forge version surfaces and release documentation are updated to v4.68.40.
 - [x] Required validators and packaging verification pass.
-- [ ] v4.68.40 is installed into ProjectForgeUniversal, committed, pushed, and merged into main.
+- [x] v4.68.40 is installed into ProjectForgeUniversal, committed, pushed, and merged into main.
 
 ## Notes
 
