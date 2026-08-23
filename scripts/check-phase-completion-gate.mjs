@@ -79,6 +79,85 @@ try {
   result = validatePhaseCompletion({ root: invented, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
   check(!result.ok && result.failures.some(item => /KPI claim/.test(item)), 'numeric KPI facts require a URL citation or hypothesis label');
 
+  const russianInvented = path.join(tmp, 'russian-invented-kpi');
+  write(russianInvented, 'wiki/design/brief.md', validBrief);
+  write(russianInvented, 'wiki/architecture/metrics.md', validMetrics.replace('D1/D7/D30 и ARPDAU: TBD, проверенные внешние источники не получены.', 'Удержание: 15% — отраслевой ориентир.'));
+  result = validatePhaseCompletion({ root: russianInvented, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /KPI claim/.test(item)),
+    'numeric KPI facts written in Cyrillic cannot bypass source validation');
+
+  for (const [slug, label] of [
+    ['russian-hypothesis', 'гипотеза'],
+    ['russian-hypotheses', 'гипотезы'],
+    ['russian-assumption', 'предположение'],
+    ['english-hypothesis', 'hypothesis'],
+  ]) {
+    const hypothesis = path.join(tmp, slug);
+    write(hypothesis, 'wiki/design/brief.md', validBrief);
+    write(hypothesis, 'wiki/architecture/metrics.md', validMetrics.replace('D1/D7/D30 и ARPDAU: TBD, проверенные внешние источники не получены.', `Удержание: 15% — ${label}.`));
+    result = validatePhaseCompletion({ root: hypothesis, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+    check(result.ok, `explicit ${label} label permits a numeric KPI hypothesis`);
+  }
+
+  const embeddedHypothesis = path.join(tmp, 'embedded-hypothesis');
+  write(embeddedHypothesis, 'wiki/design/brief.md', validBrief);
+  write(embeddedHypothesis, 'wiki/architecture/metrics.md', validMetrics.replace('D1/D7/D30 и ARPDAU: TBD, проверенные внешние источники не получены.', 'D7 retention: 15% — антигипотеза.'));
+  result = validatePhaseCompletion({ root: embeddedHypothesis, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /KPI claim/.test(item)),
+    'a hypothesis substring inside a larger Cyrillic word is not accepted as a label');
+
+  const russianExternalFact = path.join(tmp, 'russian-external-fact');
+  write(russianExternalFact, 'wiki/design/brief.md', validBrief);
+  write(russianExternalFact, 'wiki/architecture/metrics.md', validMetrics);
+  write(russianExternalFact, 'wiki/research/references.md', '# Исследование\n\nРынок требует монетизацию.\n');
+  result = validatePhaseCompletion({ root: russianExternalFact, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
+    'an uncited external-market fact written in Cyrillic is rejected');
+
+  for (const [slug, claim] of [
+    ['russian-competitors', 'Конкуренты требуют мета-прогрессию.'],
+    ['russian-competitive-adjective', 'Конкурентные игры требуют мета-прогрессию.'],
+    ['russian-platform-requirements', 'Требования платформы включают локализацию.'],
+  ]) {
+    const externalInflection = path.join(tmp, slug);
+    write(externalInflection, 'wiki/design/brief.md', validBrief);
+    write(externalInflection, 'wiki/architecture/metrics.md', validMetrics);
+    write(externalInflection, 'wiki/research/references.md', `# Исследование\n\n${claim}\n`);
+    result = validatePhaseCompletion({ root: externalInflection, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+    check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
+      `an uncited inflected Cyrillic external claim is rejected: ${claim}`);
+  }
+
+  const russianNegation = path.join(tmp, 'russian-external-negation');
+  write(russianNegation, 'wiki/design/brief.md', validBrief);
+  write(russianNegation, 'wiki/architecture/metrics.md', validMetrics);
+  write(russianNegation, 'wiki/research/references.md', '# Исследование\n\n## Конкурентное поле\n\nНет проверенных внешних источников: рынок не исследован.\n');
+  result = validatePhaseCompletion({ root: russianNegation, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(result.ok, 'an explicit Cyrillic no-evidence statement remains valid');
+
+  const internalRetentionHeading = path.join(tmp, 'internal-retention-heading');
+  write(internalRetentionHeading, 'wiki/design/brief.md', validBrief);
+  write(internalRetentionHeading, 'wiki/architecture/metrics.md', validMetrics);
+  write(internalRetentionHeading, 'wiki/research/references.md', '# Research\n\nSource: https://example.com/benchmark\n\n### Retention hooks proposed\n\n- Internal mission ladder proposal.\n');
+  result = validatePhaseCompletion({ root: internalRetentionHeading, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(result.ok, 'an internal retention section heading is not misclassified as an external factual line');
+
+  const uncitedRetentionFact = path.join(tmp, 'uncited-retention-fact');
+  write(uncitedRetentionFact, 'wiki/design/brief.md', validBrief);
+  write(uncitedRetentionFact, 'wiki/architecture/metrics.md', validMetrics);
+  write(uncitedRetentionFact, 'wiki/research/references.md', '# Research\n\nUnrelated source: https://example.com/catalog\n\nRetention is 15%.\n');
+  result = validatePhaseCompletion({ root: uncitedRetentionFact, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
+    'an unrelated document URL cannot launder an uncited retention fact on another line');
+
+  const russianMixedClaim = path.join(tmp, 'russian-mixed-claim');
+  write(russianMixedClaim, 'wiki/design/brief.md', validBrief);
+  write(russianMixedClaim, 'wiki/architecture/metrics.md', validMetrics);
+  write(russianMixedClaim, 'wiki/research/references.md', '# Исследование\n\nРынок: гипотеза, но требование подтверждено.\n');
+  result = validatePhaseCompletion({ root: russianMixedClaim, phase: 1, evidence: ['wiki/architecture/metrics.md', 'wiki/design/brief.md'] });
+  check(!result.ok && result.failures.some(item => /external factual line/.test(item)),
+    'a Cyrillic hypothesis label cannot mask a positive confirmed assertion on the same line');
+
   const falseAcceptance = path.join(tmp, 'false-acceptance');
   write(falseAcceptance, 'wiki/design/brief.md', validBrief);
   write(falseAcceptance, 'wiki/architecture/metrics.md', validMetrics.replace('- [ ] Игра открывается', '- [x] Игра открывается'));

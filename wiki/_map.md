@@ -49,8 +49,10 @@
 
 ## Current Status
 
-### Version: v4.68.47 (latest released)
+### Version: v4.68.49 (latest released)
 
+- 2026-08-23: **v4.68.49** — Complete Unicode evidence classification preserves Russian KPI/research enforcement without treating internal Retention headings as uncited external facts; the real CardGame Phase 1 evidence passes without English labels.
+- 2026-08-23: **v4.68.48** — Phase 1 evidence validation now uses Unicode word boundaries: Russian KPI hypotheses and no-evidence declarations work without English labels, while uncited Cyrillic KPI/research claims can no longer bypass the gate.
 - 2026-08-23: **v4.68.47** — Portable Task creation and verifier revalidation now use one installed-engine authority; self-named/self-overridden managed fake engines fail closed and the full contracted verifier transition is regression-tested.
 - 2026-08-23: **v4.68.46** — Copied managed runtimes gained sibling-engine fallback for ordinary App-chat phase Task creation without syncing the verifier registry into games.
 - 2026-08-23: **v4.68.45** — Guarded Codex/GigaChat native writes now inherit the exact durable Task scope; mixed/escaped targets and raw GigaChat shell fail closed, with an authenticated isolated Codex smoke.
@@ -532,6 +534,7 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 
 ### Plans
 - [[plan/v4.8-roadmap]] — backlog details
+- [[plan/B3-008-unicode-phase-gate]] — v4.68.49 complete Unicode-aware Phase 1 evidence validation
 - [[plan/B3-007-portable-engine-authority]] — v4.68.47 complete portable managed-runtime engine authority
 - [[plan/B3-006-task-write-scope-guard]] — v4.68.45 host-enforced native Task write scope
 - [[plan/B3-005-machine-capability-contracts]] — v4.68.44 Skill/Agent contract authority

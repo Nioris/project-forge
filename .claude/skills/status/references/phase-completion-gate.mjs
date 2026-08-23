@@ -40,15 +40,35 @@ const PLACEHOLDER_PATTERNS = [
   /заполняется в фазе 1/iu,
 ];
 
-const KPI_PATTERN = /\b(?:D1|D7|D30|ARPDAU|ARPU|ARPPU|LTV|retention|удержани[ея]|конверси[яи])\b/iu;
+const UNICODE_WORD_LEFT = String.raw`(?<![\p{L}\p{M}\p{N}_])`;
+const UNICODE_WORD_RIGHT = String.raw`(?![\p{L}\p{M}\p{N}_])`;
+const unicodeTokenPattern = (source, flags = 'iu') => new RegExp(
+  `${UNICODE_WORD_LEFT}(?:${source})${UNICODE_WORD_RIGHT}`,
+  flags,
+);
+const RUSSIAN_EXTERNAL_TERM_SOURCE = String.raw`конкурент[\p{L}\p{M}]*|рын(?:ок|к[\p{L}\p{M}]*)|каталог[\p{L}\p{M}]*|бенчмарк[\p{L}\p{M}]*|отрасл[\p{L}\p{M}]*|монетизац[\p{L}\p{M}]*|локализац[\p{L}\p{M}]*|требовани[\p{L}\p{M}]*\s+платформ[\p{L}\p{M}]*`;
+const EXTERNAL_FACT_TERM_SOURCE = String.raw`${RUSSIAN_EXTERNAL_TERM_SOURCE}|benchmark|industry|ARPDAU|retention`;
+const EXTERNAL_TERM_SOURCE = EXTERNAL_FACT_TERM_SOURCE;
+const NEGATED_EVIDENCE_SOURCE = String.raw`нет|без|не\s+(?:получ|найд|утверж|провер|использ)[\p{L}\p{M}]*|no\s+verified|no\s+reliable|without`;
+const EXPLICIT_NO_EXTERNAL_SOURCE = String.raw`нет|без|не\s+получен[оы]?|не\s+найден[оы]?|не\s+утвержден[оы]?|единственн[\p{L}\p{M}]+\s+проверенн[\p{L}\p{M}]+\s+источник|no\s+verified|without\s+external`;
+const NO_EXTERNAL_TARGET_SOURCE = String.raw`внешн[\p{L}\p{M}]*|источник[\p{L}\p{M}]*|benchmark|бенчмарк[\p{L}\p{M}]*|KPI`;
+
+const KPI_PATTERN = unicodeTokenPattern(String.raw`D1|D7|D30|ARPDAU|ARPU|ARPPU|LTV|retention|удержани[ея]|конверси[яи]`);
 const NUMBER_PATTERN = /(?:\d[\d.,]*\s*%|[$€₽]\s*\d|\d[\d.,]*\s*(?:руб\.?|долл\.?))/iu;
-const NON_FACT_PATTERN = /\b(?:TBD|гипотез[аы]?|предположени[ея]|не\s+(?:получен[оы]?|утвержден[оы]?|проверен[оы]?|используется)|unverified|unknown|hypothesis)\b/iu;
-const EXTERNAL_CLAIM_PATTERN = /\b(?:конкурент|рын(?:ок|ка)|каталог|бенчмарк|benchmark|industry|отрасл|монетизац|локализац|требовани[ея]\s+платформ|ARPDAU|retention)\b/iu;
-const EXPLICIT_NO_EXTERNAL_PATTERN = /(?:нет|без|не\s+получен[оы]?|не\s+найден[оы]?|не\s+утвержден[оы]?|единственн\w+\s+проверенн\w+\s+источник|no\s+verified|without\s+external).{0,80}(?:внешн|источник|benchmark|бенчмарк|KPI)/isu;
-const EXTERNAL_FACT_LINE_PATTERN = /(?:\b(?:конкурент|рын(?:ок|ка)|каталог|бенчмарк|benchmark|industry|отрасл|монетизац|локализац|требовани[ея]\s+платформ|table[- ]stakes|users? complain|historical reference|modern web variants?|verified\s+only)\b|Nokia\s+Snake|Slither\.io|Snake\.io|Google\s+Snake|Yandex\s+Games|Wikipedia)/iu;
-const NEGATED_EXTERNAL_LINE_PATTERN = /(?:\b(?:нет|без|не\s+(?:получ|найд|утверж|провер|использ)|no\s+verified|no\s+reliable|without)\b).*(?:конкурент|рын|каталог|benchmark|бенчмарк|источник|source|KPI|монетизац|локализац|требовани[ея])/iu;
+const NON_FACT_PATTERN = unicodeTokenPattern(String.raw`TBD|гипотез[аы]?|предположени[ея]|не\s+(?:получен[оы]?|утвержден[оы]?|проверен[оы]?|используется)|unverified|unknown|hypothesis`);
+const EXTERNAL_CLAIM_PATTERN = unicodeTokenPattern(EXTERNAL_TERM_SOURCE);
+const EXPLICIT_NO_EXTERNAL_PATTERN = new RegExp(
+  `${UNICODE_WORD_LEFT}(?:${EXPLICIT_NO_EXTERNAL_SOURCE})${UNICODE_WORD_RIGHT}.{0,80}${UNICODE_WORD_LEFT}(?:${NO_EXTERNAL_TARGET_SOURCE})${UNICODE_WORD_RIGHT}`,
+  'isu',
+);
+const EXTERNAL_FACT_LINE_PATTERN = unicodeTokenPattern(String.raw`${EXTERNAL_FACT_TERM_SOURCE}|table[- ]stakes|users? complain|historical reference|modern web variants?|verified\s+only|Nokia\s+Snake|Slither\.io|Snake\.io|Google\s+Snake|Yandex\s+Games|Wikipedia`);
+const NEGATED_EXTERNAL_LINE_PATTERN = new RegExp(
+  `${UNICODE_WORD_LEFT}(?:${NEGATED_EVIDENCE_SOURCE})${UNICODE_WORD_RIGHT}.*${UNICODE_WORD_LEFT}(?:${EXTERNAL_TERM_SOURCE}|${NO_EXTERNAL_TARGET_SOURCE}|source)${UNICODE_WORD_RIGHT}`,
+  'iu',
+);
 const LOCAL_SOURCE_PATTERN = /(?:`[^`]*(?:GDD\.md|GameIntegration\/)[^`]*`|\b(?:GDD\.md|GameIntegration\/\S+))/iu;
-const POSITIVE_EXTERNAL_ASSERTION_PATTERN = /\b(?:verified|confirmed|requires?|подтвержден\w*|проверен\w*|требует)\b/iu;
+const POSITIVE_EXTERNAL_ASSERTION_PATTERN = unicodeTokenPattern(String.raw`verified|confirmed|requires?|подтвержден[\p{L}\p{M}]*|проверен[\p{L}\p{M}]*|требует`);
+const INTERNAL_RESEARCH_HEADING_PATTERN = /^\s*#{1,6}\s*(?:retention\s+hooks?\s+proposed|конкурентн[\p{L}\p{M}]*\s+поле)\s*$/iu;
 const RUNTIME_CHECK_PATTERN = /(?:игра\s+(?:открывается|запускается|работает|играбельна)|работа(?:ют|ет)\s+(?:клавиатур|сенсор|пауза|сохран|рестарт)|проход(?:ит|ят)\s+(?:тест|проверк)|переживает\s+перезагруз|responsive|playable|keyboard|touch|localStorage)/iu;
 const IMPLEMENTATION_EXTENSIONS = new Set(['.html', '.js', '.mjs', '.ts', '.tsx', '.jsx', '.css', '.vue', '.svelte']);
 const SKIP_DIRS = new Set(['.git', '.claude', '.agents', '.codex', 'node_modules', 'vendor', 'dist', 'build']);
@@ -227,6 +247,7 @@ function validatePhase1(root, evidence, failures) {
     const text = fs.readFileSync(file, 'utf8');
     const refs = markdownReferences(text);
     const uncitedLine = text.split(/\r?\n/).find(line => EXTERNAL_FACT_LINE_PATTERN.test(line)
+      && !INTERNAL_RESEARCH_HEADING_PATTERN.test(line)
       && !lineHasCitation(line, refs)
       && !LOCAL_SOURCE_PATTERN.test(line)
       && !(NON_FACT_PATTERN.test(line) && !POSITIVE_EXTERNAL_ASSERTION_PATTERN.test(line))

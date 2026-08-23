@@ -4768,6 +4768,17 @@ others remain manual-only. Durable Tasks preserve contract identity/hash and rej
 derives gacha verification only from successful structured host operations, never model prose. Five
 core subagent roles also validate typed advisory Builder/Reviewer/Researcher results.
 
+## v4.68.45 changelog (host-enforced native Task write scope)
+
+Codex binds the phase Task before tools and rejects native writes outside scope. GigaChat guards its
+writes and blocks raw shell during Tasks. Escape regressions include a live Codex smoke.
+
+## v4.68.46 changelog (portable phase Task engine lookup)
+
+Copied phase runtimes gained installed sibling-engine lookup, fixing Phase Task creation in ordinary
+App chats without copying the verifier registry into managed games. Verifier-node contract revalidation
+was completed in the follow-up v4.68.47 immutable build.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

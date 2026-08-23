@@ -1,4 +1,4 @@
-# Project Forge v4.68.47 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.49 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -493,20 +493,23 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.49 changelog (complete Unicode evidence classification)
+
+Unicode-aware Russian KPI/research enforcement now distinguishes document-level market vocabulary from
+line-level external facts. Internal Retention headings and Cyrillic research section labels do not cause
+false rejection, while inflected factual claims still require line-local evidence. The real CardGame
+Phase 1 documents pass without English workaround labels.
+
+## v4.68.48 changelog (Unicode-aware Phase 1 evidence gate)
+
+Phase 1 KPI and research validation now uses Unicode token boundaries instead of JavaScript's
+ASCII-oriented `\b`/`\w`. Russian hypothesis/no-evidence wording works directly, while unsupported
+Cyrillic KPI and external-market claims are rejected. Inflected research terms and positive Russian
+confirmations are covered by regression tests without weakening existing English checks.
+
 ## v4.68.47 changelog (complete portable contract authority)
 
 Verifier-node SkillContract revalidation now uses the same trusted installed engine as registry
 execution and Task creation. Managed projects cannot self-promote through their folder name or a local
 `FORGE_ENGINE_ROOT`; case folding is Windows-only. The copied-runtime regression now reaches `done`
 through a contracted verifier while tampered local contracts and registries remain ineffective.
-
-## v4.68.46 changelog (portable phase Task engine lookup)
-
-Copied phase runtimes gained installed sibling-engine lookup, fixing Phase Task creation in ordinary
-App chats without copying the verifier registry into managed games. Verifier-node contract revalidation
-was completed in the follow-up v4.68.47 immutable build.
-
-## v4.68.45 changelog (host-enforced native Task write scope)
-
-Codex binds the phase Task before tools and rejects native writes outside scope. GigaChat guards its
-writes and blocks raw shell during Tasks. Escape regressions include a live Codex smoke.

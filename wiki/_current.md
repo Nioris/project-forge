@@ -4,12 +4,26 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.47 complete portable managed-runtime engine authority: allow an ordinary copied phase
-runtime to bind exact SkillContracts without trusting code or verifier metadata inside the game.
+Ship Project Forge v4.68.49 complete Unicode-aware Phase 1 evidence validation so Russian KPI
+hypotheses work without English workaround labels, factual claims remain evidence-bound and internal
+Retention/research headings do not create false rejection.
 
 ## Active task
 
-- [x] Reproduce `SKILL_CONTRACT_VERIFIER_REGISTRY_MISSING` in the copied CardGameRoblox runtime.
+- [x] Reproduce the CardGame Phase 1 rejection of a standalone Russian `гипотеза` label.
+- [x] Replace ASCII word boundaries with Unicode-aware token handling across related Phase 1 checks.
+- [x] Add accepted/rejected Cyrillic KPI, research, negation and positive-assertion regressions.
+- [x] Revalidate the real CardGame evidence without the English workaround.
+- [x] Separate document-level market vocabulary from line-level external factual claims.
+- [x] Validate generated surfaces, package, install, synchronize and publish v4.68.49.
+
+### Intermediate v4.68.48 build
+
+- [x] Package and install the immutable initial Unicode-boundary repair.
+- [x] Preserve v4.68.48 after real-project validation exposed an over-broad Retention heading match.
+
+### Previous v4.68.47 release
+
 - [x] Resolve SkillContract/verifier authority through one trusted installed-engine resolver.
 - [x] Keep project-local registries outside the managed sync and reject forged local engine authority.
 - [x] Add copied-runtime sibling fallback and missing-engine fail-closed regressions.
@@ -105,7 +119,7 @@ runtime to bind exact SkillContracts without trusting code or verifier metadata 
 
 ## Blockers
 
-No v4.68.47 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+No v4.68.49 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
 Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
@@ -129,5 +143,7 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Only a declared SkillContract plus a structured successful host operation may grant automatic verifier authority; model prose is advisory.
 - 2026-08-23: Every target in one guarded native write is checked; one escaped or unknown target rejects the entire operation.
 - 2026-08-23: Active GigaChat Tasks block raw shell fail-closed; Codex shell isolation remains a disposable-worktree follow-up.
+- 2026-08-23: Human-language evidence tokens use Unicode letter/mark/number boundaries; ASCII `\b`/`\w` is not valid authority for Cyrillic gates.
+- 2026-08-23: Document-level market vocabulary and line-level external facts are separate classifications; an internal Retention heading is not itself sourced research.
 
-<!-- last updated 2026-08-23 after releasing v4.68.47 complete portable managed-runtime engine authority -->
+<!-- last updated 2026-08-23 after releasing v4.68.49 complete Unicode evidence classification -->
