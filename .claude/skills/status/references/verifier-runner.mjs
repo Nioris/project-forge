@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import {
   loadWorkflow, makeRunResult, normalizeProjectPath, readTaskRun, recordTaskResult, taskRunPath,
 } from './execution-contract.mjs';
+import { assertSkillTaskCompatibility, readSkillContract } from './skill-contract.mjs';
 
 const MODULE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const MAX_TASK_VERIFIERS = 20;
@@ -101,6 +102,51 @@ export function loadTaskVerifierRegistry({ projectRoot, registryPath = null, all
     return { ...entry, filepath };
   });
   return { file, engineRoot, entries, byId: new Map(entries.map(entry => [entry.id, entry])) };
+}
+
+/**
+ * Derive an executable plan only from structured successful host operations.
+ * Model prose, requested checks and raw shell commands are deliberately ignored.
+ */
+export function deriveVerifierPlanFromOperations({
+  projectRoot, operations = [], allowedVerifiers = null, phase = null,
+  registryPath = null, allowUntrustedRegistry = false,
+} = {}) {
+  const root = path.resolve(projectRoot || process.cwd());
+  const registry = loadTaskVerifierRegistry({ projectRoot: root, registryPath, allowUntrustedRegistry });
+  const allowed = allowedVerifiers == null ? null : new Set(allowedVerifiers);
+  const groups = new Map();
+  let index = 0;
+  for (const operation of Array.isArray(operations) ? operations : []) {
+    index++;
+    if (!operation || operation.tool !== 'forge_script' || Number(operation.exitCode ?? operation.status) !== 0) continue;
+    let script = String(operation.script || '').trim().replaceAll('\\', '/').replace(/^\.\//, '');
+    if (script && !script.includes('/')) script = `scripts/${script}`;
+    const entry = registry.entries.find(candidate => candidate.script.toLowerCase() === script.toLowerCase());
+    if (!entry?.taskRunner || entry.scope !== 'project' || entry.mutates !== false) continue;
+    if (allowed && !allowed.has(entry.id)) continue;
+    if (phase != null && entry.phases.length && !entry.phases.includes(Number(phase))) continue;
+    const args = Array.isArray(operation.args) ? operation.args.map(String) : [];
+    let target = '.';
+    if (entry.taskRunner.target === 'verification-target') {
+      const raw = args[0];
+      if (!raw || raw.startsWith('-')) continue;
+      target = normalizeProjectPath(raw);
+      if (!target) continue;
+    }
+    const bucket = groups.get(target) || { target, ids: [], checks: [], provenance: [], lastIndex: index };
+    if (!bucket.ids.includes(entry.id)) bucket.ids.push(entry.id);
+    bucket.checks.push(`forge_script ${entry.script} ${args.join(' ')}`.trim());
+    bucket.provenance.push({ verifier: entry.id, tool: 'forge_script', script: entry.script, args, at: operation.at || null });
+    bucket.lastIndex = index;
+    groups.set(target, bucket);
+  }
+  if (groups.size > 1) {
+    throw new Error(`Structured verifier operations resolve to conflicting targets: ${[...groups.keys()].sort().join(', ')}`);
+  }
+  const selected = [...groups.values()][0];
+  if (!selected?.ids.length) return null;
+  return { verifiers: selected.ids, verificationTarget: selected.target, checks: selected.checks, provenance: selected.provenance };
 }
 
 function normalizeIssuePath(value, projectRoot) {
@@ -319,6 +365,17 @@ export function runTaskVerifiers({ projectRoot, taskId, registryPath = null, all
 
     if (!run.task.verifiers.length) return recordContractFailure(root, run, 'Task has no registered verifier plan.', 'REQUIREMENT_CONFLICT', 'VERIFIER_PLAN_EMPTY');
     if (run.task.verifiers.length > MAX_TASK_VERIFIERS) return recordContractFailure(root, run, `Task verifier plan exceeds ${MAX_TASK_VERIFIERS} checks.`);
+    if (run.task.contract?.kind === 'skill') {
+      try {
+        const contract = readSkillContract(MODULE_ROOT, run.task.contract.id, { requireDeclared: true });
+        if (contract.hash !== run.task.contract.hash || contract.schemaVersion !== run.task.contract.version) {
+          return recordContractFailure(root, run, `Task SkillContract changed after Task creation: ${contract.id}`);
+        }
+        assertSkillTaskCompatibility(contract, { mode: run.task.mode, phase: run.task.phase, verifiers: run.task.verifiers });
+      } catch (error) {
+        return recordContractFailure(root, run, error.message);
+      }
+    }
 
     const entries = [];
     for (const id of run.task.verifiers) {

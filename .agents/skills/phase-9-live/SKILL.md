@@ -2,6 +2,23 @@
 name: phase-9-live
 kind: architectural
 description: "Фаза 9 — жизнь после релиза: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points."
+contract_version: 1
+phases:
+  - 9
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - WorkProgress/**
+  - wiki/**
+verifiers: []
+stop_points: []
+risk_shell: write
+risk_external: read
+references: []
+completion_contract: status/references/phase-contracts/phase-9.json
 ---
 # $phase-9-live — трафик, рейтинг, требования
 

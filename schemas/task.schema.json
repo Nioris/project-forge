@@ -15,6 +15,17 @@
     "phase": { "type": ["integer", "null"], "minimum": 1, "maximum": 9 },
     "goal": { "type": "string", "minLength": 1, "maxLength": 2000 },
     "skill": { "type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "contract": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["kind", "id", "version", "hash"],
+      "properties": {
+        "kind": { "const": "skill" },
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "version": { "const": 1 },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
     "scope": {
       "type": "object",
       "additionalProperties": false,

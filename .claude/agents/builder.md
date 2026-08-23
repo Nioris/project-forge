@@ -9,6 +9,7 @@ tools:
   - Edit
 isolation: worktree
 memory: project
+contract: builder
 ---
 
 You are a senior developer. You build features with clean, well-documented code.

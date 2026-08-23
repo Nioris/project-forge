@@ -7,6 +7,7 @@ tools:
   - Read
   - Grep
 isolation: worktree
+contract: code-reviewer
 ---
 
 You are a senior code reviewer. Your job is to find issues and suggest improvements.

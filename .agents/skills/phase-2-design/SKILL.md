@@ -2,6 +2,23 @@
 name: phase-2-design
 kind: architectural
 description: "Фаза 2 — дизайн от таргетов: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points."
+contract_version: 1
+phases:
+  - 2
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - wiki/**
+verifiers: []
+stop_points:
+  - phase2-gdd
+risk_shell: write
+risk_external: read
+references: []
+completion_contract: status/references/phase-contracts/phase-2.json
 ---
 # $phase-2-design — GDD и планы от таргетов аналитика
 

@@ -3,6 +3,7 @@ name: moderation-auditor
 description: Runs the full Yandex moderation audit on ONE game build (debugcheck static checks + runtime probes A-G + validators) and returns a structured report. READ-ONLY — never edits game files. Use for pre-submission audits, and spawn several in parallel to audit multiple games at once. Also valid as an Agent Team teammate.
 model: sonnet
 tools: Read, Bash, Grep, Glob
+contract: moderation-auditor
 ---
 
 # Moderation Auditor — аудит одной игры перед подачей в Яндекс

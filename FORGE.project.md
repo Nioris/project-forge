@@ -64,6 +64,20 @@ second verifier; inspect the owning process before removing an abandoned lock.
 Task read/write scopes are validated declarations, not a substitute for workspace protection or
 host sandboxing. Host guards remain authoritative until scoped tool enforcement and file leases ship.
 
+### Executable skill and agent contracts
+
+A canonical skill with `contract_version: 1` declares its allowed phases/modes, read/write scope,
+named STOP-points, risk class, completion contract and Task-runnable verifier IDs. Forge persists the
+contract id/hash in a Task, rejects phase/mode/scope mismatches and never lets model prose expand its
+verifier plan. A legacy skill remains explicitly invokable and readable, but is manual-only: it cannot
+be auto-selected or grant runtime authority until migrated.
+
+Contracted subagent roles are registered in `adapters/agent-contracts.json` and return typed
+Builder/Reviewer/Researcher results. Those reports are structured explanations, not completion proof.
+Only host-recorded writes, existing evidence, trusted registry operations and RunResult transitions may
+complete a Task. A verifier plan can be derived from a successful structured `forge_script` ledger
+operation; a copied command string or a model-requested check is never executable authority.
+
 ### Public MCP verifier surface
 
 The MCP server exposes only checks explicitly marked public in `mcp-server/verifiers.json`. Every

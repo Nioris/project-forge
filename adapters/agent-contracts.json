@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "contracts": [
+    {
+      "id": "builder",
+      "source": ".claude/agents/builder.md",
+      "kind": "builder",
+      "taskModes": ["phase", "change"],
+      "scope": {
+        "read": ["**"],
+        "write": ["WorkProgress/**", "wiki/**", "assets/**"]
+      },
+      "outputKind": "builder",
+      "completion": {
+        "requiresRecordedWrite": true,
+        "requiresEvidence": true,
+        "requiresVerifierPlan": true
+      }
+    },
+    {
+      "id": "code-reviewer",
+      "source": ".claude/agents/code-reviewer.md",
+      "kind": "reviewer",
+      "taskModes": ["review"],
+      "scope": {
+        "read": ["**"],
+        "write": []
+      },
+      "outputKind": "reviewer",
+      "completion": {
+        "requiresRecordedWrite": false,
+        "requiresEvidence": true,
+        "requiresVerifierPlan": false
+      }
+    },
+    {
+      "id": "moderation-auditor",
+      "source": ".claude/agents/moderation-auditor.md",
+      "kind": "reviewer",
+      "taskModes": ["review", "release"],
+      "scope": {
+        "read": ["**"],
+        "write": []
+      },
+      "outputKind": "reviewer",
+      "completion": {
+        "requiresRecordedWrite": false,
+        "requiresEvidence": true,
+        "requiresVerifierPlan": false
+      }
+    },
+    {
+      "id": "qa-tester",
+      "source": ".claude/agents/qa-tester.md",
+      "kind": "reviewer",
+      "taskModes": ["phase", "change", "review"],
+      "scope": {
+        "read": ["**"],
+        "write": ["wiki/**", "screenshots/**", "test-results/**"]
+      },
+      "outputKind": "reviewer",
+      "completion": {
+        "requiresRecordedWrite": false,
+        "requiresEvidence": true,
+        "requiresVerifierPlan": false
+      }
+    },
+    {
+      "id": "sdk-researcher",
+      "source": ".claude/agents/sdk-researcher.md",
+      "kind": "researcher",
+      "taskModes": ["phase", "change", "review"],
+      "scope": {
+        "read": ["**"],
+        "write": ["wiki/**", ".claude/skills/**"]
+      },
+      "outputKind": "researcher",
+      "completion": {
+        "requiresRecordedWrite": false,
+        "requiresEvidence": true,
+        "requiresVerifierPlan": false
+      }
+    }
+  ]
+}

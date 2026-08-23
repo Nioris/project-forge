@@ -7,7 +7,7 @@ import {
   makeRunResult, makeTask, readTaskRun, recordTaskResult, startTaskRun, taskRunPath,
 } from '../.claude/skills/status/references/execution-contract.mjs';
 import {
-  loadTaskVerifierRegistry, normalizeVerifierExecution, runTaskVerifiers,
+  deriveVerifierPlanFromOperations, loadTaskVerifierRegistry, normalizeVerifierExecution, runTaskVerifiers,
 } from '../.claude/skills/status/references/verifier-runner.mjs';
 import { runWorkflowCli } from '../.claude/skills/status/references/workflow-state.mjs';
 
@@ -88,6 +88,23 @@ const gachaSource = gachaEntry ? fs.readFileSync(gachaEntry.filepath, 'utf8') : 
 check(Number(gachaEntry?.timeoutMs) > 100_000 && /watchdogFired/.test(gachaSource)
   && /browser\.process\(\)\?\.kill/.test(gachaSource),
   'browser verifier owns an internal watchdog and child cleanup before the outer Task timeout');
+const derivedGacha = deriveVerifierPlanFromOperations({
+  projectRoot: process.cwd(), phase: 8, allowedVerifiers: ['gacha-integration'],
+  operations: [{ tool: 'forge_script', script: 'scripts/check-gacha-integration.mjs', args: ['WorkProgress/demo'], exitCode: 0 }],
+});
+const proseGacha = deriveVerifierPlanFromOperations({
+  projectRoot: process.cwd(), phase: 8, allowedVerifiers: ['gacha-integration'],
+  operations: [{ command: 'forge_script scripts/check-gacha-integration.mjs WorkProgress/demo', status: 0 }],
+});
+check(derivedGacha?.verifiers?.[0] === 'gacha-integration' && derivedGacha.verificationTarget === 'WorkProgress/demo' && proseGacha === null,
+  'verifier plans derive from structured host operations, never model-authored command prose');
+check(throws(() => deriveVerifierPlanFromOperations({
+  projectRoot: process.cwd(), phase: 8, allowedVerifiers: ['gacha-integration', 'inline-strings'],
+  operations: [
+    { tool: 'forge_script', script: 'scripts/check-gacha-integration.mjs', args: ['WorkProgress/demo-a'], exitCode: 0 },
+    { tool: 'forge_script', script: 'scripts/check-inline-strings.mjs', args: ['WorkProgress/demo-b'], exitCode: 0 },
+  ],
+})), 'conflicting verifier targets are rejected instead of silently dropping earlier checks');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-task-verifier-'));
 const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-task-verifier-outside-'));

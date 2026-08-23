@@ -2,6 +2,25 @@
 name: phase-5-tech
 kind: architectural
 description: "Фаза 5 — мобайл и SDK: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points. Triggers on: фаза 5, phase 5, sdk фаза, техническая фаза."
+contract_version: 1
+phases:
+  - 5
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - .forge-ai.json
+  - WorkProgress/**
+  - wiki/**
+  - assets/**
+verifiers: []
+stop_points: []
+risk_shell: write
+risk_external: read
+references: []
+completion_contract: status/references/phase-contracts/phase-5.json
 ---
 # /phase-5-tech — тач, SDK, реклама
 

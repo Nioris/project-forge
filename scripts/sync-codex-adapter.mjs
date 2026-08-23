@@ -12,6 +12,7 @@ import {
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { agentContractInstruction, loadAgentContracts } from '../.claude/skills/status/references/agent-contract.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SCRIPT_DIR, '..');
@@ -25,6 +26,7 @@ const CODEX_AGENTS = join(ROOT, '.codex', 'agents');
 const MODEL_POLICY_PATH = join(CLAUDE_SKILLS, 'status', 'references', 'model-policy.json');
 const MODEL_POLICY = JSON.parse(readFileSync(MODEL_POLICY_PATH, 'utf8'));
 const DEFAULT_SUBAGENT_MODEL = MODEL_POLICY.defaultSubagent.model;
+const AGENT_CONTRACTS = loadAgentContracts(ROOT);
 
 /** Return all regular files below a directory in stable relative-path order. */
 function walkFiles(rootDir, current = rootDir, out = []) {
@@ -174,6 +176,9 @@ function renderCodexAgent(fileName) {
   const sandbox = chooseSandbox(meta);
   const effort = chooseEffort(name, description);
   const sourceHash = createHash('sha256').update(source).digest('hex').slice(0, 16);
+  const contractId = String(meta.contract || '').trim();
+  const contract = contractId ? AGENT_CONTRACTS.byId.get(contractId) : null;
+  if (contractId && !contract) throw new Error(`Unknown AgentContract ${contractId} in ${fileName}`);
   const prefix = [
     'This file is generated from Project Forge Claude agent instructions.',
     `Canonical source: .claude/agents/${fileName}.`,
@@ -181,12 +186,14 @@ function renderCodexAgent(fileName) {
     'Treat references to CLAUDE.md or .claude/skills as Forge source-of-truth references; Codex-native skills are available under .agents/skills.',
     'Translate Claude-only orchestration syntax instead of assuming those tools exist: `/skill` means invoke the matching Forge skill (Codex form: `$skill`); TaskCreate/TaskUpdate/team-message instructions mean use Codex native subagents, task tracking, or report the result to the parent agent.',
     `Ignore Claude model aliases such as sonnet/opus/haiku when choosing a Codex model. This generated agent is pinned by Forge quality policy to ${DEFAULT_SUBAGENT_MODEL}; only an explicit documented phase route may change reasoning effort.`,
+    ...(contract ? [agentContractInstruction(contract)] : []),
     '',
   ].join('\n');
 
   return [
     '# GENERATED FILE — Project Forge Codex adapter',
     `# source-hash: ${sourceHash}`,
+    ...(contract ? [`# agent-contract: ${contract.id}@${AGENT_CONTRACTS.schemaVersion}`] : []),
     `name = ${JSON.stringify(name)}`,
     `description = ${JSON.stringify(description)}`,
     `model = ${JSON.stringify(DEFAULT_SUBAGENT_MODEL)}`,

@@ -49,13 +49,17 @@ export function runWorkflowCli(args = process.argv.slice(2), {
     const goal = option(args, 'goal');
     if (!mode || !goal) throw new Error('Usage: workflow-state.mjs create --mode <phase|change|review|diagnose|release> --goal "..." [--phase N]');
     const acceptance = options(args, 'acceptance').map((text, index) => ({ id: `AC-${index + 1}`, text, status: 'pending' }));
+    const declaredReads = options(args, 'read');
+    const declaredWrites = options(args, 'write');
     const task = makeTask({
       id: option(args, 'id') || undefined,
       mode,
       phase: option(args, 'phase'),
       goal,
       skill: option(args, 'skill'),
-      scope: { read: list(options(args, 'read').length ? options(args, 'read') : ['**']), write: list(options(args, 'write')) },
+      scope: declaredReads.length || declaredWrites.length
+        ? { read: declaredReads.length ? list(declaredReads) : undefined, write: declaredWrites.length ? list(declaredWrites) : undefined }
+        : undefined,
       acceptance,
       verifiers: list(options(args, 'verifier')),
       verificationTarget: option(args, 'verifier-target') || '.',

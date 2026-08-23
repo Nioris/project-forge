@@ -28,7 +28,7 @@
 Кратко:
 - **Core**: Node.js 20+, ES modules (.mjs), bash + PowerShell для setup
 - **Tooling**: только встроенные модули Node (`fs`, `path`, `child_process`) — no runtime deps
-- **Skills**: 142 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
+- **Skills**: 143 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
 - **Hooks**: 8 .mjs файлов в `.claude/hooks/`
 - **Agents**: 21 canonical markdown roles в `.claude/agents/` + generated Codex TOML mirrors
 - **Knowledge base**: 61 SKILL.md в `./skills/` (referenced by command skills)
@@ -38,7 +38,7 @@
 
 - **9 platforms** — yandex, vk, telegram, ok, max, rustore, web, steam, vkplay
 - **34 validators** — pre-submit gate per platform
-- **142 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
+- **143 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
 - **8 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous
 - **21 agents** — platform builders + design/art/QA/security/research/AI Studio specialist roles
 - **Dashboard** — `dashboard.html` для project tracking + quick prompt copy
@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.43 (latest released)
+### Version: v4.68.44 (latest released)
 
+- 2026-08-23: **v4.68.44** — Strict Skill/Agent contracts bind executable eligibility and provenance to durable Tasks; GigaChat verifier authority now comes only from structured successful host operations, never model prose.
 - 2026-08-23: **v4.68.43** — Registered deterministic Task checks now dispatch automatically at `verify`, normalize failures into bounded repair evidence, trust only the installed engine registry, and power GigaChat's direct gacha repair loop.
 - 2026-08-23: **v4.68.42** — Strict Task/RunResult contracts and five durable execution graphs add restart-safe STOP/repair routing with exact Codex attempt correlation while nine phase markers remain the only global progression.
 - 2026-08-23: **v4.68.41** — All nine phases use executable evidence contracts; the legacy seven-step checker delegates to canonical status and MCP exposes only registered read-only verifiers.

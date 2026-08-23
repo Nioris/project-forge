@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-forge.local/schemas/agent-result.schema.json",
+  "title": "Project Forge AgentResult v1",
+  "oneOf": [
+    { "$ref": "#/$defs/builder" },
+    { "$ref": "#/$defs/reviewer" },
+    { "$ref": "#/$defs/researcher" }
+  ],
+  "$defs": {
+    "path": { "type": "string", "minLength": 1, "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000\\\\]+$" },
+    "builder": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "contractId", "kind", "status", "summary", "evidence", "changedFiles", "acceptanceCovered", "verificationRequested"],
+      "properties": {
+        "schemaVersion": { "const": 1 }, "contractId": { "type": "string" }, "kind": { "const": "builder" },
+        "status": { "enum": ["implemented", "blocked", "needs_user"] }, "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/path" } },
+        "changedFiles": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/path" } },
+        "acceptanceCovered": { "type": "array", "maxItems": 100, "items": { "type": "string", "minLength": 1, "maxLength": 64 } },
+        "verificationRequested": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 120 } }
+      }
+    },
+    "issue": {
+      "type": "object", "additionalProperties": false,
+      "required": ["severity", "file", "line", "rule", "problem", "suggestedFix"],
+      "properties": {
+        "severity": { "enum": ["critical", "major", "minor", "info"] }, "file": { "anyOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }] },
+        "line": { "type": ["integer", "null"], "minimum": 1 }, "rule": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "problem": { "type": "string", "minLength": 1, "maxLength": 1000 }, "suggestedFix": { "type": ["string", "null"], "maxLength": 1000 }
+      }
+    },
+    "reviewer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "contractId", "kind", "decision", "summary", "evidence", "issues"],
+      "properties": {
+        "schemaVersion": { "const": 1 }, "contractId": { "type": "string" }, "kind": { "const": "reviewer" },
+        "decision": { "enum": ["approved", "changes_requested", "blocked"] }, "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/path" } },
+        "issues": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/issue" } }
+      }
+    },
+    "fact": {
+      "type": "object", "additionalProperties": false, "required": ["statement", "source"],
+      "properties": { "statement": { "type": "string", "minLength": 1, "maxLength": 1000 }, "source": { "type": "string", "minLength": 1, "maxLength": 2000 } }
+    },
+    "researcher": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "contractId", "kind", "summary", "evidence", "facts", "unknowns", "sources", "decisionsRequired"],
+      "properties": {
+        "schemaVersion": { "const": 1 }, "contractId": { "type": "string" }, "kind": { "const": "researcher" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 }, "evidence": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/path" } },
+        "facts": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/fact" } },
+        "unknowns": { "type": "array", "maxItems": 100, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+        "sources": { "type": "array", "maxItems": 100, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+        "decisionsRequired": { "type": "array", "maxItems": 50, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@ tools:
   - Write
   - Grep
 isolation: worktree
+contract: qa-tester
 ---
 
 You are a QA engineer. Your job is to test features and find bugs.

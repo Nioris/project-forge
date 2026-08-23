@@ -1,4 +1,4 @@
-# Project Forge v4.68.43 — Полная инструкция по работе
+# Project Forge v4.68.44 — Полная инструкция по работе
 
 ## Оглавление
 
@@ -145,6 +145,24 @@ node .claude\skills\status\references\project-status.mjs . --json
 Файлы `.forge/runs/` принадлежат runtime и не редактируются вручную. Поля scope пока являются
 проверяемой декларацией; фактическую защиту записи обеспечивают workspace rules, host sandbox и
 защищённые пути. Принудительные file leases будут отдельным следующим слоем.
+
+### SkillContract и AgentContract
+
+В каноническом `SKILL.md` поле `contract_version: 1` включает машинный контракт: допустимые фазы
+и режимы, scope чтения/записи, STOP ids, risk, completion contract и разрешённые Task-verifiers.
+Task сохраняет id/hash контракта; несовместимые phase/mode/scope/verifier и изменение контракта
+посреди работы отклоняются. Навыки без контракта не ломаются, но доступны только для явного ручного
+вызова и не участвуют в автоматическом выборе.
+
+```powershell
+node scripts\check-skill-contracts.mjs
+node scripts\search-skills.mjs "gacha" --phase 8 --mode change --auto-only --json
+```
+
+`adapters/agent-contracts.json` задаёт форматы Builder/Reviewer/Researcher. Ответ субагента не
+выбирает исполняемые проверки и не закрывает Task: runtime доверяет только host ledger, существующим
+файлам и зарегистрированным verifiers. Scope в этой версии ещё декларативный; принудительная граница
+записи остаётся следующим отдельным релизом.
 
 ### Локальный Git и приватный GitHub для каждой игры
 

@@ -2,6 +2,32 @@
 name: status
 kind: tactical
 description: "Показать современный Project Forge status по 9 каноническим фазам: текущая фаза, STOP-point, phase markers, фактические артефакты, Project Health и AI Studio. Не путать…"
+contract_version: 1
+phases:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+modes:
+  - phase
+  - change
+  - review
+  - diagnose
+  - release
+requires: []
+reads:
+  - "**"
+writes: []
+verifiers: []
+stop_points: []
+risk_shell: read
+risk_external: none
+references: []
 ---
 
 # $status <папка> — 9 фаз по фактам, STOP-point, Project Health, AI Studio
@@ -170,6 +196,25 @@ Marker **не заменяет evidence**: ставь `complete` только п
 `block --owner agent` означает автоматический repair, `--owner infrastructure` — явный внешний blocker.
 Codex связывает marker/RunResult с текущим запуском через `attemptId`; вопросительный текст — только
 legacy fallback. `.forge/runs/` принадлежит runtime и никогда не редактируется агентом вручную.
+
+## Machine-readable Skill/Agent contracts (v4.68.44+)
+
+`contract_version: 1` в canonical `SKILL.md` — это исполняемая граница, а не подсказка модели.
+Она фиксирует допустимые phases/modes, read/write declarations, STOP ids, risks и разрешённые
+verifier IDs. Runtime записывает id/hash контракта в Task и отклоняет несовместимую фазу, mode,
+scope или verifier plan. Изменение контракта посреди Task также блокирует исполнение.
+
+Навык без контракта остаётся доступен для явного ручного вызова, но не участвует в автоматическом
+выборе и не может выдать себе права/проверки текстом. Проверка каталога:
+
+```bash
+node scripts/check-skill-contracts.mjs
+node scripts/check-agent-contracts.mjs
+```
+
+Формальные Builder/Reviewer/Researcher AgentResult нужны оркестратору для структуры отчёта, но
+не являются completion authority: requested checks из ответа консультативны, а Task закрывают
+только host-recorded writes/evidence и trusted verifier runtime.
 
 ## Verifier-driven change Tasks (v4.68.43+)
 

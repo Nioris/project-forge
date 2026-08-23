@@ -1,4 +1,4 @@
-# Project Forge v4.68.43 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.44 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -455,6 +455,14 @@ Persist an authoritative phase marker before its supplemental RunResult and corr
 exact attempt ID where the adapter supports it.
 *(Established v4.68.42 Durable Execution Graph.)*
 
+### 22. Machine contracts grant runtime authority; model prose never does
+
+Only `contract_version: 1` grants automatic skill authority. Task stores its id/hash and rejects drift;
+legacy Markdown stays manual-only. Agent results are advisory: only host operations, evidence, the
+trusted registry and RunResult may close work. Write scope is not yet a sandbox or file lease. See
+`wiki/decisions/033-machine-contract-authority.md`.
+*(Established v4.68.44 Machine-readable Skill/Agent Contracts.)*
+
 ### Adding new lessons — process
 
 Each lesson gets a tier classification at logging time:
@@ -478,6 +486,13 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.44 changelog (machine-readable Skill/Agent contracts)
+
+Eleven canonical skills now expose strict phase/mode, scope, STOP and trusted-verifier contracts; all
+others remain manual-only. Durable Tasks preserve contract identity/hash and reject drift. GigaChat
+derives gacha verification only from successful structured host operations, never model prose. Five
+core subagent roles also validate typed advisory Builder/Reviewer/Researcher results.
+
 ## v4.68.43 changelog (verifier-driven repair runtime)
 
 Change Tasks now execute registered deterministic checks automatically when the graph enters `verify`.
@@ -495,11 +510,3 @@ transition locks and bounded retries without competing with the canonical nine p
 routes exact-attempt structured STOP/results before legacy text heuristics, restores user STOPs before
 launching a model, and never advances from a supplemental completed result alone. GigaChat direct
 tasks persist intent before graph creation, recover orphan runs and record failed verification as repair.
-
-## v4.68.41 changelog (canonical nine-phase state integrity)
-
-All nine canonical phases now load schema-checked executable completion contracts with exact
-evidence paths and phase-specific project checks. Missing, irrelevant, directory-only and
-counterfeit evidence can no longer advance durable state. The old seven-step pipeline checker is
-now only a compatibility view over canonical nine-phase status, and MCP exposes a bounded read-only
-verifier surface from an explicit registry instead of exporting every `check-*.mjs` script.

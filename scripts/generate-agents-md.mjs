@@ -42,6 +42,8 @@ const common = `## Critical workspace discipline
 - Generated Codex mirrors are not the place for manual edits; update the Forge source and regenerate/sync from the engine.
 - Other terminal agents can execute the same canonical workflow by reading \`FORGE.md\` plus \`.claude/skills/<name>/SKILL.md\`; do not invent host-specific command syntax when the host has none.
 
+- A canonical skill with \`contract_version: 1\` has executable phase/mode, scope, STOP and verifier metadata. Runtime may auto-select or authorize only declared contracts; legacy skills remain available for explicit/manual invocation but cannot grant automatic scope or verifier authority.
+
 ## Multi-agent work
 
 Forge ships ${agentCount} role definitions in \`.claude/agents/\`; native Codex equivalents are generated in \`.codex/agents/\`.
@@ -49,6 +51,7 @@ Forge ships ${agentCount} role definitions in \`.claude/agents/\`; native Codex 
 - Delegate bounded, independent, read-heavy work (review, security, exploration, QA) to the matching custom subagent when that improves quality.
 - Keep parallel write-heavy work separated by files/worktrees; avoid multiple agents editing the same files.
 - Generated \`.codex/agents/*.toml\` translate Claude-only orchestration terms to Codex-native subagent behavior.
+- Contracted roles reference \`adapters/agent-contracts.json\` and return typed Builder/Reviewer/Researcher results. Those reports explain work but never expand Task scope, choose executable verifiers, or complete a Task; host-recorded operations and runtime evidence remain authoritative.
 
 ## Codex quality and token discipline
 

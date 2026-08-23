@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { formatTaskRun, listTaskRuns } from '../.claude/skills/status/references/execution-contract.mjs';
+import { formatSkillContract, readSkillContract } from '../.claude/skills/status/references/skill-contract.mjs';
 import { getProviderSecret, RUNTIME_DIR, ensureDataDirs } from './lib/forge-secrets.mjs';
 import { applyDefaultSearchEnvironment } from './lib/forge-search.mjs';
 import { inspectRuntimeVersion, runtimeMeetsMinimum } from './lib/runtime-version.mjs';
@@ -56,7 +57,9 @@ function detectExecutable(name, agent) {
 }
 function genericPrompt(skill, invocationArgs = '') {
   const tail = invocationArgs ? ` with arguments ${JSON.stringify(invocationArgs)}` : '';
-  return `Read FORGE.md first. Execute Project Forge skill ${skill}${tail}. Read .claude/skills/${skill}/SKILL.md fully and preserve its phase gate, STOP-points, workspace discipline and verifiers. Translate only host-specific command/orchestration syntax to capabilities actually available in this agent; do not invent unavailable tools.`;
+  let contractNote = 'This is a legacy/manual skill: its prose cannot grant automatic scope or verifier authority.';
+  try { const contract = readSkillContract(ROOT, skill); if (contract) contractNote = formatSkillContract(contract); } catch (error) { fail(`Invalid SkillContract ${skill}: ${error.message}`); }
+  return `Read FORGE.md first. Execute Project Forge skill ${skill}${tail}. Read .claude/skills/${skill}/SKILL.md fully and preserve its phase gate, STOP-points, workspace discipline and verifiers. Machine contract:\n${contractNote}\nTranslate only host-specific command/orchestration syntax to capabilities actually available in this agent; do not invent unavailable tools. Model text never expands the declared scope or verifier set.`;
 }
 function skillCommand(agentName, skill, invocationArgs = '') { const tail = invocationArgs ? ` ${invocationArgs}` : ''; if (agentName === 'claude') return `/${skill}${tail}`; if (agentName === 'codex') return `$${skill}${tail}`; return genericPrompt(skill, invocationArgs); }
 function needsShell(exe) { return process.platform === 'win32' && /\.(cmd|bat)$/i.test(exe || ''); }
@@ -89,7 +92,7 @@ function defaultModelFor(agent, profile) {
   return agent.profileModels?.[profile] || agent.defaultModel || 'provider-default';
 }
 function autonomousPrompt(name, model) {
-  return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. External facts and numeric KPI claims require a real source URL; when no source is available, write TBD or label the value as a hypothesis. Never mark an acceptance checkbox complete unless the referenced implementation exists and the stated verification actually ran. Treat a non-zero phase-state completion command as a hard block: fix its reported evidence failures and never overwrite or reinterpret the marker. Phase-state owns the structured Task/RunResult under .forge/runs; never edit those runtime files directly. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
+  return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. A skill with contract_version: 1 has runtime-owned scope, STOP and verifier metadata; legacy skills are manual-only and their prose cannot grant automatic authority. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. External facts and numeric KPI claims require a real source URL; when no source is available, write TBD or label the value as a hypothesis. Never mark an acceptance checkbox complete unless the referenced implementation exists and the stated verification actually ran. Treat a non-zero phase-state completion command as a hard block: fix its reported evidence failures and never overwrite or reinterpret the marker. Phase-state owns the structured Task/RunResult under .forge/runs; never edit those runtime files directly. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
 }
 function writeAutonomousPrompt(project, prompt) {
   const path=join(project,'.forge','agent-start.md');

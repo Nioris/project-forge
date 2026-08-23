@@ -2,6 +2,26 @@
 name: phase-6-listing
 kind: architectural
 description: "Фаза 6 — локализация и листинг: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points. Triggers on: фаза 6, phase 6, листинг, описания стора."
+contract_version: 1
+phases:
+  - 6
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - SETUP_GUIDE.md
+  - WorkProgress/**
+  - StoreData/**
+  - wiki/**
+  - assets/**
+verifiers: []
+stop_points: []
+risk_shell: write
+risk_external: read
+references: []
+completion_contract: status/references/phase-contracts/phase-6.json
 ---
 # /phase-6-listing — языки и тексты стора
 

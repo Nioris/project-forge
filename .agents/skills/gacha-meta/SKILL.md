@@ -2,6 +2,31 @@
 name: gacha-meta
 kind: tactical
 description: "Встроить в игру гача/рулетку/дейли-мету с крутками за рекламу: колесо фортуны, гача-баннер со скинами и расходкой, дейли-календарь, скретч-карты, сундуки, коллекции. Каталог…"
+contract_version: 1
+phases:
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+modes:
+  - change
+requires: []
+reads:
+  - WorkProgress/**
+  - wiki/**
+writes:
+  - WorkProgress/**
+  - wiki/**
+  - assets/**
+verifiers:
+  - gacha-integration
+stop_points: []
+risk_shell: write
+risk_external: none
+references: []
 ---
 
 # $gacha-meta — гача-мета с крутками за рекламу

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
-  FAILURE_TYPES, TASK_MODES, atomicWriteJson, configureTaskVerifierPlan, ensurePhaseTaskRun, loadWorkflow, makeRunResult, makeTask,
+  FAILURE_TYPES, TASK_MODES, atomicWriteJson, configureTaskSkillContract, configureTaskVerifierPlan, ensurePhaseTaskRun, loadWorkflow, makeRunResult, makeTask,
   readTaskRun, recordTaskResult, startTaskRun, taskRunPath, validateRunResult, validateTask, validateWorkflow,
 } from '../.claude/skills/status/references/execution-contract.mjs';
 
@@ -111,6 +111,28 @@ try {
     && run.task.acceptance.every(item => item.status === 'satisfied'), 'verified change reaches terminal done and satisfies acceptance');
   check(readTaskRun(tmp, validTask.id).state.currentNode === 'done', 'durable run resumes from the same node after a fresh read');
 
+  let contracted = startTaskRun({ projectRoot: tmp, task: makeTask({
+    id: 'task-skill-contract-fixture', mode: 'change', phase: 8, goal: 'Bind a trusted gacha skill contract',
+    scope: { read: ['WorkProgress/**'], write: ['WorkProgress/**'] },
+  }) });
+  contracted = configureTaskSkillContract({ projectRoot: tmp, taskId: contracted.task.id, skill: 'gacha-meta' });
+  check(contracted.task.contract?.id === 'gacha-meta' && contracted.task.scope.write.includes('assets/**')
+    && contracted.events.at(-1).event === 'skill_contract_configured',
+  'host can bind an exact declared SkillContract while an agent owns the Task');
+  check(throws(() => configureTaskVerifierPlan({ projectRoot: tmp, taskId: contracted.task.id, verifiers: ['inline-strings'] })),
+    'SkillContract blocks an undeclared verifier plan');
+  contracted = configureTaskVerifierPlan({ projectRoot: tmp, taskId: contracted.task.id, verifiers: ['gacha-integration'], verificationTarget: 'WorkProgress/demo' });
+  check(contracted.task.verifiers[0] === 'gacha-integration', 'SkillContract permits its exact registered verifier');
+  const driftPath = taskRunPath(tmp, contracted.task.id);
+  const drifted = JSON.parse(fs.readFileSync(driftPath, 'utf8'));
+  drifted.task.contract.hash = '0'.repeat(64);
+  fs.writeFileSync(driftPath, JSON.stringify(drifted));
+  check(throws(() => readTaskRun(tmp, contracted.task.id))
+    && throws(() => recordTaskResult({ projectRoot: tmp, taskId: contracted.task.id, result: resultFor(contracted, 'completed') })),
+  'SkillContract hash drift blocks both durable reads and Task transitions');
+  check(throws(() => makeTask({ mode: 'change', phase: 1, goal: 'Wrong phase', skill: 'gacha-meta' })),
+    'Task creation rejects a declared skill outside its phase/mode contract');
+
   let decision = startTaskRun({ projectRoot: tmp, task: makeTask({
     id: 'task-decision-fixture', mode: 'change', phase: 4, goal: 'Wait for a real decision',
     scope: { read: ['WorkProgress/**'], write: ['WorkProgress/**'] },
@@ -147,7 +169,9 @@ try {
     'terminal phase repair budget cannot silently reset without an explicit reopen action');
 
   const phaseRun = ensurePhaseTaskRun({ projectRoot: tmp, phase: 2, phaseName: 'Design' });
-  check(phaseRun.workflow.id === 'phase' && phaseRun.task.phase === 2, 'canonical phase execution is represented by a Task without replacing phase state');
+  check(phaseRun.workflow.id === 'phase' && phaseRun.task.phase === 2 && phaseRun.task.contract?.id === 'phase-2-design'
+    && phaseRun.task.scope.write.length === 1 && phaseRun.task.scope.write[0] === 'wiki/**',
+  'canonical phase execution derives scope and provenance from its SkillContract without replacing phase state');
 
   const corruptRun = startTaskRun({ projectRoot: tmp, task: makeTask({
     id: 'task-corrupt-result', mode: 'review', phase: null, goal: 'Reject corrupt persisted result',

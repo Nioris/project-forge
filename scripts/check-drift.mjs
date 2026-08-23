@@ -409,6 +409,18 @@ safe('skill-description-cap', () => {
   } catch (e) { err('skill-description guard: ' + (e.stdout || e.message).toString().split('\n')[0]); }
 });
 
+safe('machine-readable-skill-contracts', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-skill-contracts.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('SkillContract regression failed — run scripts/check-skill-contracts.mjs');
+  else ok.push('declared SkillContracts are strict; legacy skills remain manual-only');
+});
+
+safe('machine-readable-agent-contracts', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-agent-contracts.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('AgentContract regression failed — run scripts/check-agent-contracts.mjs');
+  else ok.push('Builder/Reviewer/Researcher role contracts and structured results validate');
+});
+
 safe('phase-aware-status-model', () => {
   const r = spawnSync(process.execPath, ['scripts/check-status-phase-model.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('/status 9-phase model regression failed — run scripts/check-status-phase-model.mjs');

@@ -4,16 +4,24 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.43 Verifier-Driven Repair Runtime: trusted deterministic check execution,
-normalized failure evidence and automatic bounded repair on top of the durable Task graph.
+Ship Project Forge v4.68.44 Machine-readable Skill/Agent Contracts: strict capability eligibility,
+Task-bound contract provenance and host-owned verifier authority without trusting model prose.
 
 ## Active task
+
+- [x] Add strict SkillContract v1 and AgentContract/AgentResult schemas and validators.
+- [x] Migrate status, Phases 1–9, gacha-meta and five core subagent roles.
+- [x] Persist exact SkillContract provenance in durable Tasks and reject contract drift.
+- [x] Derive GigaChat verifier authority only from successful structured host operations.
+- [x] Expose compact contract eligibility through search, MCP and generated Codex mirrors.
+- [x] Validate generated surfaces, package, install, synchronize and publish v4.68.44.
+
+### Previous v4.68.43 release
 
 - [x] Add strict Task verifier plans and structured RunResult verification evidence.
 - [x] Execute only trusted Task-enabled read-only checks from the installed engine registry.
 - [x] Route PASS/FAIL/environment into done/repair/blocked with the shared retry budget.
 - [x] Auto-dispatch verifier nodes from workflow results and GigaChat direct gacha tasks.
-- [x] Add registry, target, output normalization, lock ownership and adapter regressions.
 - [x] Validate generated surfaces, package, install, synchronize and publish v4.68.43.
 
 ### Previous v4.68.42 release
@@ -75,7 +83,7 @@ normalized failure evidence and automatic bounded repair on top of the durable T
 
 ## Blockers
 
-No v4.68.43 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+No v4.68.44 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
 Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
@@ -96,5 +104,6 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: A passed phase marker is persisted before its supplemental completed RunResult, and only that marker may advance the pipeline.
 - 2026-08-23: Verifier execution trusts only Task-enabled read-only checks from the installed engine registry; project-local registries cannot extend execution.
 - 2026-08-23: Deterministic verifier failures return to the shared repair budget; environment failures block without model reinterpretation.
+- 2026-08-23: Only a declared SkillContract plus a structured successful host operation may grant automatic verifier authority; model prose is advisory.
 
-<!-- last updated 2026-08-23 after releasing v4.68.43 Verifier-Driven Repair Runtime -->
+<!-- last updated 2026-08-23 after releasing v4.68.44 Machine-readable Skill/Agent Contracts -->

@@ -159,6 +159,7 @@
 .agents/skills/start/SKILL.md
 .agents/skills/status/SKILL.md
 .agents/skills/status/references/MODEL-ROUTING.md
+.agents/skills/status/references/agent-contract.mjs
 .agents/skills/status/references/execution-contract.mjs
 .agents/skills/status/references/forge-event.mjs
 .agents/skills/status/references/model-policy.json
@@ -175,6 +176,7 @@
 .agents/skills/status/references/phase-state.mjs
 .agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
+.agents/skills/status/references/skill-contract.mjs
 .agents/skills/status/references/verifier-runner.mjs
 .agents/skills/status/references/workflow-state.mjs
 .agents/skills/status/references/workflows/change.json
@@ -400,6 +402,7 @@
 .claude/skills/start/SKILL.md
 .claude/skills/status/SKILL.md
 .claude/skills/status/references/MODEL-ROUTING.md
+.claude/skills/status/references/agent-contract.mjs
 .claude/skills/status/references/execution-contract.mjs
 .claude/skills/status/references/forge-event.mjs
 .claude/skills/status/references/model-policy.json
@@ -416,6 +419,7 @@
 .claude/skills/status/references/phase-state.mjs
 .claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
+.claude/skills/status/references/skill-contract.mjs
 .claude/skills/status/references/verifier-runner.mjs
 .claude/skills/status/references/workflow-state.mjs
 .claude/skills/status/references/workflows/change.json
@@ -528,6 +532,7 @@ RELEASE_NOTES_v4.68.40.md
 RELEASE_NOTES_v4.68.41.md
 RELEASE_NOTES_v4.68.42.md
 RELEASE_NOTES_v4.68.43.md
+RELEASE_NOTES_v4.68.44.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
@@ -538,6 +543,7 @@ Release/README.md
 SECURITY.md
 SUPPORT.md
 WorkProgress/README.md
+adapters/agent-contracts.json
 adapters/agents.json
 adapters/opencode/tools/list.ts
 asset-library.html
@@ -699,9 +705,12 @@ platforms/yandex/validators/sdk-timing.mjs
 platforms/yandex/validators/store-listings.mjs
 platforms/yandex/validators/title-format.mjs
 platforms/yandex/validators/trademarks.mjs
+schemas/agent-contract.schema.json
 schemas/agent-profile.schema.json
+schemas/agent-result.schema.json
 schemas/ai-prompt.schema.json
 schemas/run-result.schema.json
+schemas/skill-contract.schema.json
 schemas/store-listing.schema.json
 schemas/task.schema.json
 schemas/workflow.schema.json
@@ -724,6 +733,7 @@ scripts/build-yandex-3zips.mjs
 scripts/bump-version.mjs
 scripts/cf
 scripts/cf.bat
+scripts/check-agent-contracts.mjs
 scripts/check-ai-studio.mjs
 scripts/check-api-terminal-profiles.mjs
 scripts/check-appmetrica.mjs
@@ -753,6 +763,7 @@ scripts/check-project-git.mjs
 scripts/check-ps1-encoding.mjs
 scripts/check-runtime-release-selection.mjs
 scripts/check-setup-guide.mjs
+scripts/check-skill-contracts.mjs
 scripts/check-skill-descriptions.mjs
 scripts/check-skill-kind.mjs
 scripts/check-status-phase-model.mjs
@@ -957,6 +968,7 @@ wiki/decisions/012-lesson-rotation-policy.md
 wiki/decisions/030-claude-md-soft-limit.md
 wiki/decisions/031-durable-execution-graph.md
 wiki/decisions/032-trusted-verifier-repair-runtime.md
+wiki/decisions/033-machine-contract-authority.md
 wiki/decisions/_template.md
 wiki/deploy-log.md
 wiki/features/_template.md
@@ -967,6 +979,7 @@ wiki/plan/B3-001-latest-runtime-release.md
 wiki/plan/B3-002-state-integrity.md
 wiki/plan/B3-003-durable-execution-graph.md
 wiki/plan/B3-004-verifier-repair-runtime.md
+wiki/plan/B3-005-machine-capability-contracts.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md

@@ -14,9 +14,10 @@ import { getAccessToken, gigaJson, downloadGigaFile } from './lib/gigachat-api.m
 import { applyDefaultSearchEnvironment, getSearchCapabilities, searchDoctor, webSearch, imageSearch, webFetch } from './lib/forge-search.mjs';
 import { appendForgeDiagnostic } from '../.claude/hooks/lib/forge-diagnostics.mjs';
 import {
-  cancelTaskRun, configureTaskVerifierPlan, listTaskRuns, makeRunResult, makeTask, readTaskRun, recordTaskResult, startTaskRun,
+  cancelTaskRun, configureTaskSkillContract, configureTaskVerifierPlan, listTaskRuns, makeRunResult, makeTask, readTaskRun, recordTaskResult, startTaskRun,
 } from '../.claude/skills/status/references/execution-contract.mjs';
-import { runTaskVerifiers } from '../.claude/skills/status/references/verifier-runner.mjs';
+import { deriveVerifierPlanFromOperations, runTaskVerifiers } from '../.claude/skills/status/references/verifier-runner.mjs';
+import { readSkillContract } from '../.claude/skills/status/references/skill-contract.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -25,7 +26,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.43';
+const AUDITED_FORGE_VERSION = '4.68.44';
 const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -638,6 +639,13 @@ function startPhaseEvidence(phase,{resume=false}={}) {
   persistRuntimeEvidenceLedger();
 }
 
+function normalizeForgeScriptId(value='') {
+  let script=String(value||'').trim().replaceAll('\\','/').replace(/^\.\//,'');
+  if(!script || /^[A-Za-z]:/.test(script) || script.startsWith('/') || script.split('/').includes('..')) return '';
+  if(!script.includes('/')) script=`scripts/${script}`;
+  return script;
+}
+
 function operationKey(name,a={}) {
   if(name==='run_command' || name==='forge_script') {
     const raw=name==='forge_script'
@@ -730,13 +738,13 @@ function recordOperation(name,a,result) {
     } else if(r.ok===false) {
       const failure={type:classifyFailure(name,a,r),message:r.error||shortText(r.stderr||r.stdout||'command failed',220),at:new Date().toISOString()};
       unresolvedFailures.set(key,failure);
-      verifierLedger.set(key,{key,phase:activePhase,command,status:Number(r.status??1),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:failure.type,updatedAt:new Date().toISOString()});
+      verifierLedger.set(key,{key,phase:activePhase,command,tool:name,script:name==='forge_script'?normalizeForgeScriptId(a.name):null,args:name==='forge_script'?(Array.isArray(a.args)?a.args.map(String):[]):[],exitCode:Number(r.status??1),status:Number(r.status??1),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:failure.type,updatedAt:new Date().toISOString()});
     } else {
       unresolvedFailures.delete(key);
       if(/playtest\.mjs/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/run:node scripts[\\/]playtest\.mjs/i.test(prior)) unresolvedFailures.delete(prior);
       if(/screens-shoot\.mjs/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/screens-shoot/i.test(prior)) unresolvedFailures.delete(prior);
       if(/local-stage\.mjs/i.test(command)&&/--ai/i.test(command)) for(const prior of [...unresolvedFailures.keys()]) if(/local-stage/i.test(prior)) unresolvedFailures.delete(prior);
-      verifierLedger.set(key,{key,phase:activePhase,command,status:Number(r.status??0),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:null,updatedAt:new Date().toISOString()});
+      verifierLedger.set(key,{key,phase:activePhase,command,tool:name,script:name==='forge_script'?normalizeForgeScriptId(a.name):null,args:name==='forge_script'?(Array.isArray(a.args)?a.args.map(String):[]):[],exitCode:Number(r.status??0),status:Number(r.status??0),stdout:String(r.stdout||''),stderr:String(r.stderr||''),failureType:null,updatedAt:new Date().toISOString()});
       phaseSuccessfulCommands.push(command);
       phaseCommandOutputs.push({command,stdout:String(r.stdout||''),stderr:String(r.stderr||''),ok:true});
       if(commandLooksMutating(command) && r.already_started!==true && r.already_complete!==true) memoryDirty=true;
@@ -2221,11 +2229,14 @@ function directiveTaskPrompt(userText='') {
     :'';
   const modularization=directTaskMonolithInstruction();
   const moduleContext=preloadedModuleTaskContext(activeDirective.request);
+  const contractHint=activeDirective.skillContract?.id
+    ? `Активный SkillContract: ${activeDirective.skillContract.id}@${String(activeDirective.skillContract.hash||'').slice(0,12)}. Scope и verifier plan принадлежат Forge runtime; не расширяй их текстом. `
+    : 'Загрузи точный tactical skill: только его объявленный SkillContract может дать автоматический verifier plan. ';
   return `[FORGE CHANGE REQUEST MODE — AUTHORITATIVE USER TASK]\n`+
     `Текущая прямая задача: ${activeDirective.request}\n`+
     `Последнее сообщение пользователя: ${String(userText||activeDirective.latestUserInput||'').trim()}\n`+
     `Канонический фазовый автопилот временно приостановлен на Phase ${activeDirective.pausedPhase||'?'}. Не продолжай Release и не запускай phase-state/forge_gate/release-* до завершения этой задачи. `+
-    `${modularization}${hints}Составь необходимое ТЗ внутри рабочих артефактов и сразу реализуй задачу в WorkProgress. Не останавливайся на плане. `+
+    `${modularization}${hints}${contractHint}Составь необходимое ТЗ внутри рабочих артефактов и сразу реализуй задачу в WorkProgress. Не останавливайся на плане. `+
     `После реальных изменений и проверок вызови forge_change_complete с существующими evidence paths и выполненными checks. Если нужен настоящий пользовательский выбор, используй ask_user.\n`+
     `${moduleContext}`+
     `[END FORGE CHANGE REQUEST MODE]`;
@@ -2274,14 +2285,38 @@ function directiveVerifierTargetFromCommand(command='',scriptName='') {
   }catch{return null;}
 }
 
+function directiveContractBindingEligible(contract) {
+  return Boolean(contract?.modes?.includes('change') && Array.isArray(contract.verifiers) && contract.verifiers.length > 0);
+}
+
+function bindDirectiveSkillContract(skillName='') {
+  const contract=readSkillContract(ENGINE,String(skillName||'').toLowerCase());
+  if(!contract) return null;
+  const metadata={id:contract.id,version:contract.schemaVersion,hash:contract.hash,modes:contract.modes,phases:contract.phases,verifiers:contract.verifiers,scope:contract.scope};
+  // Reading support/status/phase prose is not an authority grant. A direct Task
+  // binds only a compatible tactical contract that declares an executable verifier.
+  if(!activeDirective?.taskId || !directiveContractBindingEligible(contract)) return {...metadata,bound:false};
+  const current=readTaskRun(PROJECT,activeDirective.taskId);
+  const run=current?.task?.contract?.id===contract.id
+    ? current
+    : configureTaskSkillContract({projectRoot:PROJECT,taskId:activeDirective.taskId,skill:contract.id});
+  activeDirective={...activeDirective,taskId:run.task.id,workflowNode:run.state.currentNode,skillContract:{id:contract.id,version:contract.schemaVersion,hash:contract.hash},updatedAt:new Date().toISOString()};
+  persistRuntimeEvidenceLedger();
+  return {...metadata,bound:true};
+}
+
 function knownDirectiveVerifierPlan(successfulChecks=[]) {
-  for(const entry of successfulChecks){
-    if(/(?:^|[\\/])check-gacha-integration\.mjs\b/i.test(String(entry.command||''))){
-      const verificationTarget=directiveVerifierTargetFromCommand(entry.command,'check-gacha-integration.mjs');
-      if(verificationTarget) return {verifiers:['gacha-integration'],verificationTarget,checks:[entry.command]};
-    }
-  }
-  return null;
+  if(!activeDirective?.taskId) return null;
+  const run=readTaskRun(PROJECT,activeDirective.taskId);
+  if(!run?.task?.contract || run.task.contract.kind!=='skill') return null;
+  const contract=readSkillContract(ENGINE,run.task.contract.id,{requireDeclared:true});
+  if(contract.hash!==run.task.contract.hash) throw new Error(`SkillContract changed during direct Task: ${contract.id}`);
+  return deriveVerifierPlanFromOperations({
+    projectRoot:PROJECT,
+    operations:successfulChecks,
+    allowedVerifiers:contract.verifiers,
+    phase:run.task.phase,
+  });
 }
 
 function configureDirectiveVerifierPlan(plan){
@@ -2342,7 +2377,18 @@ function completeDirective(a={}) {
     }
   }
   const verifiedChecks=[...new Set(matchedChecks.map(v=>v.command))];
-  const verifierPlan=knownDirectiveVerifierPlan(successfulChecks);
+  let verifierPlan;
+  try{verifierPlan=knownDirectiveVerifierPlan(successfulChecks);}
+  catch(error){return {ok:false,error:`Could not derive trusted verifier plan: ${String(error?.message||error)}`};}
+  try{
+    const taskRun=activeDirective?.taskId?readTaskRun(PROJECT,activeDirective.taskId):null;
+    if(taskRun?.task?.contract?.kind==='skill'){
+      const contract=readSkillContract(ENGINE,taskRun.task.contract.id,{requireDeclared:true});
+      if(contract.verifiers.length&&!verifierPlan){
+        return {ok:false,error:`SkillContract ${contract.id} requires a successful registered verifier operation (${contract.verifiers.join(', ')}). Run it through forge_script after the implementation, then retry forge_change_complete.`};
+      }
+    }
+  }catch(error){return {ok:false,error:`Could not validate direct-task SkillContract: ${String(error?.message||error)}`};}
   if(verifierPlan){
     const configured=configureDirectiveVerifierPlan(verifierPlan);
     if(configured?.error) return {ok:false,error:`Could not configure automatic verifier plan: ${configured.error}`};
@@ -3527,7 +3573,13 @@ function tool(name, a={}) {
       }
 
       const p=safePath(`.claude/skills/${a.name}/SKILL.md`);
-      return jsonResult({ok:true,path:rel(p),content:clip(readText(p),50000)});
+      let machineContract=null;
+      try{machineContract=bindDirectiveSkillContract(String(a.name||'').toLowerCase());}
+      catch(error){
+        reportForgeBehavior({severity:'error',code:'GIGA_SKILL_CONTRACT_REJECTED',kind:'runtime_state',component:'gigachat-agent',operation:'forge_skill',message:'A declared SkillContract could not be attached to the active direct Task.',expected:'Mode/phase-compatible trusted SkillContract binding.',actual:String(error?.message||error)});
+        return jsonResult({ok:false,failure_type:'skill-contract',error:String(error?.message||error),skill:String(a.name||'')});
+      }
+      return jsonResult({ok:true,path:rel(p),content:clip(readText(p),50000),machine_contract:machineContract});
     }
     if (name==='forge_status') { const helper=safePath('.claude/skills/status/references/project-status.mjs'); const r=spawnSync(process.execPath,[helper,PROJECT,...(a.json?['--json']:[])],{cwd:PROJECT,encoding:'utf8',timeout:30000}); return jsonResult({ok:r.status===0,status:r.status,output:clip((r.stdout||'')+(r.stderr||''),40000)}); }
     if (name==='git_diff') { const args=a.stat_only?['diff','--stat']:['diff','--no-ext-diff']; const st=spawnSync('git',['status','--short'],{cwd:PROJECT,encoding:'utf8',timeout:15000}); const d=spawnSync('git',args,{cwd:PROJECT,encoding:'utf8',timeout:30000}); return jsonResult({ok:st.status===0&&d.status===0,status:clip(st.stdout,12000),diff:clip(d.stdout,40000)}); }
@@ -4854,7 +4906,7 @@ if (REQUEST_DOCTOR) {
   test('orphan direct Task can be reattached after restart',()=>/listTaskRuns/.test(ensureDirectiveTaskRuntime.toString())&&/recovered/.test(ensureDirectiveTaskRuntime.toString()));
   test('direct completion records implementation then verification nodes',()=>((completeDirective.toString().match(/recordDirectiveRunResult/g)||[]).length>=2)&&/CHANGE_IMPLEMENTED/.test(completeDirective.toString())&&/CHANGE_VERIFIED/.test(completeDirective.toString()));
   test('direct completion dispatches a registered verifier plan automatically',()=>/configureDirectiveVerifierPlan/.test(completeDirective.toString())&&/runTaskVerifiers/.test(completeDirective.toString())&&/configureTaskVerifierPlan/.test(configureDirectiveVerifierPlan.toString()));
-  test('gacha verifier plan comes only from an exact canonical ledger command',()=>{const plan=knownDirectiveVerifierPlan([{command:'forge_script scripts/check-gacha-integration.mjs WorkProgress/demo-game',status:0}]);return plan?.verifiers?.[0]==='gacha-integration'&&plan.verificationTarget==='WorkProgress/demo-game'&&knownDirectiveVerifierPlan([{command:'node scripts/playtest.mjs WorkProgress/demo-game',status:0}])===null;});
+  test('gacha verifier plan comes only from a structured canonical host operation',()=>{const plan=deriveVerifierPlanFromOperations({projectRoot:PROJECT,phase:8,allowedVerifiers:['gacha-integration'],operations:[{tool:'forge_script',script:'scripts/check-gacha-integration.mjs',args:['WorkProgress/demo-game'],exitCode:0}]});const prose=deriveVerifierPlanFromOperations({projectRoot:PROJECT,phase:8,allowedVerifiers:['gacha-integration'],operations:[{command:'forge_script scripts/check-gacha-integration.mjs WorkProgress/demo-game',status:0}]});return plan?.verifiers?.[0]==='gacha-integration'&&plan.verificationTarget==='WorkProgress/demo-game'&&prose===null;});
   test('gacha verifier target preserves a quoted project-relative path',()=>directiveVerifierTargetFromCommand('forge_script scripts/check-gacha-integration.mjs "WorkProgress/demo game"','check-gacha-integration.mjs')==='WorkProgress/demo game');
   test('gacha verifier target rejects escaped command arguments',()=>directiveVerifierTargetFromCommand('forge_script scripts/check-gacha-integration.mjs ../outside','check-gacha-integration.mjs')===null);
   test('failed focused verification enters durable repair',()=>/CHANGE_VERIFICATION_FAILED/.test(completeDirective.toString())&&/retryable_failure/.test(completeDirective.toString()));
@@ -4890,6 +4942,7 @@ if (REQUEST_DOCTOR) {
   test('change request blocks release gate and phase-state',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const a=directiveToolBlock('forge_gate',{phase:8});const b=directiveToolBlock('forge_script',{name:'phase-state.mjs',args:['start','8']});activeDirective=old;return Boolean(a)&&Boolean(b);});
   test('change request redirects canonical verifiers away from run_command',()=>{const old=activeDirective;activeDirective={request:'добавь гачу'};const blocked=directiveToolBlock('run_command',{command:'node WorkProgress/game/scripts/playtest.mjs .'});activeDirective=old;return /forge_script/.test(blocked||'');});
   test('change request allows tactical gacha skill',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveToolBlock('forge_skill',{name:'gacha-meta'});activeDirective=old;return x===null;});
+  test('support skill reads cannot preempt a tactical direct-task contract',()=>{const status=readSkillContract(ENGINE,'status',{requireDeclared:true});const gacha=readSkillContract(ENGINE,'gacha-meta',{requireDeclared:true});return !directiveContractBindingEligible(status)&&directiveContractBindingEligible(gacha);});
   test('change completion tool exposed',()=>functions.some(f=>f.name==='forge_change_complete'));
   test('gacha completion requires focused runtime and module-contract checks',()=>/check-gacha-integration/.test(completeDirective.toString())&&/modularize-existing-project/.test(completeDirective.toString()));
   test('canonical gacha integrator is recorded as a mutating operation',()=>commandLooksMutating('forge_script scripts/integrate-gacha.mjs WorkProgress/game'));

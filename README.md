@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.43`
+**Current public version:** `v4.68.44`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -85,6 +85,16 @@ For direct `change` Tasks, the workflow can run an engine-declared verifier plan
 read-only checks turn PASS into `done`, deterministic failures into a bounded `repair → verify` loop, and
 timeouts or missing dependencies into an explicit infrastructure stop. Only the installed Forge registry is
 trusted; a project cannot make an arbitrary local script executable by writing its own registry.
+
+## Machine-readable capability contracts
+
+Skills with `contract_version: 1` expose executable phase/mode eligibility, declared read/write scope,
+named STOP-points, risk and a trusted verifier allowlist. Forge records the contract hash in Task state;
+model prose cannot expand it. The nine phases, `status` and `gacha-meta` form the first migrated set.
+Other skills remain fully available for explicit use but are manual-only until they receive a contract.
+
+Core subagent roles use typed Builder/Reviewer/Researcher contracts. Their structured reports help the
+orchestrator merge work, but only host-recorded operations, evidence and verifier results can complete a Task.
 
 ## Quick start
 
@@ -175,7 +185,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.43` keeps separate normal-account and API profiles.
+`v4.68.44` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription

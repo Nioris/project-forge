@@ -9,6 +9,7 @@ tools:
   - WebSearch
 isolation: worktree
 memory: project
+contract: sdk-researcher
 ---
 
 You are an SDK researcher. Your job is to deeply study an SDK and produce a complete integration guide.

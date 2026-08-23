@@ -32,6 +32,7 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { inspectSkillContract } from '../.claude/skills/status/references/skill-contract.mjs';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -42,7 +43,7 @@ const FORGE_PATH = process.env.FORGE_PATH || resolve(here, '..');
 
 const SERVER_INFO = {
   name: 'forge',
-  version: '0.2.0',
+  version: '0.3.0',
 };
 
 const SUPPORTED_PROTOCOL = '2024-11-05';
@@ -76,11 +77,23 @@ function listSkills() {
     const fm = fmMatch ? fmMatch[1] : '';
     const kindMatch = fm.match(/^kind:\s*(\S+)/m);
     const descMatch = fm.match(/^description:\s*['"]?(.+?)['"]?\s*$/m);
+    let contractStatus = 'invalid';
+    let contract = null;
+    let contractErrors = [];
+    try {
+      const inspected = inspectSkillContract(FORGE_PATH, name);
+      contractStatus = inspected.status;
+      contract = inspected.errors.length ? null : inspected.contract;
+      contractErrors = inspected.errors;
+    } catch (error) { contractErrors = [error.message]; }
     result.push({
       name,
       uri: `forge://skill/${name}`,
       kind: kindMatch ? kindMatch[1] : 'unknown',
       description: descMatch ? descMatch[1] : '',
+      contractStatus,
+      contract,
+      contractErrors,
     });
   }
   return result;
@@ -186,6 +199,14 @@ function handleResourcesList() {
       description: skill.description.slice(0, 200),
       mimeType: 'text/markdown',
     });
+    if (skill.contract) {
+      resources.push({
+        uri: `forge://skill-contract/${skill.name}`,
+        name: `SkillContract: ${skill.name}`,
+        description: `Executable ${skill.contract.modes.join(', ')} contract; phases ${skill.contract.phases.join(', ') || 'neutral'}`,
+        mimeType: 'application/json',
+      });
+    }
   }
 
   // Decisions as resources
@@ -223,6 +244,17 @@ function handleResourcesRead(params) {
         mimeType: 'text/markdown',
         text: readFileSync(skillFile, 'utf-8'),
       }],
+    };
+  }
+
+  // forge://skill-contract/{name} — compact machine authority, never full prose.
+  const contractMatch = uri.match(/^forge:\/\/skill-contract\/([a-z0-9-]+)$/);
+  if (contractMatch) {
+    const inspected = inspectSkillContract(FORGE_PATH, contractMatch[1]);
+    if (inspected.errors.length) throw new Error(`Skill contract is invalid: ${inspected.errors.join('; ')}`);
+    if (!inspected.contract) throw new Error(`Skill has no executable contract: ${contractMatch[1]}`);
+    return {
+      contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(inspected.contract, null, 2) }],
     };
   }
 

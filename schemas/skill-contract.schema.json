@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-forge.local/schemas/skill-contract.schema.json",
+  "title": "Project Forge SkillContract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "kind", "description", "phases", "modes", "requires", "scope", "verifiers", "stopPoints", "risk", "references", "completionContract", "outputs", "projectChecks", "source", "hash"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "kind": { "enum": ["architectural", "tactical"] },
+    "description": { "type": "string", "minLength": 1, "maxLength": 1536 },
+    "phases": { "type": "array", "uniqueItems": true, "maxItems": 9, "items": { "type": "integer", "minimum": 1, "maximum": 9 } },
+    "modes": { "type": "array", "uniqueItems": true, "minItems": 1, "maxItems": 5, "items": { "enum": ["phase", "change", "review", "diagnose", "release"] } },
+    "requires": { "type": "array", "uniqueItems": true, "maxItems": 30, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z0-9][a-z0-9._-]*$" } },
+    "scope": {
+      "type": "object", "additionalProperties": false, "required": ["read", "write"],
+      "properties": {
+        "read": { "type": "array", "uniqueItems": true, "maxItems": 100, "items": { "type": "string", "minLength": 1 } },
+        "write": { "type": "array", "uniqueItems": true, "maxItems": 100, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "verifiers": { "type": "array", "uniqueItems": true, "maxItems": 20, "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" } },
+    "stopPoints": { "type": "array", "uniqueItems": true, "maxItems": 30, "items": { "type": "string", "pattern": "^[a-z][a-z0-9._-]*$" } },
+    "risk": {
+      "type": "object", "additionalProperties": false, "required": ["shell", "external"],
+      "properties": { "shell": { "enum": ["none", "read", "write", "elevated"] }, "external": { "enum": ["none", "read", "write"] } }
+    },
+    "references": { "type": "array", "uniqueItems": true, "maxItems": 50, "items": { "type": "string", "pattern": "^references/" } },
+    "completionContract": { "type": ["string", "null"] },
+    "outputs": { "type": "array", "uniqueItems": true, "maxItems": 100, "items": { "type": "string", "minLength": 1 } },
+    "projectChecks": { "type": "array", "uniqueItems": true, "maxItems": 100, "items": { "type": "string", "minLength": 1 } },
+    "source": { "type": "string", "pattern": "^\\.claude/skills/[a-z0-9-]+/SKILL\\.md$" },
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

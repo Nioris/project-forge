@@ -2,6 +2,24 @@
 name: phase-3-construct
 kind: architectural
 description: "Фаза 3 — СТРОЙКА: реализовать в КОДЕ игры фичи из GDD/дефицита контента, спринт за спринтом. Это та фаза, где меняется сама игра, а не пишутся документы."
+contract_version: 1
+phases:
+  - 3
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - WorkProgress/**
+  - wiki/**
+  - assets/**
+verifiers: []
+stop_points: []
+risk_shell: write
+risk_external: none
+references: []
+completion_contract: status/references/phase-contracts/phase-3.json
 ---
 
 # $phase-3-construct (Фаза 3) — постройка игры по чертежам (между дизайном и визуалом)

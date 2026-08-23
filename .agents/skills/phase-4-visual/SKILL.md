@@ -2,6 +2,25 @@
 name: phase-4-visual
 kind: architectural
 description: "Фаза 4 — визуал и ассеты: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points."
+contract_version: 1
+phases:
+  - 4
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - WorkProgress/**
+  - wiki/**
+  - assets/**
+verifiers: []
+stop_points:
+  - phase4-art-direction
+risk_shell: write
+risk_external: write
+references: []
+completion_contract: status/references/phase-contracts/phase-4.json
 ---
 # $phase-4-visual — единый стиль, графика, реальные ассеты
 

@@ -4735,6 +4735,14 @@ Variant-aware runtime QA now selects the highest numeric release version rather 
 returned by the filesystem. Production, debug and marketing archives are matched exactly, and a
 dedicated regression guards unsorted directory entries plus numeric ordering such as v1.10 over v1.9.
 
+## v4.68.41 changelog (canonical nine-phase state integrity)
+
+All nine canonical phases now load schema-checked executable completion contracts with exact
+evidence paths and phase-specific project checks. Missing, irrelevant, directory-only and
+counterfeit evidence can no longer advance durable state. The old seven-step pipeline checker is
+now only a compatibility view over canonical nine-phase status, and MCP exposes a bounded read-only
+verifier surface from an explicit registry instead of exporting every `check-*.mjs` script.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

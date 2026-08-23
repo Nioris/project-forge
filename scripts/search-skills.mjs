@@ -19,21 +19,30 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { inspectSkillContract } from '../.claude/skills/status/references/skill-contract.mjs';
 
 const args = process.argv.slice(2);
 const JSON_MODE = args.includes('--json');
 const topIdx = args.indexOf('--top');
 const TOP_N = topIdx >= 0 ? parseInt(args[topIdx + 1], 10) || 5 : 5;
+const phaseIdx = args.indexOf('--phase');
+const PHASE = phaseIdx >= 0 ? Number(args[phaseIdx + 1]) : null;
+const modeIdx = args.indexOf('--mode');
+const MODE = modeIdx >= 0 ? String(args[modeIdx + 1] || '') : null;
+const capabilityIdx = args.indexOf('--capability');
+const CAPABILITY = capabilityIdx >= 0 ? String(args[capabilityIdx + 1] || '') : null;
+const AUTO_ONLY = args.includes('--auto-only');
+const VALUE_FLAGS = new Set(['--top', '--phase', '--mode', '--capability']);
 
 // Build clean query string (strip flag args)
 const queryWords = args.filter((a, i) => {
   if (a.startsWith('--')) return false;
-  if (i > 0 && args[i - 1] === '--top') return false;
+  if (i > 0 && VALUE_FLAGS.has(args[i - 1])) return false;
   return true;
 });
 
 if (queryWords.length === 0) {
-  console.error('Usage: node scripts/search-skills.mjs "<query>"');
+  console.error('Usage: node scripts/search-skills.mjs "<query>" [--phase N --mode MODE --capability namespace:value --auto-only]');
   process.exit(2);
 }
 
@@ -144,7 +153,15 @@ const skillDirs = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
 
 const skills = skillDirs
   .map(parseSkillFile)
-  .filter(Boolean);
+  .filter(Boolean)
+  .map(skill => {
+    try {
+      const inspected = inspectSkillContract(FORGE_ROOT, skill.name);
+      return { ...skill, contractStatus: inspected.status, contract: inspected.errors.length ? null : inspected.contract, contractErrors: inspected.errors };
+    } catch (error) {
+      return { ...skill, contractStatus: 'invalid', contract: null, contractErrors: [error.message] };
+    }
+  });
 
 if (skills.length === 0) {
   console.error('✗ No skills found in .claude/skills/');
@@ -160,7 +177,17 @@ if (queryTokens.length === 0) {
   process.exit(2);
 }
 
-const scored = skills
+const contractFiltering = AUTO_ONLY || PHASE !== null || MODE || CAPABILITY;
+const eligible = skills.filter(skill => {
+  if (!contractFiltering) return true;
+  if (!skill.contract) return false;
+  if (PHASE !== null && (skill.contract.phases.length === 0 || !skill.contract.phases.includes(PHASE))) return false;
+  if (MODE && !skill.contract.modes.includes(MODE)) return false;
+  if (CAPABILITY && !skill.contract.requires.includes(CAPABILITY)) return false;
+  return true;
+});
+
+const scored = eligible
   .map(skill => ({ skill, score: scoreSkill(skill, queryTokens) }))
   .filter(s => s.score > 0)
   .sort((a, b) => b.score - a.score)
@@ -174,6 +201,9 @@ const normalized = scored.map(s => ({
   name: s.skill.name,
   kind: s.skill.kind,
   description: s.skill.description.slice(0, 200),
+  contract: s.skill.contractStatus,
+  phases: s.skill.contract?.phases || [],
+  modes: s.skill.contract?.modes || [],
   raw_score: s.score,
   relevance: Math.min(100, s.score),  // direct mapping with cap
 }));
@@ -182,6 +212,8 @@ if (JSON_MODE) {
   console.log(JSON.stringify({
     query: queryStr,
     total_skills: skills.length,
+    eligible_skills: eligible.length,
+    filters: { phase: PHASE, mode: MODE, capability: CAPABILITY, auto_only: AUTO_ONLY },
     matches: normalized,
   }, null, 2));
   process.exit(0);
@@ -189,7 +221,7 @@ if (JSON_MODE) {
 
 // Human readable
 console.log(`Query: "${queryStr}"`);
-console.log(`Searched ${skills.length} skills, found ${normalized.length} match${normalized.length === 1 ? '' : 'es'}\n`);
+console.log(`Searched ${skills.length} skills (${eligible.length} eligible), found ${normalized.length} match${normalized.length === 1 ? '' : 'es'}\n`);
 
 if (normalized.length === 0) {
   console.log('No local matches. Consider marketplace search:');
@@ -200,6 +232,7 @@ if (normalized.length === 0) {
 normalized.forEach((s, i) => {
   const bar = '█'.repeat(Math.round(s.relevance / 10)) + '░'.repeat(10 - Math.round(s.relevance / 10));
   console.log(`${i + 1}. /${s.name}  ${bar} ${s.relevance}%  [${s.kind}]`);
+  if (s.contract === 'declared') console.log(`   contract: ${s.modes.join(',')} | phases ${s.phases.join(',') || 'neutral'}`);
   console.log(`   ${s.description.slice(0, 150)}${s.description.length > 150 ? '...' : ''}`);
   console.log('');
 });

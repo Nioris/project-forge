@@ -22,7 +22,7 @@ for (const [src,dst] of PAYLOAD) {
   if (!fs.existsSync(abs)) errors.push(`declared payload source missing: ${src}`);
   else if (fs.statSync(abs).isFile() && !dests.has(dst.replace(/\\/g,'/'))) errors.push(`file payload was not expanded: ${src} -> ${dst}`);
 }
-for (const must of ['.claude/settings.json','.codex/hooks.json','.codex/config.toml','AGENTS.md','СПРАВОЧНИК-КОМАНД.md','debugcheck.js']) {
+for (const must of ['.claude/settings.json','.codex/hooks.json','.codex/config.toml','AGENTS.md','adapters/agent-contracts.json','СПРАВОЧНИК-КОМАНД.md','debugcheck.js']) {
   if (!dests.has(must)) errors.push(`required managed destination missing: ${must}`);
 }
 if (!errors.length) ok.push(`${expanded.length} unique safe Forge-owned files expand from ${PAYLOAD.length} payload roots`);

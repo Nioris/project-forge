@@ -2,6 +2,25 @@
 name: phase-7-test
 kind: architectural
 description: "Фаза 7 — тест: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points."
+contract_version: 1
+phases:
+  - 7
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - WorkProgress/**
+  - wiki/**
+  - screenshots/**
+  - test-results/**
+verifiers: []
+stop_points: []
+risk_shell: write
+risk_external: none
+references: []
+completion_contract: status/references/phase-contracts/phase-7.json
 ---
 # $phase-7-test — игра реально играется
 

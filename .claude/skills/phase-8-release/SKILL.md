@@ -2,6 +2,27 @@
 name: phase-8-release
 kind: architectural
 description: "Фаза 8 — релиз: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points. Triggers on: фаза 8, phase 8, релизная фаза, собрать и подать."
+contract_version: 1
+phases:
+  - 8
+modes:
+  - phase
+  - release
+requires: []
+reads:
+  - "**"
+writes:
+  - Release/**
+  - StoreData/**
+  - SETUP_GUIDE.md
+  - wiki/**
+  - assets/**
+verifiers: []
+stop_points: []
+risk_shell: write
+risk_external: write
+references: []
+completion_contract: status/references/phase-contracts/phase-8.json
 ---
 # /phase-8-release — до GREEN и сборка
 

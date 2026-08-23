@@ -2,6 +2,28 @@
 name: phase-1-analyze
 kind: architectural
 description: "Фаза 1 — занести и посчитать: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points."
+contract_version: 1
+phases:
+  - 1
+modes:
+  - phase
+requires: []
+reads:
+  - "**"
+writes:
+  - ANALYSIS.md
+  - .forge-ai.json
+  - wiki/**
+  - assets/**
+verifiers: []
+stop_points:
+  - phase1-research-direction
+  - phase1-brief
+  - phase1-content-budget
+risk_shell: write
+risk_external: read
+references: []
+completion_contract: status/references/phase-contracts/phase-1.json
 ---
 # $phase-1-analyze <папка> — прототип занесён и посчитан
 

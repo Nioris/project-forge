@@ -7,6 +7,10 @@ import {
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_FORGE_ROOT, assertSkillTaskCompatibility, contractScopeAllows, readSkillContract,
+  skillContractReference,
+} from './skill-contract.mjs';
 
 export const TASK_MODES = Object.freeze(['phase', 'change', 'review', 'diagnose', 'release']);
 export const TASK_STATUSES = Object.freeze(['pending', 'running', 'waiting', 'blocked', 'completed', 'cancelled']);
@@ -56,13 +60,22 @@ function validatePathList(value, label, errors) {
 export function validateTask(task) {
   const errors = [];
   if (!isObject(task)) return ['Task must be an object'];
-  checkKeys(task, new Set(['schemaVersion', 'id', 'mode', 'phase', 'goal', 'skill', 'scope', 'acceptance', 'verifiers', 'verificationTarget', 'status', 'createdAt', 'updatedAt']), 'Task', errors);
+  checkKeys(task, new Set(['schemaVersion', 'id', 'mode', 'phase', 'goal', 'skill', 'contract', 'scope', 'acceptance', 'verifiers', 'verificationTarget', 'status', 'createdAt', 'updatedAt']), 'Task', errors);
   if (task.schemaVersion !== 1) errors.push('Task schemaVersion must be 1');
   if (!TASK_ID_RE.test(String(task.id || ''))) errors.push('Task id is invalid');
   if (!TASK_MODES.includes(task.mode)) errors.push(`Task mode is invalid: ${task.mode}`);
   if (task.phase !== null && (!Number.isInteger(task.phase) || task.phase < 1 || task.phase > 9)) errors.push('Task phase must be null or 1..9');
   if (!boundedString(task.goal, 2000)) errors.push('Task goal must contain 1..2000 characters');
   if (task.skill !== null && !/^[a-z0-9][a-z0-9-]*$/.test(String(task.skill || ''))) errors.push('Task skill is invalid');
+  if (task.contract !== undefined && task.contract !== null) {
+    if (!isObject(task.contract)) errors.push('Task contract must be null or an object');
+    else {
+      checkKeys(task.contract, new Set(['kind', 'id', 'version', 'hash']), 'Task contract', errors);
+      if (task.contract.kind !== 'skill' || !/^[a-z0-9][a-z0-9-]*$/.test(String(task.contract.id || ''))
+        || task.contract.version !== 1 || !/^[a-f0-9]{64}$/.test(String(task.contract.hash || ''))) errors.push('Task contract reference is invalid');
+      if (task.skill !== task.contract.id) errors.push('Task skill must match its contract id');
+    }
+  }
   if (!isObject(task.scope)) errors.push('Task scope must be an object');
   else {
     checkKeys(task.scope, new Set(['read', 'write']), 'Task scope', errors);
@@ -288,21 +301,30 @@ function newTaskId(prefix = 'task') {
 
 export function makeTask(input = {}) {
   const now = input.now || new Date().toISOString();
+  const skill = input.skill == null || input.skill === '' ? null : String(input.skill);
+  const skillContract = skill ? readSkillContract(DEFAULT_FORGE_ROOT, skill) : null;
+  const requestedVerifiers = uniqueStrings(input.verifiers);
+  if (skillContract) assertSkillTaskCompatibility(skillContract, { mode: input.mode, phase: input.phase == null ? null : Number(input.phase), verifiers: requestedVerifiers });
+  const requestedRead = input.scope?.read == null ? null : uniqueStrings(input.scope.read);
+  const requestedWrite = input.scope?.write == null ? null : uniqueStrings(input.scope.write);
+  if (skillContract && requestedRead && !contractScopeAllows(skillContract.scope.read, requestedRead)) throw new Error(`Task read scope exceeds SkillContract ${skill}`);
+  if (skillContract && requestedWrite && !contractScopeAllows(skillContract.scope.write, requestedWrite)) throw new Error(`Task write scope exceeds SkillContract ${skill}`);
   const task = {
     schemaVersion: 1,
     id: input.id || newTaskId(input.mode || 'task'),
     mode: input.mode,
     phase: input.phase == null ? null : Number(input.phase),
     goal: String(input.goal || '').trim(),
-    skill: input.skill == null || input.skill === '' ? null : String(input.skill),
+    skill,
+    contract: skillContractReference(skillContract),
     scope: {
-      read: uniqueStrings(input.scope?.read || ['**']).map(normalizeProjectPath),
-      write: uniqueStrings(input.scope?.write || []).map(normalizeProjectPath),
+      read: (requestedRead || skillContract?.scope.read || ['**']).map(normalizeProjectPath),
+      write: (requestedWrite || skillContract?.scope.write || []).map(normalizeProjectPath),
     },
     acceptance: (Array.isArray(input.acceptance) ? input.acceptance : []).map((item, index) => ({
       id: String(item?.id || `AC-${index + 1}`), text: String(item?.text || item || '').trim(), status: item?.status || 'pending',
     })),
-    verifiers: uniqueStrings(input.verifiers),
+    verifiers: requestedVerifiers,
     verificationTarget: normalizeProjectPath(input.verificationTarget == null ? '.' : input.verificationTarget),
     status: input.status || 'running',
     createdAt: input.createdAt || now,
@@ -311,9 +333,23 @@ export function makeTask(input = {}) {
   return assertValid(task, validateTask, 'Task');
 }
 
+/** Revalidate live authority for every non-terminal Task carrying a SkillContract. */
+export function assertBoundSkillContract(task) {
+  if (!task?.contract || task.contract.kind !== 'skill' || ['completed', 'cancelled'].includes(task.status)) return null;
+  const contract = readSkillContract(DEFAULT_FORGE_ROOT, task.contract.id, { requireDeclared: true });
+  if (contract.hash !== task.contract.hash || contract.schemaVersion !== task.contract.version) {
+    throw new Error(`Task SkillContract changed after Task creation: ${contract.id}`);
+  }
+  assertSkillTaskCompatibility(contract, { mode: task.mode, phase: task.phase, verifiers: task.verifiers });
+  if (!contractScopeAllows(contract.scope.read, task.scope.read)) throw new Error(`Task read scope exceeds SkillContract ${contract.id}`);
+  if (!contractScopeAllows(contract.scope.write, task.scope.write)) throw new Error(`Task write scope exceeds SkillContract ${contract.id}`);
+  return contract;
+}
+
 export function startTaskRun({ projectRoot, task, workflowDir = WORKFLOW_DIR, reuse = false } = {}) {
   const root = path.resolve(projectRoot || process.cwd());
   assertValid(task, validateTask, 'Task');
+  assertBoundSkillContract(task);
   const workflow = loadWorkflow(task.mode, workflowDir);
   const file = taskRunPath(root, task.id);
   if (existsSync(file)) {
@@ -340,6 +376,7 @@ export function readTaskRun(projectRoot, taskId) {
   const run = JSON.parse(readFileSync(file, 'utf8'));
   if (run?.schemaVersion !== 1 || !isObject(run.task) || !isObject(run.state) || !isObject(run.workflow)) throw new Error(`Invalid durable Task run: ${taskId}`);
   assertValid(run.task, validateTask, 'Persisted Task');
+  assertBoundSkillContract(run.task);
   if (run.task.id !== taskId || run.workflow.id !== run.task.mode || run.workflow.mode !== run.task.mode
     || !NODE_ID_RE.test(String(run.state.currentNode || '')) || !TASK_STATUSES.includes(run.state.status)) {
     throw new Error(`Invalid durable Task run identity/state: ${taskId}`);
@@ -475,6 +512,11 @@ export function configureTaskVerifierPlan({ projectRoot, taskId, verifiers, veri
     }
     const nextVerifiers = uniqueStrings(verifiers);
     if (!nextVerifiers.length) throw new Error('Task verifier plan must contain at least one verifier');
+    if (run.task.contract?.kind === 'skill') {
+      const contract = readSkillContract(DEFAULT_FORGE_ROOT, run.task.contract.id, { requireDeclared: true });
+      if (contract.hash !== run.task.contract.hash || contract.schemaVersion !== run.task.contract.version) throw new Error(`Task SkillContract changed after Task creation: ${contract.id}`);
+      assertSkillTaskCompatibility(contract, { mode: run.task.mode, phase: run.task.phase, verifiers: nextVerifiers });
+    }
     const target = normalizeProjectPath(verificationTarget);
     if (!target) throw new Error('Task verificationTarget is unsafe');
     const now = new Date().toISOString();
@@ -483,6 +525,37 @@ export function configureTaskVerifierPlan({ projectRoot, taskId, verifiers, veri
       ...run,
       task,
       events: [...(run.events || []), { event: 'verifier_plan_configured', node: run.state.currentNode, verifiers: nextVerifiers, verificationTarget: target, at: now }].slice(-100),
+    };
+    atomicWriteJson(file, updated);
+    return updated;
+  });
+}
+
+/** Attach a trusted declared skill to an agent-owned Task without trusting model prose. */
+export function configureTaskSkillContract({ projectRoot, taskId, skill, workflowDir = WORKFLOW_DIR } = {}) {
+  const root = path.resolve(projectRoot || process.cwd());
+  const file = taskRunPath(root, taskId);
+  return withTaskRunLock(file, () => {
+    const run = readTaskRun(root, taskId);
+    if (!run) throw new Error(`Task run not found: ${taskId}`);
+    const workflow = loadWorkflow(run.workflow.id, workflowDir);
+    const node = workflow.nodes[run.state.currentNode];
+    if (!node || node.type !== 'agent') throw new Error(`Task skill contract can only be configured at an agent node (current: ${run.state.currentNode})`);
+    const contract = readSkillContract(DEFAULT_FORGE_ROOT, skill, { requireDeclared: true });
+    assertSkillTaskCompatibility(contract, { mode: run.task.mode, phase: run.task.phase, verifiers: [] });
+    if (run.task.skill && run.task.skill !== contract.id) throw new Error(`Task is already bound to skill ${run.task.skill}`);
+    const now = new Date().toISOString();
+    const task = assertValid({
+      ...run.task,
+      skill: contract.id,
+      contract: skillContractReference(contract),
+      scope: { read: [...contract.scope.read], write: [...contract.scope.write] },
+      updatedAt: now,
+    }, validateTask, 'Task SkillContract');
+    const updated = {
+      ...run,
+      task,
+      events: [...(run.events || []), { event: 'skill_contract_configured', node: run.state.currentNode, skill: contract.id, contractHash: contract.hash, at: now }].slice(-100),
     };
     atomicWriteJson(file, updated);
     return updated;
@@ -526,10 +599,6 @@ export function ensurePhaseTaskRun({ projectRoot, phase, phaseName, taskId = nul
     phase: Number(phase),
     goal: `Complete canonical Phase ${Number(phase)} ${phaseName}`,
     skill: PHASE_SKILLS[Number(phase)] || null,
-    scope: {
-      read: ['**'],
-      write: Number(phase) === 8 ? ['WorkProgress/**', 'Release/**', 'wiki/**', 'assets/**'] : ['WorkProgress/**', 'wiki/**', 'assets/**'],
-    },
     acceptance: [{ id: `PHASE-${Number(phase)}-CONTRACT`, text: `Pass the executable Phase ${Number(phase)} completion contract`, status: 'pending' }],
     verifiers: [],
   });
@@ -555,6 +624,7 @@ export function formatTaskRun(run) {
     `Mode: ${run.task.mode}${run.task.phase ? ` | Phase ${run.task.phase}` : ''}`,
     `Node: ${run.state.currentNode} | Workflow: ${run.workflow.id}`,
     `Goal: ${run.task.goal}`,
+    `Contract: ${run.task.contract ? `${run.task.contract.id}@${run.task.contract.hash.slice(0, 12)}` : 'legacy/manual'}`,
     `Verifier plan: ${run.task.verifiers.length ? run.task.verifiers.join(', ') : 'none'} | Target: ${run.task.verificationTarget || '.'}`,
     result ? `Last result: ${result.status} (${result.code})` : 'Last result: none',
     result?.verification ? `Verification: ${result.verification.status} (${result.verification.items.length} check(s))` : null,

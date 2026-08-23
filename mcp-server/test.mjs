@@ -74,10 +74,24 @@ console.log('=== forge-mcp test ===\n');
   if (r && r.result) {
     const skillCount = r.result.resources.filter(x => x.uri.startsWith('forge://skill/')).length;
     const decisionCount = r.result.resources.filter(x => x.uri.startsWith('forge://decision/')).length;
+    const contractCount = r.result.resources.filter(x => x.uri.startsWith('forge://skill-contract/')).length;
     ok(`resources/list has ≥95 skills (got ${skillCount})`, skillCount >= 95);
     ok(`resources/list has ≥12 decisions (got ${decisionCount})`, decisionCount >= 12);
+    ok(`resources/list has executable SkillContracts (got ${contractCount})`, contractCount >= 11);
     ok('resources/list has invariants', r.result.resources.some(x => x.uri === 'forge://invariants'));
   }
+}
+
+// Test 3b: resources/read — machine-readable skill contract
+{
+  const { responses } = await runServerSession([
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+    { jsonrpc: '2.0', id: 2, method: 'resources/read', params: { uri: 'forge://skill-contract/phase-2-design' } },
+  ]);
+  const r = responses.find(x => x.id === 2);
+  let contract = null;
+  try { contract = JSON.parse(r?.result?.contents?.[0]?.text || ''); } catch {}
+  ok('resources/read returns strict phase SkillContract JSON', contract?.id === 'phase-2-design' && contract?.phases?.[0] === 2 && contract?.completionContract);
 }
 
 // Test 3: resources/read — skill
