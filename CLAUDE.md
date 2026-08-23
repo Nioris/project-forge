@@ -1,4 +1,4 @@
-# Project Forge v4.68.40 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.41 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -467,6 +467,14 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.41 changelog (canonical nine-phase state integrity)
+
+All nine canonical phases now load schema-checked executable completion contracts with exact
+evidence paths and phase-specific project checks. Missing, irrelevant, directory-only and
+counterfeit evidence can no longer advance durable state. The old seven-step pipeline checker is
+now only a compatibility view over canonical nine-phase status, and MCP exposes a bounded read-only
+verifier surface from an explicit registry instead of exporting every `check-*.mjs` script.
+
 ## v4.68.40 changelog (newest release archive runtime gate)
 
 Variant-aware runtime QA now selects the highest numeric release version rather than the first ZIP
@@ -479,10 +487,3 @@ OpenRouter gains an `ox-alpha` whole-project preset for the free anonymous codin
 refuses to run it through the default ZDR profile: selection requires explicit `--profile standard`
 because the upstream provider retains prompts and completions. The preset is therefore restricted
 to non-confidential evaluation projects while keeping the existing 64-step OpenCode turn budget.
-
-## v4.68.38 changelog (OpenCode loop budget)
-
-OpenCode whole-project turns now have a 64-step agentic ceiling. The project-local `list`
-compatibility tool also suppresses identical successful repeats within the same session. Together
-these safeguards convert provider tool loops into a bounded text handoff instead of unmetered API
-spend; legitimate unfinished work remains resumable in the same session.

@@ -16,11 +16,13 @@ node .claude/skills/status/references/phase-state.mjs start 8
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs complete 8 Release
+node .claude/skills/status/references/phase-state.mjs complete 8 wiki/deploy-log.md SETUP_GUIDE.md
 ```
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
+`complete` сам ищет в `Release/` непустую production/debug/marketing тройку
+одной версии и точную строку `TOTAL: N pass, 0 fail` в deploy/plan evidence.
 
 
 **Модели:** Claude `sonnet`, отказ модерации — `opus`. Codex base

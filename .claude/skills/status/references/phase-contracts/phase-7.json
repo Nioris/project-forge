@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "phase": 7,
+  "name": "Test",
+  "requiredEvidence": [
+    { "path": "wiki/testing.md", "minBytes": 120 },
+    { "path": "wiki/qa/phase-7-report.md", "minBytes": 120 }
+  ],
+  "projectChecks": ["non-placeholder-evidence", "implementation-source", "clean-playtest-report", "clean-local-stage-report"]
+}

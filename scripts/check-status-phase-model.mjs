@@ -10,6 +10,7 @@ const statusScript = path.join(ROOT, '.claude', 'skills', 'status', 'references'
 const phaseScript = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
 const policyPath = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'model-policy.json');
 const launcherScript = path.join(ROOT, 'scripts', 'codex-phase.mjs');
+const legacyPipelineScript = path.join(ROOT, 'scripts', 'check-pipeline-state.mjs');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-status-'));
 const fails = [];
 const ok = msg => console.log('  ✓ ' + msg);
@@ -59,6 +60,14 @@ try {
   (s.currentPhase===2 && s.currentState==='blocked' && /GDD approval/.test(s.stopPoint||''))
     ? ok('machine phase marker overrides fallback and carries STOP reason')
     : bad('blocked phase marker not authoritative');
+  const legacy = spawnSync(process.execPath, [legacyPipelineScript, p3, '--json'], { cwd: ROOT, encoding: 'utf8' });
+  let legacyReport = null;
+  try { legacyReport = JSON.parse(legacy.stdout); } catch {}
+  (legacy.status === 0 && legacyReport?.stateModel === 'canonical-nine-phases'
+    && legacyReport.currentPhase === 2 && legacyReport.phases?.length === 9
+    && !('steps' in legacyReport) && !('current_step' in legacyReport))
+    ? ok('legacy pipeline command is a compatibility view over the same canonical nine phases')
+    : bad(`legacy pipeline exposed a competing state model: ${legacy.stderr || legacy.stdout}`);
 
   const p4=mk('stale-claude');
   w(p4,'WorkProgress/stale-claude/ANALYSIS.md','# analysis');

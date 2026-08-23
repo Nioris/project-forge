@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "phase": 1,
+  "name": "Analyze",
+  "requiredEvidence": [
+    { "path": "wiki/architecture/metrics.md", "minBytes": 120 },
+    { "path": "wiki/design/brief.md", "minBytes": 120 }
+  ],
+  "projectChecks": ["phase-1-integrity"]
+}

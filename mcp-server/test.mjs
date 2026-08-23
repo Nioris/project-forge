@@ -6,6 +6,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -111,6 +112,10 @@ console.log('=== forge-mcp test ===\n');
 
 // Test 6: tools/list
 {
+  const registry = JSON.parse(readFileSync(join(here, 'verifiers.json'), 'utf8'));
+  const publicIds = registry.verifiers.filter(item => item.public).map(item => item.id).sort();
+  const registeredScripts = registry.verifiers.map(item => item.script.replace(/^scripts\//, '')).sort();
+  const actualScripts = readdirSync(join(FORGE_PATH, 'scripts')).filter(name => /^check-.+\.mjs$/.test(name)).sort();
   const { responses } = await runServerSession([
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
     { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} },
@@ -118,9 +123,12 @@ console.log('=== forge-mcp test ===\n');
   const r = responses.find(x => x.id === 2);
   ok('tools/list responds', r && r.result && Array.isArray(r.result.tools));
   if (r && r.result) {
-    ok(`tools/list has >= 18 verifiers (got ${r.result.tools.length})`, r.result.tools.length >= 18);
-    ok('tools/list has check_cross_refs', r.result.tools.some(t => t.name === 'check_cross_refs'));
+    const toolIds = r.result.tools.map(tool => tool.name.replace(/^check_/, '').replace(/_/g, '-')).sort();
+    ok(`tools/list exposes exactly ${publicIds.length} registered public verifiers`, JSON.stringify(toolIds) === JSON.stringify(publicIds));
+    ok('tools/list includes canonical pipeline status adapter', r.result.tools.some(t => t.name === 'check_pipeline_state'));
+    ok('tools/list hides Forge-internal regressions', !r.result.tools.some(t => ['check_drift', 'check_cross_refs', 'check_phase_completion_gate'].includes(t.name)));
   }
+  ok('verifier registry classifies every check-*.mjs exactly once', JSON.stringify(registeredScripts) === JSON.stringify(actualScripts));
 }
 
 // Test 7: tools/call — invoke real verifier
@@ -128,15 +136,25 @@ console.log('=== forge-mcp test ===\n');
   const { responses } = await runServerSession([
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
     { jsonrpc: '2.0', id: 2, method: 'tools/call', params: {
-      name: 'check_cross_refs',
-      arguments: {},
+      name: 'check_pipeline_state',
+      arguments: { path: FORGE_PATH, json: true },
     }},
   ]);
   const r = responses.find(x => x.id === 2);
   ok('tools/call returns content', r && r.result && r.result.content && r.result.content[0].text);
   if (r && r.result) {
-    ok('tools/call output mentions advisor', r.result.content[0].text.includes('advisor'));
+    ok('tools/call output uses canonical nine-phase state', r.result.content[0].text.includes('canonical-nine-phases'));
   }
+}
+
+// Test 7b: internal verifier cannot be called even if its script exists
+{
+  const { responses } = await runServerSession([
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+    { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'check_drift', arguments: {} } },
+  ]);
+  const r = responses.find(x => x.id === 2);
+  ok('internal verifier call is rejected by registry policy', r && r.error && /not published/.test(r.error.message));
 }
 
 // Test 8: prompts/list

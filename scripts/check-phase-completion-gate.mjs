@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { validatePhaseCompletion } from '../.claude/skills/status/references/phase-completion-gate.mjs';
+import { loadPhaseContract, validatePhaseCompletion } from '../.claude/skills/status/references/phase-completion-gate.mjs';
 
 const ROOT = process.cwd();
 const phaseState = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
@@ -19,6 +19,15 @@ const write = (root, rel, content) => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, content, 'utf8');
 };
+const writeBuffer = (root, rel, content) => {
+  const file = path.join(root, rel);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+};
+const prose = (heading, body) => `# ${heading}\n\n${(`${body} `).repeat(30)}\n`;
+const png = () => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40)]);
+const mp4 = () => { const data = Buffer.alloc(80); data.writeUInt32BE(24, 0); data.write('ftyp', 4, 'ascii'); return data; };
+const zip = () => Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(160)]);
 const validBrief = `# Бриф проекта
 
 ## Аудитория
@@ -115,6 +124,102 @@ try {
     'valid evidence passes and records the mechanical gate result');
   check(/private remote deferred until Phase 8/.test(accepted.stdout) && fs.existsSync(path.join(valid, '.git')),
     'experimental whole-project host keeps early checkpoints local until Phase 8');
+
+  const contracts = Array.from({ length: 9 }, (_, index) => loadPhaseContract(index + 1));
+  check(contracts.length === 9 && contracts.every((contract, index) => contract.phase === index + 1),
+    'all nine executable phase contracts load with canonical identity');
+  const phaseSkills = [
+    'phase-1-analyze', 'phase-2-design', 'phase-3-construct', 'phase-4-visual', 'phase-5-tech',
+    'phase-6-listing', 'phase-7-test', 'phase-8-release', 'phase-9-live',
+  ];
+  const commandsAligned = phaseSkills.every((skill, index) => {
+    const text = fs.readFileSync(path.join(ROOT, '.claude', 'skills', skill, 'SKILL.md'), 'utf8');
+    const phase = index + 1;
+    const match = text.match(new RegExp(`phase-state\\.mjs complete ${phase}([^\\r\\n]*)`));
+    if (!match) return false;
+    const args = new Set(match[1].trim().split(/\s+/).filter(Boolean));
+    return contracts[index].requiredEvidence.every(item => args.has(item.path));
+  });
+  check(commandsAligned, 'all canonical phase skill completion commands provide their contract evidence files');
+
+  for (let phase = 2; phase <= 9; phase += 1) {
+    const irrelevant = path.join(tmp, `phase-${phase}-irrelevant`);
+    write(irrelevant, 'wiki/random.md', prose('Unrelated', 'This file is real but does not prove phase completion.'));
+    const rejectedIrrelevant = validatePhaseCompletion({ root: irrelevant, phase, evidence: ['wiki/random.md'] });
+    check(!rejectedIrrelevant.ok && rejectedIrrelevant.failures.some(item => /requires explicit evidence/.test(item)),
+      `Phase ${phase} rejects an existing but irrelevant evidence file`);
+  }
+
+  const p2 = path.join(tmp, 'phase-2-valid');
+  write(p2, 'wiki/design/gdd.md', prose('GDD', 'Core loop economy retention content ladder controls UX and acceptance.'));
+  write(p2, 'wiki/plan/02-development-plan.md', prose('Development plan', 'Sprint task owner acceptance verifier dependency implementation.'));
+  result = validatePhaseCompletion({ root: p2, phase: 2, evidence: ['wiki/design/gdd.md', 'wiki/plan/02-development-plan.md'] });
+  check(result.ok && result.contract?.phase === 2, 'Phase 2 accepts its complete GDD + development-plan contract');
+
+  const p3 = path.join(tmp, 'phase-3-valid');
+  write(p3, 'wiki/plan/02-development-plan.md', prose('Development plan', 'Implemented sprint acceptance and verifier results.'));
+  write(p3, 'wiki/testing.md', prose('Testing', 'PASS playtest produced real actions and zero runtime errors.'));
+  write(p3, 'WorkProgress/demo/index.html', '<!doctype html><style>canvas{display:block}</style><canvas></canvas><script>requestAnimationFrame(()=>{});</script>');
+  write(p3, 'WorkProgress/demo/playtest-out/report.json', JSON.stringify({ rafAlive: true, errors: [], actions: ['clicked start'] }));
+  result = validatePhaseCompletion({ root: p3, phase: 3, evidence: ['wiki/plan/02-development-plan.md', 'wiki/testing.md'] });
+  check(result.ok, 'Phase 3 requires implementation plus a clean machine playtest report');
+  write(p3, 'WorkProgress/demo/playtest-out/report.json', JSON.stringify({ rafAlive: true, errors: ['boom'], actions: ['clicked start'] }));
+  result = validatePhaseCompletion({ root: p3, phase: 3, evidence: ['wiki/plan/02-development-plan.md', 'wiki/testing.md'] });
+  check(!result.ok && result.failures.some(item => /zero runtime errors/.test(item)), 'Phase 3 rejects counterfeit PASS text when playtest JSON has errors');
+
+  const p4 = path.join(tmp, 'phase-4-valid');
+  write(p4, 'wiki/design/target-frame.md', prose('Target frame', 'Approved hierarchy palette composition typography and reference rationale.'));
+  write(p4, 'assets/style/STYLE-BIBLE.md', prose('Style Bible', 'Approved visual tokens palette type scale states effects and asset rules.'));
+  write(p4, 'WorkProgress/demo/styles.css', '.game{color:#fff;background:#111;padding:12px;border:2px solid #333;}'.repeat(8));
+  result = validatePhaseCompletion({ root: p4, phase: 4, evidence: ['wiki/design/target-frame.md', 'assets/style/STYLE-BIBLE.md'] });
+  check(result.ok, 'Phase 4 accepts approved visual documents only with integrated visual implementation');
+
+  const p5 = path.join(tmp, 'phase-5-valid');
+  write(p5, '.forge-ai.json', '{}\n');
+  write(p5, 'wiki/qa/phase-5-tech.md', prose('Phase 5 technical gate', 'PASS SDK lifecycle ads mobile touch and AI configuration checks.'));
+  write(p5, 'WorkProgress/demo/index.html', `<style>canvas{touch-action:none;padding-top:env(safe-area-inset-top)}</style><script>
+    YaGames.init(); LoadingAPI.ready(); GameplayAPI.start(); GameplayAPI.stop();
+    ysdk.adv.showRewardedVideo(); addEventListener('pointerdown',()=>{});
+  </script>`);
+  result = validatePhaseCompletion({ root: p5, phase: 5, evidence: ['.forge-ai.json', 'wiki/qa/phase-5-tech.md'] });
+  check(result.ok, 'Phase 5 accepts only source-backed SDK/mobile/ads lifecycle evidence');
+
+  const p6 = path.join(tmp, 'phase-6-valid');
+  write(p6, 'SETUP_GUIDE.md', prose('SETUP GUIDE', 'Console upload languages listing category rating ads screenshots video checklist references.'));
+  write(p6, 'wiki/qa/phase-6-listing.md', prose('Phase 6 listing gate', 'PASS listing schema screenshots promo video and i18n checks.'));
+  write(p6, 'store-listing-ru.json', JSON.stringify({ lang: 'ru', title: 'Игра', subtitle: 'Короткое описание игры', description: 'Описание '.repeat(20), keywords: ['игра'] }));
+  writeBuffer(p6, 'screens/store/screen-1.png', png());
+  writeBuffer(p6, 'screens/video/promo.mp4', mp4());
+  write(p6, 'WorkProgress/demo/app.js', `const I18N={ru:{start:'Старт'}}; function t(k){return I18N.ru[k]}`);
+  result = validatePhaseCompletion({ root: p6, phase: 6, evidence: ['SETUP_GUIDE.md', 'wiki/qa/phase-6-listing.md'] });
+  check(result.ok, 'Phase 6 requires listing JSON, real promo media and i18n implementation');
+
+  const p7 = path.join(tmp, 'phase-7-valid');
+  write(p7, 'wiki/testing.md', prose('Testing', 'PASS functional mobile runtime balance and persistence verification.'));
+  write(p7, 'wiki/qa/phase-7-report.md', prose('Phase 7 QA', 'PASS visual QA playtest local stage and state diversity.'));
+  write(p7, 'WorkProgress/demo/index.html', '<!doctype html><canvas></canvas><script>requestAnimationFrame(()=>{});</script>');
+  write(p7, 'WorkProgress/demo/playtest-out/report.json', JSON.stringify({ rafAlive: true, errors: [], actions: ['clicked start'] }));
+  write(p7, 'WorkProgress/demo/stage-out/rt.json', JSON.stringify({ errors: [], rt: { _readyCalled: true, _i18nRead: 'ru' } }));
+  result = validatePhaseCompletion({ root: p7, phase: 7, evidence: ['wiki/testing.md', 'wiki/qa/phase-7-report.md'] });
+  check(result.ok, 'Phase 7 accepts concrete reports backed by clean playtest and local-stage JSON');
+  fs.mkdirSync(path.join(tmp, 'phase-7-directory', 'wiki', 'qa'), { recursive: true });
+  result = validatePhaseCompletion({ root: path.join(tmp, 'phase-7-directory'), phase: 7, evidence: ['wiki/qa'] });
+  check(!result.ok && result.failures.some(item => /not a regular file/.test(item)), 'Phase 7 no longer accepts a directory as completion evidence');
+
+  const p8 = path.join(tmp, 'phase-8-valid');
+  write(p8, 'wiki/deploy-log.md', prose('Deploy log', 'release-ready TOTAL: 84 pass, 0 fail, 2 warn. Manual checklist recorded.'));
+  write(p8, 'SETUP_GUIDE.md', prose('SETUP GUIDE', 'Upload archive and complete the manual Console checklist after GREEN.'));
+  for (const suffix of ['', '-debug', '-marketing']) writeBuffer(p8, `Release/demo/yandex/demo-v1.2.0${suffix}.zip`, zip());
+  result = validatePhaseCompletion({ root: p8, phase: 8, evidence: ['wiki/deploy-log.md', 'SETUP_GUIDE.md'] });
+  check(result.ok, 'Phase 8 requires exact GREEN evidence and one complete release ZIP trio');
+  fs.rmSync(path.join(p8, 'Release', 'demo', 'yandex', 'demo-v1.2.0-marketing.zip'));
+  result = validatePhaseCompletion({ root: p8, phase: 8, evidence: ['wiki/deploy-log.md', 'SETUP_GUIDE.md'] });
+  check(!result.ok && result.failures.some(item => /ZIP trio/.test(item)), 'Phase 8 rejects an incomplete release variant set');
+
+  const p9 = path.join(tmp, 'phase-9-valid');
+  write(p9, 'wiki/metrics.md', prose('Live metrics', 'D7 plan 10% fact 9%. D30 plan 4% actual 3%. CTR and rating facts recorded.'));
+  result = validatePhaseCompletion({ root: p9, phase: 9, evidence: ['wiki/metrics.md'] });
+  check(result.ok, 'Phase 9 requires plan-vs-fact D7/D30 and CTR/rating evidence');
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

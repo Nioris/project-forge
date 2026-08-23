@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "phase": 6,
+  "name": "Listing",
+  "requiredEvidence": [
+    { "path": "SETUP_GUIDE.md", "minBytes": 160 },
+    { "path": "wiki/qa/phase-6-listing.md", "minBytes": 100 }
+  ],
+  "projectChecks": ["non-placeholder-evidence", "listing-output"]
+}

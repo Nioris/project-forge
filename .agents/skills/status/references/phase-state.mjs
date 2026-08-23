@@ -141,7 +141,7 @@ if (command === 'start' || command === 'reopen') {
     record.startedAt = record.startedAt || now;
     record.completedAt = null;
     record.reason = `Completion gate rejected: ${gate.failures.join('; ')}`;
-    record.completionGate = { checkedAt: now, status: 'rejected', failures: gate.failures };
+    record.completionGate = { checkedAt: now, status: 'rejected', contract: gate.contract, failures: gate.failures };
     fs.writeFileSync(outPath, JSON.stringify(record, null, 2) + '\n', 'utf8');
     console.error(`[BLOCKED] Phase ${phase} ${PHASES[phase]} completion rejected.`);
     for (const failure of gate.failures) console.error(`  - ${failure}`);
@@ -152,7 +152,7 @@ if (command === 'start' || command === 'reopen') {
   record.completedAt = now;
   record.reason = null;
   record.evidence = gate.evidence;
-  record.completionGate = { checkedAt: now, status: 'passed', failures: [] };
+  record.completionGate = { checkedAt: now, status: 'passed', contract: gate.contract, failures: [] };
 }
 
 fs.writeFileSync(outPath, JSON.stringify(record, null, 2) + '\n', 'utf8');

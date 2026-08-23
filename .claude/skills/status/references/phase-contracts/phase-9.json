@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "phase": 9,
+  "name": "Live",
+  "requiredEvidence": [
+    { "path": "wiki/metrics.md", "minBytes": 200 }
+  ],
+  "projectChecks": ["non-placeholder-evidence", "live-metrics"]
+}

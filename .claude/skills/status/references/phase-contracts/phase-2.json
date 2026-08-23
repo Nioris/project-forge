@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "phase": 2,
+  "name": "Design",
+  "requiredEvidence": [
+    { "path": "wiki/design/gdd.md", "minBytes": 300 },
+    { "path": "wiki/plan/02-development-plan.md", "minBytes": 160 }
+  ],
+  "projectChecks": ["non-placeholder-evidence"]
+}

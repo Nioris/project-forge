@@ -46,6 +46,7 @@ const SERVER_INFO = {
 };
 
 const SUPPORTED_PROTOCOL = '2024-11-05';
+const VERIFIER_REGISTRY_PATH = join(FORGE_PATH, 'mcp-server', 'verifiers.json');
 
 if (!existsSync(join(FORGE_PATH, '.claude', 'skills'))) {
   log_error(`Forge not found at ${FORGE_PATH}. Set FORGE_PATH env var to Forge install location.`);
@@ -102,23 +103,38 @@ function listDecisions() {
     });
 }
 
+function loadVerifierRegistry() {
+  let parsed;
+  try { parsed = JSON.parse(readFileSync(VERIFIER_REGISTRY_PATH, 'utf8')); }
+  catch (error) { throw new Error(`Verifier registry missing or invalid: ${error.message}`); }
+  if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.verifiers)) throw new Error('Verifier registry schema is invalid');
+  const ids = new Set();
+  return parsed.verifiers.map(entry => {
+    if (!entry || !/^[a-z0-9][a-z0-9-]*$/.test(entry.id) || ids.has(entry.id)) {
+      throw new Error(`Verifier registry has invalid/duplicate id: ${entry?.id}`);
+    }
+    ids.add(entry.id);
+    if (!/^scripts\/check-[a-z0-9-]+\.mjs$/.test(entry.script) || typeof entry.public !== 'boolean'
+      || !['project', 'engine'].includes(entry.scope) || entry.mutates !== false
+      || !Number.isInteger(entry.timeoutMs) || entry.timeoutMs < 1000
+      || !Array.isArray(entry.phases) || entry.phases.some(phase => !Number.isInteger(phase) || phase < 1 || phase > 9)
+      || typeof entry.category !== 'string' || !entry.category) {
+      throw new Error(`Verifier registry metadata is invalid for ${entry.id}`);
+    }
+    const filepath = join(FORGE_PATH, entry.script);
+    if (!existsSync(filepath) || !statSync(filepath).isFile()) throw new Error(`Registered verifier missing: ${entry.script}`);
+    return { ...entry, filepath };
+  });
+}
+
 function listVerifiers() {
-  const dir = join(FORGE_PATH, 'scripts');
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter(f => f.startsWith('check-') && f.endsWith('.mjs'))
-    .map(f => {
-      const filepath = join(dir, f);
-      const content = readFileSync(filepath, 'utf-8');
-      // Extract @description from JSDoc comment
-      const descMatch = content.match(/@description\s+(.+?)(?:\n\s*\*\s*\n|\n\s*\*\/)/s);
-      const desc = descMatch ? descMatch[1].replace(/\n\s*\*\s*/g, ' ').trim() : f;
-      return {
-        name: f.replace(/^check-/, '').replace(/\.mjs$/, ''),
-        filepath,
-        description: desc.slice(0, 200),
-      };
-    });
+  return loadVerifierRegistry().filter(entry => entry.public).map(entry => {
+    const content = readFileSync(entry.filepath, 'utf-8');
+    const descMatch = content.match(/@description\s+(.+?)(?:\n\s*\*\s*\n|\n\s*\*\/)/s);
+    const fallback = `Forge ${entry.category} verifier for ${entry.scope} scope`;
+    const description = (descMatch ? descMatch[1].replace(/\n\s*\*\s*/g, ' ').trim() : fallback).slice(0, 200);
+    return { ...entry, name: entry.id, description };
+  });
 }
 
 function getInvariants() {
@@ -245,7 +261,7 @@ function handleToolsList() {
   for (const verifier of listVerifiers()) {
     tools.push({
       name: `check_${verifier.name.replace(/-/g, '_')}`,
-      description: verifier.description,
+      description: `[${verifier.scope}; phases ${verifier.phases.join(',') || 'any'}] ${verifier.description}`.slice(0, 300),
       inputSchema: {
         type: 'object',
         properties: {
@@ -268,21 +284,20 @@ function handleToolsCall(params) {
   const { name, arguments: args } = params;
   if (typeof name !== 'string') throw new Error('name required');
 
-  // Match check_X_Y_Z back to check-X-Y-Z.mjs
   if (!name.startsWith('check_')) throw new Error(`Unknown tool: ${name}`);
   const verifierName = name.slice(6).replace(/_/g, '-');
-  const filepath = join(FORGE_PATH, 'scripts', `check-${verifierName}.mjs`);
-  if (!existsSync(filepath)) throw new Error(`Verifier not found: check-${verifierName}.mjs`);
+  const verifier = loadVerifierRegistry().find(entry => entry.public && entry.id === verifierName);
+  if (!verifier) throw new Error(`Verifier is not published by Forge MCP: ${verifierName}`);
 
   // Build args
-  const cmdArgs = [filepath];
+  const cmdArgs = [verifier.filepath];
   if (args && typeof args.path === 'string') cmdArgs.push(args.path);
   if (args && args.json === true) cmdArgs.push('--json');
 
   // Execute
   const result = spawnSync('node', cmdArgs, {
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: verifier.timeoutMs,
     cwd: FORGE_PATH, // verifiers resolve paths relative to cwd — must run from Forge root
   });
 

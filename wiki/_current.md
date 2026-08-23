@@ -4,10 +4,19 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.40 with deterministic newest-release ZIP selection, install it into the
-local Universal fleet, and fast-forward the verified result to GitHub `main`.
+Ship Project Forge v4.68.41 State Integrity: executable contracts for all nine phases, one global
+progression model, and an explicit public MCP verifier surface.
 
 ## Active task
+
+- [x] Add and schema-check executable completion contracts for Phases 1–9.
+- [x] Align every canonical phase skill completion command with its contract.
+- [x] Reject missing, irrelevant, directory-only and counterfeit evidence in Phase 2–9 regressions.
+- [x] Convert the legacy pipeline checker into a nine-phase project-status compatibility view.
+- [x] Replace automatic `check-*.mjs` MCP export with an explicit read-only registry.
+- [ ] Bump, validate, package, install and publish v4.68.41.
+
+### Previous v4.68.40 release
 
 - [x] Reproduce `runtime-test.mjs` selecting Ox Alpha v0.2.0 while v0.2.1 exists.
 - [x] Select the highest numeric version for exact production/debug/marketing variants.
@@ -63,5 +72,6 @@ must stay confined to the intentionally public, synthetic Snake GDD.
 - 2026-08-21: OpenCode whole-project turns use a 64-step ceiling; repeated successful directory listings are not billable progress.
 - 2026-08-22: Retained-data models require an explicit non-ZDR profile and may receive only non-confidential evaluation material.
 - 2026-08-23: Release runtime tests choose the highest numeric ZIP version for one exact variant; directory order is never release order.
+- 2026-08-23: Nine phase contracts are the only completion authority; compatibility views and MCP tools derive from that state and cannot invent another progression model.
 
-<!-- last updated 2026-08-23 after v4.68.40 install, fleet sync and GitHub main fast-forward -->
+<!-- last updated 2026-08-23 while validating v4.68.41 State Integrity -->

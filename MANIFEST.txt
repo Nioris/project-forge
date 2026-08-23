@@ -162,6 +162,15 @@
 .agents/skills/status/references/forge-event.mjs
 .agents/skills/status/references/model-policy.json
 .agents/skills/status/references/phase-completion-gate.mjs
+.agents/skills/status/references/phase-contracts/phase-1.json
+.agents/skills/status/references/phase-contracts/phase-2.json
+.agents/skills/status/references/phase-contracts/phase-3.json
+.agents/skills/status/references/phase-contracts/phase-4.json
+.agents/skills/status/references/phase-contracts/phase-5.json
+.agents/skills/status/references/phase-contracts/phase-6.json
+.agents/skills/status/references/phase-contracts/phase-7.json
+.agents/skills/status/references/phase-contracts/phase-8.json
+.agents/skills/status/references/phase-contracts/phase-9.json
 .agents/skills/status/references/phase-state.mjs
 .agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
@@ -386,6 +395,15 @@
 .claude/skills/status/references/forge-event.mjs
 .claude/skills/status/references/model-policy.json
 .claude/skills/status/references/phase-completion-gate.mjs
+.claude/skills/status/references/phase-contracts/phase-1.json
+.claude/skills/status/references/phase-contracts/phase-2.json
+.claude/skills/status/references/phase-contracts/phase-3.json
+.claude/skills/status/references/phase-contracts/phase-4.json
+.claude/skills/status/references/phase-contracts/phase-5.json
+.claude/skills/status/references/phase-contracts/phase-6.json
+.claude/skills/status/references/phase-contracts/phase-7.json
+.claude/skills/status/references/phase-contracts/phase-8.json
+.claude/skills/status/references/phase-contracts/phase-9.json
 .claude/skills/status/references/phase-state.mjs
 .claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
@@ -491,6 +509,7 @@ RELEASE_NOTES_v4.68.38.md
 RELEASE_NOTES_v4.68.39.md
 RELEASE_NOTES_v4.68.4.md
 RELEASE_NOTES_v4.68.40.md
+RELEASE_NOTES_v4.68.41.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
@@ -539,6 +558,7 @@ mcp-server/index.mjs
 mcp-server/package-lock.json
 mcp-server/package.json
 mcp-server/test.mjs
+mcp-server/verifiers.json
 migrate.ps1
 migrate.sh
 new-app.bat
@@ -918,6 +938,7 @@ wiki/i18n-status.md
 wiki/performance.md
 wiki/pitfalls.md
 wiki/plan/B3-001-latest-runtime-release.md
+wiki/plan/B3-002-state-integrity.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md

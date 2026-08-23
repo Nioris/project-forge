@@ -17,11 +17,13 @@ node .claude/skills/status/references/phase-state.mjs start 3
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs complete 3 wiki/plan/02-development-plan.md
+node .claude/skills/status/references/phase-state.mjs complete 3 wiki/plan/02-development-plan.md wiki/testing.md
 ```
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `$status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
+`complete` дополнительно проверяет реальный implementation source и чистый
+`playtest-out/report.json`; одного плана или текстового заявления о PASS недостаточно.
 
 
 **Модели:** Claude `opus` для сложной логики, `sonnet` для рутины. Codex base

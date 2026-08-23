@@ -412,7 +412,21 @@ safe('skill-description-cap', () => {
 safe('phase-aware-status-model', () => {
   const r = spawnSync(process.execPath, ['scripts/check-status-phase-model.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('/status 9-phase model regression failed — run scripts/check-status-phase-model.mjs');
-  else ok.push('/status uses canonical 9 phases + machine markers; CLAUDE mutable state is non-authoritative');
+  else ok.push('/status and the legacy pipeline command share one canonical 9-phase model');
+});
+
+safe('mcp-verifier-registry', () => {
+  const registry = JSON.parse(fs.readFileSync(path.join(ROOT, 'mcp-server', 'verifiers.json'), 'utf8'));
+  const registered = registry.verifiers.map(item => path.basename(item.script)).sort();
+  const actual = fs.readdirSync(path.join(ROOT, 'scripts')).filter(name => /^check-.+\.mjs$/.test(name)).sort();
+  const ids = registry.verifiers.map(item => item.id);
+  if (registry.schemaVersion !== 1 || new Set(ids).size !== ids.length || JSON.stringify(registered) !== JSON.stringify(actual)) {
+    err('MCP verifier registry does not classify every check-*.mjs exactly once');
+  } else if (registry.verifiers.some(item => item.public && item.mutates !== false)) {
+    err('MCP verifier registry publishes a mutating verifier');
+  } else {
+    ok.push(`MCP publishes ${registry.verifiers.filter(item => item.public).length}/${registry.verifiers.length} explicitly registered read-only verifiers`);
+  }
 });
 
 safe('project-git-lifecycle', () => {
@@ -424,7 +438,7 @@ safe('project-git-lifecycle', () => {
 safe('phase-completion-gate', () => {
   const r = spawnSync(process.execPath, ['scripts/check-phase-completion-gate.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('phase completion evidence gate regression failed — run scripts/check-phase-completion-gate.mjs');
-  else ok.push('phase completion rejects missing evidence, invented KPI facts and false acceptance claims');
+  else ok.push('all 9 phase contracts reject missing, irrelevant and counterfeit completion evidence');
 });
 
 safe('codex-one-window-pipeline', () => {

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "phase": 8,
+  "name": "Release",
+  "requiredEvidence": [
+    { "path": "wiki/deploy-log.md", "minBytes": 120 },
+    { "path": "SETUP_GUIDE.md", "minBytes": 160 }
+  ],
+  "projectChecks": ["non-placeholder-evidence", "release-green-report", "release-artifacts"]
+}

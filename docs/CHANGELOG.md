@@ -4715,6 +4715,13 @@ Phase 1 research validation now rejects a positive external assertion such as `v
 benchmark loophole where an unsupported Yandex claim survived inside a nominally unknown
 localization value.
 
+## v4.68.38 changelog (OpenCode loop budget)
+
+OpenCode whole-project turns now have a 64-step agentic ceiling. The project-local `list`
+compatibility tool also suppresses identical successful repeats within the same session. Together
+these safeguards convert provider tool loops into a bounded text handoff instead of unmetered API
+spend; legitimate unfinished work remains resumable in the same session.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

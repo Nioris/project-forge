@@ -16,11 +16,14 @@ node .claude/skills/status/references/phase-state.mjs start 6
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs complete 6
+node .claude/skills/status/references/phase-state.mjs complete 6 SETUP_GUIDE.md wiki/qa/phase-6-listing.md
 ```
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `$status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
+`complete` проверяет не только отчёт: нужны валидный `store-listing-*.json`,
+промо-скриншот, `screens/video/promo.mp4` и i18n runtime в коде. Результаты
+запиши в `wiki/qa/phase-6-listing.md`.
 
 
 **Модели:** Claude `sonnet`. Codex base `gpt-5.6-sol/medium`; route

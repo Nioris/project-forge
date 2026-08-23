@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "phase": 4,
+  "name": "Visual",
+  "requiredEvidence": [
+    { "path": "wiki/design/target-frame.md", "minBytes": 120 },
+    { "path": "assets/style/STYLE-BIBLE.md", "minBytes": 120 }
+  ],
+  "projectChecks": ["non-placeholder-evidence", "visual-integration"]
+}

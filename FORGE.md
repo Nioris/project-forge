@@ -29,6 +29,23 @@ Use these sources in this order:
 
 Never advance a phase solely because later-phase evidence already exists. Report it as evidence ahead of gate.
 
+### Executable phase completion contracts
+
+Every canonical phase loads `.claude/skills/status/references/phase-contracts/phase-N.json` before
+it can become `complete`. The contract names the exact evidence files, minimum content and project
+checks required for that phase. A directory, a success claim in prose, an unrelated existing file,
+or a counterfeit `PASS` line is not completion evidence.
+
+Only `phase-state.mjs` may persist a durable phase transition after the contract passes. The legacy
+`scripts/check-pipeline-state.mjs` command is a compatibility view over this same nine-phase state;
+it must not maintain `steps`, `current_step` or any other competing progression model.
+
+### Public MCP verifier surface
+
+The MCP server exposes only checks explicitly marked public in `mcp-server/verifiers.json`. Every
+entry is read-only, has a bounded timeout and declares its scope and applicable phases. Internal,
+regression and mutating scripts are never inferred from filenames and cannot be called as MCP tools.
+
 ## Workspace discipline
 
 - `GameIntegration/` is source material and read-only.

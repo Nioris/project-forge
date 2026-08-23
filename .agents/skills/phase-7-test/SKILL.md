@@ -16,11 +16,13 @@ node .claude/skills/status/references/phase-state.mjs start 7
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs complete 7 wiki/qa
+node .claude/skills/status/references/phase-state.mjs complete 7 wiki/testing.md wiki/qa/phase-7-report.md
 ```
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `$status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
+`complete` не принимает папку как evidence: нужны два конкретных отчёта,
+чистый `playtest-out/report.json` и `stage-out/rt.json` с ready/i18n фактами.
 
 
 **Модели:** Claude `sonnet`, непонятное падение — `opus`. Codex base

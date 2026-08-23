@@ -16,11 +16,14 @@ node .claude/skills/status/references/phase-state.mjs start 5
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs complete 5
+node .claude/skills/status/references/phase-state.mjs complete 5 .forge-ai.json wiki/qa/phase-5-tech.md
 ```
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
+`complete` читает контракт Ф5 и сам проверяет SDK init/ready, GameplayAPI
+start/stop, рекламу, mobile/touch и безопасный `.forge-ai.json`. Перед командой
+запиши фактические результаты техгейта в `wiki/qa/phase-5-tech.md`.
 
 
 **Модели:** Claude `sonnet`. Codex base `gpt-5.6-sol/high`; routes `repeated-failure` и

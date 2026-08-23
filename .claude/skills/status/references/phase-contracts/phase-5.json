@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "phase": 5,
+  "name": "Tech",
+  "requiredEvidence": [
+    { "path": ".forge-ai.json", "minBytes": 2 },
+    { "path": "wiki/qa/phase-5-tech.md", "minBytes": 100 }
+  ],
+  "projectChecks": ["non-placeholder-evidence", "tech-runtime"]
+}
