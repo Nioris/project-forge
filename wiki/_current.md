@@ -15,7 +15,7 @@ artifact inference, while downstream artifacts remain visible as evidence ahead 
 - [x] Preserve downstream artifact visibility without allowing it to advance progression.
 - [x] Add a deterministic mixed marker/artifact regression.
 - [x] Bump, validate, package, install and synchronize v4.68.50 across 32 sibling projects.
-- [ ] Commit and publish the verified v4.68.50 engine release.
+- [x] Commit and publish the verified v4.68.50 engine release.
 
 ### Previous v4.68.49 release
 
