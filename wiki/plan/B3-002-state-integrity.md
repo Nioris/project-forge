@@ -1,7 +1,7 @@
 ---
 id: B3-002
 title: Canonical nine-phase state integrity
-status: complete
+status: done
 started: 2026-08-23
 deps: []
 files:

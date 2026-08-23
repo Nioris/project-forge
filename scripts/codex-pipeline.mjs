@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import { spawn, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
   auditCodexSessionTree,
@@ -20,11 +21,13 @@ import {
   observeExecTelemetry,
   savePhaseCostReport,
 } from './lib/codex-cost-report.mjs';
+import { latestPhaseRunResult } from '../.claude/skills/status/references/execution-contract.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..');
 const POLICY_PATH = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'model-policy.json');
 const STATUS_SCRIPT = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'project-status.mjs');
+const PHASE_STATE_SCRIPT = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
 const PHASE_NAMES = {
   1: 'Analyze', 2: 'Design', 3: 'Construct', 4: 'Visual', 5: 'Tech',
   6: 'Listing', 7: 'Test', 8: 'Release', 9: 'Live',
@@ -138,14 +141,90 @@ export function parseExecEvent(line) {
 
 export function looksLikeQuestion(text) {
   const value = String(text || '').trim();
-  return /\?\s*$/.test(value) || /STOP-POINT|как ответить|ответьте|утверждаете|нужно решить|нужен ваш ответ/i.test(value);
+  if (!value || /не\s+(?:создавай|открывай|делай).*STOP-POINT/i.test(value)
+    || /цитат[^\n]{0,120}[«"'].*(?:утверждаете|ответьте|начинаем).*\?/i.test(value)) return false;
+  return /(?:^|\n)\s*(?:❓\s*|STOP-POINT\s*:|как ответить\s*:|ответьте(?=\s|[?:.!]|$)|утверждаете(?=\s|[?:.!]|$)|нужно решить(?=\s|[?:.!]|$)|нужен ваш ответ(?=\s|[?:.!]|$)|начинаем(?=\s|[?:.!]|$)|продолжаем(?=\s|[?:.!]|$))[^\n]{0,500}\??\s*$/i.test(value);
 }
 
-export function classifyAfterTurn(marker, finalText, exitCode) {
-  if (exitCode !== 0) return 'failed';
-  if (marker?.state === 'complete' || marker?.state === 'ongoing') return 'complete';
-  if (marker?.state === 'blocked' || looksLikeQuestion(finalText)) return 'needs-answer';
-  return 'continue';
+function freshTimestamp(value, turnStartedAtMs) {
+  if (!turnStartedAtMs) return true;
+  const parsed = Date.parse(value || '');
+  return Number.isFinite(parsed) && parsed >= Number(turnStartedAtMs) - 1000;
+}
+
+function correlatedRunResult(result, turnStartedAtMs, turnAttemptId) {
+  if (!result) return false;
+  if (turnAttemptId && result.attemptId) return result.attemptId === turnAttemptId;
+  return freshTimestamp(result.createdAt, turnStartedAtMs);
+}
+
+function correlatedMarker(marker, turnStartedAtMs, turnAttemptId) {
+  const markerAttemptId = marker?.execution?.attemptId;
+  if (turnAttemptId && markerAttemptId) return markerAttemptId === turnAttemptId;
+  return freshTimestamp(marker?.updatedAt, turnStartedAtMs);
+}
+
+export function classifyTurnResult(marker, finalText, exitCode, {
+  structuredResult = null, turnStartedAtMs = null, turnAttemptId = null,
+} = {}) {
+  const structuredFresh = correlatedRunResult(structuredResult, turnStartedAtMs, turnAttemptId);
+  const markerFresh = correlatedMarker(marker, turnStartedAtMs, turnAttemptId);
+  const attemptBudgetExhausted = structuredFresh && markerFresh
+    && marker?.execution?.status === 'blocked' && marker?.execution?.currentNode === 'blocked';
+  if (attemptBudgetExhausted) {
+    return { action: 'blocked', source: 'attempt_budget_exhausted', legacyFallback: false, structuredResult };
+  }
+  const correlatedAgentGateRepair = exitCode === 1 && structuredFresh && markerFresh
+    && structuredResult?.status === 'retryable_failure'
+    && structuredResult?.code === 'COMPLETION_GATE_REJECTED'
+    && structuredResult?.stop?.owner === 'agent'
+    && marker?.state === 'blocked'
+    && marker?.block?.owner === 'agent'
+    && marker?.block?.code === 'COMPLETION_GATE_REJECTED';
+  if (correlatedAgentGateRepair) {
+    return { action: 'continue', source: 'completion_gate_repair', legacyFallback: false, structuredResult };
+  }
+  if (exitCode !== 0) return { action: 'failed', source: 'process_exit', legacyFallback: false };
+  const legacyCompleteMarker = !marker?.execution || Number(marker?.schemaVersion || 0) < 3;
+  if ((marker?.state === 'complete' || marker?.state === 'ongoing') && (markerFresh || legacyCompleteMarker)) {
+    return { action: 'complete', source: 'phase_marker', legacyFallback: false };
+  }
+
+  if (structuredFresh) {
+    const status = structuredResult.status;
+    if (status === 'completed') {
+      return { action: 'continue', source: 'run_result_without_phase_completion', legacyFallback: false, structuredResult, protocolInconsistency: true };
+    }
+    if (status === 'user_decision_required') return { action: 'needs-answer', source: 'run_result', legacyFallback: false, structuredResult };
+    if (status === 'environment_failure' || status === 'blocked') return { action: 'blocked', source: 'run_result', legacyFallback: false, structuredResult };
+    if (['in_progress', 'retryable_failure', 'provider_failure'].includes(status)) {
+      return { action: 'continue', source: 'run_result', legacyFallback: false, structuredResult };
+    }
+  }
+
+  if (marker?.state === 'blocked' && markerFresh) {
+    if (marker.block?.owner === 'agent') return { action: 'continue', source: 'phase_marker_block', legacyFallback: false };
+    if (marker.block?.owner === 'infrastructure') return { action: 'blocked', source: 'phase_marker_block', legacyFallback: false };
+    return { action: 'needs-answer', source: marker.block?.owner === 'user' ? 'phase_marker_block' : 'legacy_marker', legacyFallback: !marker.block };
+  }
+  if (looksLikeQuestion(finalText)) return { action: 'needs-answer', source: 'legacy_text', legacyFallback: true };
+  return { action: 'continue', source: structuredResult ? 'stale_run_result' : 'phase_state', legacyFallback: false };
+}
+
+function acceptPhaseUserAnswer(projectRoot, phase) {
+  const marker = readPhaseMarker(projectRoot, phase);
+  const legacyStop = marker?.state === 'blocked' && !marker?.block?.owner;
+  const attemptId = `codex-answer-${phase}-${randomUUID()}`;
+  const result = spawnSync(process.execPath, [PHASE_STATE_SCRIPT, legacyStop ? 'start' : 'answer', String(phase), '--host', 'codex'], {
+    cwd: projectRoot,
+    env: { ...process.env, FORGE_RUN_ATTEMPT_ID: attemptId },
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout || `Could not resume Phase ${phase} user STOP`);
+}
+
+export function classifyAfterTurn(marker, finalText, exitCode, options = {}) {
+  return classifyTurnResult(marker, finalText, exitCode, options).action;
 }
 
 export function resolveCodexLauncher(explicit = process.env.CODEX_CLI_PATH || null) {
@@ -231,6 +310,7 @@ function usageSummary(usage) {
 
 export async function runCodexTurn(launcher, args, cwd, env) {
   return await new Promise(resolve => {
+    const startedAtMs = Date.now();
     const child = spawn(launcher.command, [...(launcher.prefixArgs || []), ...args], {
       cwd, env, shell: false, windowsHide: false, stdio: ['inherit', 'pipe', 'pipe'],
     });
@@ -262,8 +342,8 @@ export async function runCodexTurn(launcher, args, cwd, env) {
       stderr += text;
       process.stderr.write(text);
     });
-    child.on('error', error => resolve({ exitCode: 127, sessionId, finalText, stderr: error.message, telemetry }));
-    child.on('close', code => resolve({ exitCode: code ?? 1, sessionId, finalText, stderr, telemetry }));
+    child.on('error', error => resolve({ exitCode: 127, sessionId, finalText, stderr: error.message, telemetry, startedAtMs, completedAtMs: Date.now() }));
+    child.on('close', code => resolve({ exitCode: code ?? 1, sessionId, finalText, stderr, telemetry, startedAtMs, completedAtMs: Date.now() }));
   });
 }
 
@@ -328,12 +408,42 @@ export async function runPipeline({
       let unexpectedStops = 0;
       let failedExecs = 0;
       let stopPrompts = 0;
+      const restoredMarker = readPhaseMarker(root, phase);
+      if (restoredMarker?.state === 'blocked' && restoredMarker?.block?.owner === 'infrastructure') {
+        console.error(`\n[Forge] Phase ${phase} cannot continue automatically: ${restoredMarker.reason || 'Infrastructure blocker'}`);
+        return 2;
+      }
+      if (restoredMarker?.state === 'blocked'
+        && (restoredMarker?.block?.owner === 'user' || !restoredMarker?.block?.owner)) {
+        stopPrompts++;
+        if (!restoredMarker?.block?.owner) {
+          console.warn('[Forge] Restoring a legacy user STOP and upgrading it to the structured phase contract after the answer.');
+        }
+        if (restoredMarker.reason) console.log(`\n[Forge] Restored STOP: ${restoredMarker.reason}`);
+        const answer = await prompt.ask('\nВаш ответ для ИИ (:stop — закончить):\n> ');
+        if (answerIsExitCommand(answer)) return 0;
+        acceptPhaseUserAnswer(root, phase);
+        nextArgs[nextArgs.length - 1] += `\n\nОтвет пользователя на восстановленный STOP: ${answer}`;
+      }
       while (true) {
-        const turn = await runCodexTurn(launcher, nextArgs, root, phaseEnv);
+        const turnAttemptId = `codex-${phase}-${randomUUID()}`;
+        const turn = await runCodexTurn(launcher, nextArgs, root, { ...phaseEnv, FORGE_RUN_ATTEMPT_ID: turnAttemptId });
         mergeExecTelemetry(phaseTelemetry, turn.telemetry);
         if (turn.sessionId) sessionId = turn.sessionId;
         const marker = readPhaseMarker(root, phase);
-        const state = classifyAfterTurn(marker, turn.finalText, turn.exitCode);
+        const structured = latestPhaseRunResult(root, marker, phase);
+        const outcome = classifyTurnResult(marker, turn.finalText, turn.exitCode, {
+          structuredResult: structured?.result || null,
+          turnStartedAtMs: turn.startedAtMs,
+          turnAttemptId,
+        });
+        const state = outcome.action;
+        if (outcome.legacyFallback) {
+          console.warn(`[Forge] Legacy STOP fallback used (${outcome.source}); the phase skill should persist a structured phase-state block.`);
+        }
+        if (outcome.protocolInconsistency) {
+          console.warn('[Forge] Structured Task reported completion without an authoritative complete phase marker; continuing the current phase.');
+        }
 
         if (state === 'complete') {
           console.log(`\n[Forge] Phase ${phase} ${PHASE_NAMES[phase]} COMPLETE.`);
@@ -349,12 +459,19 @@ export async function runPipeline({
             'Предыдущий запуск завершился технической ошибкой. Проверь состояние проекта и продолжай текущую фазу до STOP или complete.', null, mcpOverrides).args;
           continue;
         }
+        if (state === 'blocked') {
+          const reason = outcome.structuredResult?.failure?.message || marker?.reason || 'Infrastructure or policy blocker';
+          console.error(`\n[Forge] Phase ${phase} cannot continue automatically: ${reason}`);
+          return 2;
+        }
         if (state === 'needs-answer') {
           stopPrompts++;
           const reason = marker?.reason ? `\n[Forge] STOP: ${marker.reason}` : '';
           if (reason) console.log(reason);
           const answer = await prompt.ask('\nВаш ответ для ИИ (:stop — закончить):\n> ');
           if (answerIsExitCommand(answer)) return 0;
+          if (marker?.state === 'blocked'
+            && (marker?.block?.owner === 'user' || !marker?.block?.owner)) acceptPhaseUserAnswer(root, phase);
           if (!sessionId) {
             nextArgs = firstExecArgs(policy, phase, root, null, mcpOverrides).args;
             nextArgs[nextArgs.length - 1] += `\n\nОтвет пользователя на открытый STOP: ${answer}`;

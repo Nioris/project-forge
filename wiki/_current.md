@@ -4,10 +4,18 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.41 State Integrity: executable contracts for all nine phases, one global
-progression model, and an explicit public MCP verifier surface.
+Ship Project Forge v4.68.42 Durable Execution Graph: formal Task/RunResult/FailureType contracts,
+restart-safe workflow state and structured turn routing on top of the canonical nine phases.
 
 ## Active task
+
+- [x] Define host-neutral Task, RunResult and workflow schemas.
+- [x] Implement durable graph state and five runtime-enforced execution modes.
+- [x] Connect `phase-state`, Codex and GigaChat routing to structured RunResult.
+- [x] Add bounded transition, restart, exact-attempt and legacy-fallback regressions.
+- [ ] Validate, package, install, synchronize and publish v4.68.42.
+
+### Previous v4.68.41 release
 
 - [x] Add and schema-check executable completion contracts for Phases 1–9.
 - [x] Align every canonical phase skill completion command with its contract.
@@ -73,5 +81,8 @@ must stay confined to the intentionally public, synthetic Snake GDD.
 - 2026-08-22: Retained-data models require an explicit non-ZDR profile and may receive only non-confidential evaluation material.
 - 2026-08-23: Release runtime tests choose the highest numeric ZIP version for one exact variant; directory order is never release order.
 - 2026-08-23: Nine phase contracts are the only completion authority; compatibility views and MCP tools derive from that state and cannot invent another progression model.
+- 2026-08-23: Task graphs are supplemental execution state; the canonical nine phase markers remain the only global progression.
+- 2026-08-23: Structured Codex STOP/results are trusted by exact per-turn attempt ID; timestamp/text matching is legacy fallback only.
+- 2026-08-23: A passed phase marker is persisted before its supplemental completed RunResult, and only that marker may advance the pipeline.
 
-<!-- last updated 2026-08-23 after v4.68.41 install, 31-project sync, GitHub main fast-forward and successful GitVerse mirror -->
+<!-- last updated 2026-08-23 while implementing v4.68.42 Durable Execution Graph -->

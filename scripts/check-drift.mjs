@@ -441,6 +441,12 @@ safe('phase-completion-gate', () => {
   else ok.push('all 9 phase contracts reject missing, irrelevant and counterfeit completion evidence');
 });
 
+safe('durable-execution-graph', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-execution-contract.mjs'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) err('Task/RunResult workflow graph regression failed — run scripts/check-execution-contract.mjs');
+  else ok.push('Task and RunResult drive five bounded durable workflow graphs without replacing phase state');
+});
+
 safe('codex-one-window-pipeline', () => {
   const r = spawnSync(process.execPath, ['scripts/check-codex-pipeline.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) err('one-window Codex phase orchestration failed — run scripts/check-codex-pipeline.mjs');

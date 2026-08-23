@@ -40,6 +40,23 @@ Only `phase-state.mjs` may persist a durable phase transition after the contract
 `scripts/check-pipeline-state.mjs` command is a compatibility view over this same nine-phase state;
 it must not maintain `steps`, `current_step` or any other competing progression model.
 
+### Durable execution graph
+
+The nine phase markers remain Forge's only global progression state. A `Task` is a bounded unit of
+work inside that pipeline; its optional `phase` field is a reference, never a replacement phase.
+Forge stores active graph runs under `.forge/runs/<taskId>.json` using atomic writes and excludes
+them from Git. These files are runtime-owned: agents may inspect them through `project-status.mjs`
+or `forge-workflow.mjs`, but must never edit them directly.
+
+Five validated graphs ship with Forge: `phase`, `change`, `review`, `diagnose`, and `release`.
+Each transition consumes a typed `RunResult` and a fixed `FailureType`. User decisions route to
+`wait-user`; verifier/code failures route to a bounded agent repair loop; infrastructure blockers
+stop explicitly. Codex correlates phase results to the exact model turn through `attemptId`.
+Natural-language question detection exists only as a named legacy fallback.
+
+Task read/write scopes are validated declarations, not a substitute for workspace protection or
+host sandboxing. Host guards remain authoritative until scoped tool enforcement and file leases ship.
+
 ### Public MCP verifier surface
 
 The MCP server exposes only checks explicitly marked public in `mcp-server/verifiers.json`. Every

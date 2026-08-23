@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Offline regression check for Claude API, Codex API and GigaChat terminal surfaces. */
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -135,7 +135,10 @@ function runOpenRouterCredentialIsolationRegression(){
       else ok.push('OpenRouter key is isolated and the default launch requires ZDR');
     }
     run('OpenRouter same-session STOP resume dry-run',['scripts/forge-agent.mjs','select','openrouter','--preset','qwen','--profile','zdr','--project',fixture],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'Locked openrouter');
-    const resumed=run('OpenRouter same-session STOP resume contract',['scripts/forge-agent.mjs','resume','--project',fixture,'--answer','утверждаю','--dry-run'],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake},'continue-last-session');
+    const fakeOpenCode=join(fixture,process.platform==='win32'?'opencode-fixture.cmd':'opencode-fixture');
+    writeFileSync(fakeOpenCode,process.platform==='win32'?'@echo off\r\necho opencode 1.18.20\r\n':'#!/bin/sh\necho opencode 1.18.20\n','utf8');
+    if(process.platform!=='win32') chmodSync(fakeOpenCode,0o755);
+    const resumed=run('OpenRouter same-session STOP resume contract',['scripts/forge-agent.mjs','resume','--project',fixture,'--answer','утверждаю','--dry-run'],{FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake,FORGE_OPENCODE_CLI:fakeOpenCode},'continue-last-session');
     if(!resumed.text.includes('--continue')||resumed.text.includes('утверждаю')) errors.push('OpenRouter resume does not use a file-backed same-session continuation');
     else ok.push('OpenRouter STOP answer stays out of shell args and resumes the last session');
     const refusedOx=spawnSync(process.execPath,['scripts/forge-agent.mjs','select','openrouter','--preset','ox-alpha','--profile','zdr','--project',fixture],{cwd:ROOT,encoding:'utf8',env:{...process.env,FORGE_DATA_DIR:dataDir,OPENROUTER_API_KEY:fake}});

@@ -15,6 +15,7 @@
     { "id": "debugcheck-fixtures", "script": "scripts/check-debugcheck-fixtures.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "drift", "script": "scripts/check-drift.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 60000, "phases": [], "category": "forge-regression" },
     { "id": "emoji-coverage", "script": "scripts/check-emoji-coverage.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
+    { "id": "execution-contract", "script": "scripts/check-execution-contract.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "external-cdn", "script": "scripts/check-external-cdn.mjs", "public": true, "scope": "project", "mutates": false, "timeoutMs": 30000, "phases": [5, 7, 8], "category": "release-verification" },
     { "id": "forge-diagnostics", "script": "scripts/check-forge-diagnostics.mjs", "public": true, "scope": "project", "mutates": false, "timeoutMs": 30000, "phases": [1, 2, 3, 4, 5, 6, 7, 8, 9], "category": "project-diagnostics" },
     { "id": "gacha-integration", "script": "scripts/check-gacha-integration.mjs", "public": true, "scope": "project", "mutates": false, "timeoutMs": 30000, "phases": [3, 7], "category": "project-verification" },

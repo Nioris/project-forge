@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.41 (latest released)
+### Version: v4.68.42 (latest released)
 
+- 2026-08-23: **v4.68.42** — Strict Task/RunResult contracts and five durable execution graphs add restart-safe STOP/repair routing with exact Codex attempt correlation while nine phase markers remain the only global progression.
 - 2026-08-23: **v4.68.41** — All nine phases use executable evidence contracts; the legacy seven-step checker delegates to canonical status and MCP exposes only registered read-only verifiers.
 - 2026-08-23: **v4.68.40** — Runtime QA selects the highest numeric ZIP version for the exact production/debug/marketing variant; unsorted and v1.10-vs-v1.9 regressions are release-gated.
 - 2026-08-22: **v4.68.39** — OpenRouter gains the free `ox-alpha` coding preview preset with a mandatory explicit `standard` profile and non-confidential-data warning because the anonymous provider retains prompts/completions.
@@ -506,7 +507,8 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 - [[architecture/stack]] — full tech stack table
 - [[architecture/data-flow]] — how Forge processes a project from sources to release
 
-### Key decisions (last 12)
+### Key decisions (selected)
+- [[decisions/031-durable-execution-graph]] — Task graphs are supplemental; only nine phase markers own global progression
 - [[decisions/001-three-folder-discipline]] — GameIntegration / WorkProgress / Release separation
 - [[decisions/002-knowledge-base-vs-skills]] — `.claude/skills/` (commands) vs `./skills/` (KB)
 - [[decisions/003-template-by-path-equality]] — sync detects template by absolute path, not folder name
@@ -522,6 +524,7 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 
 ### Plans
 - [[plan/v4.8-roadmap]] — backlog details
+- [[plan/B3-003-durable-execution-graph]] — v4.68.42 Task/RunResult and graph foundation
 
 ### Memory
 - [[_current]] — active session state

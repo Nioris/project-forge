@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-forge.local/schemas/workflow.schema.json",
+  "title": "Project Forge Workflow Graph v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "mode", "start", "nodes"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "mode": { "enum": ["phase", "change", "review", "diagnose", "release"] },
+    "start": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "nodes": {
+      "type": "object",
+      "minProperties": 2,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "transitions"],
+        "properties": {
+          "type": { "enum": ["agent", "verifier", "decision", "system", "terminal"] },
+          "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 20 },
+          "exhaustedTo": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "transitions": {
+            "type": "object",
+            "propertyNames": { "enum": ["completed", "in_progress", "user_decision_required", "retryable_failure", "blocked", "environment_failure", "provider_failure"] },
+            "additionalProperties": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+          }
+        }
+      }
+    }
+  }
+}

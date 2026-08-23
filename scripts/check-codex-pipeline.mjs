@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import {
-  classifyAfterTurn, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
+  classifyAfterTurn, classifyTurnResult, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
   resolveCodexLauncher, resumeExecArgs, runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
 import {
@@ -55,6 +56,61 @@ check(classifyAfterTurn({ state: 'in_progress' }, 'Утверждаете пла
   'question-shaped STOP is not auto-resumed blindly');
 check(classifyAfterTurn({ state: 'in_progress' }, 'Продолжу работу.', 0) === 'continue',
   'premature in-progress ending is automatically continued');
+const now = new Date().toISOString();
+const structuredUserStop = {
+  status: 'user_decision_required', code: 'GDD_APPROVAL', createdAt: now,
+  failure: { type: 'USER_DECISION_REQUIRED', retryable: false, message: 'Approve GDD' },
+  stop: { owner: 'user', code: 'GDD_APPROVAL', decisionKey: 'phase2-gdd', resumePolicy: 'user_answer' },
+};
+check(classifyTurnResult({ state: 'in_progress' }, 'No question mark', 0, { structuredResult: structuredUserStop }).action === 'needs-answer',
+  'structured user-owned STOP requests an answer without prose heuristics');
+check(classifyTurnResult({ state: 'blocked', block: { owner: 'agent' }, updatedAt: now }, 'Fix required', 0).action === 'continue',
+  'agent-owned completion rejection continues repair instead of asking the user');
+const repairAttempt = 'codex-fixture-repair-attempt';
+const structuredAgentRepair = {
+  attemptId: repairAttempt, status: 'retryable_failure', code: 'COMPLETION_GATE_REJECTED', createdAt: now,
+  failure: { type: 'VERIFIER_FAILURE', retryable: true, message: 'Completion evidence failed' },
+  stop: { owner: 'agent', code: 'COMPLETION_GATE_REJECTED', decisionKey: null, resumePolicy: 'agent_retry' },
+};
+check(classifyTurnResult({
+  schemaVersion: 3, state: 'blocked', block: { owner: 'agent', code: 'COMPLETION_GATE_REJECTED' },
+  updatedAt: now, execution: { attemptId: repairAttempt },
+}, 'Repair required', 1, { structuredResult: structuredAgentRepair, turnAttemptId: repairAttempt }).action === 'continue',
+  'correlated completion-gate exit 1 routes to automatic agent repair');
+check(classifyTurnResult({
+  schemaVersion: 3, state: 'blocked', block: { owner: 'agent', code: 'COMPLETION_GATE_REJECTED' },
+  updatedAt: now, execution: { attemptId: repairAttempt, status: 'blocked', currentNode: 'blocked' },
+}, 'Repair budget exhausted', 1, { structuredResult: structuredAgentRepair, turnAttemptId: repairAttempt }).action === 'blocked',
+  'exhausted repair budget is terminal and cannot be reset by automatic resume');
+check(classifyTurnResult({ state: 'blocked', block: { owner: 'infrastructure' }, updatedAt: now }, '', 0).action === 'blocked',
+  'infrastructure-owned blocker stops automatic execution explicitly');
+check(classifyTurnResult({ state: 'blocked', updatedAt: now }, '', 0).source === 'legacy_marker',
+  'old blocked markers remain a named compatibility path');
+check(classifyTurnResult({ state: 'blocked', updatedAt: '2020-01-01T00:00:00.000Z' }, '', 0, { turnStartedAtMs: Date.now() }).action === 'continue',
+  'a stale blocked/STOP marker cannot control a new turn');
+check(classifyTurnResult({
+  schemaVersion: 3, state: 'blocked', block: { owner: 'user' }, updatedAt: now,
+  execution: { attemptId: 'codex-old-stop-attempt' },
+}, '', 0, {
+  structuredResult: { ...structuredUserStop, attemptId: 'codex-old-stop-attempt' },
+  turnStartedAtMs: Date.now(), turnAttemptId: 'codex-new-resume-attempt',
+}).action === 'continue', 'an immediate resume cannot consume the previous turn STOP by timestamp alone');
+check(!looksLikeQuestion('Не создавай STOP-POINT.') && !looksLikeQuestion('В отчёте была цитата «утверждаете?»'),
+  'negative instructions and quoted questions do not create a false STOP');
+check(classifyTurnResult({ state: 'in_progress' }, 'Начинаем?', 0).source === 'legacy_text',
+  'real unstructured legacy questions remain a visible fallback');
+check(classifyTurnResult({ state: 'complete' }, 'Утверждаете?', 0, { structuredResult: structuredUserStop }).action === 'complete',
+  'durable completion outranks question-shaped assistant text');
+const completedWithoutMarker = classifyTurnResult({
+  schemaVersion: 3, state: 'in_progress', updatedAt: now, execution: { attemptId: 'codex-complete-attempt' },
+}, 'Task says done', 0, {
+  structuredResult: { status: 'completed', code: 'PHASE_CONTRACT_PASSED', createdAt: now, attemptId: 'codex-complete-attempt' },
+  turnAttemptId: 'codex-complete-attempt',
+});
+check(completedWithoutMarker.action === 'continue' && completedWithoutMarker.protocolInconsistency === true,
+  'supplemental completed RunResult cannot advance an in-progress canonical phase');
+check(classifyTurnResult({ state: 'complete' }, 'Everything passed', 7, { structuredResult: { status: 'completed', createdAt: now } }).action === 'failed',
+  'non-zero process exit outranks optimistic markers and text');
 
 const launcher = resolveCodexLauncher();
 const version = spawnSync(launcher.command, [...launcher.prefixArgs, '--version'], { encoding: 'utf8' });
@@ -96,7 +152,7 @@ try {
     && /Output\/input is intentionally not labeled as efficiency/.test(fs.readFileSync(fixtureSaved.latestPath, 'utf8'))
     && /Forge Cost Report/.test(formatPhaseCostReport(fixtureReport)),
     'phase report persists transparent ratios, warnings, and measurement notes');
-  const dry = spawnSync(process.execPath, [path.join(process.cwd(), 'scripts', 'codex-pipeline.mjs'), '--cwd', tmp, '--from', '2', '--dry-run'], { encoding: 'utf8' });
+  const dry = spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'codex-pipeline.mjs'), '--cwd', tmp, '--from', '2', '--dry-run'], { encoding: 'utf8' });
   check(dry.status === 0 && /Phase 2 Design/.test(dry.stdout) && /Phase 9 Live/.test(dry.stdout)
     && (dry.stdout.match(/fresh-session=yes/g) || []).length === 8,
   'dry run shows one fresh session for every remaining phase without calling a model');
@@ -112,9 +168,15 @@ if(args[0]==='mcp'&&args[1]==='list'){
     {name:'stdioMCP',enabled:true,transport:{type:'stdio',command:'fixture'}}
   ])); process.exit(0);
 }
+fs.appendFileSync(path.join(root,'model-launch-count'),'1\\n');
 const prompt=args.at(-1)||''; const m=prompt.match(/\\$phase-(\\d+)-/); const phase=Number(m?.[1]||1); const resumed=args[0]==='exec'&&args[1]==='resume';
 if(args.includes('mcp_servers.unityMCP.enabled=false')) fs.writeFileSync(path.join(root,'mcp-override-ok'),'yes');
 fs.mkdirSync(path.join(root,'wiki','phases'),{recursive:true});
+if(phase===2&&/Ответ пользователя на восстановленный STOP/.test(prompt)){
+  try{const prior=JSON.parse(fs.readFileSync(path.join(root,'wiki','phases','phase-2.json'),'utf8'));
+    if(prior.schemaVersion===3&&prior.state==='in_progress'&&prior.block===null) fs.writeFileSync(path.join(root,'legacy-answer-upgraded'),'yes');
+  }catch{}
+}
 const state=phase===1&&!resumed?'blocked':'complete';
 fs.writeFileSync(path.join(root,'wiki','phases','phase-'+phase+'.json'),JSON.stringify({phase,state,reason:state==='blocked'?'Approve fixture':null})+'\\n');
 console.log(JSON.stringify({type:'thread.started',thread_id:'fresh-phase-'+phase}));
@@ -128,11 +190,47 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
   check(disabledMcp.length === 1 && disabledMcp[0].name === 'unityMCP'
     && disabledMcp[0].override === 'mcp_servers.unityMCP.enabled=false',
     'preflight disables only an unreachable loopback HTTP MCP and leaves remote/stdio servers alone');
+  fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({
+    schemaVersion: 3, phase: 2, state: 'blocked', reason: 'Approve restored fixture',
+    block: { owner: 'user', code: 'RESTORED_APPROVAL', decisionKey: 'phase2-restored', resumePolicy: 'user_answer' },
+    execution: { attemptId: 'codex-restored-stop', taskId: null }, updatedAt: new Date().toISOString(),
+  }));
+  fs.rmSync(path.join(tmp, 'model-launch-count'), { force: true });
+  let restoredPromptSawNoModel = false;
+  const restoredStop = await runPipeline({
+    projectRoot: tmp, fromPhase: 2, autoAdvance: true,
+    launcher: { command: process.execPath, prefixArgs: [fake] },
+    prompter: { async ask() { restoredPromptSawNoModel = !fs.existsSync(path.join(tmp, 'model-launch-count')); return ':stop'; }, close() {} },
+  });
+  check(restoredStop === 0 && restoredPromptSawNoModel && !fs.existsSync(path.join(tmp, 'model-launch-count')),
+    'pipeline restores a durable user STOP and asks before launching a model');
+  fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({
+    schemaVersion: 2, phase: 2, state: 'blocked', reason: 'Approve legacy restored fixture',
+    updatedAt: new Date().toISOString(),
+  }));
+  fs.rmSync(path.join(tmp, 'model-launch-count'), { force: true });
+  let legacyRestoredPromptSawNoModel = false;
+  const legacyRestoredStop = await runPipeline({
+    projectRoot: tmp, fromPhase: 2, autoAdvance: true,
+    launcher: { command: process.execPath, prefixArgs: [fake] },
+    prompter: { async ask() { legacyRestoredPromptSawNoModel = !fs.existsSync(path.join(tmp, 'model-launch-count')); return ':stop'; }, close() {} },
+  });
+  check(legacyRestoredStop === 0 && legacyRestoredPromptSawNoModel && !fs.existsSync(path.join(tmp, 'model-launch-count')),
+    'pipeline restores a legacy blocked marker before launching a model');
+  const legacyAnswers = [];
+  const legacyAccepted = await runPipeline({
+    projectRoot: tmp, fromPhase: 2, autoAdvance: false,
+    launcher: { command: process.execPath, prefixArgs: [fake] },
+    prompter: { async ask(question) { legacyAnswers.push(question); return legacyAnswers.length === 1 ? 'утверждаю' : 'n'; }, close() {} },
+  });
+  check(legacyAccepted === 0 && fs.existsSync(path.join(tmp, 'legacy-answer-upgraded')),
+    'answering a legacy STOP upgrades its marker before the first model turn');
+  fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({ phase: 2, state: 'in_progress' }));
   const answers = [];
   const integrated = await runPipeline({
     projectRoot: tmp, fromPhase: 1, autoAdvance: true,
     launcher: { command: process.execPath, prefixArgs: [fake] },
-    prompter: { async ask(question) { answers.push(question); return 'утверждаю'; }, close() {} },
+    prompter: { async ask(question) { answers.push(question); return answers.length > 3 ? 'stop' : 'утверждаю'; }, close() {} },
   });
   const allComplete = Array.from({ length: 9 }, (_, i) => i + 1).every(phase => {
     const marker = JSON.parse(fs.readFileSync(path.join(tmp, 'wiki', 'phases', `phase-${phase}.json`), 'utf8'));

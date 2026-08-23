@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-forge.local/schemas/run-result.schema.json",
+  "title": "Project Forge RunResult v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "projectPath": { "type": "string", "minLength": 1, "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[^\\u0000\\\\]+$" }
+  },
+  "required": ["schemaVersion", "taskId", "node", "attemptId", "status", "code", "message", "host", "phase", "evidence", "checks", "failure", "stop", "createdAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9._-]{1,79}$" },
+    "node": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "attemptId": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$" },
+    "status": { "enum": ["completed", "in_progress", "user_decision_required", "retryable_failure", "blocked", "environment_failure", "provider_failure"] },
+    "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,79}$" },
+    "message": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "host": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "phase": { "type": ["integer", "null"], "minimum": 1, "maximum": 9 },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/projectPath" }, "maxItems": 100 },
+    "checks": { "type": "array", "items": { "type": "string", "maxLength": 500 }, "maxItems": 100 },
+    "failure": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["type", "retryable", "message"],
+      "properties": {
+        "type": { "enum": ["CODE_ERROR", "VERIFIER_FAILURE", "ENVIRONMENT_ERROR", "PROVIDER_ERROR", "USER_DECISION_REQUIRED", "MISSING_CREDENTIAL", "EXTERNAL_SERVICE_DOWN", "FORGE_RUNTIME_BUG", "REQUIREMENT_CONFLICT"] },
+        "retryable": { "type": "boolean" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "stop": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["owner", "code", "decisionKey", "resumePolicy"],
+      "properties": {
+        "owner": { "enum": ["user", "agent", "infrastructure"] },
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,79}$" },
+        "decisionKey": { "type": ["string", "null"], "maxLength": 160 },
+        "resumePolicy": { "enum": ["user_answer", "agent_retry", "environment_change", "none"] }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

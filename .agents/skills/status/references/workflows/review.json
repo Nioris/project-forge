@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "review",
+  "mode": "review",
+  "start": "review",
+  "nodes": {
+    "review": { "type": "agent", "transitions": { "in_progress": "review", "completed": "done", "user_decision_required": "wait-user", "environment_failure": "blocked", "provider_failure": "retry-provider", "blocked": "blocked" } },
+    "retry-provider": { "type": "system", "maxAttempts": 3, "exhaustedTo": "blocked", "transitions": { "in_progress": "review", "provider_failure": "retry-provider", "environment_failure": "blocked", "blocked": "blocked" } },
+    "wait-user": { "type": "decision", "transitions": { "in_progress": "review", "completed": "review", "user_decision_required": "wait-user", "blocked": "blocked" } },
+    "blocked": { "type": "terminal", "transitions": {} },
+    "done": { "type": "terminal", "transitions": {} }
+  }
+}

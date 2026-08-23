@@ -159,6 +159,7 @@
 .agents/skills/start/SKILL.md
 .agents/skills/status/SKILL.md
 .agents/skills/status/references/MODEL-ROUTING.md
+.agents/skills/status/references/execution-contract.mjs
 .agents/skills/status/references/forge-event.mjs
 .agents/skills/status/references/model-policy.json
 .agents/skills/status/references/phase-completion-gate.mjs
@@ -174,6 +175,12 @@
 .agents/skills/status/references/phase-state.mjs
 .agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
+.agents/skills/status/references/workflow-state.mjs
+.agents/skills/status/references/workflows/change.json
+.agents/skills/status/references/workflows/diagnose.json
+.agents/skills/status/references/workflows/phase.json
+.agents/skills/status/references/workflows/release.json
+.agents/skills/status/references/workflows/review.json
 .agents/skills/steam-sdk-integration/SKILL.md
 .agents/skills/store-creatives/SKILL.md
 .agents/skills/store-listing/SKILL.md
@@ -392,6 +399,7 @@
 .claude/skills/start/SKILL.md
 .claude/skills/status/SKILL.md
 .claude/skills/status/references/MODEL-ROUTING.md
+.claude/skills/status/references/execution-contract.mjs
 .claude/skills/status/references/forge-event.mjs
 .claude/skills/status/references/model-policy.json
 .claude/skills/status/references/phase-completion-gate.mjs
@@ -407,6 +415,12 @@
 .claude/skills/status/references/phase-state.mjs
 .claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
+.claude/skills/status/references/workflow-state.mjs
+.claude/skills/status/references/workflows/change.json
+.claude/skills/status/references/workflows/diagnose.json
+.claude/skills/status/references/workflows/phase.json
+.claude/skills/status/references/workflows/release.json
+.claude/skills/status/references/workflows/review.json
 .claude/skills/steam-sdk-integration/SKILL.md
 .claude/skills/store-creatives/SKILL.md
 .claude/skills/store-listing/SKILL.md
@@ -510,6 +524,7 @@ RELEASE_NOTES_v4.68.39.md
 RELEASE_NOTES_v4.68.4.md
 RELEASE_NOTES_v4.68.40.md
 RELEASE_NOTES_v4.68.41.md
+RELEASE_NOTES_v4.68.42.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
@@ -683,7 +698,10 @@ platforms/yandex/validators/title-format.mjs
 platforms/yandex/validators/trademarks.mjs
 schemas/agent-profile.schema.json
 schemas/ai-prompt.schema.json
+schemas/run-result.schema.json
 schemas/store-listing.schema.json
+schemas/task.schema.json
+schemas/workflow.schema.json
 scripts/adapt-skill-to-forge.mjs
 scripts/ai-studio-init.mjs
 scripts/analyze-game.sh
@@ -717,6 +735,7 @@ scripts/check-dashboard-structure.mjs
 scripts/check-debugcheck-fixtures.mjs
 scripts/check-drift.mjs
 scripts/check-emoji-coverage.mjs
+scripts/check-execution-contract.mjs
 scripts/check-external-cdn.mjs
 scripts/check-forge-diagnostics.mjs
 scripts/check-gacha-integration.mjs
@@ -753,6 +772,7 @@ scripts/forge-search-selftest.mjs
 scripts/forge-secret-helper.mjs
 scripts/forge-secrets.mjs
 scripts/forge-sync-spec.mjs
+scripts/forge-workflow.mjs
 scripts/forge.ps1
 scripts/forge.sh
 scripts/gap-audit.mjs
@@ -931,6 +951,7 @@ wiki/decisions/010-architectural-vs-tactical-skills.md
 wiki/decisions/011-wiki-audit-mtime-tolerance.md
 wiki/decisions/012-lesson-rotation-policy.md
 wiki/decisions/030-claude-md-soft-limit.md
+wiki/decisions/031-durable-execution-graph.md
 wiki/decisions/_template.md
 wiki/deploy-log.md
 wiki/features/_template.md
@@ -939,6 +960,7 @@ wiki/performance.md
 wiki/pitfalls.md
 wiki/plan/B3-001-latest-runtime-release.md
 wiki/plan/B3-002-state-integrity.md
+wiki/plan/B3-003-durable-execution-graph.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md

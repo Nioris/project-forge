@@ -11,6 +11,7 @@ import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { formatTaskRun, listTaskRuns } from '../.claude/skills/status/references/execution-contract.mjs';
 import { getProviderSecret, RUNTIME_DIR, ensureDataDirs } from './lib/forge-secrets.mjs';
 import { applyDefaultSearchEnvironment } from './lib/forge-search.mjs';
 import { inspectRuntimeVersion, runtimeMeetsMinimum } from './lib/runtime-version.mjs';
@@ -60,6 +61,14 @@ function genericPrompt(skill, invocationArgs = '') {
 function skillCommand(agentName, skill, invocationArgs = '') { const tail = invocationArgs ? ` ${invocationArgs}` : ''; if (agentName === 'claude') return `/${skill}${tail}`; if (agentName === 'codex') return `$${skill}${tail}`; return genericPrompt(skill, invocationArgs); }
 function needsShell(exe) { return process.platform === 'win32' && /\.(cmd|bat)$/i.test(exe || ''); }
 function spawnAgent(exe, launchArgs, opts={}) { return spawnSync(exe, launchArgs, { cwd: opts.cwd, stdio:'inherit', shell:needsShell(exe), env:opts.env || process.env }); }
+function printStructuredRunResult(project) {
+  try {
+    const latest=listTaskRuns(project)[0];
+    if(latest) console.log(`\n${formatTaskRun(latest)}`);
+  } catch(error) {
+    console.warn(`[Forge] Structured RunResult unavailable: ${error.message}`);
+  }
+}
 function hash(v) { return createHash('sha256').update(v).digest('hex'); }
 function projectProfilePath(project) { return join(project, '.forge', 'agent.json'); }
 function readProjectProfile(project) {
@@ -80,7 +89,7 @@ function defaultModelFor(agent, profile) {
   return agent.profileModels?.[profile] || agent.defaultModel || 'provider-default';
 }
 function autonomousPrompt(name, model) {
-  return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. External facts and numeric KPI claims require a real source URL; when no source is available, write TBD or label the value as a hypothesis. Never mark an acceptance checkbox complete unless the referenced implementation exists and the stated verification actually ran. Treat a non-zero phase-state completion command as a hard block: fix its reported evidence failures and never overwrite or reinterpret the marker. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
+  return `You are the only terminal AI agent assigned to this Project Forge project for the whole development run. Agent lock: ${name}; model lock: ${model}. Read FORGE.md, the applicable host rules, wiki/phases/phase-*.json, wiki/_current.md and wiki/_map.md before acting. Continue the current canonical Forge phase and then the remaining phases in order. Use canonical .claude/skills/<name>/SKILL.md workflows, real files, verifiers and Git checkpoints. Work autonomously until a canonical user-owned STOP-point, verified completion, or genuine blocker; do not stop merely to announce a next implementation step. External facts and numeric KPI claims require a real source URL; when no source is available, write TBD or label the value as a hypothesis. Never mark an acceptance checkbox complete unless the referenced implementation exists and the stated verification actually ran. Treat a non-zero phase-state completion command as a hard block: fix its reported evidence failures and never overwrite or reinterpret the marker. Phase-state owns the structured Task/RunResult under .forge/runs; never edit those runtime files directly. After a completed phase, offer the exact short reply that continues to the next phase and continue in this same terminal when the user accepts. Never switch agent, provider or model inside this project. Never claim completion without verifier evidence.`;
 }
 function writeAutonomousPrompt(project, prompt) {
   const path=join(project,'.forge','agent-start.md');
@@ -380,9 +389,9 @@ if (cmd === 'start') {
   if(a.runtime==='kimi' && r.status===0){
     console.log('[Forge] Kimi bootstrap turn complete; reopening the same project session interactively.');
     const resumeArgs=[...(full?(a.fullArgs||[]):[]),'--continue',...(model&&a.modelArg?[a.modelArg,model]:[])];
-    const resumed=spawnAgent(d.executable,resumeArgs,{cwd:project,env:startEnv}); if(resumed.error) fail(`${a.displayName} interactive resume failed: ${resumed.error.message}`,4); process.exit(resumed.status??0);
+    const resumed=spawnAgent(d.executable,resumeArgs,{cwd:project,env:startEnv}); if(resumed.error) fail(`${a.displayName} interactive resume failed: ${resumed.error.message}`,4); printStructuredRunResult(project); process.exit(resumed.status??0);
   }
-  process.exit(r.status??0);
+  printStructuredRunResult(project); process.exit(r.status??0);
 }
 if (cmd === 'resume') {
   const project=resolve(val('--project')||'.'); if(!existsSync(project)) fail(`Project path not found: ${project}`);
@@ -404,7 +413,7 @@ if (cmd === 'resume') {
   console.log(`[Forge] Resume ${a.displayName} / ${model} from ${promptPath}`);
   const env=declareWholeProjectRuntime(openCodeEnvironment(a,project,{model,profile:current.profile}),current.agent,model);
   const r=spawnAgent(d.executable,launchArgs,{cwd:project,env}); if(r.error) fail(`${a.displayName} resume failed: ${r.error.message}`,4);
-  process.exit(r.status??0);
+  printStructuredRunResult(project); process.exit(r.status??0);
 }
 if (cmd === 'prompt' || cmd === 'command') { const name=args[1]||fail(`Usage: ${cmd} <agent> --skill <name> [--args "..."]`); getAgent(name); const skill=val('--skill')||fail('--skill required'); console.log(skillCommand(name,skill,val('--args')||'')); process.exit(0); }
 if (cmd === 'launch') {
@@ -431,6 +440,6 @@ if (cmd === 'launch') {
   if(name==='claude'&&profile==='api'){ const cfg=claudeApiSettings(project); launchArgs.push('--settings',cfg.settings); delete env.ANTHROPIC_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN; delete env.ANTHROPIC_BASE_URL; delete env.CLAUDE_CODE_USE_BEDROCK; delete env.CLAUDE_CODE_USE_VERTEX; console.log(`[Forge] Claude API profile -> ${cfg.source}`); }
   if(name==='codex'&&profile==='api'){ const cfg=ensureCodexApiAuth(exe,project); env.CODEX_HOME=cfg.home; delete env.OPENAI_API_KEY; delete env.CODEX_ACCESS_TOKEN; console.log(`[Forge] Codex API profile -> isolated CODEX_HOME (${cfg.source})`); }
   console.log(`[Forge] ${a.displayName} [${profile}] -> ${project}`); if(name==='gigacode') console.log('[Forge] GigaCode bridge is dormant/experimental; no undocumented flags are injected.');
-  const r=spawnAgent(exe,launchArgs,{cwd:project,env}); if(r.error) fail(`${a.displayName} launch failed: ${r.error.message}`,4); process.exit(r.status??0);
+  const r=spawnAgent(exe,launchArgs,{cwd:project,env}); if(r.error) fail(`${a.displayName} launch failed: ${r.error.message}`,4); printStructuredRunResult(project); process.exit(r.status??0);
 }
 console.log(`Project Forge universal terminal runtime\n\nCommands:\n  list\n  doctor [agent]\n  presets <agent>\n  select <agent> --project <path> [--model <id>|--preset <name>] [--profile <name>]\n  profile --project <path>\n  prepare <deepseek|glm|minimax|openrouter> --project <path> [--preset <name>]\n  start [agent] --project <path> [--safe] [--reselect] [--dry-run]\n  resume --project <path> --answer "<STOP answer or continuation>" [--dry-run]\n  launch <agent> --project <path> [--profile ...] [--full]\n  prompt <agent> --skill <name> [--args "..."]\n\nAPI secrets:\n  node scripts/forge-secrets.mjs status`);

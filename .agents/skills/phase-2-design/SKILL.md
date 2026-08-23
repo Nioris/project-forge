@@ -16,7 +16,7 @@ node .claude/skills/status/references/phase-state.mjs start 2
 Если дошёл до STOP-point и ждёшь решение пользователя — запиши причину перед ответом:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs block 2 "GDD retention/content plan approval"
+node .claude/skills/status/references/phase-state.mjs block 2 "GDD retention/content plan approval" --owner user --code PHASE2_GDD_APPROVAL --decision-key phase2-gdd
 ```
 
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:

@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.41`
+**Current public version:** `v4.68.42`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -30,6 +30,7 @@ It provides:
 - **142 canonical skills** plus generated Codex discovery adapters;
 - **21 specialized subagents**;
 - shared phase markers, STOP-points and project state across supported hosts;
+- a restart-safe Task/RunResult execution graph with structured repair and decision routing;
 - native Claude Code and Codex launch profiles;
 - optional API profiles for Anthropic and OpenAI;
 - a Forge-owned GigaChat terminal agent;
@@ -67,6 +68,18 @@ It provides:
 ```
 
 SDK integration, localization, AI generation and other capabilities live inside these phases instead of creating extra pseudo-phases.
+
+## Durable execution graph
+
+Forge keeps the nine phases as the only global project progression. Inside a phase or direct change,
+work is represented by a typed `Task` and every meaningful attempt returns a structured `RunResult`.
+Five restart-safe graphs cover `phase`, `change`, `review`, `diagnose`, and `release` work. User
+decisions wait for an answer, repairable failures return to the agent for at most three attempts,
+and infrastructure failures stop explicitly instead of being mistaken for a chat question.
+
+Local graph state lives in `.forge/runs/`, is excluded from Git, and is shown by `/status` only as
+supplemental execution state. It can never advance a phase without the canonical phase completion
+contract. For manual inspection use `node scripts/forge-workflow.mjs status --project .`.
 
 ## Quick start
 
@@ -157,7 +170,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.41` keeps separate normal-account and API profiles.
+`v4.68.42` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription

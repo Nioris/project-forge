@@ -14,8 +14,9 @@ description: "Показать современный Project Forge status по 
 
 1. `wiki/phases/phase-N.json` — machine-readable phase marker, если он уже существует.
 2. Фактические артефакты и код проекта.
-3. `wiki/_current.md` — дополнительный контекст/STOP-point, но не доказательство выполнения.
-4. Project `CLAUDE.md` — **правила и описание проекта, НЕ mutable progress state**. Фразы вроде
+3. `.forge/runs/*.json` — локальное supplemental execution state активной Task; никогда не progression фаз.
+4. `wiki/_current.md` — дополнительный контекст/STOP-point, но не доказательство выполнения.
+5. Project `CLAUDE.md` — **правила и описание проекта, НЕ mutable progress state**. Фразы вроде
    `Just created` / «проект только что создан» не имеют права откатывать фактическую фазу.
 
 Факт > заметка. Если downstream артефакты есть, но ранний обязательный gate отсутствует — ранняя дыра
@@ -92,6 +93,9 @@ STOP-POINT
 <показывай секцию только если blocked/есть stopPoint>
 Нужно: <точное решение или артефакт>
 
+EXECUTION
+<показывай только при active Task: id, mode, current node, latest structured result>
+
 AI STUDIO
 <если currentPhase=1: "baseline only; production not active yet">
 <Ф2-3: briefs/agents state>
@@ -156,12 +160,16 @@ Art Director/Visual QA evidence. `assets/style/STYLE-BIBLE.md` со `Status: dra
 
 ```bash
 node .claude/skills/status/references/phase-state.mjs start 4
-node .claude/skills/status/references/phase-state.mjs block 4 "Awaiting target-frame approval"
+node .claude/skills/status/references/phase-state.mjs block 4 "Awaiting target-frame approval" --owner user --code TARGET_FRAME_APPROVAL --decision-key phase4-target-frame
+node .claude/skills/status/references/phase-state.mjs answer 4
 node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md
 ```
 
 Marker **не заменяет evidence**: ставь `complete` только после штатных gate/STOP-point и фактического
 выхода фазы. Для legacy проектов без markers `$status` использует консервативный artifact fallback.
+`block --owner agent` означает автоматический repair, `--owner infrastructure` — явный внешний blocker.
+Codex связывает marker/RunResult с текущим запуском через `attemptId`; вопросительный текст — только
+legacy fallback. `.forge/runs/` принадлежит runtime и никогда не редактируется агентом вручную.
 
 ## Дополнительные правила
 

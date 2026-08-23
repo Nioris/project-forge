@@ -21,3 +21,5 @@ Thumbs.db
 *.bak
 backups/
 **/backups/
+.forge/runs/
+.forge/*.tmp

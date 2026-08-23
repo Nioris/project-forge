@@ -16,7 +16,7 @@ node .claude/skills/status/references/phase-state.mjs start 4
 Если дошёл до STOP-point и ждёшь решение пользователя — запиши причину перед ответом:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs block 4 "target frame / style bible / art direction approval"
+node .claude/skills/status/references/phase-state.mjs block 4 "target frame / style bible / art direction approval" --owner user --code PHASE4_ART_APPROVAL --decision-key phase4-art-direction
 ```
 
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:

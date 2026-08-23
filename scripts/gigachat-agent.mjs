@@ -4,15 +4,18 @@
  * Uses documented custom function calling; no IDE dependency.
  * File tools stay inside the selected project. --full additionally enables shell execution.
  */
-import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, cpSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, cpSync, renameSync } from 'node:fs';
 import { resolve, relative, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { getAccessToken, gigaJson, downloadGigaFile } from './lib/gigachat-api.mjs';
 import { applyDefaultSearchEnvironment, getSearchCapabilities, searchDoctor, webSearch, imageSearch, webFetch } from './lib/forge-search.mjs';
 import { appendForgeDiagnostic } from '../.claude/hooks/lib/forge-diagnostics.mjs';
+import {
+  cancelTaskRun, listTaskRuns, makeRunResult, makeTask, readTaskRun, recordTaskResult, startTaskRun,
+} from '../.claude/skills/status/references/execution-contract.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -21,7 +24,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.41';
+const AUDITED_FORGE_VERSION = '4.68.42';
 const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -594,8 +597,12 @@ function persistRuntimeEvidenceLedger(){
         productMetricsEvidence:phaseProductMetricsEvidence
       }:null
     };
-    writeFileSync(safePath(RUNTIME_EVIDENCE_PATH),JSON.stringify(durableRuntimeEvidence,null,2)+'\n','utf8');
-  }catch{}
+    const target=safePath(RUNTIME_EVIDENCE_PATH);
+    const tmp=`${target}.${process.pid}.${randomUUID().slice(0,8)}.tmp`;
+    writeFileSync(tmp,JSON.stringify(durableRuntimeEvidence,null,2)+'\n','utf8');
+    renameSync(tmp,target);
+    return true;
+  }catch{return false;}
 }
 
 function resetPhaseRuntimeEvidence() {
@@ -2130,8 +2137,74 @@ function activateDirective(request,source='natural_language') {
     readCursors:continuingSame&&activeDirective?.readCursors&&typeof activeDirective.readCursors==='object'?activeDirective.readCursors:{},
     history
   };
-  persistRuntimeEvidenceLedger();
+  // Persist the exact user request before creating supplemental graph state. If the process dies in
+  // the next instruction, startup recovery can recreate or attach the Task without losing intent.
+  if(!persistRuntimeEvidenceLedger()) return {ok:false,error:'Could not persist the direct user request before Task creation.'};
+  const runtime=ensureDirectiveTaskRuntime(activeDirective,{forceNew:!continuingSame});
+  if(!runtime.ok) return runtime;
+  activeDirective={...activeDirective,taskId:runtime.run.task.id,workflowNode:runtime.run.state.currentNode};
+  if(!persistRuntimeEvidenceLedger()) return {ok:false,error:'Direct Task exists, but its durable pointer could not be attached. The request was preserved for restart recovery.'};
   return {ok:true,directive:activeDirective};
+}
+
+function ensureDirectiveTaskRuntime(directive=activeDirective,{forceNew=false}={}){
+  try{
+    if(!forceNew&&directive?.taskId){
+      const existing=readTaskRun(PROJECT,directive.taskId);
+      if(existing&&!['completed','cancelled'].includes(existing.task.status)) return {ok:true,run:existing};
+    }
+    if(!forceNew&&!directive?.taskId){
+      const activatedAt=Date.parse(directive?.activatedAt||0);
+      const recovered=listTaskRuns(PROJECT).find(run=>run.task.mode==='change'
+        && run.task.goal===String(directive?.request||'').trim()
+        && Number(run.task.phase||0)===Number(directive?.pausedPhase||0)
+        && !['blocked','completed','cancelled'].includes(run.task.status)
+        && (!Number.isFinite(activatedAt)||Date.parse(run.task.createdAt)>=activatedAt-1000));
+      if(recovered) return {ok:true,run:recovered,recovered:true};
+    }
+    const task=makeTask({
+      mode:'change',
+      phase:directive?.pausedPhase||null,
+      goal:String(directive?.request||'').trim(),
+      skill:null,
+      scope:{read:['WorkProgress/**','wiki/**','assets/**'],write:['WorkProgress/**','wiki/**','assets/**']},
+      acceptance:[{id:'CHANGE-VERIFIED',text:'Implementation exists and focused post-change verification passes',status:'pending'}],
+      verifiers:[],
+    });
+    return {ok:true,run:startTaskRun({projectRoot:PROJECT,task})};
+  }catch(error){
+    reportForgeBehavior({severity:'error',code:'GIGA_TASK_RUNTIME_FAILURE',kind:'runtime_state',component:'gigachat-agent',operation:'ensure-directive-task',message:'Could not create or restore the durable change Task.',expected:'A valid .forge/runs Task state.',actual:String(error?.message||error)});
+    return {ok:false,error:`Forge Task runtime failed: ${String(error?.message||error)}`};
+  }
+}
+
+function recordDirectiveRunResult(input={}){
+  if(!activeDirective) return {ok:false,error:'No active direct task'};
+  const ensured=ensureDirectiveTaskRuntime(activeDirective);
+  if(!ensured.ok) return ensured;
+  try{
+    const run=ensured.run;
+    const result=makeRunResult({
+      taskId:run.task.id,
+      node:run.state.currentNode,
+      status:input.status,
+      code:input.code,
+      message:input.message,
+      host:'gigachat',
+      phase:run.task.phase,
+      evidence:input.evidence||[],
+      checks:input.checks||[],
+      failure:input.failure||null,
+      stop:input.stop||null,
+    });
+    const updated=recordTaskResult({projectRoot:PROJECT,taskId:run.task.id,result});
+    activeDirective={...activeDirective,taskId:updated.task.id,workflowNode:updated.state.currentNode,updatedAt:new Date().toISOString()};
+    persistRuntimeEvidenceLedger();
+    return {ok:true,run:updated};
+  }catch(error){
+    reportForgeBehavior({severity:'error',code:'GIGA_RUN_RESULT_FAILURE',kind:'runtime_state',component:'gigachat-agent',operation:'record-directive-result',message:'Could not persist a structured direct-task RunResult.',expected:'A valid graph transition.',actual:String(error?.message||error)});
+    return {ok:false,error:String(error?.message||error)};
+  }
 }
 
 function updateDirectiveInput(text='') {
@@ -2199,6 +2272,21 @@ function completeDirective(a={}) {
   if(!validEvidence.length) return {ok:false,error:'No existing project-relative evidence path was supplied.'};
   if(!checks.length) return {ok:false,error:'No verification checks were supplied. Run the relevant test/verifier first.'};
   if(!matchedChecks.length){
+    const normalized=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+    const activatedAt=Date.parse(activeDirective.activatedAt||0);
+    const failedChecks=[...verifierLedger.values()].filter(v=>Number(v.status)!==0
+      && Date.parse(v.updatedAt||0)>=activatedAt
+      && checks.some(c=>{const supplied=normalized(c),actual=normalized(v.command);return supplied===actual||supplied.includes(actual);}));
+    if(failedChecks.length){
+      const failureMessage=`Focused verification failed: ${failedChecks.map(v=>v.command).join(' | ')}`;
+      const taskState=recordDirectiveRunResult({
+        status:'retryable_failure',code:'CHANGE_VERIFICATION_FAILED',message:failureMessage,
+        checks:failedChecks.map(v=>v.command),
+        failure:{type:'VERIFIER_FAILURE',retryable:true,message:failureMessage},
+      });
+      if(!taskState.ok) return {ok:false,error:`Verification failed and RunResult persistence also failed: ${taskState.error}`};
+      return {ok:false,error:'Focused verification failed. The durable workflow moved to repair; fix the defect and rerun the same check.',failed_checks:failedChecks.map(v=>v.command),workflow_node:taskState.run.state.currentNode};
+    }
     reportForgeBehavior({severity:'error',code:'GIGA_UNVERIFIED_COMPLETION_CLAIM',kind:'evidence_integrity',component:'gigachat-agent',operation:'forge_change_complete',message:'Direct-task completion used checks that are not backed by a successful post-activation command.',expected:'At least one supplied check matching a successful command recorded after direct-task activation.',actual:`supplied=${checks.length}; recorded=${successfulChecks.length}`});
     return {ok:false,error:'None of the supplied checks matches a successful command recorded after this direct task started. Run a real focused verification and pass its exact command in checks.',recorded_successful_checks:successfulChecks.map(v=>v.command)};
   }
@@ -2215,6 +2303,14 @@ function completeDirective(a={}) {
     }
   }
   const verifiedChecks=[...new Set(matchedChecks.map(v=>v.command))];
+  let runtime=recordDirectiveRunResult({
+    status:'completed',code:'CHANGE_IMPLEMENTED',message:summary,evidence:validEvidence,checks:verifiedChecks,
+  });
+  if(!runtime.ok) return {ok:false,error:`Could not persist implementation result: ${runtime.error}`};
+  runtime=recordDirectiveRunResult({
+    status:'completed',code:'CHANGE_VERIFIED',message:'Focused post-change verification passed',evidence:validEvidence,checks:verifiedChecks,
+  });
+  if(!runtime.ok) return {ok:false,error:`Could not persist verification result: ${runtime.error}`};
   const completed={...activeDirective,status:'complete',completedAt:new Date().toISOString(),summary,evidence:validEvidence,checks:verifiedChecks};
   const resumePhase=completed.pausedPhase||null;
   activeDirective=null;
@@ -2290,12 +2386,16 @@ function refreshMandatoryCapabilityBlock() {
   return capabilityBlock;
 }
 
-function markHostPhaseBlocked(phase,reason) {
+function markHostPhaseBlocked(phase,reason,owner='infrastructure',code=null,decisionKey=null) {
   const n=Number(phase);
   if(!n) return {ok:false,error:'no active phase'};
   try {
     const helper=safePath('.claude/skills/status/references/phase-state.mjs');
-    const r=spawnSync(process.execPath,[helper,'block',String(n),String(reason||'Infrastructure capability blocker'),'--host','gigachat'],{
+    const blockCode=code||(owner==='user'?'USER_DECISION_REQUIRED':'INFRASTRUCTURE_BLOCKED');
+    const resumePolicy=owner==='user'?'user_answer':owner==='agent'?'agent_retry':'environment_change';
+    const helperArgs=[helper,'block',String(n),String(reason||'Infrastructure capability blocker'),'--host','gigachat','--owner',owner,'--code',blockCode,'--resume-policy',resumePolicy];
+    if(decisionKey) helperArgs.push('--decision-key',String(decisionKey));
+    const r=spawnSync(process.execPath,helperArgs,{
       cwd:PROJECT,encoding:'utf8',timeout:30000
     });
     return {ok:r.status===0,status:r.status,stdout:clip(r.stdout,4000),stderr:clip(r.stderr,4000)};
@@ -3987,6 +4087,7 @@ async function turn(text){
   if(manualCommand?.kind==='resume'){
     const paused=activeDirective?.pausedPhase||authoritativeOpenPhase()||null;
     const abandoned=activeDirective?.request||null;
+    if(activeDirective?.taskId){try{cancelTaskRun(PROJECT,activeDirective.taskId,'Direct-task override cleared with /resume-phase');}catch{}}
     if(pendingDecision?.directive===true) pendingDecision=null;
     activeDirective=null; persistRuntimeEvidenceLedger();
     process.stdout.write(abandoned
@@ -3996,7 +4097,7 @@ async function turn(text){
   }
   if(manualCommand?.kind==='status'){
     process.stdout.write(activeDirective
-      ? `\n[Forge] ACTIVE DIRECT TASK\nTask: ${activeDirective.request}\nPaused phase: ${activeDirective.pausedPhase||'?'}\nRecorded operations: ${(activeDirective.operations||[]).length}\nFinish automatically with forge_change_complete after implementation, or use /resume-phase to cancel the override.\n`
+      ? `\n[Forge] ACTIVE DIRECT TASK\nTask ID: ${activeDirective.taskId||'legacy'}\nTask: ${activeDirective.request}\nWorkflow node: ${activeDirective.workflowNode||'implement'}\nPaused phase: ${activeDirective.pausedPhase||'?'}\nRecorded operations: ${(activeDirective.operations||[]).length}\nFinish automatically with forge_change_complete after implementation, or use /resume-phase to cancel the override.\n`
       : `\n[Forge] No direct task override. Use /do <task> to pause phase autopilot for a concrete implementation request.\n`);
     return;
   }
@@ -4007,12 +4108,28 @@ async function turn(text){
   }else{
     const naturalTask=naturalImplementationDirective(rawTurnText);
     if(naturalTask && !activeDirective){
-      activateDirective(naturalTask,'natural_language');
+      const activated=activateDirective(naturalTask,'natural_language');
+      if(!activated.ok){process.stdout.write(`\n[Forge] ${activated.error}\n`);return;}
       process.stdout.write(`\n[Forge] Direct implementation request detected; Phase ${activeDirective.pausedPhase||'?'} autopilot paused.\n`);
     }else if(activeDirective && !statusOnly){
       if(naturalTask && naturalTask!==activeDirective.request) activateDirective(naturalTask,'natural_language');
       else updateDirectiveInput(rawTurnText);
     }
+  }
+  if(activeDirective){
+    const ensured=ensureDirectiveTaskRuntime(activeDirective);
+    if(!ensured.ok){process.stdout.write(`\n[Forge] ${ensured.error}\n`);return;}
+    activeDirective={...activeDirective,taskId:ensured.run.task.id,workflowNode:ensured.run.state.currentNode};
+    if(ensured.run.task.status==='blocked'){
+      process.stdout.write(`\n[Forge] Direct Task repair budget is exhausted at node ${ensured.run.state.currentNode}. Use an explicit /do <task> to authorize a fresh attempt, or /resume-phase to cancel the override.\n`);
+      persistRuntimeEvidenceLedger();
+      return;
+    }
+    if(pendingDecision?.directive===true && ensured.run.state.currentNode==='wait-user' && !statusOnly){
+      const resumed=recordDirectiveRunResult({status:'in_progress',code:'USER_DECISION_RECEIVED',message:'User supplied an answer for the direct-task decision'});
+      if(!resumed.ok){process.stdout.write(`\n[Forge] Could not resume direct Task graph: ${resumed.error}\n`);return;}
+    }
+    persistRuntimeEvidenceLedger();
   }
   const changeRequestTurn=Boolean(activeDirective);
   const directivePending=Boolean(changeRequestTurn&&pendingDecision?.directive===true);
@@ -4244,8 +4361,16 @@ async function turn(text){
         };
         if(activePhase&&!activeDirective){
           const decisionReason=`Awaiting ${pendingDecision.decision_key||'user decision'}`;
-          const blockedState=markHostPhaseBlocked(activePhase,decisionReason);
+          const blockedState=markHostPhaseBlocked(activePhase,decisionReason,'user','USER_DECISION_REQUIRED',pendingDecision.decision_key);
           if(!blockedState.ok) process.stdout.write(`[Forge] Warning: could not persist decision STOP state: ${blockedState.stderr||blockedState.error||blockedState.status}\n`);
+        }else if(activeDirective){
+          const decisionReason=`Awaiting ${pendingDecision.decision_key||'direct-task user decision'}`;
+          const taskState=recordDirectiveRunResult({
+            status:'user_decision_required',code:'USER_DECISION_REQUIRED',message:decisionReason,
+            failure:{type:'USER_DECISION_REQUIRED',retryable:false,message:decisionReason},
+            stop:{owner:'user',code:'USER_DECISION_REQUIRED',decisionKey:pendingDecision.decision_key||null,resumePolicy:'user_answer'},
+          });
+          if(!taskState.ok) process.stdout.write(`[Forge] Warning: could not persist direct-task STOP state: ${taskState.error}\n`);
         }
         persistRuntimeEvidenceLedger();
         printStopPoint(stopArgs);
@@ -4661,6 +4786,12 @@ if (REQUEST_DOCTOR) {
   test('phase execution intent detector',()=>phaseExecutionRequestedByText('Прочитай FORGE.md и выполни Forge skill phase-1-analyze для текущего проекта ".".'));
   test('short phase alias',()=>phaseAliasInvocation('фаза 1')?.skill==='phase-1-analyze' && phaseAliasInvocation('/phase-4-visual')?.phase===4);
   test('manual /do command preserves exact task',()=>directiveCommand('/do сделай гачу и сразу реализуй')?.request==='сделай гачу и сразу реализуй');
+  test('direct task is backed by durable change workflow',()=>/ensureDirectiveTaskRuntime/.test(activateDirective.toString())&&/taskId/.test(activateDirective.toString())&&/mode:'change'/.test(ensureDirectiveTaskRuntime.toString()));
+  test('direct task persists exact intent before graph creation',()=>activateDirective.toString().indexOf('persistRuntimeEvidenceLedger')<activateDirective.toString().indexOf('ensureDirectiveTaskRuntime'));
+  test('orphan direct Task can be reattached after restart',()=>/listTaskRuns/.test(ensureDirectiveTaskRuntime.toString())&&/recovered/.test(ensureDirectiveTaskRuntime.toString()));
+  test('direct completion records implementation then verification nodes',()=>((completeDirective.toString().match(/recordDirectiveRunResult/g)||[]).length>=2)&&/CHANGE_IMPLEMENTED/.test(completeDirective.toString())&&/CHANGE_VERIFIED/.test(completeDirective.toString()));
+  test('failed focused verification enters durable repair',()=>/CHANGE_VERIFICATION_FAILED/.test(completeDirective.toString())&&/retryable_failure/.test(completeDirective.toString()));
+  test('exhausted direct Task requires explicit retry',()=>/repair budget is exhausted/.test(turn.toString())&&/explicit \/do/.test(turn.toString()));
   test('manual /resume-phase command recognized',()=>directiveCommand('/resume-phase')?.kind==='resume');
   test('/resume-phase clears only directive-owned pending STOP',()=>/pendingDecision\?\.directive===true/.test(turn.toString()));
   test('natural direct implementation request detected',()=>naturalImplementationDirective('давай сделаем гачу чтобы привлечь игроков, сделай ТЗ и начинай делать')!==null);
@@ -4781,7 +4912,7 @@ if (REQUEST_DOCTOR) {
   test('Phase 2 decisions receive deterministic fast-MVP recommendations',()=>{const x=canonicalizeAskUserArgs({decision_key:'phase2-multiplayer'});return /мультиплеер/i.test(x.question)&&/А\)/.test(x.recommendation)&&/«утверждаю»/.test(stopAnswerGuidance(x));});
   test('runtime-owned decision ledger rejects model writes',()=>/runtime-owned/.test(runtimeOwnedWriteBlock('wiki/decisions/gigachat-decisions.json')||''));
   test('pending decision turns restore phase runtime before consuming the answer',()=>/startPhaseEvidence\(pendingPhase,\{resume:true\}\)/.test(turn.toString())&&/hydrateResolvedDecisionState\(pendingPhase\)/.test(turn.toString()));
-  test('decision STOP automatically persists blocked phase state',()=>/Awaiting.*pendingDecision\.decision_key/.test(turn.toString())&&/markHostPhaseBlocked\(activePhase,decisionReason\)/.test(turn.toString()));
+  test('decision STOP automatically persists blocked phase state',()=>/Awaiting.*pendingDecision\.decision_key/.test(turn.toString())&&/markHostPhaseBlocked\(activePhase,decisionReason,'user','USER_DECISION_REQUIRED'/.test(turn.toString()));
   test('resolved named decisions are not asked twice',()=>/Suppressed repeated resolved STOP-point/.test(turn.toString())&&/already_resolved:true/.test(turn.toString()));
   test('idempotent phase state calls do not dirty memory',()=>/r\.already_started!==true\s*&&\s*r\.already_complete!==true/.test(recordOperation.toString()));
   test('completed phase script calls return idempotently',()=>/already_complete:true/.test(tool.toString())&&/do not repeat completion/.test(tool.toString()));

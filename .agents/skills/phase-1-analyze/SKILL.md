@@ -16,7 +16,7 @@ node .claude/skills/status/references/phase-state.mjs start 1
 Если дошёл до STOP-point и ждёшь решение пользователя — запиши причину перед ответом:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs block 1 "KPI Floor/Target/Stretch + 3-month content budget approval"
+node .claude/skills/status/references/phase-state.mjs block 1 "KPI Floor/Target/Stretch + 3-month content budget approval" --owner user --code PHASE1_BRIEF_APPROVAL --decision-key phase1-brief
 ```
 
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы.

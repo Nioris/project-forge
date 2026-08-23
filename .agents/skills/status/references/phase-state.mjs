@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePhaseCompletion } from './phase-completion-gate.mjs';
+import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, recordTaskResult } from './execution-contract.mjs';
 
 const PHASES = {
   1: 'Analyze', 2: 'Design', 3: 'Construct', 4: 'Visual', 5: 'Tech',
@@ -21,12 +22,12 @@ const PHASES = {
 
 const [command, rawPhase, ...rawRest] = process.argv.slice(2);
 const phase = Number(rawPhase);
-if (!['start', 'block', 'complete', 'reopen'].includes(command) || !Number.isInteger(phase) || !PHASES[phase]) {
-  console.error('Usage: phase-state.mjs <start|block|complete|reopen> <1..9> [reason|evidence paths...] [--model X --reasoning X --route X --subagents N]');
+if (!['start', 'answer', 'block', 'complete', 'reopen'].includes(command) || !Number.isInteger(phase) || !PHASES[phase]) {
+  console.error('Usage: phase-state.mjs <start|answer|block|complete|reopen> <1..9> [reason|evidence paths...] [--owner user|agent|infrastructure --code CODE --decision-key KEY --resume-policy POLICY --model X --reasoning X --route X --subagents N]');
   process.exit(2);
 }
 
-const knownOptions = new Set(['model', 'reasoning', 'service-tier', 'route', 'subagents', 'host', 'enforced']);
+const knownOptions = new Set(['model', 'reasoning', 'service-tier', 'route', 'subagents', 'host', 'enforced', 'owner', 'code', 'decision-key', 'resume-policy']);
 const options = {};
 const rest = [];
 for (let i = 0; i < rawRest.length; i++) {
@@ -83,11 +84,12 @@ try { prev = JSON.parse(fs.readFileSync(outPath, 'utf8')); } catch {}
 const rawSubagentsUsed = Number(options.subagents ?? process.env.FORGE_SUBAGENTS_USED ?? prev.modelRuntime?.subagents?.used ?? 0);
 const subagentsUsed = Number.isFinite(rawSubagentsUsed) && rawSubagentsUsed >= 0 ? Math.floor(rawSubagentsUsed) : 0;
 const now = new Date().toISOString();
+const runAttemptId = String(process.env.FORGE_RUN_ATTEMPT_ID || '').trim() || null;
 let forgeVersion = null;
 try { forgeVersion = JSON.parse(fs.readFileSync(path.join(root, '.forge-managed.json'), 'utf8')).forgeVersion || null; } catch {}
 
 const record = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   phase,
   name: PHASES[phase],
   state: prev.state || 'pending',
@@ -95,7 +97,11 @@ const record = {
   updatedAt: now,
   completedAt: prev.completedAt || null,
   reason: prev.reason || null,
+  block: prev.block && typeof prev.block === 'object' ? prev.block : null,
   evidence: Array.isArray(prev.evidence) ? prev.evidence : [],
+  execution: prev.execution && typeof prev.execution === 'object'
+    ? { ...prev.execution, attemptId: runAttemptId, resultStatus: null, resultCode: null, resultAt: null }
+    : (runAttemptId ? { taskId: null, workflow: 'phase', currentNode: null, status: 'running', attemptId: runAttemptId, resultStatus: null, resultCode: null, resultAt: null } : null),
   forgeVersion,
   modelRuntime: {
     policyVersion: modelPolicy?.policyVersion || null,
@@ -124,16 +130,90 @@ const record = {
   },
 };
 
-if (command === 'start' || command === 'reopen') {
+function persistMarker() {
+  atomicWriteJson(outPath, record);
+}
+
+function executionResult({ status, code, message, failure = null, stop = null, evidence = [], checks = [], forceNew = false }) {
+  const initial = ensurePhaseTaskRun({
+    projectRoot: root,
+    phase,
+    phaseName: PHASES[phase],
+    taskId: prev.execution?.taskId || null,
+    forceNew,
+  });
+  const result = makeRunResult({
+    taskId: initial.task.id,
+    node: initial.state.currentNode,
+    attemptId: runAttemptId,
+    status,
+    code,
+    message: String(message || '').slice(0, 2000),
+    host: options.host || process.env.FORGE_AI_HOST || 'unknown',
+    phase,
+    evidence,
+    checks,
+    failure,
+    stop,
+  });
+  const run = recordTaskResult({ projectRoot: root, taskId: initial.task.id, result });
+  record.execution = {
+    taskId: run.task.id,
+    workflow: run.workflow.id,
+    currentNode: run.state.currentNode,
+    status: run.state.status,
+    resultStatus: result.status,
+    resultCode: result.code,
+    resultAt: result.createdAt,
+    attemptId: result.attemptId,
+  };
+  return run;
+}
+
+if (command === 'start' || command === 'reopen' || command === 'answer') {
+  if (command === 'answer' && (prev.state !== 'blocked' || prev.block?.owner !== 'user')) {
+    console.error(`Phase ${phase} has no user-owned STOP to answer.`);
+    process.exit(2);
+  }
   record.state = 'in_progress';
   record.startedAt = command === 'reopen' ? now : (record.startedAt || now);
   record.completedAt = command === 'reopen' ? null : record.completedAt;
   record.reason = null;
+  record.block = null;
+  persistMarker();
+  executionResult({
+    status: 'in_progress',
+    code: command === 'reopen' ? 'PHASE_REOPENED' : command === 'answer' ? 'USER_DECISION_RECEIVED' : 'PHASE_STARTED',
+    message: `Phase ${phase} ${PHASES[phase]} is in progress`,
+    forceNew: command === 'reopen',
+  });
 } else if (command === 'block') {
+  const owner = options.owner || 'user';
+  if (!['user', 'agent', 'infrastructure'].includes(owner)) {
+    console.error('--owner must be user, agent or infrastructure');
+    process.exit(2);
+  }
+  const defaults = owner === 'user'
+    ? { status: 'user_decision_required', code: 'USER_DECISION_REQUIRED', policy: 'user_answer', failure: 'USER_DECISION_REQUIRED', retryable: false }
+    : owner === 'agent'
+      ? { status: 'retryable_failure', code: 'AGENT_WORK_REQUIRED', policy: 'agent_retry', failure: 'VERIFIER_FAILURE', retryable: true }
+      : { status: 'environment_failure', code: 'INFRASTRUCTURE_BLOCKED', policy: 'environment_change', failure: 'ENVIRONMENT_ERROR', retryable: false };
+  const code = options.code || defaults.code;
+  const resumePolicy = options['resume-policy'] || defaults.policy;
+  const reason = rest.join(' ').trim() || (owner === 'user' ? 'Awaiting user decision' : owner === 'agent' ? 'Agent work is required' : 'Infrastructure capability is unavailable');
   record.state = 'blocked';
   record.startedAt = record.startedAt || now;
-  record.reason = rest.join(' ').trim() || 'Awaiting user decision or required evidence';
+  record.reason = reason;
   record.completedAt = null;
+  record.block = { owner, code, decisionKey: options['decision-key'] || null, resumePolicy };
+  persistMarker();
+  executionResult({
+    status: defaults.status,
+    code,
+    message: reason,
+    failure: { type: defaults.failure, retryable: defaults.retryable, message: reason },
+    stop: record.block,
+  });
 } else if (command === 'complete') {
   const gate = validatePhaseCompletion({ root, phase, evidence: rest });
   if (!gate.ok) {
@@ -141,8 +221,18 @@ if (command === 'start' || command === 'reopen') {
     record.startedAt = record.startedAt || now;
     record.completedAt = null;
     record.reason = `Completion gate rejected: ${gate.failures.join('; ')}`;
+    record.block = { owner: 'agent', code: 'COMPLETION_GATE_REJECTED', decisionKey: null, resumePolicy: 'agent_retry' };
     record.completionGate = { checkedAt: now, status: 'rejected', contract: gate.contract, failures: gate.failures };
-    fs.writeFileSync(outPath, JSON.stringify(record, null, 2) + '\n', 'utf8');
+    persistMarker();
+    executionResult({
+      status: 'retryable_failure',
+      code: 'COMPLETION_GATE_REJECTED',
+      message: record.reason,
+      failure: { type: 'VERIFIER_FAILURE', retryable: true, message: record.reason.slice(0, 2000) },
+      stop: record.block,
+      evidence: gate.evidence || [],
+    });
+    persistMarker();
     console.error(`[BLOCKED] Phase ${phase} ${PHASES[phase]} completion rejected.`);
     for (const failure of gate.failures) console.error(`  - ${failure}`);
     process.exit(1);
@@ -151,11 +241,21 @@ if (command === 'start' || command === 'reopen') {
   record.startedAt = record.startedAt || now;
   record.completedAt = now;
   record.reason = null;
+  record.block = null;
   record.evidence = gate.evidence;
   record.completionGate = { checkedAt: now, status: 'passed', contract: gate.contract, failures: [] };
+  // Canonical phase state is authoritative; persist the passed gate before the supplemental graph result.
+  persistMarker();
+  executionResult({
+    status: 'completed',
+    code: 'PHASE_CONTRACT_PASSED',
+    message: `Phase ${phase} ${PHASES[phase]} completion contract passed`,
+    evidence: gate.evidence,
+    checks: gate.contract?.projectChecks || [],
+  });
 }
 
-fs.writeFileSync(outPath, JSON.stringify(record, null, 2) + '\n', 'utf8');
+persistMarker();
 console.log(`[OK] Phase ${phase} ${PHASES[phase]} -> ${record.state}${record.reason ? ` (${record.reason})` : ''}`);
 
 if (command === 'complete') {

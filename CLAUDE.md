@@ -1,4 +1,4 @@
-# Project Forge v4.68.41 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.42 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -444,6 +444,17 @@ workflows use `$status`, `$plan`, `$review`. Shell entry points (`new-project`, 
 skill counts and command mappings are build artifacts and must be verified by `check-drift`.
 *(Established v4.66.6 unified command-layer maintenance.)*
 
+### 21. Phase progression and execution state have different authorities
+
+`wiki/phases/phase-N.json` plus its executable completion contract is the only authority for global
+phase progression. `.forge/runs/` stores bounded Task execution, repair and decision state; a Task's
+phase field is only a reference. Never edit runtime files directly, derive phase completion from a
+Task result, or treat assistant prose as the primary workflow API. Structured STOP ownership is
+`user` (answer), `agent` (repair), or `infrastructure` (external change), and retries must be bounded.
+Persist an authoritative phase marker before its supplemental RunResult and correlate host turns by
+exact attempt ID where the adapter supports it.
+*(Established v4.68.42 Durable Execution Graph.)*
+
 ### Adding new lessons — process
 
 Each lesson gets a tier classification at logging time:
@@ -467,6 +478,15 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.42 changelog (durable execution graph)
+
+Added strict Task, RunResult, FailureType and workflow schemas plus five restart-safe execution
+graphs for phase, change, review, diagnose and release work. Local graph state uses atomic writes,
+transition locks and bounded retries without competing with the canonical nine phases. Codex now
+routes exact-attempt structured STOP/results before legacy text heuristics, restores user STOPs before
+launching a model, and never advances from a supplemental completed result alone. GigaChat direct
+tasks persist intent before graph creation, recover orphan runs and record failed verification as repair.
+
 ## v4.68.41 changelog (canonical nine-phase state integrity)
 
 All nine canonical phases now load schema-checked executable completion contracts with exact
@@ -480,10 +500,3 @@ verifier surface from an explicit registry instead of exporting every `check-*.m
 Variant-aware runtime QA now selects the highest numeric release version rather than the first ZIP
 returned by the filesystem. Production, debug and marketing archives are matched exactly, and a
 dedicated regression guards unsorted directory entries plus numeric ordering such as v1.10 over v1.9.
-
-## v4.68.39 changelog (Ox Alpha retained-data preview)
-
-OpenRouter gains an `ox-alpha` whole-project preset for the free anonymous coding preview. Forge
-refuses to run it through the default ZDR profile: selection requires explicit `--profile standard`
-because the upstream provider retains prompts and completions. The preset is therefore restricted
-to non-confidential evaluation projects while keeping the existing 64-step OpenCode turn budget.

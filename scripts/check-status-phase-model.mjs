@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { makeTask, startTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
 
 const ROOT = process.cwd();
 const statusScript = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'project-status.mjs');
@@ -68,6 +69,16 @@ try {
     && !('steps' in legacyReport) && !('current_step' in legacyReport))
     ? ok('legacy pipeline command is a compatibility view over the same canonical nine phases')
     : bad(`legacy pipeline exposed a competing state model: ${legacy.stderr || legacy.stdout}`);
+  const supplementalTask = makeTask({
+    id: 'task-status-fixture', mode: 'change', phase: 2, goal: 'Supplemental direct task',
+    scope: { read: ['WorkProgress/**'], write: ['WorkProgress/**'] },
+  });
+  startTaskRun({ projectRoot: p3, task: supplementalTask });
+  const taskStatus = snap(p3);
+  (taskStatus.currentPhase === 2 && taskStatus.execution?.activeTask?.id === supplementalTask.id
+    && /never phase progression/.test(taskStatus.execution?.source || ''))
+    ? ok('active Task is visible but cannot become a competing phase state')
+    : bad('Task runtime changed or disappeared from canonical phase status');
 
   const p4=mk('stale-claude');
   w(p4,'WorkProgress/stale-claude/ANALYSIS.md','# analysis');
@@ -88,11 +99,11 @@ try {
   phase(p6,'start','4');
   let marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));
   marker.state==='in_progress' ? ok('phase-state start writes machine marker') : bad('phase-state start failed');
-  (marker.schemaVersion===2 && marker.modelRuntime?.recommendedCodex?.model==='gpt-5.6-sol' && marker.modelRuntime?.recommendedCodex?.reasoning==='high' && marker.modelRuntime?.selection?.model===null && marker.modelRuntime?.selection?.source==='unreported' && marker.modelRuntime?.subagents?.limit===2)
+  (marker.schemaVersion===3 && marker.execution?.workflow==='phase' && marker.execution?.resultStatus==='in_progress' && marker.modelRuntime?.recommendedCodex?.model==='gpt-5.6-sol' && marker.modelRuntime?.recommendedCodex?.reasoning==='high' && marker.modelRuntime?.selection?.model===null && marker.modelRuntime?.selection?.source==='unreported' && marker.modelRuntime?.subagents?.limit===2)
     ? ok('phase marker separates the Codex recommendation from an unreported actual model') : bad('phase marker model runtime missing or wrong');
   phase(p6,'block','4','Awaiting target frame');
   marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));
-  marker.state==='blocked' ? ok('phase-state block records STOP state') : bad('phase-state block failed');
+  (marker.state==='blocked' && marker.block?.owner==='user' && marker.execution?.currentNode==='wait-user') ? ok('phase-state block records a structured user STOP') : bad('phase-state block failed');
 
   const pHost=mk('host-only-selection');
   phaseEnv(pHost,{FORGE_AI_HOST:'gigachat'},'start','1');

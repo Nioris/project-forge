@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-forge.local/schemas/task.schema.json",
+  "title": "Project Forge Task v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "projectPath": { "type": "string", "minLength": 1, "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[^\\u0000\\\\]+$" }
+  },
+  "required": ["schemaVersion", "id", "mode", "phase", "goal", "skill", "scope", "acceptance", "verifiers", "status", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9._-]{1,79}$" },
+    "mode": { "enum": ["phase", "change", "review", "diagnose", "release"] },
+    "phase": { "type": ["integer", "null"], "minimum": 1, "maximum": 9 },
+    "goal": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "skill": { "type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read", "write"],
+      "properties": {
+        "read": { "type": "array", "items": { "$ref": "#/$defs/projectPath" }, "maxItems": 100 },
+        "write": { "type": "array", "items": { "$ref": "#/$defs/projectPath" }, "maxItems": 100 }
+      }
+    },
+    "acceptance": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" },
+          "text": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "status": { "enum": ["pending", "satisfied"] }
+        }
+      }
+    },
+    "verifiers": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }, "maxItems": 100 },
+    "status": { "enum": ["pending", "running", "waiting", "blocked", "completed", "cancelled"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

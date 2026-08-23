@@ -4722,6 +4722,13 @@ compatibility tool also suppresses identical successful repeats within the same 
 these safeguards convert provider tool loops into a bounded text handoff instead of unmetered API
 spend; legitimate unfinished work remains resumable in the same session.
 
+## v4.68.39 changelog (Ox Alpha retained-data preview)
+
+OpenRouter gains an `ox-alpha` whole-project preset for the free anonymous coding preview. Forge
+refuses to run it through the default ZDR profile: selection requires explicit `--profile standard`
+because the upstream provider retains prompts and completions. The preset is therefore restricted
+to non-confidential evaluation projects while keeping the existing 64-step OpenCode turn budget.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

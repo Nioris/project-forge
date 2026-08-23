@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /** Verify Forge 4.68 universal agent runtime + GigaChat dry-run backends without network calls. */
-import { existsSync, readFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 
 const ROOT = resolve(process.cwd());
 const errors = [];
@@ -34,17 +35,30 @@ for (const rules of ['GEMINI.md', 'QWEN.md']) {
 if (!spec.includes("['.gitverse/pr_rules', '.gitverse/pr_rules']")) errors.push('GitVerse PR rules not in managed sibling payload');
 else ok.push('GitVerse PR rules are managed sibling payload');
 
-function run(label, argv, contains) {
-  const r = spawnSync(process.execPath, argv, { cwd: ROOT, encoding: 'utf8' });
+function run(label, argv, contains, extraEnv = {}) {
+  const r = spawnSync(process.execPath, argv, { cwd: ROOT, encoding: 'utf8', env: { ...process.env, ...extraEnv } });
   const text = `${r.stdout || ''}\n${r.stderr || ''}`;
   if (r.status !== 0 || (contains && !text.includes(contains))) errors.push(`${label} failed: ${text.trim().slice(0,500)}`);
   else ok.push(label);
 }
+const cliFixture = mkdtempSync(join(tmpdir(), 'forge-universal-runtime-'));
+function fakeCli(name, version = '1.0.0') {
+  const file = join(cliFixture, process.platform === 'win32' ? `${name}.cmd` : name);
+  writeFileSync(file, process.platform === 'win32'
+    ? `@echo off\r\necho ${name} ${version}\r\n`
+    : `#!/bin/sh\necho ${name} ${version}\n`, 'utf8');
+  if (process.platform !== 'win32') chmodSync(file, 0o755);
+  return file;
+}
+const fakeGemini = fakeCli('gemini');
+const fakeQwen = fakeCli('qwen');
+const fakeKimi = fakeCli('kimi');
+const fakeOpenCode = fakeCli('opencode', '1.18.20');
 run('generic GigaCode skill prompt', ['scripts/forge-agent.mjs','prompt','gigacode','--skill','phase-2-design','--args','.'], 'Read FORGE.md first');
-run('Qwen whole-project dry-run', ['scripts/forge-agent.mjs','start','qwen','--project',ROOT,'--dry-run'], 'qwen3-coder-plus');
-run('Gemini whole-project dry-run', ['scripts/forge-agent.mjs','start','gemini','--project',ROOT,'--dry-run'], 'gemini-3.7-flash');
-run('Kimi whole-project dry-run', ['scripts/forge-agent.mjs','start','kimi','--project',ROOT,'--dry-run'], 'bootstrap-then-interactive');
-run('OpenRouter whole-project dry-run', ['scripts/forge-agent.mjs','start','openrouter','--preset','deepseek','--project',ROOT,'--dry-run'], 'openrouter/deepseek/deepseek-v4-flash-0731');
+run('Qwen whole-project dry-run', ['scripts/forge-agent.mjs','start','qwen','--project',ROOT,'--dry-run'], 'qwen3-coder-plus', { FORGE_QWEN_CLI: fakeQwen });
+run('Gemini whole-project dry-run', ['scripts/forge-agent.mjs','start','gemini','--project',ROOT,'--dry-run'], 'gemini-3.7-flash', { FORGE_GEMINI_CLI: fakeGemini });
+run('Kimi whole-project dry-run', ['scripts/forge-agent.mjs','start','kimi','--project',ROOT,'--dry-run'], 'bootstrap-then-interactive', { FORGE_KIMI_CLI: fakeKimi });
+run('OpenRouter whole-project dry-run', ['scripts/forge-agent.mjs','start','openrouter','--preset','deepseek','--project',ROOT,'--dry-run'], 'openrouter/deepseek/deepseek-v4-flash-0731', { FORGE_OPENCODE_CLI: fakeOpenCode });
 run('OpenRouter model presets', ['scripts/forge-agent.mjs','presets','openrouter'], 'openrouter/moonshotai/kimi-k3');
 run('GigaChat image dry-run', ['scripts/gigachat-image.mjs','--prompt','test game icon without text','--output','x.jpg','--dry-run'], 'text2image');
 run('GigaChat 3D dry-run', ['scripts/gigachat-3d.mjs','--prompt','simple low poly oil pump game prop','--output','x.fbx','--dry-run'], 'text2model3d');
@@ -72,6 +86,8 @@ else ok.push('dashboard routes whole-project agents through locked start');
 const ai = JSON.parse(readFileSync(join(ROOT, 'templates/ai-studio/project-config.json'),'utf8'));
 if (ai.schemaVersion < 2 || !ai.providers?.gigachat || ai.fallback?.openRouter !== false) errors.push('AI Studio v2 provider config invalid');
 else ok.push('AI Studio config exposes GigaChat without silent OpenRouter fallback');
+
+rmSync(cliFixture, { recursive: true, force: true });
 
 console.log('\nForge universal agent runtime audit\n' + '─'.repeat(44));
 for (const x of ok) console.log('  ✓ ' + x);

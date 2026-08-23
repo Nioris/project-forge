@@ -1,13 +1,13 @@
 {
-  "captured_at": "2026-08-18T17:40:55.889Z",
-  "dashboard_size_bytes": 144576,
-  "fingerprint": "51803a23fa0b2a2f",
+  "captured_at": "2026-08-23T08:59:56.430Z",
+  "dashboard_size_bytes": 147252,
+  "fingerprint": "7b76d6a5f324d22b",
   "summary": {
-    "total_significant_elements": 499,
+    "total_significant_elements": 506,
     "by_tag": {
       "div": 418,
       "select": 2,
-      "button": 60,
+      "button": 67,
       "input": 10,
       "label": 1,
       "textarea": 3,
@@ -16,7 +16,7 @@
       "aside": 1
     },
     "by_id_count": 38,
-    "handler_count": 99,
+    "handler_count": 106,
     "elements_with_position_styles": 5
   },
   "elements": [
@@ -4786,6 +4786,104 @@
       "classes": [
         "btn",
         "btn-accent",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
+        "btn-sm"
+      ],
+      "role": null,
+      "handlers": [
+        "onclick"
+      ],
+      "position_styles": [],
+      "type": null
+    },
+    {
+      "tag": "button",
+      "id": null,
+      "classes": [
+        "btn",
         "btn-sm"
       ],
       "role": null,
