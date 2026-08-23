@@ -4,10 +4,20 @@
 
 ## Session goal
 
-Benchmark the free OpenRouter Ox Alpha retained-data preview on a clean GDD-only Snake project
-through Phase 1–3, without weakening evidence, privacy or Git publication gates.
+Ship Project Forge v4.68.40 with deterministic newest-release ZIP selection, install it into the
+local Universal fleet, and fast-forward the verified result to GitHub `main`.
 
 ## Active task
+
+- [x] Reproduce `runtime-test.mjs` selecting Ox Alpha v0.2.0 while v0.2.1 exists.
+- [x] Select the highest numeric version for exact production/debug/marketing variants.
+- [x] Add a standalone regression and wire it into `check-drift.mjs`.
+- [x] Bump and document Project Forge v4.68.40.
+- [x] Pass release validators and package verification.
+- [x] Install/sync ProjectForgeUniversal and verify the deployed version.
+- [ ] Push the working branch and fast-forward GitHub `main`.
+
+### Previous Ox Alpha benchmark
 
 - [x] Reproduce Qwen3 Coder Next tool use through OpenRouter ZDR.
 - [x] Record the Phase 1 unsupported-research and false-completion incidents.
@@ -53,4 +63,4 @@ must stay confined to the intentionally public, synthetic Snake GDD.
 - 2026-08-21: OpenCode whole-project turns use a 64-step ceiling; repeated successful directory listings are not billable progress.
 - 2026-08-22: Retained-data models require an explicit non-ZDR profile and may receive only non-confidential evaluation material.
 
-<!-- last updated 2026-08-22 during v4.68.39 Ox Alpha benchmark setup -->
+<!-- last updated 2026-08-23 during v4.68.40 runtime release selection fix -->

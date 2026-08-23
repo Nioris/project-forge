@@ -4708,6 +4708,13 @@ resume environments also forward the actual locked host/model into `phase-state`
 misleading `unknown` runtime identity observed during the Qwen benchmark. The Phase 1 workflow now
 requires final wiki/status updates before the checkpointing completion command.
 
+## v4.68.37 changelog (mixed TBD assertion guard)
+
+Phase 1 research validation now rejects a positive external assertion such as `verified`,
+`confirmed` or `requires` even when the same line also contains `TBD`. This closes the final Qwen
+benchmark loophole where an unsupported Yandex claim survived inside a nominally unknown
+localization value.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

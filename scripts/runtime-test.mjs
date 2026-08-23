@@ -42,6 +42,7 @@
 import { createServer } from 'http';
 import { readFileSync, existsSync, statSync, rmSync } from 'fs';
 import { join, extname, resolve } from 'path';
+import { selectLatestReleaseZip } from './lib/release-zip-selection.mjs';
 
 const args = process.argv.slice(2);
 const dirArg = resolve(args.find(a => !a.startsWith('--')) || 'WorkProgress');
@@ -75,9 +76,7 @@ if (VARIANT) {
   const path = await import('path');
   try {
     const entries = fs.readdirSync(dirArg);
-    const variantSuffix = VARIANT === 'production' ? '' : `-${VARIANT}`;
-    const zipPattern = new RegExp(`^[\\w-]+-v[\\d.]+${variantSuffix}\\.zip$`);
-    const zipFile = entries.find(f => zipPattern.test(f) && !f.includes('-debug.') === (VARIANT === 'production' || VARIANT === 'marketing'));
+    const zipFile = selectLatestReleaseZip(entries, VARIANT);
     if (zipFile) {
       // Extract к temp dir
       const os = await import('os');

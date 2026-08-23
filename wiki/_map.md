@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.39 (latest released)
+### Version: v4.68.40 (latest released)
 
+- 2026-08-23: **v4.68.40** — Runtime QA selects the highest numeric ZIP version for the exact production/debug/marketing variant; unsorted and v1.10-vs-v1.9 regressions are release-gated.
 - 2026-08-22: **v4.68.39** — OpenRouter gains the free `ox-alpha` coding preview preset with a mandatory explicit `standard` profile and non-confidential-data warning because the anonymous provider retains prompts/completions.
 - 2026-08-21: **v4.68.38** — OpenCode whole-project turns are capped at 64 agentic steps; identical successful `list` calls are suppressed per session to bound weak-model tool loops.
 - 2026-08-21: **v4.68.37** — `TBD` can no longer hide an uncited positive `verified/confirmed/requires` external assertion on the same research line.

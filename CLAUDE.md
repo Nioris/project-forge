@@ -1,4 +1,4 @@
-# Project Forge v4.68.39 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.40 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -467,6 +467,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.40 changelog (newest release archive runtime gate)
+
+Variant-aware runtime QA now selects the highest numeric release version rather than the first ZIP
+returned by the filesystem. Production, debug and marketing archives are matched exactly, and a
+dedicated regression guards unsorted directory entries plus numeric ordering such as v1.10 over v1.9.
+
 ## v4.68.39 changelog (Ox Alpha retained-data preview)
 
 OpenRouter gains an `ox-alpha` whole-project preset for the free anonymous coding preview. Forge
@@ -480,10 +486,3 @@ OpenCode whole-project turns now have a 64-step agentic ceiling. The project-loc
 compatibility tool also suppresses identical successful repeats within the same session. Together
 these safeguards convert provider tool loops into a bounded text handoff instead of unmetered API
 spend; legitimate unfinished work remains resumable in the same session.
-
-## v4.68.37 changelog (mixed TBD assertion guard)
-
-Phase 1 research validation now rejects a positive external assertion such as `verified`,
-`confirmed` or `requires` even when the same line also contains `TBD`. This closes the final Qwen
-benchmark loophole where an unsupported Yandex claim survived inside a nominally unknown
-localization value.

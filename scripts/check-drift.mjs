@@ -249,6 +249,18 @@ safe('runtime-test-4.4-trap', () => {
   }
 });
 
+safe('runtime-release-zip-selection', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-runtime-release-selection.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (r.status !== 0) {
+    err('runtime release ZIP selection regression failed — run scripts/check-runtime-release-selection.mjs');
+  } else {
+    ok.push('runtime-test selects the newest archive for the exact release variant');
+  }
+});
+
 // ---- 9. i18n-completeness must keep the data-i18n awareness -------------------------------
 // REQ-8.2.3 validator flagged data-i18n elements as "hardcoded Russian" (8 false BLOCKERs) because
 // its "covered" check ignored the data-i18n attribute that applyStaticLang() actually keys on.

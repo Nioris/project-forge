@@ -490,6 +490,7 @@ RELEASE_NOTES_v4.68.37.md
 RELEASE_NOTES_v4.68.38.md
 RELEASE_NOTES_v4.68.39.md
 RELEASE_NOTES_v4.68.4.md
+RELEASE_NOTES_v4.68.40.md
 RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
@@ -708,6 +709,7 @@ scripts/check-pipeline-state.mjs
 scripts/check-platform-completeness.mjs
 scripts/check-project-git.mjs
 scripts/check-ps1-encoding.mjs
+scripts/check-runtime-release-selection.mjs
 scripts/check-setup-guide.mjs
 scripts/check-skill-descriptions.mjs
 scripts/check-skill-kind.mjs
@@ -745,6 +747,7 @@ scripts/lib/codex-cost-report.mjs
 scripts/lib/forge-search.mjs
 scripts/lib/forge-secrets.mjs
 scripts/lib/gigachat-api.mjs
+scripts/lib/release-zip-selection.mjs
 scripts/lib/runtime-version.mjs
 scripts/local-stage.mjs
 scripts/migrate-sessions.mjs
@@ -914,6 +917,7 @@ wiki/features/_template.md
 wiki/i18n-status.md
 wiki/performance.md
 wiki/pitfalls.md
+wiki/plan/B3-001-latest-runtime-release.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md
