@@ -39,8 +39,10 @@ description: "Спроектировать АРХИТЕКТУРУ ЭКРАНОВ
 `schemaVersion: 1`, `status: approved`). В `states[]` обязательны безопасный `id`, `label`,
 `archetype`, `required: true`, конкретный `visualDescription`, `targetPolicy` и
 `capture.adapterState`, равный `id`. В `transitions[]` каждый экран должен быть достижим из
-`entryState` и уметь вернуться к нему. Укажи `qaAdapter.global: __FORGE_VISUAL_QA__` и
-`qaAdapter.query: forgeVisualQa=1`. Это не справочный документ: Phase 4 снимает ровно этот
+`entryState` и уметь вернуться к нему. Формат `qaAdapter` выбирается по доверенному
+`forge.engine.json`: для `web` укажи `global: __FORGE_VISUAL_QA__` и `query: forgeVisualQa=1`;
+для `godot` — `kind: godot-runtime` и `protocol: forge-godot-visual-v1`. Смешивать варианты или
+подменять Godot браузерным global нельзя. Это не справочный документ: Phase 4 снимает ровно этот
 список и отклоняет пропущенный экран.
 
 ## Признаки, что архитектура сломана

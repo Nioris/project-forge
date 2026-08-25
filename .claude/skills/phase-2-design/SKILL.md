@@ -159,6 +159,8 @@ machine-readable progression state, а сами артефакты остают�
 `home/hq`, `map`, `gameplay`, `result` всегда ставь `targetPolicy: dedicated`; только вторичный
 экран с тем же визуальным shell может наследовать уже выделенный эталон. Статус `approved`
 ставится лишь после STOP подтверждения GDD: этот список станет обязательной полнотой Фазы 4.
+`qaAdapter` обязан соответствовать выбранному engine profile: Web использует
+`__FORGE_VISUAL_QA__/forgeVisualQa=1`, Godot — `godot-runtime/forge-godot-visual-v1`.
 
 ## ⚖️ Проверяемость баланса — заложить сразу
 GDD обязан допускать проверку `/gameplay-balance`: у игры должна быть **тупая стратегия**,

@@ -73,6 +73,7 @@
 .agents/skills/gate/SKILL.md
 .agents/skills/godot-engine/SKILL.md
 .agents/skills/godot-engine/references/godot-csharp.md
+.agents/skills/godot-engine/references/godot-visual-qa.md
 .agents/skills/grilling/SKILL.md
 .agents/skills/handoff/SKILL.md
 .agents/skills/health-app-foundation/SKILL.md
@@ -327,6 +328,7 @@
 .claude/skills/gate/SKILL.md
 .claude/skills/godot-engine/SKILL.md
 .claude/skills/godot-engine/references/godot-csharp.md
+.claude/skills/godot-engine/references/godot-visual-qa.md
 .claude/skills/grilling/SKILL.md
 .claude/skills/handoff/SKILL.md
 .claude/skills/health-app-foundation/SKILL.md
@@ -742,6 +744,7 @@ schemas/agent-result.schema.json
 schemas/ai-prompt.schema.json
 schemas/engine-profile.schema.json
 schemas/godot-project.schema.json
+schemas/godot-visual.schema.json
 schemas/run-result.schema.json
 schemas/skill-contract.schema.json
 schemas/store-listing.schema.json
@@ -788,8 +791,10 @@ scripts/check-execution-contract.mjs
 scripts/check-external-cdn.mjs
 scripts/check-forge-diagnostics.mjs
 scripts/check-gacha-integration.mjs
+scripts/check-godot-phase4-evidence.mjs
 scripts/check-godot-project-fixtures.mjs
 scripts/check-godot-project.mjs
+scripts/check-godot-visual-capture.mjs
 scripts/check-inline-strings.mjs
 scripts/check-modularize-existing-project.mjs
 scripts/check-nested-dirs.mjs
@@ -849,6 +854,10 @@ scripts/gigachat-3d.mjs
 scripts/gigachat-agent.mjs
 scripts/gigachat-image.mjs
 scripts/git-init-games.mjs
+scripts/godot-proof-video.mjs
+scripts/godot-screens-shoot.mjs
+scripts/godot-visual-contract.mjs
+scripts/godot-visual-runtime.mjs
 scripts/integrate-gacha.mjs
 scripts/lib/codex-cost-report.mjs
 scripts/lib/forge-search.mjs
@@ -871,6 +880,7 @@ scripts/pack-handoff.mjs
 scripts/package-forge.mjs
 scripts/platform-detect.js
 scripts/playtest.mjs
+scripts/prepare-godot-phase4-review.mjs
 scripts/project-git.mjs
 scripts/record-image-provenance.mjs
 scripts/record-phase4-visual-review.mjs
@@ -987,6 +997,8 @@ templates/backend/async/api/server.mjs
 templates/backend/async/api/sig.mjs
 templates/backend/async/db/schema.sql
 templates/backend/async/docker-compose.yml
+templates/godot/ForgeVisualQA.cs
+templates/godot/ForgeVisualQA.gd
 templates/html5/cheats-base.js
 templates/html5/debugcheck.html
 templates/html5/debugcheck.js

@@ -2,12 +2,15 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { readTrustedProjectEngine } from './project-engine.mjs';
 
 export const SCREEN_FLOW_PATH = 'wiki/design/screen-flow.json';
 export const SCREEN_FLOW_SCHEMA_VERSION = 1;
 export const SCREEN_FLOW_KIND = 'forge.screen-flow';
 export const FORGE_VISUAL_QA_GLOBAL = '__FORGE_VISUAL_QA__';
 export const FORGE_VISUAL_QA_QUERY = 'forgeVisualQa=1';
+export const FORGE_GODOT_VISUAL_ADAPTER_KIND = 'godot-runtime';
+export const FORGE_GODOT_VISUAL_PROTOCOL = 'forge-godot-visual-v1';
 export const DEDICATED_TARGET_ARCHETYPES = new Set(['start', 'home', 'hq', 'map', 'gameplay', 'result']);
 
 const SAFE_ID = /^[a-z0-9][a-z0-9_-]{1,63}$/u;
@@ -103,8 +106,15 @@ export function validateScreenFlow({ root = process.cwd(), rel = SCREEN_FLOW_PAT
       failures.push('screen flow approval inventorySha256 does not match the complete state/transition inventory');
     }
   }
-  if (flow.qaAdapter?.global !== FORGE_VISUAL_QA_GLOBAL || flow.qaAdapter?.query !== FORGE_VISUAL_QA_QUERY) {
-    failures.push(`screen flow must declare ${FORGE_VISUAL_QA_GLOBAL} activated by ${FORGE_VISUAL_QA_QUERY}`);
+  let engine = 'web';
+  try { engine = readTrustedProjectEngine(root).engine; }
+  catch (error) { failures.push(`screen flow engine profile rejected (${error.code || 'ENGINE_PROFILE'}): ${error.message}`); }
+  if (engine === 'godot') {
+    if (flow.qaAdapter?.kind !== FORGE_GODOT_VISUAL_ADAPTER_KIND || flow.qaAdapter?.protocol !== FORGE_GODOT_VISUAL_PROTOCOL) {
+      failures.push(`Godot screen flow must declare ${FORGE_GODOT_VISUAL_ADAPTER_KIND}/${FORGE_GODOT_VISUAL_PROTOCOL}`);
+    }
+  } else if (flow.qaAdapter?.global !== FORGE_VISUAL_QA_GLOBAL || flow.qaAdapter?.query !== FORGE_VISUAL_QA_QUERY) {
+    failures.push(`Web screen flow must declare ${FORGE_VISUAL_QA_GLOBAL} activated by ${FORGE_VISUAL_QA_QUERY}`);
   }
   const states = Array.isArray(flow.states) ? flow.states : [];
   if (states.length < 2) failures.push('screen flow must enumerate at least two player-visible states');

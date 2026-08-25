@@ -308,6 +308,46 @@ function checkVisualIntegration(root, failures) {
   if (!integrated) failures.push('Phase 4 requires source-referenced production image assets; CSS, target frames, and review screenshots do not count as integration');
 }
 
+function checkGodotVisualIntegration(root, failures) {
+  const contractFile = safeProjectFile(root, 'forge.godot.json');
+  const contract = contractFile ? parseJson(contractFile.absolute) : null;
+  const projectPath = normalizeRelative(contract?.projectPath || '');
+  if (!projectPath || path.isAbsolute(projectPath)
+    || (projectPath !== '.' && projectPath.split('/').some(part => !part || part === '.' || part === '..'))) {
+    failures.push('Godot Phase 4 requires a safe forge.godot.json projectPath for visual integration');
+    return;
+  }
+  const implementationRoot = path.resolve(root, projectPath);
+  let realImplementation;
+  try {
+    realImplementation = fs.realpathSync(implementationRoot);
+    const relative = path.relative(fs.realpathSync(root), realImplementation);
+    if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.statSync(realImplementation).isDirectory()) throw new Error('outside project');
+  } catch {
+    failures.push('Godot Phase 4 implementation root is missing or outside the project');
+    return;
+  }
+  const sourceExtensions = new Set(['.godot', '.tscn', '.tres', '.res', '.gd', '.cs', '.gdshader']);
+  const assetExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ttf', '.otf']);
+  const source = walkFiles(realImplementation, file => sourceExtensions.has(path.extname(file).toLowerCase()))
+    .filter(file => !normalizeRelative(path.relative(realImplementation, file)).startsWith('qa/'))
+    .slice(0, 500)
+    .map(file => readLimited(file, 2 * 1024 * 1024))
+    .join('\n');
+  const assets = walkFiles(realImplementation, file => assetExtensions.has(path.extname(file).toLowerCase()))
+    .filter(file => {
+      const rel = normalizeRelative(path.relative(realImplementation, file));
+      if (/^(?:screens\/review|refs|candidates|target|playtest-out|stage-out)(?:\/|$)/iu.test(rel)) return false;
+      try { return fs.statSync(file).size >= 32 && (!/\.(?:png|jpe?g|webp)$/iu.test(file) || validImage(file)); }
+      catch { return false; }
+    });
+  const integrated = assets.some(file => {
+    const rel = normalizeRelative(path.relative(realImplementation, file));
+    return source.includes(`res://${rel}`) || source.includes(rel) || source.includes(path.basename(file));
+  });
+  if (!integrated) failures.push('Godot Phase 4 requires a source-referenced production image/font asset; targets and review media do not count as integration');
+}
+
 function checkPhase4VisualEvidence(root, failures) {
   const result = validatePhase4VisualEvidence({ root });
   if (!result.ok) failures.push(...result.failures.map(item => `Phase 4 visual gate: ${item}`));
@@ -439,13 +479,16 @@ function runGodotConstructVerifier(root, engineProfile, failures) {
   return normalized;
 }
 
-function runProjectCheck(id, root, contract, evidence, failures, engineSupport) {
+function runProjectCheck(id, root, contract, evidence, failures, engineSupport, engineProfile) {
   if (id === 'phase-1-integrity') validatePhase1(root, evidence, failures);
   else if (id.startsWith('engine-') && engineSupport && !engineSupport.supported) failures.push(engineSupport.message);
   else if (id === 'non-placeholder-evidence') checkNonPlaceholderEvidence(root, contract, failures);
   else if (id === 'implementation-source' && !hasImplementationSource(root)) failures.push(`Phase ${contract.phase} requires real implementation source`);
   else if (id === 'clean-playtest-report') checkCleanPlaytestReport(root, failures);
-  else if (id === 'visual-integration') checkVisualIntegration(root, failures);
+  else if (id === 'visual-integration') {
+    if (engineProfile?.engine === 'godot') checkGodotVisualIntegration(root, failures);
+    else checkVisualIntegration(root, failures);
+  }
   else if (id === 'phase-4-visual-evidence') checkPhase4VisualEvidence(root, failures);
   else if (id === 'screen-flow-contract') checkScreenFlow(root, failures);
   else if (id === 'tech-runtime') checkTechRuntime(root, failures);
@@ -499,10 +542,10 @@ export function validatePhaseCompletion({ root = process.cwd(), phase, evidence 
     if (requiredEvidenceReady && Number(contract.phase) === 3 && engineProfile?.engine === 'godot' && engineSupport?.supported) {
       engineVerification = runGodotConstructVerifier(projectRoot, engineProfile, failures);
     }
-    const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'visual-integration', 'phase-4-visual-evidence', 'tech-runtime']);
+    const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'tech-runtime']);
     for (const id of contract.projectChecks) {
       if (engineProfile?.implementation !== 'browser' && browserOnlyChecks.has(id)) continue;
-      runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport);
+      runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport, engineProfile);
     }
   }
   return {

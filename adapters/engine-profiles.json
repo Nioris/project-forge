@@ -31,8 +31,8 @@
       "capabilities": {
         "constructVerifier": true,
         "techVerifier": false,
-        "visualCapture": false,
-        "proofVideo": false,
+        "visualCapture": true,
+        "proofVideo": true,
         "playtest": false,
         "releaseExport": false
       }

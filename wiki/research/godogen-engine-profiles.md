@@ -39,8 +39,43 @@ Date: 2026-08-25
 
 Official command semantics: https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
+## Native visual capture facts — 2026-08-25
+
+- Godot `--write-movie` records at deterministic fixed FPS; `.avi` uses MJPEG and `.png` produces a
+  lossless numbered frame sequence. Forge uses bounded, normal process completion so the container is
+  finalized instead of killing a writer mid-file.
+- `--fixed-fps` and `--quit-after` make the proof reproducible by frame count rather than wall time.
+- `--headless` is not visual evidence: it disables display/rendering behavior and may return dummy
+  RenderingServer values. Native capture therefore uses a real display driver without external clicks.
+- A state PNG is saved only after `RenderingServer.frame_post_draw`, from the actual viewport texture.
+
+Official MovieWriter guide:
+https://docs.godotengine.org/en/stable/tutorials/animation/creating_movies.html
+
+Official Viewport capture references:
+https://docs.godotengine.org/en/stable/classes/class_viewport.html
+https://docs.godotengine.org/en/stable/tutorials/rendering/viewports.html
+
+Official headless RenderingServer limitation:
+https://docs.godotengine.org/en/stable/classes/class_renderingserver.html
+
 Official C# prerequisites and platform limits:
 https://docs.godotengine.org/en/stable/tutorials/scripting/c_sharp/c_sharp_basics.html
+
+## Native evidence forward-test — 2026-08-25
+
+- A second independent run used real Godot `4.7.stable`, a normal renderer and no shim/headless mode.
+- State capture produced all 6 required frames: three states at mobile `412×820` and desktop
+  `1280×720`; different states had different pixel hashes.
+- MovieWriter produced MJPEG `1280×720@30`, `451` actual frames for `450` expected (allowed ±1),
+  `450` unique encoded frames, and a validated final `idx1` with `451` video entries among `902`
+  total entries. All 15 one-second lossless samples were unique.
+- Capture/proof implementation snapshots and engine-owned receipts verified; source `project.godot`
+  kept the same SHA-256 before/after, and no Godot process remained.
+- Deterministic regressions separately cover frozen AVI with changing samples, bad `idx1`, malformed
+  JPEG/AVI, short video, state mismatch, duplicate review coverage, stale snapshots/media,
+  self-review and Web/Godot evidence substitution. Synthetic policy fixtures are not counted as
+  real-engine proof because the receipt store trusts the installed host boundary.
 
 ## Integration boundary
 

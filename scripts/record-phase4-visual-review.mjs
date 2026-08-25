@@ -5,10 +5,12 @@ import path from 'node:path';
 import {
   captureReceiptPayload,
   currentVisualRuntimeIdentity,
+  proofReceiptPayload,
   reviewReceiptPayload,
   validatePhase4VisualEvidence,
 } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 import { recordVisualReceipt, verifyVisualReceipt } from '../.claude/skills/status/references/visual-receipts.mjs';
+import { readTrustedProjectEngine } from '../.claude/skills/status/references/project-engine.mjs';
 
 const projectRoot = fs.realpathSync(path.resolve(process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : '.'));
 const evidenceRel = 'wiki/qa/phase-4-visual-evidence.json';
@@ -24,6 +26,7 @@ function safeFile(rel) {
 }
 
 try {
+  const engine = readTrustedProjectEngine(projectRoot);
   const identity = currentVisualRuntimeIdentity();
   if (!identity) throw new Error('No trusted host session identity. Run the independent review from a Forge/Codex/Claude task, not an anonymous shell.');
   const evidence = JSON.parse(fs.readFileSync(evidenceFile, 'utf8'));
@@ -38,6 +41,26 @@ try {
   if (!captureReceipt.ok) throw new Error(`Trusted capture receipt rejected: ${captureReceipt.failure || captureReceipt.code}`);
   if (String(capture.builder?.sessionId || '').toLowerCase() === identity.sessionId.toLowerCase()) {
     throw new Error('Independent review must run in a different host task/session from the builder capture.');
+  }
+  if (engine.engine === 'godot') {
+    const proofFile = safeFile(evidence.nativeProof?.manifest?.path || 'screens/review/proof-video-manifest.json');
+    const proof = JSON.parse(fs.readFileSync(proofFile.absolute, 'utf8'));
+    const proofReceipt = verifyVisualReceipt({
+      projectRoot,
+      kind: 'proof',
+      receiptId: proof.proofReceiptId,
+      expectedPayload: proofReceiptPayload({ manifestPath: proofFile.path, manifest: proof }),
+    });
+    if (!proofReceipt.ok) throw new Error(`Trusted Godot proof receipt rejected: ${proofReceipt.failure || proofReceipt.code}`);
+    if (evidence.nativeProof?.proofId !== proof.proofId || evidence.nativeProof?.proofReceiptId !== proof.proofReceiptId) {
+      throw new Error('Godot review evidence is not bound to the current proof ID/receipt');
+    }
+    if (JSON.stringify(proof.builder || null) !== JSON.stringify(capture.builder || null)) {
+      throw new Error('Godot capture and proof builder identities differ');
+    }
+    if (String(proof.builder?.sessionId || '').toLowerCase() === identity.sessionId.toLowerCase()) {
+      throw new Error('Independent review must run in a different host task/session from the proof builder.');
+    }
   }
   evidence.captureId = capture.captureId;
   evidence.captureReceiptId = capture.captureReceiptId;

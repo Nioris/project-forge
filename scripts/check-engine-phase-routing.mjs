@@ -54,9 +54,10 @@ try {
 
   check(enginePhaseSupport(godotProfile, 1).supported === true, 'Godot can complete engine-neutral Phase 1 analysis');
   check(enginePhaseSupport(godotProfile, 3).supported === true, 'Godot Phase 3 exposes the installed native construct verifier');
-  check(enginePhaseSupport(godotProfile, 4).supported === false, 'Godot Phase 4 fails closed before native capture exists');
+  check(enginePhaseSupport(godotProfile, 4).supported === true
+    && godotProfile.capabilities.visualCapture === true && godotProfile.capabilities.proofVideo === true,
+  'Godot Phase 4 exposes both native capture and proof-video capabilities');
   check(enginePhaseSupport(godotProfile, 5).supported === false, 'Godot Phase 5 fails closed before its tech verifier exists');
-  check(/window\.__FORGE_VISUAL_QA__/.test(enginePhaseSupport(godotProfile, 4).message), 'Godot Phase 4 rejection names the invalid browser adapter substitution');
 
   const legacyPhase3 = validatePhaseCompletion({ root: legacy, phase: 3, evidence: [] });
   const webPhase3 = validatePhaseCompletion({ root: web, phase: 3, evidence: [] });
@@ -71,11 +72,13 @@ try {
   check(!hasAdapterFailure(godotPhase3, 3) && godotPhase3.engine?.capability === 'constructVerifier' && godotPhase3.engine?.supported === true,
     'Phase 3 gate binds Godot to the available constructVerifier capability');
   check(!godotPhase3.failures.some(item => /playtest-out\/report\.json/u.test(item)), 'Godot Phase 3 never falls back to the browser playtest report');
-  check(hasAdapterFailure(godotPhase4, 4) && godotPhase4.engine?.capability === 'visualCapture', 'Phase 4 gate binds Godot to native visualCapture capability');
+  check(!hasAdapterFailure(godotPhase4, 4) && godotPhase4.engine?.capability === 'visualCapture' && godotPhase4.engine?.supported === true,
+    'Phase 4 gate binds Godot to the installed native capture/proof capabilities');
   check(hasAdapterFailure(godotPhase5, 5) && godotPhase5.engine?.capability === 'techVerifier', 'Phase 5 gate binds Godot to techVerifier capability');
   const directGodotVisual = validatePhase4VisualEvidence({ root: godot });
   const directWebVisual = validatePhase4VisualEvidence({ root: web });
-  check(hasAdapterFailure(directGodotVisual, 4), 'direct Phase 4 visual validation also rejects browser evidence for Godot');
+  check(directGodotVisual.failures.some(item => item.includes('visual evidence is missing')),
+    'direct Godot Phase 4 validation now routes to native evidence instead of a browser fallback');
   check(directWebVisual.failures.some(item => item.includes('visual evidence is missing')), 'direct Phase 4 Web validation keeps its existing evidence path');
 
   mkdirSync(join(godot, 'adapters'), { recursive: true });
@@ -85,8 +88,8 @@ try {
     defaultEngine: 'godot',
     profiles: { godot: { capabilities: { constructVerifier: true, visualCapture: true, techVerifier: true } } },
   });
-  const stillBlocked = validatePhaseCompletion({ root: godot, phase: 4, evidence: [] });
-  check(hasAdapterFailure(stillBlocked, 4), 'project-local registry cannot grant Godot verifier authority');
+  const stillBlocked = validatePhaseCompletion({ root: godot, phase: 5, evidence: [] });
+  check(hasAdapterFailure(stillBlocked, 5), 'project-local registry cannot grant unavailable Godot verifier authority');
 
   let invalidCode = null;
   try { readTrustedProjectEngine(invalid); }
@@ -114,7 +117,8 @@ try {
   const marker = start.status === 0
     ? JSON.parse(readFileSync(join(godot, 'wiki', 'phases', 'phase-1.json'), 'utf8'))
     : null;
-  check(start.status === 0 && marker?.engineRuntime?.engine === 'godot' && marker?.engineRuntime?.capabilities?.visualCapture === false,
+  check(start.status === 0 && marker?.engineRuntime?.engine === 'godot' && marker?.engineRuntime?.capabilities?.visualCapture === true
+    && marker?.engineRuntime?.capabilities?.proofVideo === true,
     'phase-state records the trusted engine runtime at phase start', `${start.stdout}\n${start.stderr}`);
   check(start.stdout.includes('[Forge] Engine -> godot'), 'phase start exposes the selected engine to the active agent', start.stdout);
 
@@ -128,18 +132,29 @@ try {
   check(nativeStart.status === 0 && nativeMarker.state === 'in_progress' && nativeMarker.engineRuntime?.capabilities?.constructVerifier === true,
     'Godot Phase 3 starts only after the native construct capability is installed', `${nativeStart.stdout}\n${nativeStart.stderr}`);
 
-  const blockedStart = spawnSync(process.execPath, [phaseState, 'start', '4', '--host', 'test'], {
+  const visualStart = spawnSync(process.execPath, [phaseState, 'start', '4', '--host', 'test'], {
     cwd: godot,
     env: { ...process.env, FORGE_ENGINE_ROOT: ROOT },
     encoding: 'utf8',
     timeout: 20_000,
   });
-  const blockedMarker = JSON.parse(readFileSync(join(godot, 'wiki', 'phases', 'phase-4.json'), 'utf8'));
+  const visualMarker = JSON.parse(readFileSync(join(godot, 'wiki', 'phases', 'phase-4.json'), 'utf8'));
+  check(visualStart.status === 0 && visualMarker.state === 'in_progress'
+    && visualMarker.engineRuntime?.capabilities?.visualCapture === true
+    && visualMarker.engineRuntime?.capabilities?.proofVideo === true,
+  'supported Godot visual phase starts with both native capabilities recorded', `${visualStart.stdout}\n${visualStart.stderr}`);
+
+  const blockedStart = spawnSync(process.execPath, [phaseState, 'start', '5', '--host', 'test'], {
+    cwd: godot,
+    env: { ...process.env, FORGE_ENGINE_ROOT: ROOT },
+    encoding: 'utf8',
+    timeout: 20_000,
+  });
+  const blockedMarker = JSON.parse(readFileSync(join(godot, 'wiki', 'phases', 'phase-5.json'), 'utf8'));
   check(blockedStart.status === 1 && blockedMarker.state === 'blocked'
     && blockedMarker.block?.owner === 'infrastructure'
-    && blockedMarker.block?.code === 'ENGINE_CAPABILITY_UNAVAILABLE'
-    && blockedMarker.block?.resumePolicy === 'environment_change',
-  'unsupported Godot visual phase persists an infrastructure-owned block', `${blockedStart.stdout}\n${blockedStart.stderr}`);
+    && blockedMarker.block?.code === 'ENGINE_CAPABILITY_UNAVAILABLE',
+  'unsupported Godot tech phase remains an infrastructure-owned block', `${blockedStart.stdout}\n${blockedStart.stderr}`);
 
   const invalidStart = spawnSync(process.execPath, [phaseState, 'start', '1', '--host', 'test'], {
     cwd: invalid,

@@ -13,7 +13,9 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [x] Q3-002: project creation and Dashboard select `web|godot`; 26 engine regressions and Dashboard checks pass.
 - [x] Q3-003: trusted engine routing blocks unsupported Godot Phase 4–5 and direct browser visual bypasses; 32 regressions pass.
 - [x] Q3-004: native Godot Phase 3 verifier passes 16 fixture regressions, including exact node types and script attachments.
-- [ ] Q3-005..Q3-009: capture, review, test, release and pilot the native Godot path.
+- [x] Q3-005: native state capture + MovieWriter proof video pass 24 regressions and a real Godot 4.7 forward-test.
+- [x] Q3-006: native Phase 4 binds capture/proof receipts, current implementation and independent review; 25 isolated adversarial scenarios pass.
+- [ ] Q3-007..Q3-009: test, release, optimize assets and pilot the native Godot path.
 
 ### Previous v4.68.51 release
 
@@ -147,8 +149,8 @@ nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Blockers
 
-Godot capture/playtest/export adapters do not exist yet; the experimental profile must fail closed until
-their task is complete. The installed Godot 4.7 editor import currently hangs on this PC; the bounded
+Godot Phase 4 capture and independent acceptance now pass real forward-testing. Native Phase 5,
+scripted playtest and export/release remain fail-closed until Q3-007 supplies their adapters. The installed Godot 4.7 editor import currently hangs on this PC; the bounded
 native verifier classifies it as an environment blocker and kills its process tree instead of claiming
 PASS. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
@@ -180,4 +182,4 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-25: Screenshot existence proves capture, not visual quality; Phase 4 acceptance binds exact current pixels to complete state/viewport coverage and an independent reviewer session.
 - 2026-08-25: Game engine selection is orthogonal to terminal AI hosts; missing profile means stable web, and an unavailable adapter never falls back to a browser verifier.
 
-<!-- last updated 2026-08-25 after completing Q3-004 native Godot construct verification -->
+<!-- last updated 2026-08-25 after completing Q3-006 native Godot visual evidence binding -->

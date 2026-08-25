@@ -13,6 +13,7 @@ reads:
   - "**"
 writes:
   - forge.godot.json
+  - forge.godot.visual.json
   - WorkProgress/**
   - wiki/**
 verifiers:
@@ -22,6 +23,7 @@ risk_shell: write
 risk_external: none
 references:
   - references/godot-csharp.md
+  - references/godot-visual-qa.md
 completion_contract: status/references/phase-contracts/phase-3.json
 ---
 
@@ -65,6 +67,11 @@ Inside `projectPath` create at minimum:
 3. production script(s) attached to that scene;
 4. a `_ready` path that prints the exact smoke marker only after essential initialization succeeds;
 5. `.gitignore` coverage for `.godot/`, C# `bin/` and `obj/` when applicable.
+
+If Phase 2 has an approved Godot screen flow, also read
+[references/godot-visual-qa.md](references/godot-visual-qa.md) and build its native state/proof
+adapter during Phase 3. Do not postpone the adapter until visual acceptance: Phase 4 must inspect
+the real runtime states, not retrofit test-only screens after construction.
 
 Prefer GDScript for the fastest dependency-light pilot. Use C# only when the project needs it and the
 machine has a .NET-enabled Godot editor plus a compatible SDK. For C#, read

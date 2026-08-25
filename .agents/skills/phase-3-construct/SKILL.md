@@ -11,6 +11,8 @@ requires: []
 reads:
   - "**"
 writes:
+  - forge.godot.json
+  - forge.godot.visual.json
   - WorkProgress/**
   - wiki/**
   - assets/**
@@ -98,8 +100,10 @@ machine-readable progression state, а сами артефакты остают�
 ## Обязательные системные спринты (не только фичи контента)
 - **визуальный QA adapter** по утверждённому `wiki/design/screen-flow.json`: для `web` только при
   query `?forgeVisualQa=1` выставить `window.__FORGE_VISUAL_QA__` с `listStates()`, асинхронным
-  `showState(id)` и `currentState()`. Для Godot/другого native engine нужен его собственный
-  state/capture adapter; создавать фальшивый browser bridge нельзя. Список обязан точно совпасть
+  `showState(id)` и `currentState()`. Для Godot скопируй штатный `templates/godot/ForgeVisualQA.gd`
+  или `.cs`, зарегистрируй его autoload, создай `forge.godot.visual.json` и реализуй на целевом
+  узле `forge_visual_states`, `forge_visual_show_state`, `forge_visual_current_state`,
+  `forge_visual_tick_proof`. Создавать фальшивый browser bridge нельзя. Список обязан точно совпасть
   с Phase 2 inventory — иначе Ф4 не сможет доказать полноту экранов и фактический переход;
 - RV-хуки по утверждённой карте монетизации (каждый = своя награда и момент);
 - гача-мета модуль (механики из GDD: pity видим, шансы показаны, дубли конвертятся);

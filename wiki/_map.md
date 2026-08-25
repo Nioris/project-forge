@@ -485,12 +485,14 @@
 - `Q3-002` — engine selection in new-project and Dashboard.
 - `Q3-003` — engine-aware Phase 1/3–5 routing with browser-substitution rejection.
 - `Q3-004` — native Godot Phase 3 verifier with isolated import/startup and scene-contract regressions.
+- `Q3-005` — native state screenshots and MovieWriter proof video with real Godot 4.7 forward-test.
+- `Q3-006` — native capture/proof receipts, current implementation snapshots and independent Phase 4 review.
 
 ### Next
 
-1. `Q3-005`
-2. `Q3-006`
-3. `Q3-007`
+1. `Q3-007`
+2. `Q3-008`
+3. `Q3-009`
 
 ### Existing v4.8 backlog — priority order
 

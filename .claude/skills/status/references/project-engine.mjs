@@ -78,6 +78,14 @@ export function enginePhaseSupport(profile, phase) {
   const capability = ENGINE_PHASE_CAPABILITIES[numericPhase] || null;
   if (!capability) return { supported: true, phase: numericPhase, capability: null, message: null };
   if (profile?.capabilities?.[capability] === true) {
+    if (numericPhase === 4 && profile?.engine === 'godot' && profile?.capabilities?.proofVideo !== true) {
+      return {
+        supported: false,
+        phase: numericPhase,
+        capability: 'proofVideo',
+        message: 'Engine godot cannot complete Phase 4: proofVideo adapter is unavailable. Static screenshots cannot substitute for native motion proof.',
+      };
+    }
     return { supported: true, phase: numericPhase, capability, message: null };
   }
 

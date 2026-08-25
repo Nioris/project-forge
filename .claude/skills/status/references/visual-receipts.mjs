@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { resolveTrustedForgeEngineRoot } from './forge-engine-root.mjs';
 
 export const VISUAL_RECEIPT_SCHEMA_VERSION = 1;
-export const VISUAL_RECEIPT_KINDS = new Set(['capture', 'review']);
+export const VISUAL_RECEIPT_KINDS = new Set(['capture', 'proof', 'review']);
 export const VISUAL_RECEIPT_KEY_FILE = 'phase4-visual-receipts.key';
 export const VISUAL_RECEIPT_MAX_PAYLOAD_BYTES = 512 * 1024;
 
@@ -74,7 +74,7 @@ function assertSafeReceiptId(value) {
 
 function assertReceiptKind(value) {
   const kind = String(value || '').trim().toLowerCase();
-  if (!VISUAL_RECEIPT_KINDS.has(kind)) throw error('VISUAL_RECEIPT_INVALID_KIND', 'Receipt kind must be capture or review');
+  if (!VISUAL_RECEIPT_KINDS.has(kind)) throw error('VISUAL_RECEIPT_INVALID_KIND', 'Receipt kind must be capture, proof, or review');
   return kind;
 }
 
@@ -200,7 +200,7 @@ export function resolveVisualReceiptStore({ projectRoot = process.cwd(), moduleR
   };
 }
 
-/** Record an immutable, HMAC-signed capture or review receipt in the engine-adjacent store. */
+/** Record an immutable, HMAC-signed capture, proof, or review receipt in the engine-adjacent store. */
 export function recordVisualReceipt({ projectRoot = process.cwd(), kind, payload, receiptId = '', moduleRoot = MODULE_ROOT, environmentRoot } = {}) {
   const store = resolveVisualReceiptStore({ projectRoot, moduleRoot, environmentRoot });
   const safeKind = assertReceiptKind(kind);

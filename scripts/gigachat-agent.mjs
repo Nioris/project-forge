@@ -199,6 +199,11 @@ function taskScopedForgeScriptBlock(scriptPath, args=[]) {
     const denied = taskScopedAssertTargets([`${rootPrefix}assets/target/screens/manifest.json`], 'forge_script:screen-targets');
     return denied ? taskScopeDeny('forge_script:screen-targets',targetDir,`Forge Task scope blocks screen-targets: ${denied}`) : null;
   }
+  if (base === 'prepare-godot-phase4-review.mjs') {
+    const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
+    const denied = taskScopedAssertTargets([`${rootPrefix}screens/review/phase-4-visual-evidence.template.json`], 'forge_script:prepare-godot-phase4-review');
+    return denied ? taskScopeDeny('forge_script:prepare-godot-phase4-review',targetDir,`Forge Task scope blocks Godot Phase 4 review preparation: ${denied}`) : null;
+  }
   if (base === 'bind-phase4-visual-evidence.mjs') {
     const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
     const denied = taskScopedAssertTargets([`${rootPrefix}wiki/qa/phase-4-visual-evidence.json`], 'forge_script:bind-phase4-visual-evidence');
@@ -214,10 +219,11 @@ function taskScopedForgeScriptBlock(scriptPath, args=[]) {
     const denied = taskScopedAssertTargets([`${rootPrefix}assets/generated/provenance.jsonl`], 'forge_script:record-image-provenance');
     return denied ? taskScopeDeny('forge_script:record-image-provenance',targetDir,`Forge Task scope blocks image provenance recording: ${denied}`) : null;
   }
-  if (base === 'screens-shoot.mjs') {
+  if (base === 'screens-shoot.mjs' || base === 'godot-screens-shoot.mjs' || base === 'godot-proof-video.mjs') {
     const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
-    const denied = taskScopedAssertTargets([`${rootPrefix}screens/review/.forge-scope-probe`], 'forge_script:screens-shoot');
-    return denied ? taskScopeDeny('forge_script:screens-shoot',targetDir,`Forge Task scope blocks visual capture output: ${denied}`) : null;
+    const operation = `forge_script:${base.replace(/\.mjs$/i, '')}`;
+    const denied = taskScopedAssertTargets([`${rootPrefix}screens/review/.forge-scope-probe`], operation);
+    return denied ? taskScopeDeny(operation,targetDir,`Forge Task scope blocks visual capture output: ${denied}`) : null;
   }
   if (base === 'local-stage.mjs') {
     if (!args.some(arg => /^--ai$/i.test(String(arg)))) return null;
@@ -844,7 +850,7 @@ function commandLooksMutating(command=''){
   if(/^(git\s+(status|diff|log)|dir\b|ls\b|find\b|du\b|grep\b|type\b|cat\b)/i.test(c)) return false;
   if(/phase-state\.mjs.*\b(?:start|reopen|block|complete)\b/i.test(c)) return true;
   if(/ai-studio-init\.mjs/i.test(c) && !/--check/i.test(c)) return true;
-  if(/integrate-gacha|screen-targets|screens-shoot|bind-phase4-visual-evidence|record-phase4-visual-review|record-image-provenance|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
+  if(/integrate-gacha|screen-targets|screens-shoot|godot-proof-video|prepare-godot-phase4-review|bind-phase4-visual-evidence|record-phase4-visual-review|record-image-provenance|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
   return false;
 }
 function verifierEntrySuccess(re,phaseOverride=activePhase){
@@ -5161,7 +5167,7 @@ if (REQUEST_DOCTOR) {
   test('guarded Task blocks raw shell fail-closed and unclassified forge scripts',()=>/blocks raw/.test(taskScopedShellMutationBlock.toString())&&/taskScopedShellMutationBlock/.test(tool.toString())&&/taskScopedForgeScriptBlock/.test(tool.toString())&&/blocks unclassified forge_script/.test(taskScopedForgeScriptBlock.toString()));
   test('only registered read-only verifier scripts bypass the scoped forge-script block',()=>/declaredReadOnlyForgeVerifier/.test(taskScopedForgeScriptBlock.toString())&&/mutates !== false/.test(declaredReadOnlyForgeVerifier.toString()));
   test('active Task trusts engine verifier scripts, never project-local shadows',()=>!/projectPath/.test(declaredReadOnlyForgeVerifier.toString())&&/scopedTask&&existsSync\(engine\)/.test(resolveForgeScript.toString()));
-  test('scoped canonical mutators enumerate their output roots',()=>{const x=taskScopedForgeScriptBlock.toString();return /gacha-backups/.test(x)&&/modularize-backups/.test(x)&&/\.forge-ai\.json/.test(x)&&/assets\/target\/screens\/manifest\.json/.test(x)&&/phase-4-visual-evidence\.json/.test(x)&&/stage-out/.test(x)&&/stage\.png/.test(x);});
+  test('scoped canonical mutators enumerate their output roots',()=>{const x=taskScopedForgeScriptBlock.toString();return /gacha-backups/.test(x)&&/modularize-backups/.test(x)&&/\.forge-ai\.json/.test(x)&&/assets\/target\/screens\/manifest\.json/.test(x)&&/phase-4-visual-evidence\.template\.json/.test(x)&&/phase-4-visual-evidence\.json/.test(x)&&/stage-out/.test(x)&&/stage\.png/.test(x);});
   test('scoped output maps handle nested AI Studio targets and --out=value',()=>{const x=taskScopedForgeScriptBlock.toString();return /rootPrefix/.test(x)&&/--out=/.test(x)&&forgeScriptTargetArg(['--out','Release/escape','WorkProgress/game'])==='WorkProgress/game'&&forgeScriptTargetArg(['--out=Release/escape','WorkProgress/game'])==='WorkProgress/game';});
   test('Task scope denials emit bounded Forge diagnostics',()=>/GIGA_TASK_SCOPE_DENIED/.test(reportTaskScopeDenied.toString())&&/slice\(0,700\)/.test(reportTaskScopeDenied.toString())&&/taskScopeDeny/.test(taskScopedForgeScriptBlock.toString()));
   test('phase lifecycle exception is forge_script-only, not a shell substring bypass',()=>!/phase-state/.test(taskScopedShellMutationBlock.toString())&&/phase-state\\\.mjs/.test(taskScopedForgeScriptBlock.toString()));

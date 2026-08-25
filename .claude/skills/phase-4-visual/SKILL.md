@@ -14,6 +14,7 @@ writes:
   - WorkProgress/**
   - wiki/**
   - assets/**
+  - screens/**
 verifiers:
   - phase4-visual-evidence
 stop_points:
@@ -62,8 +63,10 @@ machine-readable progression state, а сами артефакты остают�
 браузерные кадры, `window.__FORGE_VISUAL_QA__` и ручной импорт PNG не доказывают Godot/native build.
 
 - `engineRuntime.capture=browser` — используй существующий `screens-shoot.mjs` route ниже;
-- `engineRuntime.capture=godot` — используй только установленный native capture adapter и его
-  receipt. Пока adapter не зарегистрирован, Phase 4 остаётся честно заблокированной.
+- `engineRuntime.capture=godot` — продолжай только при одновременных
+  `engineRuntime.capabilities.visualCapture=true` и `proofVideo=true`; используй native state
+  capture + MovieWriter proof из `/godot-engine` → `references/godot-visual-qa.md`. Browser capture,
+  `--headless`, fixture shim и ручной PNG не являются доказательством Godot.
 
 Независимый reviewer, state coverage, сравнение с target frame, порог 6/10 и запрет
 self-review одинаковы для всех движков; меняется способ получения достоверного кадра.
@@ -210,11 +213,19 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
    `screens-shoot.mjs` без ручного `--states`: он сам берёт **все состояния из screen-flow**,
    переключает их через adapter и создаёт
    `screens/review/capture-manifest.json` с реальными размерами, SHA-256, coverage и browser errors.
-   **Godot/native route:** эти browser-механизмы запрещены; native adapter обязан создать
-   эквивалентные state-bound frames, manifest и engine-owned receipt. Если capability ещё false,
-   дальнейшие пункты не выполняются и Phase 4 не заявляется готовой.
-2. Передай `assets/target/screens/manifest.json`, style bible и **каждый** mobile/desktop кадр другому
-   reviewer-сеансу или отдельному visual-qa агенту. Builder session не может принять сам себя.
+   **Godot/native route:** эти browser-механизмы запрещены. Builder в одной host session запускает
+   по порядку `godot-screens-shoot.mjs` и `godot-proof-video.mjs`. Нужны: реальный renderer,
+   точная пара mobile/desktop на каждый state, пустые runtime errors, current implementation
+   snapshot, receipted capture, indexed MJPEG AVI, не менее 12 уникальных видеокадров и один
+   lossless PNG sample в секунду. Любой `testHarness=true`, frozen AVI или stale source блокирует
+   route до review.
+2. Для Godot после двух producer-команд запусти
+   `node <движок>/scripts/prepare-godot-phase4-review.mjs .`, затем инициализируй канонический
+   evidence через `bind-phase4-visual-evidence.mjs . --init screens/review/phase-4-visual-evidence.template.json`.
+   Передай `assets/target/screens/manifest.json`, style bible, **каждый** mobile/desktop кадр,
+   полный AVI и все lossless samples другому reviewer-сеансу или отдельному visual-qa агенту.
+   Builder session не может принять сам себя; reviewer обязан действительно открыть pixels/video,
+   а не оценивать JSON и имена файлов.
 3. Reviewer открывает live screenshot рядом с его state-specific mobile/desktop target, а не только
    общий target и не JSON, и пишет `wiki/qa/phase-4-visual-review.md`: по каждому
    кадру — композиция, иерархия, читаемость, совпадение со стилем/target frame, адаптивность,
@@ -222,6 +233,9 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
    (композиция, плотность, палитра/материал, иерархия) и поставь отдельный `distanceScore`.
 4. На основе `screens/review/phase-4-visual-evidence.template.json` сформируй
    `wiki/qa/phase-4-visual-evidence.json`; привяжи отчёт, target frame и style bible их SHA-256.
+   Для Godot дополнительно заполни `proofReview`: `videoWatched=true`, все configured states,
+   **все sample hashes в timeline order**, motionScore, конкретную критику motion/camera/feedback
+   и defects. Дубли не заменяют пропущенный state/sample.
    После заполнения reviewer-полей выполни
    `node <движок>/scripts/bind-phase4-visual-evidence.mjs .` — он обновит только машинные
    пути/хеши и **не** превращает незаполненный/слабый review в PASS.
@@ -236,5 +250,7 @@ Gate отклоняет фазу, если: пропущено состояни�
 кадр устарел после правки UI; есть overflow/runtime error; reviewer совпадает с builder session;
 не открыт/не оценён хотя бы один кадр; любой критерий или target distance ниже 6/10; reviewer не
 назвал 2 совпадения + 3 конкретных расхождения с целью; остался Critical/Major; хеши
-скриншота, target frame, style bible или отчёта не совпадают. Наличие CSS и `errors: []` больше
-никогда не является визуальной приёмкой.
+скриншота, target frame, style bible или отчёта не совпадают. В Godot также блокируют browser
+substitution, test harness, несвязанный/битый AVI index, статичный MJPEG, неполный proof review и
+расхождение capture/proof/current implementation snapshots. Наличие CSS, файла AVI или
+`errors: []` больше никогда не является визуальной приёмкой.

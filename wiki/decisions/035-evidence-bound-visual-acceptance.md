@@ -25,12 +25,19 @@ Phase 4 completion requires three independent enforcement layers:
    session. Engine-adjacent HMAC receipts outside the project make later capture/review evidence edits
    detectable. Every frame receives
    five scores and concrete critique; any score below 6/10 or open Critical/Major defect rejects completion.
+4. A native Godot route replaces browser capture with a production-inert runtime adapter, isolated
+   rendered state capture and a deterministic MovieWriter proof. It binds capture + proof + current
+   implementation snapshots, validates each MJPEG frame and final `idx1`, requires motion in both the
+   AVI and one lossless sample per second, and rejects browser/test-harness substitution. The independent
+   reviewer must watch the whole proof and bind every sample in timeline order.
 
 Every key screen-flow state maps to its own GPT Image mobile/desktop visual blueprint through
 `assets/target/screens/manifest.json`; a secondary state may explicitly inherit an approved archetype.
 CSS, DOM assertions, console cleanliness and builder self-review remain useful diagnostics but are not
 visual acceptance. Any implementation/style change after capture invalidates the evidence and requires
-new screenshots and a new independent review.
+new screenshots and a new independent review. The canonical binding helper resets verdicts, scores,
+critique and reviewer identity when capture, targets, style bible or native proof changes; it cannot
+silently attach an old judgment to new pixels.
 
 ## Consequences
 
@@ -42,3 +49,5 @@ new screenshots and a new independent review.
   exact current pixels, every required viewport/state and an independently identified review session.
 - A process with full access to the trusted engine and secret store remains inside the host trust boundary;
   receipts detect later project-local evidence edits, but they are not an external authorization service.
+- Synthetic fixtures exercise policy failures but never constitute real-engine evidence; native readiness
+  also requires a separate forward-test with an actual non-headless Godot renderer.

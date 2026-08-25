@@ -298,6 +298,32 @@ safe('godot-project-verifier', () => {
   }
 });
 
+safe('godot-native-visual-capture', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-godot-visual-capture.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  if (r.status !== 0) {
+    err('Godot native visual capture regression failed — run scripts/check-godot-visual-capture.mjs');
+  } else {
+    ok.push('Godot native state capture and proof video are deterministic, bounded and non-headless');
+  }
+});
+
+safe('godot-native-phase4-evidence', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-godot-phase4-evidence.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60_000,
+  });
+  if (r.status !== 0) {
+    err('Godot native Phase 4 evidence regression failed — run scripts/check-godot-phase4-evidence.mjs');
+  } else {
+    ok.push('Godot Phase 4 binds native capture/proof receipts, current implementation and independent review');
+  }
+});
+
 // ---- 9. i18n-completeness must keep the data-i18n awareness -------------------------------
 // REQ-8.2.3 validator flagged data-i18n elements as "hardcoded Russian" (8 false BLOCKERs) because
 // its "covered" check ignored the data-i18n attribute that applyStaticLang() actually keys on.

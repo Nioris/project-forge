@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/godot-visual.schema.json",
+  "title": "Project Forge Godot visual QA contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "adapter", "capture", "proofVideo"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.godot-visual" },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "autoloadName", "script", "targetNode"],
+      "properties": {
+        "protocol": { "const": "forge-godot-visual-v1" },
+        "autoloadName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{2,63}$" },
+        "script": { "type": "string", "pattern": "^res://[A-Za-z0-9._/-]+\\.(?:gd|cs)$" },
+        "targetNode": { "type": "string", "pattern": "^(?:\\.|[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*)$" }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["settleFrames", "timeoutSeconds", "viewports"],
+      "properties": {
+        "settleFrames": { "type": "integer", "minimum": 2, "maximum": 120 },
+        "timeoutSeconds": { "type": "integer", "minimum": 10, "maximum": 90 },
+        "viewports": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mobile", "desktop"],
+          "properties": {
+            "mobile": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["width", "height"],
+              "properties": {
+                "width": { "const": 412 },
+                "height": { "type": "integer", "minimum": 720, "maximum": 1024 }
+              }
+            },
+            "desktop": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["width", "height"],
+              "properties": {
+                "width": { "type": "integer", "minimum": 1280, "maximum": 3840 },
+                "height": { "type": "integer", "minimum": 720, "maximum": 2160 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "proofVideo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fps", "durationSeconds", "viewport", "states"],
+      "properties": {
+        "fps": { "type": "integer", "minimum": 24, "maximum": 60 },
+        "durationSeconds": { "type": "integer", "minimum": 15, "maximum": 20 },
+        "viewport": { "enum": ["mobile", "desktop"] },
+        "states": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$" }
+        }
+      }
+    }
+  }
+}

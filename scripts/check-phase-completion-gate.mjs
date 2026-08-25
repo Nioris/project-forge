@@ -620,8 +620,25 @@ try {
 
   const p4InheritedTarget = path.join(tmp, 'phase-4-inherited-screen-target');
   writePhase4Fixture(p4InheritedTarget);
+  const inheritedEvidenceFile = path.join(p4InheritedTarget, 'wiki', 'qa', 'phase-4-visual-evidence.json');
+  const priorInheritedReview = JSON.parse(fs.readFileSync(inheritedEvidenceFile, 'utf8'));
   const inheritTarget = spawnSync(process.execPath, [screenTargetsScript, '.', '--state', 'settings', '--description', 'Settings intentionally inherits the approved headquarters shell while changing only secondary controls and content.', '--inherit-from', 'hq'], { cwd: p4InheritedTarget, encoding: 'utf8' });
   const bindInherited = spawnSync(process.execPath, [bindVisualEvidenceScript, '.'], { cwd: p4InheritedTarget, encoding: 'utf8' });
+  const reboundInherited = JSON.parse(fs.readFileSync(inheritedEvidenceFile, 'utf8'));
+  const inheritedReset = reboundInherited.verdict === 'reject' && reboundInherited.reviews.every(review => review.verdict === 'reject');
+  reboundInherited.verdict = 'pass';
+  reboundInherited.summary = priorInheritedReview.summary;
+  for (const review of reboundInherited.reviews) {
+    const prior = priorInheritedReview.reviews.find(item => item.state === review.state && item.viewport === review.viewport);
+    review.verdict = 'pass';
+    review.scores = prior.scores;
+    review.targetComparison.distanceScore = prior.targetComparison.distanceScore;
+    review.targetComparison.matches = prior.targetComparison.matches;
+    review.targetComparison.differences = prior.targetComparison.differences;
+    review.critique = prior.critique;
+    review.defects = prior.defects;
+  }
+  fs.writeFileSync(inheritedEvidenceFile, JSON.stringify(reboundInherited, null, 2));
   const recordInherited = spawnSync(process.execPath, [recordVisualReviewScript, '.'], { cwd: p4InheritedTarget, encoding: 'utf8' });
   result = validatePhaseCompletion({ root: p4InheritedTarget, phase: 4, evidence: p4Evidence });
   if (!(inheritTarget.status === 0 && bindInherited.status === 0 && recordInherited.status === 0 && result.ok)) {
@@ -632,8 +649,8 @@ try {
       failures: result.failures,
     }, null, 2));
   }
-  check(inheritTarget.status === 0 && bindInherited.status === 0 && recordInherited.status === 0 && result.ok,
-    'canonical helpers hash an explicitly inherited screen blueprint and rebind the independent review');
+  check(inheritTarget.status === 0 && bindInherited.status === 0 && inheritedReset && recordInherited.status === 0 && result.ok,
+    'changed screen targets reset prior judgments before a fresh independent review can pass');
 
   const p4Major = path.join(tmp, 'phase-4-major-defect');
   writePhase4Fixture(p4Major, ({ evidence }) => { evidence.reviews[1].defects = [{ severity: 'major', description: 'Primary action is obscured.' }]; });

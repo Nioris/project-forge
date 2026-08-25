@@ -8,11 +8,31 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inspectPng } from './png-integrity.mjs';
 import { findImageProvenance } from './image-provenance.mjs';
 import { SCREEN_FLOW_PATH, validateScreenFlow } from './screen-flow-contract.mjs';
 import { verifyVisualReceipt } from './visual-receipts.mjs';
 import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
+import { resolveTrustedForgeEngineRoot } from './forge-engine-root.mjs';
+
+const MODULE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+let readGodotVisualContract = null;
+let inspectMjpegAvi = null;
+let snapshotGodotVisualInputs = null;
+try {
+  const trustedEngineRoot = resolveTrustedForgeEngineRoot({ projectRoot: process.cwd(), moduleRoot: MODULE_ROOT });
+  const [contractModule, runtimeModule] = await Promise.all([
+    import(pathToFileURL(path.join(trustedEngineRoot, 'scripts', 'godot-visual-contract.mjs')).href),
+    import(pathToFileURL(path.join(trustedEngineRoot, 'scripts', 'godot-visual-runtime.mjs')).href),
+  ]);
+  readGodotVisualContract = contractModule.readGodotVisualContract;
+  inspectMjpegAvi = runtimeModule.inspectMjpegAvi;
+  snapshotGodotVisualInputs = runtimeModule.snapshotGodotVisualInputs;
+} catch {
+  // Web/early portable phases do not require native visual modules. A Godot Phase 4 call below
+  // fails closed if the trusted sibling engine cannot supply them.
+}
 
 export const PHASE4_VISUAL_EVIDENCE_PATH = 'wiki/qa/phase-4-visual-evidence.json';
 export const PHASE4_VISUAL_REPORT_PATH = 'wiki/qa/phase-4-visual-review.md';
@@ -110,8 +130,15 @@ function receiptFreeReviewEvidence(evidence) {
   return copy;
 }
 
+function receiptFreeProofManifest(manifest) {
+  const copy = JSON.parse(JSON.stringify(manifest || {}));
+  delete copy.proofId;
+  delete copy.proofReceiptId;
+  return copy;
+}
+
 export function captureReceiptPayload({ manifestPath, manifest }) {
-  return {
+  const payload = {
     schemaVersion: 1,
     kind: 'forge.phase4.capture',
     captureId: manifest?.captureId || '',
@@ -132,10 +159,40 @@ export function captureReceiptPayload({ manifestPath, manifest }) {
       stateProof: item.stateProof || null,
     })) : [],
   };
+  if (manifest?.captureMode === 'forge-godot-runtime-adapter') {
+    payload.engine = manifest.engine || null;
+    payload.visualContract = manifest.visualContract || null;
+    payload.stateAdapter = manifest.stateAdapter || null;
+    payload.implementationSnapshot = manifest.implementationSnapshot || null;
+  }
+  return payload;
+}
+
+export function computeGodotProofId({ manifest }) {
+  return sha256Json(receiptFreeProofManifest(manifest));
+}
+
+export function proofReceiptPayload({ manifestPath, manifest }) {
+  return {
+    schemaVersion: 1,
+    kind: 'forge.phase4.godot-proof',
+    proofId: manifest?.proofId || '',
+    proofManifestPath: normalizeVisualPath(manifestPath),
+    proofManifestFactsSha256: sha256Json(receiptFreeProofManifest(manifest)),
+    capturedAt: manifest?.capturedAt || '',
+    builder: manifest?.builder || null,
+    engine: manifest?.engine || null,
+    screenFlow: manifest?.screenFlow || null,
+    visualContract: manifest?.visualContract || null,
+    stateAdapter: manifest?.stateAdapter || null,
+    implementationSnapshot: manifest?.implementationSnapshot || null,
+    video: manifest?.video || null,
+    samples: Array.isArray(manifest?.samples) ? manifest.samples : [],
+  };
 }
 
 export function reviewReceiptPayload({ evidencePath = PHASE4_VISUAL_EVIDENCE_PATH, evidence }) {
-  return {
+  const payload = {
     schemaVersion: 1,
     kind: 'forge.phase4.review',
     captureId: evidence?.captureId || '',
@@ -148,6 +205,12 @@ export function reviewReceiptPayload({ evidencePath = PHASE4_VISUAL_EVIDENCE_PAT
     screenTargetsSha256: evidence?.screenTargets?.sha256 || '',
     reportSha256: evidence?.report?.sha256 || '',
   };
+  if (evidence?.nativeProof && typeof evidence.nativeProof === 'object') {
+    payload.proofId = evidence.nativeProof.proofId || '';
+    payload.proofReceiptId = evidence.nativeProof.proofReceiptId || '';
+    payload.proofManifestSha256 = evidence.nativeProof.manifest?.sha256 || '';
+  }
+  return payload;
 }
 
 function walkFiles(dir, predicate, out = []) {
@@ -179,6 +242,15 @@ function sameSet(left, right) {
   const a = [...new Set(left)].sort();
   const b = [...new Set(right)].sort();
   return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function sameUniqueSet(left, right) {
+  return left.length === right.length && new Set(left).size === left.length
+    && new Set(right).size === right.length && sameSet(left, right);
+}
+
+function sameOrderedArray(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 export function computeVisualCaptureId({ capturedAt, captures }) {
@@ -321,6 +393,280 @@ function validateCaptureManifest(root, manifestPath, screenFlow, failures) {
   return { file, manifest, captures, states, captureId: expectedCaptureId, receipt };
 }
 
+function sameImplementationSnapshot(left, right) {
+  return left?.algorithm === 'sha256-path-content-v1' && right?.algorithm === 'sha256-path-content-v1'
+    && left.sha256 === right.sha256 && left.fileCount === right.fileCount && left.bytes === right.bytes;
+}
+
+function validateGodotCaptureManifest(root, manifestPath, screenFlow, contract, failures) {
+  const expectedPath = 'screens/review/capture-manifest.json';
+  const file = safeProjectFile(root, manifestPath);
+  if (!file || file.normalized !== expectedPath) {
+    failures.push(`Godot captureManifest must reference ${expectedPath}`);
+    return null;
+  }
+  const manifest = parseJsonFile(file.absolute);
+  if (!manifest || manifest.schemaVersion !== 1 || manifest.kind !== 'forge.visual-capture') {
+    failures.push('Godot capture manifest is missing or has the wrong schema/kind');
+    return null;
+  }
+  if (manifest.generatedBy !== 'godot-screens-shoot.mjs') failures.push('Godot capture manifest was not generated by godot-screens-shoot.mjs');
+  if (manifest.captureMode !== 'forge-godot-runtime-adapter') failures.push('Godot Phase 4 capture must use the native Forge runtime adapter');
+  if (manifest.engine?.name !== 'godot' || typeof manifest.engine?.version !== 'string' || !manifest.engine.version.trim()) {
+    failures.push('Godot capture must identify the real native engine/version');
+  }
+  if (manifest.engine?.testHarness !== false) failures.push('Godot Phase 4 cannot accept a test harness capture');
+  if (!isIsoDate(manifest.startedAt)) failures.push('Godot capture manifest needs a canonical ISO startedAt timestamp');
+  if (!isIsoDate(manifest.capturedAt)) failures.push('Godot capture manifest needs a canonical ISO capturedAt timestamp');
+  if (!identityKey(manifest.builder)) failures.push('Godot capture manifest needs a host-derived builder identity');
+  if (!Array.isArray(manifest.runtimeErrors) || manifest.runtimeErrors.length !== 0) failures.push('Godot visual capture contains runtime errors');
+  if (!Array.isArray(manifest.missingStates) || manifest.missingStates.length !== 0) failures.push('Godot capture could not reach every requested state');
+  if (!Array.isArray(manifest.statePixelCollisions) || manifest.statePixelCollisions.length !== 0) failures.push('Godot capture contains identical-state pixel collisions');
+
+  const expectedFlowHash = screenFlow?.file ? sha256File(screenFlow.file) : '';
+  if (normalizeVisualPath(manifest.screenFlow?.path) !== SCREEN_FLOW_PATH || manifest.screenFlow?.sha256 !== expectedFlowHash) {
+    failures.push('Godot capture is not bound to the approved Phase 2 screen inventory');
+  }
+  const visualFile = safeProjectFile(root, 'forge.godot.visual.json');
+  const expectedVisual = visualFile ? { path: 'forge.godot.visual.json', sha256: sha256File(visualFile.absolute) } : null;
+  if (!expectedVisual || canonicalJson(manifest.visualContract || null) !== canonicalJson(expectedVisual)) {
+    failures.push('Godot capture is not bound to the current forge.godot.visual.json');
+  }
+  const adapterFile = safeProjectFile(contract?.implementationRoot || root, contract?.adapter?.script?.rel || '');
+  const expectedAdapter = contract && adapterFile ? {
+    protocol: contract.adapter.protocol,
+    autoloadName: contract.adapter.autoloadName,
+    script: contract.adapter.script.resource,
+    targetNode: contract.adapter.targetNode,
+    sha256: sha256File(adapterFile.absolute),
+  } : null;
+  if (!expectedAdapter || canonicalJson(manifest.stateAdapter || null) !== canonicalJson(expectedAdapter)) {
+    failures.push('Godot capture adapter fields/hash do not match the current native adapter');
+  }
+  let liveSnapshot = null;
+  try { liveSnapshot = contract ? snapshotGodotVisualInputs(contract.implementationRoot) : null; }
+  catch (error) { failures.push(`Godot implementation snapshot failed: ${error.message}`); }
+  if (!liveSnapshot || !sameImplementationSnapshot(manifest.implementationSnapshot, liveSnapshot)) {
+    failures.push('Godot capture implementation snapshot is stale or invalid');
+  }
+  if (manifest.projectRoot !== '.' || manifest.gameRoot !== contract?.projectPath) failures.push('Godot capture gameRoot does not match forge.godot.json');
+  if (canonicalJson(manifest.viewports || null) !== canonicalJson(contract?.capture?.viewports || null)) {
+    failures.push('Godot capture viewports do not match forge.godot.visual.json');
+  }
+
+  const declaredCaptures = Array.isArray(manifest.captures) ? manifest.captures : [];
+  const expectedStates = screenFlow?.ids || [];
+  if (declaredCaptures.length !== expectedStates.length * 2) {
+    failures.push('Godot Phase 4 requires exactly one mobile and one desktop capture for every approved state');
+  }
+  const captures = [];
+  const keys = new Set();
+  let mediaRunRoot = null;
+  for (const [index, item] of declaredCaptures.entries()) {
+    if (!item || typeof item !== 'object') { failures.push(`Godot capture ${index + 1} is not an object`); continue; }
+    const state = String(item.state || '').trim();
+    const viewport = String(item.viewport || '').trim();
+    const key = `${state}::${viewport}`;
+    if (!expectedStates.includes(state) || !['mobile', 'desktop'].includes(viewport)) failures.push(`Godot capture ${index + 1} has an unapproved state/viewport`);
+    if (keys.has(key)) failures.push(`Godot capture manifest has duplicate state/viewport: ${key}`);
+    keys.add(key);
+    const normalizedImage = normalizeVisualPath(item.file);
+    const match = /^screens\/review\/godot\/([a-z0-9-]{8,64})\/(?:mobile|desktop)-.+\.png$/u.exec(normalizedImage);
+    const screenshot = match ? safeProjectFile(root, normalizedImage) : null;
+    if (!screenshot) { failures.push(`Godot capture image is missing or outside its native review run: ${item.file || '(missing path)'}`); continue; }
+    const currentRunRoot = `screens/review/godot/${match[1]}`;
+    if (mediaRunRoot && mediaRunRoot !== currentRunRoot) failures.push('Godot screenshots from different capture runs cannot be mixed');
+    mediaRunRoot ||= currentRunRoot;
+    const dimensions = pngDimensions(screenshot.absolute);
+    const expectedDimensions = contract?.capture?.viewports?.[viewport];
+    if (!dimensions || dimensions.width !== expectedDimensions?.width || dimensions.height !== expectedDimensions?.height
+      || item.width !== dimensions?.width || item.height !== dimensions?.height) {
+      failures.push(`Godot capture dimensions do not match the contracted ${viewport} viewport: ${item.file}`);
+      continue;
+    }
+    const actualHash = sha256File(screenshot.absolute);
+    if (item.sha256 !== actualHash) failures.push(`Godot capture SHA-256 does not match screenshot: ${item.file}`);
+    if (!Number.isFinite(Number(item.contentHeightRatio)) || Number(item.contentHeightRatio) > 1.05) failures.push(`Godot capture clips or overflows its viewport: ${item.file}`);
+    const expectedAdapterState = screenFlow?.flow?.states?.find(candidate => candidate.id === state)?.capture?.adapterState;
+    if (item.stateProof?.mechanism !== 'forge-godot-runtime-adapter'
+      || item.stateProof?.protocol !== 'forge-godot-visual-v1' || item.stateProof?.requestedState !== state
+      || item.stateProof?.adapterState !== expectedAdapterState || item.stateProof?.reportedState !== expectedAdapterState) {
+      failures.push(`Godot capture has no exact native adapter proof for state "${state}": ${item.file}`);
+    }
+    captures.push({ ...item, state, viewport, file: screenshot.normalized, sha256: actualHash, ...dimensions });
+  }
+  const states = [...new Set(captures.map(item => item.state))];
+  if (!sameSet(states, expectedStates)) failures.push('Godot capture does not cover the complete approved screen flow');
+  for (const state of expectedStates) {
+    const viewports = captures.filter(item => item.state === state).map(item => item.viewport);
+    if (!sameSet(viewports, ['mobile', 'desktop'])) failures.push(`Godot state "${state}" lacks exact mobile/desktop evidence`);
+  }
+  if (!sameOrderedArray(Array.isArray(manifest.states) ? manifest.states.map(String) : [], expectedStates)) failures.push('Godot capture states must exactly follow the approved screen flow without duplicates');
+  if (!sameOrderedArray(Array.isArray(manifest.requestedStates) ? manifest.requestedStates.map(String) : [], expectedStates)) failures.push('Godot capture requestedStates must exactly follow the approved screen flow without duplicates');
+  for (const viewport of ['mobile', 'desktop']) {
+    const hashes = new Map();
+    for (const item of captures.filter(candidate => candidate.viewport === viewport)) {
+      const previous = hashes.get(item.sha256);
+      if (previous && previous !== item.state) failures.push(`different Godot ${viewport} states produced an identical screenshot: "${previous}" and "${item.state}"`);
+      hashes.set(item.sha256, item.state);
+    }
+  }
+  const expectedCaptureId = computeVisualCaptureId({ capturedAt: manifest.capturedAt, captures });
+  if (manifest.captureId !== expectedCaptureId) failures.push('Godot captureId does not match captured screenshot facts');
+  if (isIsoDate(manifest.startedAt) && isIsoDate(manifest.capturedAt)) {
+    const startedAt = Date.parse(manifest.startedAt);
+    const capturedAt = Date.parse(manifest.capturedAt);
+    if (capturedAt < startedAt) failures.push('Godot capture finished before it started');
+    if (capturedAt > Date.now() + CLOCK_SKEW_MS) failures.push('Godot capture timestamp is implausibly in the future');
+    for (const item of captures) {
+      const screenshot = safeProjectFile(root, item.file);
+      const mtime = screenshot ? fs.statSync(screenshot.absolute).mtimeMs : 0;
+      if (screenshot && (mtime < startedAt - CLOCK_SKEW_MS || mtime > capturedAt + CLOCK_SKEW_MS)) failures.push(`Godot screenshot timestamp is not bound to this capture run: ${item.file}`);
+    }
+  }
+  const expectedReceiptPayload = captureReceiptPayload({ manifestPath: file.normalized, manifest });
+  const receipt = verifyVisualReceipt({ projectRoot: root, kind: 'capture', receiptId: manifest.captureReceiptId, expectedPayload: expectedReceiptPayload });
+  if (!receipt.ok) failures.push(`trusted Godot capture receipt rejected: ${receipt.failure || receipt.code}`);
+  return { file, manifest, captures, states, captureId: expectedCaptureId, receipt, implementationSnapshot: liveSnapshot, mediaRunRoot };
+}
+
+function validateGodotProofBundle(root, nativeProof, proofReview, screenFlow, contract, capture, failures) {
+  const expectedManifestPath = 'screens/review/proof-video-manifest.json';
+  const manifestFile = validateBoundFile(root, nativeProof?.manifest, expectedManifestPath, 'Godot proof manifest', failures);
+  const manifest = manifestFile ? parseJsonFile(manifestFile.absolute) : null;
+  if (!manifest || manifest.schemaVersion !== 1 || manifest.kind !== 'forge.godot-proof-video') {
+    failures.push('Godot proof manifest is missing or has the wrong schema/kind');
+    return null;
+  }
+  if (manifest.generatedBy !== 'godot-proof-video.mjs' || manifest.verdict !== 'pass') failures.push('Godot proof was not produced and passed by godot-proof-video.mjs');
+  if (!Array.isArray(manifest.runtimeErrors) || manifest.runtimeErrors.length !== 0) failures.push('Godot proof contains runtime/mechanical errors');
+  if (manifest.engine?.name !== 'godot' || manifest.engine?.testHarness !== false || typeof manifest.engine?.version !== 'string' || !manifest.engine.version.trim()) {
+    failures.push('Godot proof must come from a real native engine, never a test harness');
+  }
+  if (!isIsoDate(manifest.startedAt) || !isIsoDate(manifest.capturedAt)) failures.push('Godot proof needs canonical startedAt/capturedAt timestamps');
+  if (!identityKey(manifest.builder) || canonicalJson(manifest.builder || null) !== canonicalJson(capture?.manifest?.builder || null)) {
+    failures.push('Godot capture and proof must come from the same builder identity');
+  }
+  const expectedFlowHash = screenFlow?.file ? sha256File(screenFlow.file) : '';
+  if (normalizeVisualPath(manifest.screenFlow?.path) !== SCREEN_FLOW_PATH || manifest.screenFlow?.sha256 !== expectedFlowHash) failures.push('Godot proof is not bound to the approved screen flow');
+  const visualFile = safeProjectFile(root, 'forge.godot.visual.json');
+  const expectedVisual = visualFile ? { path: 'forge.godot.visual.json', sha256: sha256File(visualFile.absolute) } : null;
+  if (!expectedVisual || canonicalJson(manifest.visualContract || null) !== canonicalJson(expectedVisual)) failures.push('Godot proof is not bound to the current visual contract');
+  const adapterFile = safeProjectFile(contract?.implementationRoot || root, contract?.adapter?.script?.rel || '');
+  const expectedAdapter = contract && adapterFile ? {
+    protocol: contract.adapter.protocol, autoloadName: contract.adapter.autoloadName,
+    script: contract.adapter.script.resource, targetNode: contract.adapter.targetNode,
+    sha256: sha256File(adapterFile.absolute),
+  } : null;
+  if (!expectedAdapter || canonicalJson(manifest.stateAdapter || null) !== canonicalJson(expectedAdapter)) failures.push('Godot proof adapter fields/hash differ from the current native adapter');
+  let liveSnapshot = null;
+  try { liveSnapshot = contract ? snapshotGodotVisualInputs(contract.implementationRoot) : null; }
+  catch (error) { failures.push(`Godot proof snapshot failed: ${error.message}`); }
+  if (!liveSnapshot || !sameImplementationSnapshot(manifest.implementationSnapshot, liveSnapshot)
+    || !sameImplementationSnapshot(manifest.implementationSnapshot, capture?.manifest?.implementationSnapshot)) {
+    failures.push('Godot capture, proof and current implementation snapshots must be identical');
+  }
+  if (manifest.gameRoot !== contract?.projectPath || manifest.viewport !== contract?.proofVideo?.viewport) failures.push('Godot proof project/viewport differs from the current contract');
+  if (!sameOrderedArray(Array.isArray(manifest.requestedStates) ? manifest.requestedStates.map(String) : [], contract?.proofVideo?.states || [])) failures.push('Godot proof states must exactly follow the current contract without duplicates');
+
+  const dimensions = contract?.capture?.viewports?.[contract?.proofVideo?.viewport];
+  const expectedFrames = (contract?.proofVideo?.fps || 0) * (contract?.proofVideo?.durationSeconds || 0);
+  const videoPath = normalizeVisualPath(manifest.video?.file);
+  const videoMatch = /^screens\/review\/godot\/([a-z0-9-]{8,64})\/proof-video\.avi$/u.exec(videoPath);
+  const videoFile = videoMatch ? safeProjectFile(root, videoPath) : null;
+  const proofRunRoot = videoMatch ? `screens/review/godot/${videoMatch[1]}` : null;
+  if (!videoFile) failures.push('Godot proof video is missing or outside its native review run');
+  let inspected = null;
+  if (videoFile) {
+    inspected = inspectMjpegAvi(videoFile.absolute);
+    const actualHash = sha256File(videoFile.absolute);
+    if (manifest.video?.sha256 !== actualHash) failures.push('Godot proof video SHA-256 does not match current media');
+    if (!inspected) failures.push('Godot proof video is not a structurally valid MJPEG AVI');
+    else {
+      if (inspected.width !== dimensions?.width || inspected.height !== dimensions?.height || inspected.fps !== contract?.proofVideo?.fps) failures.push('Godot proof video dimensions/FPS differ from the current contract');
+      if (Math.abs(inspected.actualFrames - expectedFrames) > 1) failures.push('Godot proof video frame count differs from the current contract by more than ±1');
+      if (manifest.video?.actualFrames !== inspected.actualFrames || manifest.video?.width !== inspected.width
+        || manifest.video?.height !== inspected.height || manifest.video?.fps !== inspected.fps
+        || manifest.video?.uniqueFrames !== inspected.uniqueFrames
+        || Number(manifest.video?.uniqueFrameRatio) !== Number(inspected.uniqueFrameRatio.toFixed(6))
+        || manifest.video?.indexEntries !== inspected.indexEntries
+        || manifest.video?.indexVideoEntries !== inspected.indexVideoEntries
+        || manifest.video?.indexValidated !== true || inspected.indexValidated !== true
+        || manifest.video?.streamHandler !== 'MJPG' || manifest.video?.compression !== 'MJPG') failures.push('Godot proof manifest video facts differ from the current indexed AVI');
+    }
+    if (normalizeVisualPath(nativeProof?.video?.path) !== videoPath || nativeProof?.video?.sha256 !== actualHash) failures.push('Godot evidence is not bound to the current proof video');
+  }
+
+  const timeline = Array.isArray(manifest.timeline) ? manifest.timeline : [];
+  const segmentFrames = Math.max(1, Math.ceil(expectedFrames / Math.max(1, contract?.proofVideo?.states?.length || 0)));
+  const expectedTimeline = (contract?.proofVideo?.states || []).map((state, index) => ({ state, frame: index * segmentFrames }));
+  if (canonicalJson(timeline) !== canonicalJson(expectedTimeline)) failures.push('Godot proof timeline does not exactly match the deterministic state plan');
+  const manifestSamples = Array.isArray(manifest.samples) ? manifest.samples : [];
+  const expectedSampleFrames = Array.from({ length: contract?.proofVideo?.durationSeconds || 0 }, (_, index) => index * (contract?.proofVideo?.fps || 0));
+  if (manifestSamples.length !== expectedSampleFrames.length) failures.push('Godot proof must contain exactly one lossless sample per second');
+  const samples = [];
+  for (const [index, sample] of manifestSamples.entries()) {
+    const expectedFrame = expectedSampleFrames[index];
+    const expectedState = [...expectedTimeline].reverse().find(item => item.frame <= expectedFrame)?.state || '';
+    const expectedPath = proofRunRoot ? `${proofRunRoot}/proof-samples/sample-${String(expectedFrame).padStart(6, '0')}.png` : '';
+    const sampleFile = sample?.frame === expectedFrame && sample?.state === expectedState
+      && normalizeVisualPath(sample?.file) === expectedPath ? safeProjectFile(root, expectedPath) : null;
+    if (!sampleFile) { failures.push(`Godot proof sample ${index + 1} is missing, out of order or bound to the wrong state`); continue; }
+    const sampleDimensions = pngDimensions(sampleFile.absolute);
+    const actualHash = sha256File(sampleFile.absolute);
+    if (!sampleDimensions || sampleDimensions.width !== dimensions?.width || sampleDimensions.height !== dimensions?.height
+      || sample.width !== sampleDimensions?.width || sample.height !== sampleDimensions?.height) failures.push(`Godot proof sample dimensions are invalid: ${sample.file}`);
+    if (sample.sha256 !== actualHash) failures.push(`Godot proof sample SHA-256 does not match: ${sample.file}`);
+    samples.push({ frame: expectedFrame, state: expectedState, path: sampleFile.normalized, sha256: actualHash, ...sampleDimensions });
+  }
+  const minimumUniqueSamples = Math.min(12, expectedSampleFrames.length);
+  const minimumUniqueVideoFrames = Math.min(12, expectedFrames);
+  const uniqueSamples = new Set(samples.map(item => item.sha256)).size;
+  if (uniqueSamples < minimumUniqueSamples || manifest.thresholds?.minimumUniqueSamples !== minimumUniqueSamples
+    || manifest.thresholds?.actualUniqueSamples !== uniqueSamples || manifest.thresholds?.sampleIntervalFrames !== contract?.proofVideo?.fps) {
+    failures.push('Godot proof lossless samples do not meet the live-motion threshold');
+  }
+  if (!inspected || inspected.uniqueFrames < minimumUniqueVideoFrames
+    || manifest.thresholds?.minimumUniqueVideoFrames !== minimumUniqueVideoFrames
+    || manifest.thresholds?.actualUniqueVideoFrames !== inspected?.uniqueFrames) {
+    failures.push('Godot proof MJPEG stream does not meet the live-motion threshold');
+  }
+  for (const state of contract?.proofVideo?.states || []) if (!samples.some(item => item.state === state)) failures.push(`Godot proof samples never show configured state "${state}"`);
+
+  const expectedProofId = computeGodotProofId({ manifest });
+  if (manifest.proofId !== expectedProofId || nativeProof?.proofId !== expectedProofId) failures.push('Godot proofId does not match current proof facts');
+  if (nativeProof?.proofReceiptId !== manifest.proofReceiptId) failures.push('Godot evidence is bound to a different proof receipt');
+  const expectedNativeSamples = samples.map(item => ({ frame: item.frame, state: item.state, path: item.path, sha256: item.sha256 }));
+  const declaredNativeSamples = Array.isArray(nativeProof?.samples) ? nativeProof.samples.map(item => ({
+    frame: item?.frame, state: item?.state, path: normalizeVisualPath(item?.path), sha256: item?.sha256,
+  })) : [];
+  if (canonicalJson(declaredNativeSamples) !== canonicalJson(expectedNativeSamples)) failures.push('Godot evidence sample bindings differ from the current proof samples');
+  const receipt = verifyVisualReceipt({ projectRoot: root, kind: 'proof', receiptId: manifest.proofReceiptId,
+    expectedPayload: proofReceiptPayload({ manifestPath: manifestFile.normalized, manifest }) });
+  if (!receipt.ok) failures.push(`trusted Godot proof receipt rejected: ${receipt.failure || receipt.code}`);
+
+  if (isIsoDate(manifest.startedAt) && isIsoDate(manifest.capturedAt)) {
+    const startedAt = Date.parse(manifest.startedAt);
+    const capturedAt = Date.parse(manifest.capturedAt);
+    if (capturedAt < startedAt) failures.push('Godot proof finished before it started');
+    if (capturedAt > Date.now() + CLOCK_SKEW_MS) failures.push('Godot proof timestamp is implausibly in the future');
+    for (const media of [videoFile, ...samples.map(item => safeProjectFile(root, item.path))].filter(Boolean)) {
+      const mtime = fs.statSync(media.absolute).mtimeMs;
+      if (mtime < startedAt - CLOCK_SKEW_MS || mtime > capturedAt + CLOCK_SKEW_MS) failures.push(`Godot proof media timestamp is not bound to this run: ${media.normalized}`);
+    }
+  }
+
+  if (proofReview?.verdict !== 'pass' || proofReview?.videoWatched !== true) failures.push('independent Godot proof review must explicitly watch and pass the video');
+  if (!sameUniqueSet(Array.isArray(proofReview?.statesObserved) ? proofReview.statesObserved.map(String) : [], contract?.proofVideo?.states || [])) failures.push('independent Godot proof review must observe every configured proof state exactly once');
+  if (!sameOrderedArray(Array.isArray(proofReview?.samplesReviewed) ? proofReview.samplesReviewed.map(String) : [], samples.map(item => item.sha256))) failures.push('independent Godot proof review must bind every current lossless sample in timeline order');
+  if (!Number.isInteger(proofReview?.motionScore) || proofReview.motionScore < PHASE4_MIN_SCORE || proofReview.motionScore > 10) failures.push(`Godot proof motionScore must be ${PHASE4_MIN_SCORE}..10`);
+  if (typeof proofReview?.critique !== 'string' || proofReview.critique.trim().length < 80) failures.push('Godot proof review needs a concrete motion/camera/feedback critique of at least 80 characters');
+  if (!Array.isArray(proofReview?.defects)) failures.push('Godot proof review needs an explicit defects array');
+  else if (proofReview.defects.some(defect => ['critical', 'major'].includes(String(defect?.severity || '').toLowerCase()))) failures.push('Godot proof review still contains an open Critical or Major defect');
+
+  return { file: manifestFile, manifest, proofId: expectedProofId, receipt, video: videoFile, samples, inspected, capturedAt: manifest.capturedAt };
+}
+
 function validateScreenTargets(root, descriptor, masterTargetHash, screenFlow, failures) {
   const file = validateBoundFile(root, descriptor, PHASE4_SCREEN_TARGETS_PATH, 'screen target manifest', failures);
   if (!file) return { file: null, targets: new Map(), states: [] };
@@ -392,8 +738,10 @@ function validateScreenTargets(root, descriptor, masterTargetHash, screenFlow, f
 export function validatePhase4VisualEvidence({ root = process.cwd(), evidencePath = PHASE4_VISUAL_EVIDENCE_PATH } = {}) {
   const projectRoot = path.resolve(root);
   const failures = [];
+  let engineProfile = null;
+  let godotContract = null;
   try {
-    const engineProfile = readTrustedProjectEngine(projectRoot);
+    engineProfile = readTrustedProjectEngine(projectRoot);
     const support = enginePhaseSupport(engineProfile, 4);
     if (!support.supported) {
       return { ok: false, failures: [support.message], evidencePath: normalizeVisualPath(evidencePath) };
@@ -404,6 +752,14 @@ export function validatePhase4VisualEvidence({ root = process.cwd(), evidencePat
       failures: [`Engine profile rejected (${error.code || 'ENGINE_PROFILE'}): ${error.message}`],
       evidencePath: normalizeVisualPath(evidencePath),
     };
+  }
+  if (engineProfile?.engine === 'godot') {
+    if (typeof readGodotVisualContract !== 'function' || typeof inspectMjpegAvi !== 'function'
+      || typeof snapshotGodotVisualInputs !== 'function') {
+      failures.push('Trusted Forge engine does not expose the native Godot visual evidence runtime');
+    }
+    try { if (typeof readGodotVisualContract === 'function') godotContract = readGodotVisualContract(projectRoot); }
+    catch (error) { failures.push(`Godot visual contract rejected (${error.code || 'GODOT_VISUAL'}): ${error.message}`); }
   }
   const evidenceFile = safeProjectFile(projectRoot, evidencePath);
   if (!evidenceFile) {
@@ -416,9 +772,16 @@ export function validatePhase4VisualEvidence({ root = process.cwd(), evidencePat
 
   const screenFlow = validateScreenFlow({ root: projectRoot });
   if (!screenFlow.ok) failures.push(...screenFlow.failures.map(item => `screen flow: ${item}`));
-  const capture = validateCaptureManifest(projectRoot, evidence.captureManifest, screenFlow, failures);
+  const nativeRuntimeAvailable = engineProfile?.engine !== 'godot' || (godotContract
+    && typeof inspectMjpegAvi === 'function' && typeof snapshotGodotVisualInputs === 'function');
+  const capture = engineProfile?.engine === 'godot' && nativeRuntimeAvailable
+    ? validateGodotCaptureManifest(projectRoot, evidence.captureManifest, screenFlow, godotContract, failures)
+    : engineProfile?.engine === 'godot' ? null : validateCaptureManifest(projectRoot, evidence.captureManifest, screenFlow, failures);
   if (capture && evidence.captureId !== capture.captureId) failures.push('visual review is bound to a different captureId');
   if (capture && evidence.captureReceiptId !== capture.manifest.captureReceiptId) failures.push('visual review is bound to a different trusted capture receipt');
+  const proof = engineProfile?.engine === 'godot' && nativeRuntimeAvailable
+    ? validateGodotProofBundle(projectRoot, evidence.nativeProof, evidence.proofReview, screenFlow, godotContract, capture, failures)
+    : null;
 
   const target = validateBoundFile(projectRoot, evidence.targetFrame, PHASE4_TARGET_FRAME_PATH, 'target frame', failures);
   if (target && !pngDimensions(target.absolute)) failures.push('target frame must be a valid dimensioned PNG');
@@ -441,10 +804,13 @@ export function validatePhase4VisualEvidence({ root = process.cwd(), evidencePat
   if (capture && isIsoDate(evidence.reviewedAt) && Date.parse(evidence.reviewedAt) < Date.parse(capture.manifest.capturedAt)) {
     failures.push('visual review predates its screenshot capture');
   }
+  if (proof && isIsoDate(evidence.reviewedAt) && Date.parse(evidence.reviewedAt) < Date.parse(proof.manifest.capturedAt)) {
+    failures.push('visual review predates its Godot proof video');
+  }
 
   const expectedStates = Array.isArray(evidence.coverage?.expectedStates) ? evidence.coverage.expectedStates.map(String) : [];
   const capturedStates = Array.isArray(evidence.coverage?.capturedStates) ? evidence.coverage.capturedStates.map(String) : [];
-  if (!capture || !sameSet(expectedStates, screenFlow.ids || []) || !sameSet(capturedStates, screenFlow.ids || [])) {
+  if (!capture || !sameUniqueSet(expectedStates, screenFlow.ids || []) || !sameUniqueSet(capturedStates, screenFlow.ids || [])) {
     failures.push('review coverage does not exactly match the approved Phase 2 screen inventory');
   }
   if (evidence.coverage?.complete !== true || !Array.isArray(evidence.coverage?.missingStates) || evidence.coverage.missingStates.length) {
@@ -454,7 +820,14 @@ export function validatePhase4VisualEvidence({ root = process.cwd(), evidencePat
   if (evidence.verdict !== 'pass') failures.push('overall Phase 4 visual verdict must be pass');
   if (Number(evidence.minimumScore) !== PHASE4_MIN_SCORE) failures.push(`minimumScore must be ${PHASE4_MIN_SCORE}`);
   if (typeof evidence.summary !== 'string' || evidence.summary.trim().length < 80) failures.push('visual review summary must contain a concrete critique of at least 80 characters');
-  if (!evidence.verification || evidence.verification.exitCode !== 0 || !/screens-shoot\.mjs/u.test(String(evidence.verification.command || ''))) {
+  if (engineProfile?.engine === 'godot') {
+    if (evidence.verification?.capture?.exitCode !== 0
+      || !/godot-screens-shoot\.mjs/u.test(String(evidence.verification?.capture?.command || ''))
+      || evidence.verification?.proof?.exitCode !== 0
+      || !/godot-proof-video\.mjs/u.test(String(evidence.verification?.proof?.command || ''))) {
+      failures.push('Godot visual evidence must record successful native capture and proof commands');
+    }
+  } else if (!evidence.verification || evidence.verification.exitCode !== 0 || !/screens-shoot\.mjs/u.test(String(evidence.verification.command || ''))) {
     failures.push('visual evidence must record a successful screens-shoot.mjs command');
   }
 
@@ -515,5 +888,9 @@ export function validatePhase4VisualEvidence({ root = process.cwd(), evidencePat
     screenFlow: screenFlow.ok ? SCREEN_FLOW_PATH : null,
     captureReceiptId: capture?.manifest?.captureReceiptId || null,
     reviewReceiptId: reviewReceipt.ok ? evidence.reviewReceiptId : null,
+    proofManifest: proof?.file?.normalized || null,
+    proofId: proof?.proofId || null,
+    proofReceiptId: proof?.manifest?.proofReceiptId || null,
+    proofSamples: proof?.samples?.length || 0,
   };
 }
