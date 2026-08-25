@@ -1,6 +1,6 @@
 # ADR-036 — Engine-neutral phases, capability-specific adapters
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-08-25
 
 ## Context
