@@ -1,7 +1,7 @@
 ---
 id: B3-010
 title: Evidence-bound Phase 4 visual acceptance
-status: in_progress
+status: complete
 started: 2026-08-25
 deps: [B3-009]
 files:
@@ -50,4 +50,4 @@ The completion gate accepted CSS as integration and treated runtime cleanliness 
 - [x] Stop hook prevents an unsupported “Phase 4 complete” claim.
 - [x] GigaChat and the central phase-state runtime use the same visual validator.
 - [x] Regression reproduces and rejects the Card Chaos false-acceptance class.
-- [ ] Full Forge suite, immutable package, installed sync and real Card Chaos reopen pass.
+- [x] Full Forge suite, immutable package, installed sync and real Card Chaos reopen pass.

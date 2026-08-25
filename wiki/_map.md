@@ -49,9 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.50 (latest released); v4.68.51 preparing
+### Version: v4.68.51 (latest released)
 
-- 2026-08-25: **v4.68.51 (preparing)** — user-approved Phase 2 inventory → reference-conditioned GPT Image blueprints (provider-backed batch or trusted native attestation) → runtime-adapter capture → independent tamper-evident review; CSS, clean console output, self-selected states and builder self-approval cannot complete Phase 4.
+- 2026-08-25: **v4.68.51** — user-approved Phase 2 inventory → reference-conditioned GPT Image blueprints (provider-backed batch or trusted native attestation) → runtime-adapter capture → independent tamper-evident review; CSS, clean console output, self-selected states and builder self-approval cannot complete Phase 4.
 - 2026-08-23: **v4.68.50** — Marker-managed projects stop at the first missing phase marker; later visual, SDK, listing and QA artifacts remain visible as evidence ahead of gate but cannot bypass executable phase contracts.
 - 2026-08-23: **v4.68.49** — Complete Unicode evidence classification preserves Russian KPI/research enforcement without treating internal Retention headings as uncited external facts; the real CardGame Phase 1 evidence passes without English labels.
 - 2026-08-23: **v4.68.48** — Phase 1 evidence validation now uses Unicode word boundaries: Russian KPI hypotheses and no-evidence declarations work without English labels, while uncited Cyrillic KPI/research claims can no longer bypass the gate.

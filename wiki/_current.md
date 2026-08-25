@@ -19,8 +19,8 @@ existence or clean console output without complete current-pixel evidence and in
 - [x] Invalidate captures after production art/data/font changes, not only code/style edits.
 - [x] Reject scores below 6/10 and open Critical/Major defects.
 - [x] Add Stop-hook and GigaChat enforcement plus deterministic bypass regressions.
-- [ ] Bump, validate, package, install and synchronize v4.68.51.
-- [ ] Reopen Card Chaos Phase 4 and publish the corrected engine/project state.
+- [x] Bump, validate, package, install and synchronize v4.68.51.
+- [x] Reopen Card Chaos Phase 4 and publish the corrected engine/project state.
 
 ### Previous v4.68.50 release
 
@@ -168,4 +168,4 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Once any valid phase marker exists, every missing phase marker remains an unpassed gate; legacy artifact inference may describe later evidence but never advance marker-managed progression.
 - 2026-08-25: Screenshot existence proves capture, not visual quality; Phase 4 acceptance binds exact current pixels to complete state/viewport coverage and an independent reviewer session.
 
-<!-- last updated 2026-08-25 while preparing v4.68.51 evidence-bound visual acceptance -->
+<!-- last updated 2026-08-25 after publishing v4.68.51 evidence-bound visual acceptance -->
