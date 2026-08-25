@@ -4,18 +4,29 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.50 so marker-managed projects cannot skip unstarted phases through legacy
-artifact inference, while downstream artifacts remain visible as evidence ahead of the current gate.
+Ship Project Forge v4.68.51 so Phase 4 cannot be completed from CSS, DOM assertions, screenshot
+existence or clean console output without complete current-pixel evidence and independent visual review.
 
 ## Active task
 
-- [x] Reproduce Card Chaos reporting Phase 6 after completing only the Phase 1–3 marker chain.
-- [x] Record `STATUS_MARKER_FALLBACK_LEAK` in Forge Diagnostics.
+- [x] Reproduce the Card Chaos false visual acceptance in the central Phase 4 contract.
+- [x] Remove the CSS-only visual-integration bypass.
+- [x] Bind screenshot pixels, native dimensions, states, viewports and freshness into a capture manifest.
+- [x] Require a different reviewer session and per-frame visual scores/critique.
+- [x] Freeze the full screen inventory in Phase 2 and prove each Phase 4 state through a runtime adapter.
+- [x] Generate and bind state-specific GPT Image blueprints to prompt/master/output provenance.
+- [x] Make later capture/review evidence edits detectable with engine-adjacent receipts and strict PNG/realpath checks.
+- [x] Invalidate captures after production art/data/font changes, not only code/style edits.
+- [x] Reject scores below 6/10 and open Critical/Major defects.
+- [x] Add Stop-hook and GigaChat enforcement plus deterministic bypass regressions.
+- [ ] Bump, validate, package, install and synchronize v4.68.51.
+- [ ] Reopen Card Chaos Phase 4 and publish the corrected engine/project state.
+
+### Previous v4.68.50 release
+
 - [x] Make the first missing marker authoritative once a project contains any valid phase marker.
 - [x] Preserve downstream artifact visibility without allowing it to advance progression.
-- [x] Add a deterministic mixed marker/artifact regression.
-- [x] Bump, validate, package, install and synchronize v4.68.50 across 32 sibling projects.
-- [x] Commit and publish the verified v4.68.50 engine release.
+- [x] Package, install, fleet-sync and publish v4.68.50.
 
 ### Previous v4.68.49 release
 
@@ -128,7 +139,7 @@ artifact inference, while downstream artifacts remain visible as evidence ahead 
 
 ## Blockers
 
-No v4.68.50 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+No v4.68.51 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
 Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
@@ -155,5 +166,6 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Human-language evidence tokens use Unicode letter/mark/number boundaries; ASCII `\b`/`\w` is not valid authority for Cyrillic gates.
 - 2026-08-23: Document-level market vocabulary and line-level external facts are separate classifications; an internal Retention heading is not itself sourced research.
 - 2026-08-23: Once any valid phase marker exists, every missing phase marker remains an unpassed gate; legacy artifact inference may describe later evidence but never advance marker-managed progression.
+- 2026-08-25: Screenshot existence proves capture, not visual quality; Phase 4 acceptance binds exact current pixels to complete state/viewport coverage and an independent reviewer session.
 
-<!-- last updated 2026-08-23 after installing and fleet-syncing v4.68.50 marker-authoritative status progression -->
+<!-- last updated 2026-08-25 while preparing v4.68.51 evidence-bound visual acceptance -->

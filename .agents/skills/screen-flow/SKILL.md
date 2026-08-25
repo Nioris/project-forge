@@ -35,6 +35,14 @@ description: "Спроектировать АРХИТЕКТУРУ ЭКРАНОВ
 Плюс: где на этом маршруте живут дейлики, сундуки, магазин, кланы (у каждого — свой момент,
 а не «вкладка на главном»).
 
+Одновременно создай `wiki/design/screen-flow.json` (`kind: forge.screen-flow`,
+`schemaVersion: 1`, `status: approved`). В `states[]` обязательны безопасный `id`, `label`,
+`archetype`, `required: true`, конкретный `visualDescription`, `targetPolicy` и
+`capture.adapterState`, равный `id`. В `transitions[]` каждый экран должен быть достижим из
+`entryState` и уметь вернуться к нему. Укажи `qaAdapter.global: __FORGE_VISUAL_QA__` и
+`qaAdapter.query: forgeVisualQa=1`. Это не справочный документ: Phase 4 снимает ровно этот
+список и отклоняет пропущенный экран.
+
 ## Признаки, что архитектура сломана
 - всё на одном экране, переключается вкладками;
 - после победы игрок остаётся там же — нет возврата «домой»;

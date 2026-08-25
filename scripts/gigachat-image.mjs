@@ -3,6 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import { dirname, resolve, join, extname } from 'node:path';
 import { getAccessToken, gigaJson, downloadGigaFile } from './lib/gigachat-api.mjs';
+import { appendImageProvenance } from '../.claude/skills/status/references/image-provenance.mjs';
 
 const args = process.argv.slice(2);
 const val = flag => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
@@ -30,6 +31,11 @@ if (!outputArg && !DRY) { console.error('[X] --output required unless prompt pac
 const model = val('--model') || pack?.model || 'GigaChat-2-Max';
 const system = val('--system') || 'Ты арт-директор игровой production-команды. Создай изображение строго по заданному описанию без лишнего текста внутри изображения, если текст явно не требуется.';
 
+if (pack?.purpose === 'screen-blueprint') {
+  console.error('[X] GigaChat text2image cannot consume the approved master target as an image reference. Generate Phase 4 screen blueprints with GPT Image reference input instead.');
+  process.exit(2);
+}
+
 if (DRY) {
   console.log('[DRY] GigaChat image request valid');
   console.log(JSON.stringify({ endpoint: 'POST https://api.giga.chat/v1/chat/completions', builtInFunction: 'text2image', model, promptChars: prompt.length, output: outputArg || '(from caller)' }, null, 2));
@@ -53,7 +59,11 @@ try {
   writeFileSync(out, bytes);
   const provenance = join(project, 'assets', 'generated', 'provenance.jsonl');
   mkdirSync(dirname(provenance), { recursive: true });
-  appendFileSync(provenance, JSON.stringify({ ts: new Date().toISOString(), id: pack?.id || null, provider: 'gigachat-api', model, builtInFunction: 'text2image', credentialSource: source, promptPack: packArg ? resolve(packArg) : null, output: out }) + '\n', 'utf8');
+  if (packArg) {
+    appendImageProvenance({ projectRoot: project, provider: 'gigachat-api', model, output: out, promptPack: resolve(packArg) });
+  } else {
+    appendFileSync(provenance, JSON.stringify({ ts: new Date().toISOString(), id:null, provider:'gigachat-api', model, builtInFunction:'text2image', credentialSource:source, promptPack:null, output:out })+'\n','utf8');
+  }
   console.log(`[OK] GigaChat image written: ${out} (${bytes.length} bytes)`);
 } catch (e) {
   console.error('[X] GigaChat image generation failed:', e.message);

@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+/** Record the independent reviewer identity in the trusted engine store and close Phase 4 evidence. */
+import fs from 'node:fs';
+import path from 'node:path';
+import {
+  captureReceiptPayload,
+  currentVisualRuntimeIdentity,
+  reviewReceiptPayload,
+  validatePhase4VisualEvidence,
+} from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
+import { recordVisualReceipt, verifyVisualReceipt } from '../.claude/skills/status/references/visual-receipts.mjs';
+
+const projectRoot = fs.realpathSync(path.resolve(process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : '.'));
+const evidenceRel = 'wiki/qa/phase-4-visual-evidence.json';
+const evidenceFile = path.join(projectRoot, ...evidenceRel.split('/'));
+
+function safeFile(rel) {
+  const normalized = String(rel || '').replaceAll('\\', '/').replace(/^\.\//u, '');
+  if (!normalized || path.isAbsolute(normalized) || normalized.split('/').includes('..')) throw new Error(`Unsafe project-relative path: ${rel}`);
+  const absolute = fs.realpathSync(path.resolve(projectRoot, normalized));
+  const inside = path.relative(projectRoot, absolute);
+  if (inside.startsWith('..') || path.isAbsolute(inside) || !fs.statSync(absolute).isFile()) throw new Error(`Missing project file: ${normalized}`);
+  return { path: normalized, absolute };
+}
+
+try {
+  const identity = currentVisualRuntimeIdentity();
+  if (!identity) throw new Error('No trusted host session identity. Run the independent review from a Forge/Codex/Claude task, not an anonymous shell.');
+  const evidence = JSON.parse(fs.readFileSync(evidenceFile, 'utf8'));
+  const captureFile = safeFile(evidence.captureManifest);
+  const capture = JSON.parse(fs.readFileSync(captureFile.absolute, 'utf8'));
+  const captureReceipt = verifyVisualReceipt({
+    projectRoot,
+    kind: 'capture',
+    receiptId: capture.captureReceiptId,
+    expectedPayload: captureReceiptPayload({ manifestPath: captureFile.path, manifest: capture }),
+  });
+  if (!captureReceipt.ok) throw new Error(`Trusted capture receipt rejected: ${captureReceipt.failure || captureReceipt.code}`);
+  if (String(capture.builder?.sessionId || '').toLowerCase() === identity.sessionId.toLowerCase()) {
+    throw new Error('Independent review must run in a different host task/session from the builder capture.');
+  }
+  evidence.captureId = capture.captureId;
+  evidence.captureReceiptId = capture.captureReceiptId;
+  evidence.builder = capture.builder;
+  evidence.reviewer = { ...identity, mode: 'independent' };
+  evidence.reviewedAt = new Date().toISOString();
+  delete evidence.reviewReceiptId;
+  const payload = reviewReceiptPayload({ evidencePath: evidenceRel, evidence });
+  const recorded = recordVisualReceipt({ projectRoot, kind: 'review', payload });
+  evidence.reviewReceiptId = recorded.receipt.receiptId;
+  const temp = `${evidenceFile}.tmp-${process.pid}`;
+  fs.writeFileSync(temp, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+  fs.renameSync(temp, evidenceFile);
+
+  const result = validatePhase4VisualEvidence({ root: projectRoot });
+  if (!result.ok) {
+    console.error('[X] Review receipt recorded, but Phase 4 evidence is still rejected:');
+    for (const failure of result.failures) console.error(`  - ${failure}`);
+    process.exit(1);
+  }
+  console.log(`[OK] Independent Phase 4 review receipt: ${evidence.reviewReceiptId}`);
+  console.log(`     ${result.frames} frames across ${result.states.length} approved states`);
+} catch (error) {
+  console.error(`[X] ${error.message}`);
+  process.exit(1);
+}

@@ -10,6 +10,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validatePhase4VisualEvidence } from './phase-4-visual-evidence.mjs';
+import { validateScreenFlow } from './screen-flow-contract.mjs';
 
 const CONTRACT_SCHEMA_VERSION = 1;
 const CONTRACT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'phase-contracts');
@@ -19,6 +21,8 @@ const PROJECT_CHECK_IDS = new Set([
   'implementation-source',
   'clean-playtest-report',
   'visual-integration',
+  'phase-4-visual-evidence',
+  'screen-flow-contract',
   'tech-runtime',
   'listing-output',
   'clean-local-stage-report',
@@ -81,10 +85,11 @@ function normalizeRelative(value) {
 function safeProjectFile(root, rel) {
   const normalized = normalizeRelative(rel);
   if (!normalized || path.isAbsolute(normalized) || normalized.split('/').includes('..')) return null;
-  const absolute = path.resolve(root, normalized);
-  const prefix = path.resolve(root) + path.sep;
-  if (absolute !== path.resolve(root) && !absolute.startsWith(prefix)) return null;
   try {
+    const realRoot = fs.realpathSync(path.resolve(root));
+    const absolute = fs.realpathSync(path.resolve(realRoot, normalized));
+    const relative = path.relative(realRoot, absolute);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
     return fs.statSync(absolute).isFile() ? { normalized, absolute } : null;
   } catch {
     return null;
@@ -287,13 +292,20 @@ function checkCleanPlaytestReport(root, failures) {
 function checkVisualIntegration(root, failures) {
   const visualAssets = projectFiles(root, (file, rel) => /\.(?:png|jpe?g|webp)$/iu.test(file)
     && /(?:^|\/)(?:assets|WorkProgress)\//iu.test(rel)
-    && !/(?:^|\/)(?:refs|candidates)(?:\/|$)/iu.test(rel))
+    && !/(?:^|\/)(?:refs|candidates|target|screens|playtest-out|stage-out)(?:\/|$)/iu.test(rel))
     .filter(validImage);
-  const substantialCss = projectFiles(root, file => path.extname(file).toLowerCase() === '.css')
-    .some(file => { try { return fs.statSync(file).size >= 256; } catch { return false; } });
-  if (!visualAssets.length && !substantialCss) {
-    failures.push('Phase 4 requires an integrated production image asset or substantial project CSS, not only visual documents');
-  }
+  const source = projectSourceText(root);
+  const integrated = visualAssets.some(file => {
+    const rel = normalizeRelative(path.relative(root, file));
+    const base = path.basename(file);
+    return source.includes(rel) || source.includes(base);
+  });
+  if (!integrated) failures.push('Phase 4 requires source-referenced production image assets; CSS, target frames, and review screenshots do not count as integration');
+}
+
+function checkPhase4VisualEvidence(root, failures) {
+  const result = validatePhase4VisualEvidence({ root });
+  if (!result.ok) failures.push(...result.failures.map(item => `Phase 4 visual gate: ${item}`));
 }
 
 function checkTechRuntime(root, failures) {
@@ -377,12 +389,19 @@ function checkLiveMetrics(root, failures) {
   }
 }
 
+function checkScreenFlow(root, failures) {
+  const result = validateScreenFlow({ root });
+  if (!result.ok) failures.push(...result.failures.map(item => `Screen flow: ${item}`));
+}
+
 function runProjectCheck(id, root, contract, evidence, failures) {
   if (id === 'phase-1-integrity') validatePhase1(root, evidence, failures);
   else if (id === 'non-placeholder-evidence') checkNonPlaceholderEvidence(root, contract, failures);
   else if (id === 'implementation-source' && !hasImplementationSource(root)) failures.push(`Phase ${contract.phase} requires real implementation source`);
   else if (id === 'clean-playtest-report') checkCleanPlaytestReport(root, failures);
   else if (id === 'visual-integration') checkVisualIntegration(root, failures);
+  else if (id === 'phase-4-visual-evidence') checkPhase4VisualEvidence(root, failures);
+  else if (id === 'screen-flow-contract') checkScreenFlow(root, failures);
   else if (id === 'tech-runtime') checkTechRuntime(root, failures);
   else if (id === 'listing-output') checkListingOutput(root, failures);
   else if (id === 'clean-local-stage-report') checkCleanLocalStageReport(root, failures);

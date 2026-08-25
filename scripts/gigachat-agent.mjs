@@ -19,6 +19,8 @@ import {
 import { deriveVerifierPlanFromOperations, runTaskVerifiers } from '../.claude/skills/status/references/verifier-runner.mjs';
 import { readSkillContract } from '../.claude/skills/status/references/skill-contract.mjs';
 import { resolveActiveTaskScope, assertTaskWrite } from '../.claude/skills/status/references/task-scope-guard.mjs';
+import { validatePhase4VisualEvidence } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
+import { screenInventoryPayload, screenInventorySha256 } from '../.claude/skills/status/references/screen-flow-contract.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -27,8 +29,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.50';
-const CONTRACT_VERSION = '6.3.8-evidence-bound-readonly-2026-08-18';
+const AUDITED_FORGE_VERSION = '4.68.51';
+const CONTRACT_VERSION = '6.3.10-screen-blueprint-visual-receipts-2026-08-25';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -191,6 +193,31 @@ function taskScopedForgeScriptBlock(scriptPath, args=[]) {
       `${rootPrefix}wiki/ai/.forge-scope-probe`, `${rootPrefix}wiki/ai/art-reviews/.forge-scope-probe`, `${rootPrefix}wiki/qa/.forge-scope-probe`,
     ], 'forge_script:ai-studio-init');
     return denied ? taskScopeDeny('forge_script:ai-studio-init',targetDir,`Forge Task scope blocks ai-studio-init: ${denied}`) : null;
+  }
+  if (base === 'screen-targets.mjs') {
+    const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
+    const denied = taskScopedAssertTargets([`${rootPrefix}assets/target/screens/manifest.json`], 'forge_script:screen-targets');
+    return denied ? taskScopeDeny('forge_script:screen-targets',targetDir,`Forge Task scope blocks screen-targets: ${denied}`) : null;
+  }
+  if (base === 'bind-phase4-visual-evidence.mjs') {
+    const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
+    const denied = taskScopedAssertTargets([`${rootPrefix}wiki/qa/phase-4-visual-evidence.json`], 'forge_script:bind-phase4-visual-evidence');
+    return denied ? taskScopeDeny('forge_script:bind-phase4-visual-evidence',targetDir,`Forge Task scope blocks Phase 4 evidence binding: ${denied}`) : null;
+  }
+  if (base === 'record-phase4-visual-review.mjs') {
+    const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
+    const denied = taskScopedAssertTargets([`${rootPrefix}wiki/qa/phase-4-visual-evidence.json`], 'forge_script:record-phase4-visual-review');
+    return denied ? taskScopeDeny('forge_script:record-phase4-visual-review',targetDir,`Forge Task scope blocks Phase 4 review recording: ${denied}`) : null;
+  }
+  if (base === 'record-image-provenance.mjs') {
+    const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
+    const denied = taskScopedAssertTargets([`${rootPrefix}assets/generated/provenance.jsonl`], 'forge_script:record-image-provenance');
+    return denied ? taskScopeDeny('forge_script:record-image-provenance',targetDir,`Forge Task scope blocks image provenance recording: ${denied}`) : null;
+  }
+  if (base === 'screens-shoot.mjs') {
+    const rootPrefix = targetDir === '.' ? '' : `${targetDir}/`;
+    const denied = taskScopedAssertTargets([`${rootPrefix}screens/review/.forge-scope-probe`], 'forge_script:screens-shoot');
+    return denied ? taskScopeDeny('forge_script:screens-shoot',targetDir,`Forge Task scope blocks visual capture output: ${denied}`) : null;
   }
   if (base === 'local-stage.mjs') {
     if (!args.some(arg => /^--ai$/i.test(String(arg)))) return null;
@@ -817,7 +844,7 @@ function commandLooksMutating(command=''){
   if(/^(git\s+(status|diff|log)|dir\b|ls\b|find\b|du\b|grep\b|type\b|cat\b)/i.test(c)) return false;
   if(/phase-state\.mjs.*\b(?:start|reopen|block|complete)\b/i.test(c)) return true;
   if(/ai-studio-init\.mjs/i.test(c) && !/--check/i.test(c)) return true;
-  if(/integrate-gacha|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
+  if(/integrate-gacha|screen-targets|screens-shoot|bind-phase4-visual-evidence|record-phase4-visual-review|record-image-provenance|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
   return false;
 }
 function verifierEntrySuccess(re,phaseOverride=activePhase){
@@ -1004,7 +1031,7 @@ function requiredDecisionKeysForPhase(phase){
   const p=Number(phase);
   const base={
     1:['phase1-research-direction','phase1-brief','phase1-content-budget'],
-    2:['phase2-monetization','phase2-multiplayer','phase2-content-plan'],
+    2:['phase2-monetization','phase2-multiplayer','phase2-content-plan','phase2-screen-inventory'],
     4:['phase4-asset-source','phase4-art-direction','phase4-target-frame','phase4-style-bible']
   }[p]||[];
   if(p===4 && /pixel/i.test(`${optionalText('assets/style/STYLE-BIBLE.md',30000)}\n${optionalText('wiki/design/brief.md',20000)}`)) base.push('phase4-pixel-provider');
@@ -1449,6 +1476,9 @@ function phaseGateReport(phase=activePhase) {
     const visualQaReports=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
     const visualQaDone=commandSucceeded(/visual-qa|ui-review/i,p)||visualQaReports.length>0;
     if(!commandSucceeded(/screens-shoot\.mjs/i,p)||!visualQaDone) blockers.push('Phase 4 requires screenshot capture AND visual QA report');
+    const visualEvidence=validatePhase4VisualEvidence({root:PROJECT});
+    evidence.visualEvidence={ok:visualEvidence.ok,states:visualEvidence.states||[],frames:visualEvidence.frames||0};
+    if(!visualEvidence.ok) blockers.push(...visualEvidence.failures.map(item=>`Phase 4 visual evidence: ${item}`));
   }
   if(p===5){
     if(!anyProjectText(/YaGames|YandexSDK|LoadingAPI\.ready|GameplayAPI/i)) blockers.push('Phase 5 requires Yandex SDK integration');
@@ -2018,9 +2048,39 @@ function canonicalizePhase2DecisionArgs(a={}){
     options:String(a.options||'А) Утвердить минимальный план\nБ) Изменить — перечислите необходимые правки'),
     recommendation:String(a.recommendation||'А) Утвердить минимальный план без расширения D8–D30 до проверки удержания.'),
     reason:String(a.reason||'Фиксированный scope предотвращает разрастание разработки до первого рабочего билда.')};
+  if(key==='phase2-screen-inventory') return {...a,
+    question:String(a.question||'Утверждаете полный inventory экранов и переходов из wiki/design/screen-flow.json?'),
+    options:String(a.options||'А) Утвердить полный список экранов и переходов\nБ) Изменить — перечислите экран/переход и нужную правку'),
+    recommendation:String(a.recommendation||'А) Утвердить inventory, если все игроком видимые состояния и маршруты перечислены; это фиксирует обязательное покрытие Phase 4.'),
+    reason:String(a.reason||'Phase 4 снимет и визуально проверит каждый утверждённый экран; скрыть или добавить state после этого можно только через новое явное утверждение.')};
   return a;
 }
 function canonicalizeAskUserArgs(a={}){let out=canonicalizePhase2DecisionArgs(canonicalizePhase1BriefArgs(a));if(String(out.decision_key||'')==='phase1-content-budget'&&out.proposal&&typeof out.proposal==='object'){out={...out,question:renderStructuredContentBudgetQuestion(out.proposal),options:String(out.options||'A) Утвердить proposal как есть\nB) Скорректировать — укажите KPI/бюджет и новое значение\nC) Вернуться к research'),recommendation:String(out.recommendation||'A) Утвердить, если KPI и трёхмесячный content budget подходят.'),reason:String(out.reason||'Обязательный Phase 1 STOP перед metrics.md/ADR.')};}return out;}
+function readScreenInventoryDraft(){
+  const relPath='wiki/design/screen-flow.json';
+  try{
+    const flow=JSON.parse(readText(safePath(relPath)));
+    if(flow?.schemaVersion!==1||flow?.kind!=='forge.screen-flow')return {ok:false,blockers:['screen-flow.json has the wrong schemaVersion/kind']};
+    if(!Array.isArray(flow.states)||flow.states.length<2)return {ok:false,blockers:['screen-flow.json must enumerate at least two player-visible states']};
+    if(!Array.isArray(flow.transitions)||flow.transitions.length<1)return {ok:false,blockers:['screen-flow.json must enumerate the player routes between states']};
+    return {ok:true,relPath,flow,inventorySha256:screenInventorySha256(flow)};
+  }catch(error){return {ok:false,blockers:[`cannot read screen-flow.json: ${error.message}`]};}
+}
+function screenInventoryEvidencePreview(){
+  const draft=readScreenInventoryDraft();
+  if(!draft.ok)return `[inventory unavailable: ${draft.blockers.join('; ')}]`;
+  return [`Inventory SHA-256: ${draft.inventorySha256}`,'','Canonical approval payload:',JSON.stringify(screenInventoryPayload(draft.flow),null,2)].join('\n');
+}
+function materializeApprovedScreenInventory(expectedHash,approvedAt=new Date().toISOString()){
+  const draft=readScreenInventoryDraft();
+  if(!draft.ok)return draft;
+  if(!expectedHash||draft.inventorySha256!==expectedHash)return {ok:false,blockers:['screen inventory changed after the user STOP; reopen it and show the new complete graph']};
+  draft.flow.status='approved';
+  draft.flow.approval={decisionKey:'phase2-screen-inventory',approvedBy:'user',approvedAt,inventorySha256:draft.inventorySha256};
+  writeFileSync(safePath(draft.relPath),`${JSON.stringify(draft.flow,null,2)}\n`,'utf8');
+  phaseWrittenFiles.add(draft.relPath);memoryDirty=true;
+  return {ok:true,path:draft.relPath,inventorySha256:draft.inventorySha256};
+}
 function nextProductMetricsAdrPath(){const files=findFiles('wiki/decisions',/\.md$/i,1,500);let max=0;for(const f of files){const m=f.match(/\/(\d{3})-[^/]+\.md$/);if(m)max=Math.max(max,Number(m[1]));}return `wiki/decisions/${String(max+1).padStart(3,'0')}-product-metrics.md`;}
 function renderApprovedMetricsMarkdown(p={}){const sources=[...new Set((phaseProductMetricsEvidence.fetch||[]).map(x=>String(x.url||x.requested_url||'')).filter(u=>/^https?:\/\//i.test(u)))];return ['---',`date: ${new Date().toISOString().slice(0,10)}`,'status: approved','---','','# Product Metrics','',renderStructuredContentBudgetQuestion(p),'','## Sources',...sources.map(u=>`- ${u}`),''].join('\n');}
 function renderProductMetricsAdr(p={}){const sources=[...new Set((phaseProductMetricsEvidence.fetch||[]).map(x=>String(x.url||x.requested_url||'')).filter(u=>/^https?:\/\//i.test(u)))];return ['# ADR — Product Metrics','',`- Date: ${new Date().toISOString().slice(0,10)}`,'- Status: Accepted','- Phase: 1 Analyze','','## Decision','Adopt the approved KPI set and content budget from wiki/architecture/metrics.md.','','## Context',String(p.benchmark_context||''),'','## Consequences','- Phase 2 design uses these metrics as constraints.','- Phase 2 still owns the final monetization decision.','','## Evidence',...sources.map(u=>`- ${u}`),''].join('\n');}
@@ -2136,6 +2196,10 @@ function phaseDecisionGuard(a={}){
   if(p===2){
     if(key==='phase2-multiplayer'&&!resolvedDecisionKeys.has('phase2-monetization'))return 'Ask Phase 2 monetization first.';
     if(key==='phase2-content-plan'&&(!resolvedDecisionKeys.has('phase2-monetization')||!resolvedDecisionKeys.has('phase2-multiplayer')))return 'Final Phase 2 content-plan approval comes after monetization and multiplayer.';
+    if(key==='phase2-screen-inventory'){
+      if(!resolvedDecisionKeys.has('phase2-monetization')||!resolvedDecisionKeys.has('phase2-multiplayer')||!resolvedDecisionKeys.has('phase2-content-plan'))return 'Phase 2 screen inventory approval comes after monetization, multiplayer, and content-plan decisions.';
+      const draft=readScreenInventoryDraft();if(!draft.ok)return `Phase 2 screen inventory STOP blocked: ${draft.blockers.join('; ')}`;
+    }
   }
   if(p===4){
     const order=['phase4-asset-source','phase4-art-direction','phase4-target-frame','phase4-style-bible','phase4-pixel-provider'],pos=order.indexOf(key);
@@ -3132,7 +3196,8 @@ function openDeterministicStop(stop,reason='deterministic resume'){
     options:String(a.options||''),
     recommendation:String(a.recommendation||''),
     reason:String(a.reason||''),
-    proposal:a.proposal&&typeof a.proposal==='object'?a.proposal:null
+    proposal:a.proposal&&typeof a.proposal==='object'?a.proposal:null,
+    inventorySha256:String(a.decision_key||'')==='phase2-screen-inventory'?(readScreenInventoryDraft().inventorySha256||null):null
   };
   persistRuntimeEvidenceLedger();
   process.stdout.write(`\n[Forge] Opened ${reason} STOP directly from durable state; no model/tool round-trip required.\n`);
@@ -3284,6 +3349,9 @@ function printStopPoint(a = {}) {
 ${evidence}
 --- END PRODUCT-METRICS BENCHMARK EVIDENCE ---
 `);
+  }
+  if(String(a.decision_key||'')==='phase2-screen-inventory'){
+    process.stdout.write(`\n--- COMPLETE SCREEN INVENTORY TO APPROVE ---\n${screenInventoryEvidencePreview()}\n--- END SCREEN INVENTORY ---\n`);
   }
   process.stdout.write(`\nКак ответить:\n${stopAnswerGuidance(a)}\n`);
   process.stdout.write('\n[Forge] Работа остановлена до вашего ответа.\n');
@@ -3993,7 +4061,7 @@ Mandatory rules:
 - phase-state is host-managed. If you call forge_script phase-state.mjs start/reopen for an already in_progress phase, treat the idempotent result as success and continue.
 - Exact verifier identity is authoritative: unrelated verifier success never clears another failure.
 - Recoverable shell/path mistakes are not infrastructure blockers; fix them and continue. Only capability/auth-network/environment-hard failures may terminate a phase turn.
-- Phase 2 named decisions: phase2-monetization, phase2-multiplayer, phase2-content-plan. Phase 4 named decisions: phase4-asset-source, phase4-art-direction, phase4-target-frame, phase4-style-bible, plus phase4-pixel-provider for pixel art.
+- Phase 2 named decisions: phase2-monetization, phase2-multiplayer, phase2-content-plan, phase2-screen-inventory. Before GDD completion, show every screen/state and transition from screen-flow.json and obtain explicit user approval of that full inventory. Phase 4 named decisions: phase4-asset-source, phase4-art-direction, phase4-target-frame, phase4-style-bible, plus phase4-pixel-provider for pixel art.
 - IMPORTANT HOST TRANSLATION: slash commands from Claude docs such as /analyze-project and /product-metrics, and Codex $skill commands, are Forge skill invocation notation, NOT operating-system shell commands. In this GigaChat host call forge_skill for that skill and execute its SKILL.md through available tools. Never send /skill or $skill to run_command.
 - A Forge skill directory is NOT assumed to contain index.mjs/run.mjs. SKILL.md is the canonical orchestration contract. Never invent .claude/skills/<skill>/index.mjs; use forge_skill and only scripts explicitly named by SKILL.md.
 - Never pre-fill user-owned STOP decisions into wiki artifacts. In Phase 1 ask the brief first, then write wiki/design/brief.md from the actual user answer. product-metrics is research -> proposal -> user approval -> write metrics.
@@ -4464,11 +4532,20 @@ async function turn(text){
       persistRuntimeEvidenceLedger();return;
     }
     const decisionRecord={phase:activePhase||null,decision_key:decisionKey||null,question:pendingDecision.question,answer:rawAnswer,timestamp:new Date().toISOString(),outcome:disposition.kind};
+    let boundScreenInventory=null;
+    if(disposition.kind==='resolve'&&decisionKey==='phase2-screen-inventory'){
+      boundScreenInventory=materializeApprovedScreenInventory(pendingDecision.inventorySha256,decisionRecord.timestamp);
+      if(!boundScreenInventory.ok){
+        process.stdout.write(`\n[Forge] Screen inventory approval could not be bound: ${boundScreenInventory.blockers.join('; ')}\n[Forge] STOP remains open and must show the current full inventory again.\n`);
+        persistRuntimeEvidenceLedger();return;
+      }
+    }
     runtimeDecisions.push(decisionRecord);persistDecisionRecordImmediate(decisionRecord);memoryDirty=true;
     if(disposition.kind==='resolve'){
       if(!decisionKey||!resolvedDecisionKeys.has(decisionKey))resolvedPhaseDecisions++;if(decisionKey)resolvedDecisionKeys.add(decisionKey);
       if(decisionKey==='phase1-brief')rebuildPhase1BriefFromDecision();
       if(decisionKey==='phase1-content-budget'&&pendingDecision.proposal){const mat=materializeApprovedProductMetricsProposal(pendingDecision.proposal);if(!mat.ok){resolvedDecisionKeys.delete(decisionKey);process.stdout.write(`\n[Forge] Approved structured proposal could not be materialized: ${mat.blockers.join('; ')}\n`);persistRuntimeEvidenceLedger();return;}process.stdout.write(`\n[Forge] Approved product-metrics materialized -> ${mat.metrics}, ${mat.adr}\n`);}
+      if(boundScreenInventory)process.stdout.write(`\n[Forge] Approved screen inventory bound -> ${boundScreenInventory.path} (${boundScreenInventory.inventorySha256})\n`);
     }
     if(activePhase===4&&/pixellab/i.test(decisionContext)&&/pixellab/i.test(rawAnswer)){
       capabilityBlock='PixelLab MCP was selected, but PixelLab is not callable in this GigaChat host. Choose the available GigaChat built-in text2image path or configure a real PixelLab bridge before Phase 4 can complete.';
@@ -4627,6 +4704,7 @@ async function turn(text){
           recommendation: String(stopArgs.recommendation || ''),
           reason: String(stopArgs.reason || ''),
           proposal: stopArgs.proposal&&typeof stopArgs.proposal==='object'?stopArgs.proposal:null,
+          inventorySha256: String(stopArgs.decision_key||'')==='phase2-screen-inventory'?(readScreenInventoryDraft().inventorySha256||null):null,
           directive:Boolean(activeDirective)
         };
         if(activePhase&&!activeDirective){
@@ -5083,7 +5161,7 @@ if (REQUEST_DOCTOR) {
   test('guarded Task blocks raw shell fail-closed and unclassified forge scripts',()=>/blocks raw/.test(taskScopedShellMutationBlock.toString())&&/taskScopedShellMutationBlock/.test(tool.toString())&&/taskScopedForgeScriptBlock/.test(tool.toString())&&/blocks unclassified forge_script/.test(taskScopedForgeScriptBlock.toString()));
   test('only registered read-only verifier scripts bypass the scoped forge-script block',()=>/declaredReadOnlyForgeVerifier/.test(taskScopedForgeScriptBlock.toString())&&/mutates !== false/.test(declaredReadOnlyForgeVerifier.toString()));
   test('active Task trusts engine verifier scripts, never project-local shadows',()=>!/projectPath/.test(declaredReadOnlyForgeVerifier.toString())&&/scopedTask&&existsSync\(engine\)/.test(resolveForgeScript.toString()));
-  test('scoped canonical mutators enumerate their output roots',()=>{const x=taskScopedForgeScriptBlock.toString();return /gacha-backups/.test(x)&&/modularize-backups/.test(x)&&/\.forge-ai\.json/.test(x)&&/stage-out/.test(x)&&/stage\.png/.test(x);});
+  test('scoped canonical mutators enumerate their output roots',()=>{const x=taskScopedForgeScriptBlock.toString();return /gacha-backups/.test(x)&&/modularize-backups/.test(x)&&/\.forge-ai\.json/.test(x)&&/assets\/target\/screens\/manifest\.json/.test(x)&&/phase-4-visual-evidence\.json/.test(x)&&/stage-out/.test(x)&&/stage\.png/.test(x);});
   test('scoped output maps handle nested AI Studio targets and --out=value',()=>{const x=taskScopedForgeScriptBlock.toString();return /rootPrefix/.test(x)&&/--out=/.test(x)&&forgeScriptTargetArg(['--out','Release/escape','WorkProgress/game'])==='WorkProgress/game'&&forgeScriptTargetArg(['--out=Release/escape','WorkProgress/game'])==='WorkProgress/game';});
   test('Task scope denials emit bounded Forge diagnostics',()=>/GIGA_TASK_SCOPE_DENIED/.test(reportTaskScopeDenied.toString())&&/slice\(0,700\)/.test(reportTaskScopeDenied.toString())&&/taskScopeDeny/.test(taskScopedForgeScriptBlock.toString()));
   test('phase lifecycle exception is forge_script-only, not a shell substring bypass',()=>!/phase-state/.test(taskScopedShellMutationBlock.toString())&&/phase-state\\\.mjs/.test(taskScopedForgeScriptBlock.toString()));
@@ -5224,7 +5302,9 @@ if (REQUEST_DOCTOR) {
   test('suggested approval word resolves the whole brief',()=>phase1BriefAnswerCoverageBlockers('утверждаю').length===0);
   test('STOP guidance always exposes an actionable answer',()=>/утверждаю/.test(stopAnswerGuidance({recommendation:'Use A'}))&&/одним сообщением/.test(stopAnswerGuidance({})));
   test('Phase 1 brief guidance gives approval and full correction formats',()=>{const x=stopAnswerGuidance({decision_key:'phase1-brief'});return /«утверждаю»/.test(x)&&/Q1 —/.test(x)&&/Q5 —/.test(x)&&/все пять ответов/.test(x);});
-  test('Phase 2 decisions receive deterministic fast-MVP recommendations',()=>{const x=canonicalizeAskUserArgs({decision_key:'phase2-multiplayer'});return /мультиплеер/i.test(x.question)&&/А\)/.test(x.recommendation)&&/«утверждаю»/.test(stopAnswerGuidance(x));});
+  test('Phase 2 decisions receive deterministic fast-MVP recommendations',()=>{const x=canonicalizeAskUserArgs({decision_key:'phase2-multiplayer'});const inventory=canonicalizeAskUserArgs({decision_key:'phase2-screen-inventory'});return /мультиплеер/i.test(x.question)&&/А\)/.test(x.recommendation)&&/«утверждаю»/.test(stopAnswerGuidance(x))&&/inventory/i.test(inventory.question)&&requiredDecisionKeysForPhase(2).has('phase2-screen-inventory');});
+  test('Phase 2 inventory STOP prints the exact host-read graph',()=>/COMPLETE SCREEN INVENTORY TO APPROVE/.test(printStopPoint.toString())&&/screenInventoryEvidencePreview/.test(printStopPoint.toString())&&/screenInventoryPayload/.test(screenInventoryEvidencePreview.toString())&&!/\.slice\(/.test(screenInventoryEvidencePreview.toString()));
+  test('Phase 2 inventory approval is hash-bound before decision persistence',()=>/boundScreenInventory=materializeApprovedScreenInventory\(pendingDecision\.inventorySha256/.test(turn.toString())&&/inventorySha256.*phase2-screen-inventory/s.test(turn.toString()));
   test('runtime-owned decision ledger rejects model writes',()=>/runtime-owned/.test(runtimeOwnedWriteBlock('wiki/decisions/gigachat-decisions.json')||''));
   test('pending decision turns restore phase runtime before consuming the answer',()=>/startPhaseEvidence\(pendingPhase,\{resume:true\}\)/.test(turn.toString())&&/hydrateResolvedDecisionState\(pendingPhase\)/.test(turn.toString()));
   test('decision STOP automatically persists blocked phase state',()=>/Awaiting.*pendingDecision\.decision_key/.test(turn.toString())&&/markHostPhaseBlocked\(activePhase,decisionReason,'user','USER_DECISION_REQUIRED'/.test(turn.toString()));

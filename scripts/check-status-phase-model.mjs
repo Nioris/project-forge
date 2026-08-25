@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTask, startTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
+import { screenInventorySha256 } from '../.claude/skills/status/references/screen-flow-contract.mjs';
 
 const ROOT = process.cwd();
 const statusScript = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'project-status.mjs');
@@ -105,12 +106,23 @@ try {
   w(pMixed,'wiki/design/brief.md','# Brief\n\n## Аудитория\nИгроки, которым нравятся короткие тактические карточные сессии.\n\n## Амбиция\nРабочий MVP с одним боем и понятной обратной связью.\n\n## Обещание игры\nКаждый ход даёт ясный выбор между атакой и защитой.\n\n## Отличие\nКарты меняют темп боя без сложной меты.\n\n## История\nЭто самостоятельный тестовый проект.\n');
   w(pMixed,'wiki/design/gdd.md','# GDD\n\nИгрок начинает матч с картами в руке, разыгрывает одну карту и завершает ход. Соперник отвечает простой стратегией. Победа достигается снижением здоровья противника до нуля. Интерфейс показывает здоровье, ману, руку, журнал действий и понятную кнопку окончания хода. Карты имеют стоимость и текст эффекта. MVP использует одну колоду и один короткий матч; баланс и контент расширяются после плейтеста.\n');
   w(pMixed,'wiki/plan/02-development-plan.md','# Development plan\n\n1. Реализовать состояние матча и проверку правил.\n2. Показать руку, здоровье и доступные действия.\n3. Добавить ход ИИ и экран результата.\n4. Проверить сценарий победы, поражения и перезапуска.\n\nПлан относится к MVP и не содержит незавершённых шаблонных разделов.\n');
+  const mixedScreenFlow={
+    schemaVersion:1,kind:'forge.screen-flow',status:'approved',entryState:'start',
+    qaAdapter:{global:'__FORGE_VISUAL_QA__',query:'forgeVisualQa=1'},
+    states:[
+      {id:'start',label:'Start',archetype:'start',required:true,targetPolicy:'dedicated',inheritFrom:null,visualDescription:'Opening screen presents the player goal, the primary action, and a clear route into the playable card battle.',capture:{adapterState:'start'}},
+      {id:'battle',label:'Battle',archetype:'gameplay',required:true,targetPolicy:'dedicated',inheritFrom:null,visualDescription:'Card battle presents the hand, health, turn controls, readable feedback, and a route back to the opening state.',capture:{adapterState:'battle'}},
+    ],
+    transitions:[{from:'start',to:'battle',trigger:'start match'},{from:'battle',to:'start',trigger:'restart'}],
+  };
+  mixedScreenFlow.approval={decisionKey:'phase2-screen-inventory',approvedBy:'user',approvedAt:'2026-08-25T00:00:00.000Z',inventorySha256:screenInventorySha256(mixedScreenFlow)};
+  w(pMixed,'wiki/design/screen-flow.json',JSON.stringify(mixedScreenFlow,null,2));
   w(pMixed,'wiki/testing.md','# Testing\n\nАвтоматический сценарий запускает матч, разыгрывает карту, передаёт ход и проверяет отсутствие ошибок. Отчёт фиксирует живой requestAnimationFrame и пустой список консольных ошибок. Ручная проверка подтверждает читаемость руки, кнопки окончания хода и экрана результата на портретном экране.\n');
   w(pMixed,'GameIntegration/runtime.js',`<meta name="viewport"><style>*{touch-action:none}</style>\nYaGames.init();\nLoadingAPI.ready();\nconst language = ysdk.environment.i18n.lang;\nconst I18N = {};\n`);
   w(pMixed,'WorkProgress/runtime.js','export const startMatch = () => ({ turn: 1, playerHealth: 20, enemyHealth: 20 });\n');
   w(pMixed,'playtest-out/report.json',JSON.stringify({rafAlive:true,errors:[],actions:['start','play-card','end-turn']}));
   phase(pMixed,'complete','1','wiki/features/game-analysis.md','wiki/architecture/metrics.md','wiki/design/brief.md');
-  phase(pMixed,'complete','2','wiki/design/gdd.md','wiki/plan/02-development-plan.md');
+  phase(pMixed,'complete','2','wiki/design/gdd.md','wiki/plan/02-development-plan.md','wiki/design/screen-flow.json');
   phase(pMixed,'complete','3','wiki/plan/02-development-plan.md','wiki/testing.md');
   for (const n of [1,2,3]) {
     const mixedMarker=JSON.parse(fs.readFileSync(path.join(pMixed,'wiki/phases',`phase-${n}.json`),'utf8'));

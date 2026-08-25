@@ -1,4 +1,4 @@
-# Project Forge v4.68.50 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.51 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -470,6 +470,12 @@ Task scope; one invalid target rejects the operation. Codex/GigaChat share the g
 blocks raw shell. Codex shell/external CLIs still require a worktree + accepted diff.
 *(Established v4.68.45 Host-enforced native Task write scope.)*
 
+### 24. Visual acceptance is bound to current pixels and an independent review
+
+User approves the Phase 2 screen graph. Phase 4 generates GPT Image targets, captures each state,
+and hash-binds pixels + reviewer evidence. <6/10 or Critical/Major blocks; CSS/DOM/console cannot substitute.
+See `wiki/decisions/035-evidence-bound-visual-acceptance.md`.
+
 ### Adding new lessons — process
 
 Each lesson gets a tier classification at logging time:
@@ -491,7 +497,10 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
----
+## v4.68.51 changelog (evidence-bound visual acceptance)
+
+Phase 2 inventory → GPT Image targets → adapter capture → independent review.
+Missing/stale/fake shots, self-review, <6/10 and Critical/Major cannot complete Phase 4.
 
 ## v4.68.50 changelog (marker-authoritative status progression)
 
@@ -505,10 +514,3 @@ Unicode-aware Russian KPI/research enforcement now distinguishes document-level 
 line-level external facts. Internal Retention headings and Cyrillic research section labels do not cause
 false rejection, while inflected factual claims still require line-local evidence. The real CardGame
 Phase 1 documents pass without English workaround labels.
-
-## v4.68.48 changelog (Unicode-aware Phase 1 evidence gate)
-
-Phase 1 KPI and research validation now uses Unicode token boundaries instead of JavaScript's
-ASCII-oriented `\b`/`\w`. Russian hypothesis/no-evidence wording works directly, while unsupported
-Cyrillic KPI and external-market claims are rejected. Inflected research terms and positive Russian
-confirmations are covered by regression tests without weakening existing English checks.

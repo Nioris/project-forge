@@ -4,7 +4,12 @@
   "name": "Visual",
   "requiredEvidence": [
     { "path": "wiki/design/target-frame.md", "minBytes": 120 },
-    { "path": "assets/style/STYLE-BIBLE.md", "minBytes": 120 }
+    { "path": "wiki/design/screen-flow.json", "minBytes": 600 },
+    { "path": "assets/target/target-frame.png", "minBytes": 1024 },
+    { "path": "assets/target/screens/manifest.json", "minBytes": 600 },
+    { "path": "assets/style/STYLE-BIBLE.md", "minBytes": 120 },
+    { "path": "wiki/qa/phase-4-visual-review.md", "minBytes": 240 },
+    { "path": "wiki/qa/phase-4-visual-evidence.json", "minBytes": 600 }
   ],
-  "projectChecks": ["non-placeholder-evidence", "visual-integration"]
+  "projectChecks": ["non-placeholder-evidence", "visual-integration", "phase-4-visual-evidence"]
 }

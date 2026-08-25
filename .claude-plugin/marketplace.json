@@ -10,8 +10,8 @@
         "source": "github",
         "repo": "Nioris/project-forge"
       },
-      "version": "4.68.50",
-      "description": "Project Forge terminal-first runtime: 9 canonical phases, Claude/Codex subscription + API profiles, GigaChat terminal agent, 141 canonical skills, AI Studio and multi-platform release gates.",
+      "version": "4.68.51",
+      "description": "Project Forge terminal-first runtime: 9 canonical phases, Claude/Codex subscription + API profiles, GigaChat terminal agent, 143 canonical skills, AI Studio and multi-platform release gates.",
       "category": "productivity",
       "keywords": [
         "gamedev",

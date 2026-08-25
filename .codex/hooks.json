@@ -68,6 +68,12 @@
         "hooks": [
           {
             "type": "command",
+            "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.claude/hooks/phase-visual-claim-gate.mjs\"",
+            "timeout": 20,
+            "commandWindows": "node \".\\.claude\\hooks\\phase-visual-claim-gate.mjs\""
+          },
+          {
+            "type": "command",
             "command": "ROOT=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; node \"$ROOT/.claude/hooks/pre-claim-fixed.mjs\"",
             "timeout": 10,
             "commandWindows": "node \".\\.claude\\hooks\\pre-claim-fixed.mjs\""

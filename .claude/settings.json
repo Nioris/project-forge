@@ -92,6 +92,11 @@
             "type": "command",
             "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','pre-claim-fixed.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/pre-claim-fixed.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node -e \"var c=require('child_process'),f=require('fs'),p=require('path');var r=process.cwd();try{r=c.execSync('git rev-parse --show-toplevel',{encoding:'utf-8',stdio:['ignore','pipe','ignore']}).trim()}catch(e){}if(!f.existsSync(p.join(r,'.claude','hooks','phase-visual-claim-gate.mjs')))process.exit(0);try{c.execSync('node .claude/hooks/phase-visual-claim-gate.mjs',{cwd:r,stdio:'inherit'})}catch(e){process.exit(e.status||0)}\"",
+            "timeout": 5000
           }
         ]
       }

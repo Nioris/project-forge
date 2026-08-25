@@ -79,8 +79,8 @@ console.log('──────────────────────�
 
 const realRegistry = loadTaskVerifierRegistry({ projectRoot: process.cwd() });
 const taskRunnable = realRegistry.entries.filter(entry => entry.taskRunner);
-check(taskRunnable.length === 8 && taskRunnable.every(entry => entry.public && entry.scope === 'project' && entry.mutates === false),
-  'canonical registry explicitly allows eight read-only project verifiers for Task execution');
+check(taskRunnable.length === 9 && taskRunnable.every(entry => entry.public && entry.scope === 'project' && entry.mutates === false),
+  'canonical registry explicitly allows nine read-only project verifiers for Task execution');
 check(taskRunnable.find(entry => entry.id === 'gacha-integration')?.phases?.includes(8) === true,
   'direct gacha repairs can be re-verified during release-phase stabilization');
 const gachaEntry = taskRunnable.find(entry => entry.id === 'gacha-integration');

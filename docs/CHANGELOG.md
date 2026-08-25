@@ -4786,6 +4786,26 @@ execution and Task creation. Managed projects cannot self-promote through their 
 `FORGE_ENGINE_ROOT`; case folding is Windows-only. The copied-runtime regression now reaches `done`
 through a contracted verifier while tampered local contracts and registries remain ineffective.
 
+## v4.68.48 changelog (Unicode-aware Phase 1 evidence gate)
+
+Phase 1 KPI and research validation now uses Unicode token boundaries instead of JavaScript's
+ASCII-oriented `\b`/`\w`. Russian hypothesis/no-evidence wording works directly, while unsupported
+Cyrillic KPI and external-market claims are rejected. Inflected research terms and positive Russian
+confirmations are covered by regression tests without weakening existing English checks.
+
+## v4.68.51 changelog (screen-blueprint visual acceptance)
+
+Phase 2 now presents every player-visible state/transition at a dedicated user STOP and binds approval
+to a deterministic inventory hash. Phase 4 generates state-specific mobile/desktop GPT Image blueprints
+conditioned on the approved master PNG. The batch route enforces `/v1/images/edits` plus a provider
+request ID; native generation records an explicitly host-trusted, hash-bound attestation rather than
+provider proof. Forge captures the exact same inventory through a local
+runtime adapter. Engine-adjacent HMAC receipts make later project-local capture/review edits detectable;
+the full-shell host remains trusted.
+The gate verifies complete PNG chunks/CRC/IDAT, realpath containment, production-asset freshness,
+per-frame target comparisons and different host sessions; self-selected subsets, identical state frames,
+future timestamps, project-local reviewer claims and affirmative completion wording are rejected.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

@@ -4,7 +4,8 @@
   "name": "Design",
   "requiredEvidence": [
     { "path": "wiki/design/gdd.md", "minBytes": 300 },
-    { "path": "wiki/plan/02-development-plan.md", "minBytes": 160 }
+    { "path": "wiki/plan/02-development-plan.md", "minBytes": 160 },
+    { "path": "wiki/design/screen-flow.json", "minBytes": 600 }
   ],
-  "projectChecks": ["non-placeholder-evidence"]
+  "projectChecks": ["non-placeholder-evidence", "screen-flow-contract"]
 }

@@ -44,6 +44,11 @@ description: "Compile reproducible image/promo prompts from the game's brief, st
 }
 ```
 
+Для визуального blueprint экрана используй отдельный pack на каждую пару state/viewport:
+`purpose: "screen-blueprint"`, `state: "<id из wiki/design/screen-flow.json>"`,
+`viewport: "mobile|desktop"`, а `references` обязательно содержит
+`assets/target/target-frame.png`. Без этих полей `screen-targets.mjs` не примет PNG как эталон.
+
 `provider` по умолчанию `codex-native` как обозначение native host path для совместимости. Для unattended batch допустимы `openai-api` и `gigachat-api`. GigaChat `text2image` может не гарантировать те же exact size/quality controls, поэтому `size`/`quality` в pack остаются target constraints и должны быть проверены после генерации. OpenRouter не является неявным production-provider.
 
 ## Формула production prompt
@@ -80,5 +85,10 @@ FAIL → генерацию не запускать.
 
 ## Provenance
 
-После генерации `/image-studio` дописывает `assets/generated/provenance.jsonl`: prompt-pack,
-provider/model, время, output path и решение art-director. Ключи/секреты туда не пишутся.
+После генерации `/image-studio` дописывает `assets/generated/provenance.jsonl`: SHA-256 prompt-pack,
+master target и output, provider/model, время и operation id. Native-запись является доверенной
+host-attestation (не независимым доказательством провайдера). Для native GPT Image выполни
+`node <движок>/scripts/record-image-provenance.mjs . --output <png> --prompt-pack <json> --provider codex-native --model gpt-image-2`;
+OpenAI batch helper записывает тот же формат автоматически и для `screen-blueprint` обязан реально
+вызвать `/v1/images/edits` с master PNG. GigaChat helper годится для обычных text2image-ассетов, но не
+для screen blueprint, требующего сохранения image reference. Ключи/секреты в provenance не пишутся.

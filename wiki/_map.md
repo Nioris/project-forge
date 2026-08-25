@@ -29,7 +29,7 @@
 - **Core**: Node.js 20+, ES modules (.mjs), bash + PowerShell для setup
 - **Tooling**: только встроенные модули Node (`fs`, `path`, `child_process`) — no runtime deps
 - **Skills**: 143 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
-- **Hooks**: 8 .mjs файлов в `.claude/hooks/`
+- **Hooks**: 9 .mjs файлов в `.claude/hooks/`
 - **Agents**: 21 canonical markdown roles в `.claude/agents/` + generated Codex TOML mirrors
 - **Knowledge base**: 61 SKILL.md в `./skills/` (referenced by command skills)
 - **Platforms**: 9 директорий в `platforms/` с validators + scripts + templates
@@ -39,7 +39,7 @@
 - **9 platforms** — yandex, vk, telegram, ok, max, rustore, web, steam, vkplay
 - **34 validators** — pre-submit gate per platform
 - **143 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
-- **8 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous
+- **9 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous, phase-visual-claim-gate
 - **21 agents** — platform builders + design/art/QA/security/research/AI Studio specialist roles
 - **Dashboard** — `dashboard.html` для project tracking + quick prompt copy
 - **i18n foundation** — runtime ru+en architecture from day 1 (v4.7.6)
@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.50 (latest released)
+### Version: v4.68.50 (latest released); v4.68.51 preparing
 
+- 2026-08-25: **v4.68.51 (preparing)** — user-approved Phase 2 inventory → reference-conditioned GPT Image blueprints (provider-backed batch or trusted native attestation) → runtime-adapter capture → independent tamper-evident review; CSS, clean console output, self-selected states and builder self-approval cannot complete Phase 4.
 - 2026-08-23: **v4.68.50** — Marker-managed projects stop at the first missing phase marker; later visual, SDK, listing and QA artifacts remain visible as evidence ahead of gate but cannot bypass executable phase contracts.
 - 2026-08-23: **v4.68.49** — Complete Unicode evidence classification preserves Russian KPI/research enforcement without treating internal Retention headings as uncited external facts; the real CardGame Phase 1 evidence passes without English labels.
 - 2026-08-23: **v4.68.48** — Phase 1 evidence validation now uses Unicode word boundaries: Russian KPI hypotheses and no-evidence declarations work without English labels, while uncited Cyrillic KPI/research claims can no longer bypass the gate.
@@ -537,6 +538,7 @@ Idle — awaiting user requests for v4.8 backlog or hot fixes.
 - [[plan/v4.8-roadmap]] — backlog details
 - [[plan/B3-008-unicode-phase-gate]] — v4.68.49 complete Unicode-aware Phase 1 evidence validation
 - [[plan/B3-009-marker-authoritative-status]] — v4.68.50 marker-authoritative status progression
+- [[plan/B3-010-evidence-bound-visual-acceptance]] — v4.68.51 evidence-bound Phase 4 visual acceptance
 - [[plan/B3-007-portable-engine-authority]] — v4.68.47 complete portable managed-runtime engine authority
 - [[plan/B3-006-task-write-scope-guard]] — v4.68.45 host-enforced native Task write scope
 - [[plan/B3-005-machine-capability-contracts]] — v4.68.44 Skill/Agent contract authority

@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.50`
+**Current public version:** `v4.68.51`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -27,7 +27,7 @@ Forge is not another chat UI. It is a project runtime around terminal agents.
 It provides:
 
 - **9 canonical phases** from analysis to live operation;
-- **142 canonical skills** plus generated Codex discovery adapters;
+- **143 canonical skills** plus generated Codex discovery adapters;
 - **21 specialized subagents**;
 - shared phase markers, STOP-points and project state across supported hosts;
 - a restart-safe Task/RunResult execution graph with structured repair and decision routing;
@@ -36,6 +36,7 @@ It provides:
 - a Forge-owned GigaChat terminal agent;
 - one-model whole-project profiles for Gemini, Qwen, Kimi K3, DeepSeek, GLM, MiniMax M3 and OpenRouter;
 - AI Studio workflows for prompt compilation, images, 3D, art direction and visual QA;
+- evidence-bound Visual phase: user-approved Phase 2 screen inventory → master-image-conditioned GPT Image blueprints → live state capture → independent tamper-evident review;
 - platform integrations and release checks;
 - dashboard, fleet sync, upgrade and managed-file drift validation.
 
@@ -68,6 +69,15 @@ It provides:
 ```
 
 SDK integration, localization, AI generation and other capabilities live inside these phases instead of creating extra pseudo-phases.
+
+Phase 4 cannot pass on CSS, DOM assertions or clean console output. The user first approves the full
+Phase 2 state/transition inventory. Each key state then receives a mobile/desktop GPT Image blueprint
+conditioned on the approved master PNG. The direct batch route enforces a real `/v1/images/edits`
+input and records the provider request ID; the host-native route records a hash-bound host attestation,
+not an independent provider receipt. Forge switches
+every Phase 2 state through a local QA adapter, captures the live pixels and requires a different
+host task to compare every frame with its own target. Engine-adjacent HMAC receipts make later
+project-local evidence edits detectable; a process with full host shell access remains trusted.
 
 ## Durable execution graph
 
@@ -191,7 +201,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.50` keeps separate normal-account and API profiles.
+`v4.68.51` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -350,7 +360,7 @@ Core workflows:
 
 Codex uses the equivalent `$...` syntax.
 
-Direct provider helpers support unattended/batch work, including OpenAI image generation and GigaChat image/3D backends. Secrets stay outside project repositories.
+Direct provider helpers support unattended/batch work, including OpenAI image generation and GigaChat image/3D backends. Screen blueprints use GPT Image reference input; GigaChat text2image remains available for ordinary assets but cannot satisfy that reference-bound gate. Secrets stay outside project repositories.
 
 See [docs/AI-STUDIO-4.67.0.md](docs/AI-STUDIO-4.67.0.md).
 
@@ -383,7 +393,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.50.md](RELEASE_NOTES_v4.68.50.md) — current release notes
+- [RELEASE_NOTES_v4.68.51.md](RELEASE_NOTES_v4.68.51.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

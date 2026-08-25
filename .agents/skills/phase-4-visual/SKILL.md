@@ -14,7 +14,8 @@ writes:
   - WorkProgress/**
   - wiki/**
   - assets/**
-verifiers: []
+verifiers:
+  - phase4-visual-evidence
 stop_points:
   - phase4-art-direction
 risk_shell: write
@@ -41,7 +42,7 @@ node .claude/skills/status/references/phase-state.mjs block 4 "target frame / st
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md
+node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md wiki/design/screen-flow.json assets/target/target-frame.png assets/target/screens/manifest.json assets/style/STYLE-BIBLE.md wiki/qa/phase-4-visual-review.md wiki/qa/phase-4-visual-evidence.json
 ```
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `$status` использует его как
@@ -93,6 +94,27 @@ machine-readable progression state, а сами артефакты остают�
 1b. **🎯 ЦЕЛЕВОЙ КАДР** (art-direction): 3 варианта главного экрана целиком в целевом
    разрешении → доска → твой выбор → `assets/target/target-frame.png`. Дальше ВСЁ
    производство равняется на него, а самооценка меряет расстояние до него.
+1c. **🗺️ ЦЕЛЕВЫЕ ЭКРАНЫ**: после утверждения общего target frame возьми каждый state из
+   `wiki/design/screen-flow.json`. Через `$prompt-compiler` + `$image-studio` передай GPT Image
+   **сам файл** `assets/target/target-frame.png` как image input/reference (для native Codex —
+   `referenced_image_paths`, для batch — `/v1/images/edits`), а не только его путь или текстовое
+   описание, и добавь описание конкретного экрана; затем создай его
+   desktop и mobile visual blueprint в `assets/target/screens/`. Prompt pack обязан иметь
+   `purpose: screen-blueprint`, точные `state`/`viewport` и ссылку на master target. После native
+   GPT Image вызова зафиксируй результат `record-image-provenance.mjs`; это hash-bound attestation
+   доверенного native host, а не квитанция провайдера. Batch OpenAI helper сильнее: он механически
+   отправляет reference через `/v1/images/edits` и фиксирует `x-request-id`. GigaChat `text2image`
+   экранным blueprint не считается,
+   потому что не принимает утверждённый master PNG как reference input. Ключевые архетипы (gameplay,
+   HQ/home, map/list, result/detail) получают `mode: dedicated`; второстепенный state может
+   получить `mode: inherited` и ссылаться на утверждённую пару того же архетипа.
+   Зафиксируй полную карту state → mobile/desktop PNG + SHA-256 в
+   `assets/target/screens/manifest.json`. Нет mapping хотя бы для одного state — верстать и
+   принимать Phase 4 нельзя. Blueprint — визуальная спецификация, не готовый UI: текст,
+   controls и поведение реализуются доступным HTML/CSS/JS и проверяются отдельно.
+   Не вычисляй хеши вручную: каждый mapping добавляй канонической командой:
+   `node <движок>/scripts/screen-targets.mjs . --state "..." --description "..." --mobile assets/target/screens/...-mobile.png --desktop assets/target/screens/...-desktop.png`.
+   Для наследования используй `--inherit-from "<утверждённый state>"`.
 2. **`$ui-pipeline`** — КОМПОЗИЦИЯ КАЖДОГО ЭКРАНА из схемы `$screen-flow` (Ф2). Сначала
    проверь, что схема есть: нет схемы — не композиция сломана, а архитектура. КОМПОЗИЦИЯ ЭКРАНА (аудит → иерархия → система раскладки → редизайн →
    перепроверка). Обязателен, если интерфейс сложнее одного HUD: определяет, что на экране
@@ -161,5 +183,40 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
 поставил, дальше не возвращаешься. Ничего не нашлось — одна строка и работаешь нашими скилами.
 
 ## 📸 Перед сдачей — самооценка по кадрам
-`node <движок>/scripts/screens-shoot.mjs . --states "..."` → оцени КАЖДЫЙ экран баллом
+`node <движок>/scripts/screens-shoot.mjs .` → через локальный QA adapter оцени КАЖДЫЙ экран баллом
 по ui-review §самооценка (мобильный 412 + десктоп). Ниже 6/10 — в работу, не показывать.
+
+## 🔒 Исполняемый визуальный gate (обязателен для `complete`)
+
+Самооценка builder-а — внутренний цикл исправлений, но **не приёмка**. После последнего изменения:
+
+1. Реализация обязана включать локальный QA adapter `window.__FORGE_VISUAL_QA__` только при
+   `?forgeVisualQa=1`, с методами `listStates()`, `showState(id)`, `currentState()`. Запусти
+   `screens-shoot.mjs` без ручного `--states`: он сам берёт **все состояния из screen-flow**,
+   переключает их через adapter и создаёт
+   `screens/review/capture-manifest.json` с реальными размерами, SHA-256, coverage и browser errors.
+2. Передай `assets/target/screens/manifest.json`, style bible и **каждый** mobile/desktop кадр другому
+   reviewer-сеансу или отдельному visual-qa агенту. Builder session не может принять сам себя.
+3. Reviewer открывает live screenshot рядом с его state-specific mobile/desktop target, а не только
+   общий target и не JSON, и пишет `wiki/qa/phase-4-visual-review.md`: по каждому
+   кадру — композиция, иерархия, читаемость, совпадение со стилем/target frame, адаптивность,
+   конкретная критика и дефекты. Для target frame назови минимум 2 совпадения и 3 расхождения
+   (композиция, плотность, палитра/материал, иерархия) и поставь отдельный `distanceScore`.
+4. На основе `screens/review/phase-4-visual-evidence.template.json` сформируй
+   `wiki/qa/phase-4-visual-evidence.json`; привяжи отчёт, target frame и style bible их SHA-256.
+   После заполнения reviewer-полей выполни
+   `node <движок>/scripts/bind-phase4-visual-evidence.mjs .` — он обновит только машинные
+   пути/хеши и **не** превращает незаполненный/слабый review в PASS.
+5. Независимый reviewer в другой host task/session запускает
+   `node <движок>/scripts/record-phase4-visual-review.mjs .`, получая внешнюю по отношению к проекту
+   tamper-evident receipt. Она обнаруживает последующую подмену evidence, но при полном shell-доступе
+   сам host остаётся доверенной границей.
+6. Запусти `node <движок>/scripts/check-phase4-visual-evidence.mjs .`. Только `PASS` разрешает
+   команду `phase-state.mjs complete 4 ...`.
+
+Gate отклоняет фазу, если: пропущено состояние из утверждённого screen-flow; нет пары 412px + desktop для каждого;
+кадр устарел после правки UI; есть overflow/runtime error; reviewer совпадает с builder session;
+не открыт/не оценён хотя бы один кадр; любой критерий или target distance ниже 6/10; reviewer не
+назвал 2 совпадения + 3 конкретных расхождения с целью; остался Critical/Major; хеши
+скриншота, target frame, style bible или отчёта не совпадают. Наличие CSS и `errors: []` больше
+никогда не является визуальной приёмкой.

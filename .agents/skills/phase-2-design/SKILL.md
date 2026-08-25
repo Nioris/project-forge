@@ -14,6 +14,7 @@ writes:
   - wiki/**
 verifiers: []
 stop_points:
+  - phase2-screen-inventory
   - phase2-gdd
 risk_shell: write
 risk_external: read
@@ -39,7 +40,7 @@ node .claude/skills/status/references/phase-state.mjs block 2 "GDD retention/con
 Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
 
 ```bash
-node .claude/skills/status/references/phase-state.mjs complete 2 wiki/design/gdd.md wiki/plan/02-development-plan.md
+node .claude/skills/status/references/phase-state.mjs complete 2 wiki/design/gdd.md wiki/plan/02-development-plan.md wiki/design/screen-flow.json
 ```
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `$status` использует его как
@@ -95,7 +96,24 @@ machine-readable progression state, а сами артефакты остают�
    (тогда это закон) или пометку «оценка на <дата>, пересматривается» (тогда это гипотеза,
    см. 📏 в ядре). Порог без источника порождает кейс «режем игру под выдуманный лимит».
 2. Сверка: контент-план GDD закрывает ДЕФИЦИТ из контент-бюджета? Не закрывает → `$deepen-game`.
-3. STOP-POINT: сводка «фичи по дням игрока D1-D7(+D30)» на подтверждение.
+3. **STOP-POINT: inventory экранов — до утверждения GDD.** Покажи пользователю полный список
+   `wiki/design/screen-flow.json`: каждый `id`/label/архетип/назначение/targetPolicy и все
+   переходы `from → to (trigger)`. Спроси явно: «Утверждаете полный inventory экранов и
+   переходов? Можно ответить: „утверждаю“; для изменений перечислите экран/переход и правку».
+   После реального ответа пользователя запиши в JSON:
+   ```json
+   "approval": {
+     "decisionKey": "phase2-screen-inventory",
+     "approvedBy": "user",
+     "approvedAt": "<canonical ISO time>",
+     "inventorySha256": "<hash full states + transitions>"
+   }
+   ```
+   Хеш считается только каноническим `screenInventorySha256()` из
+   `status/references/screen-flow-contract.mjs`; не придумывай и не копируй его вручную.
+   Любая правка state/transition после approval снова открывает этот STOP и требует нового
+   подтверждения. Без этой записи Phase 2 и дальнейшая визуальная приёмка не проходят.
+4. STOP-POINT: сводка «фичи по дням игрока D1-D7(+D30)» на подтверждение.
 
 Следующая фаза: `$phase-3-construct`
 
@@ -134,6 +152,13 @@ machine-readable progression state, а сами артефакты остают�
 делает игрок / что видит нового / куда уходит». Мета (герои, магазин, дейлики, кланы) получает
 МЕСТО В МАРШРУТЕ, а не вкладку на боевом экране — иначе игрок её не увидит, а туториалу некуда
 вести. Всё на одном экране со вкладками = дефект архитектуры, не визуала.
+
+Кроме схемы в GDD создай канонический `wiki/design/screen-flow.json` по контракту
+`status/references/screen-flow-contract.mjs`. Перечисли **все** игроком видимые состояния,
+переходы, архетип, `visualDescription`, `targetPolicy` и `capture.adapterState`. Для `start`,
+`home/hq`, `map`, `gameplay`, `result` всегда ставь `targetPolicy: dedicated`; только вторичный
+экран с тем же визуальным shell может наследовать уже выделенный эталон. Статус `approved`
+ставится лишь после STOP подтверждения GDD: этот список станет обязательной полнотой Фазы 4.
 
 ## ⚖️ Проверяемость баланса — заложить сразу
 GDD обязан допускать проверку `$gameplay-balance`: у игры должна быть **тупая стратегия**,
