@@ -13,6 +13,8 @@ reads:
   - "**"
 writes:
   - Release/**
+  - forge.godot.export.json
+  - qa/**
   - StoreData/**
   - SETUP_GUIDE.md
   - wiki/**
@@ -42,8 +44,9 @@ node .claude/skills/status/references/phase-state.mjs complete 8 wiki/deploy-log
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
-`complete` сам ищет в `Release/` непустую production/debug/marketing тройку
-одной версии и точную строку `TOTAL: N pass, 0 fail` в deploy/plan evidence.
+`complete` сам ищет в `Release/` непустую production/debug/marketing тройку одной версии и точную
+строку `TOTAL: N pass, 0 fail` в deploy/plan evidence. Для Godot дополнительно запускается независимая
+проверка ZIP, EXE/PCK, хешей, current source, export preset и Phase 4 receipts.
 
 
 **Модели:** Claude `sonnet`, отказ модерации — `opus`. Codex base
@@ -51,6 +54,14 @@ machine-readable progression state, а сами артефакты остают�
 Штатная упаковка остаётся на medium, потому что GREEN определяют verifier-скрипты.
 Канон: `status/references/model-policy.json`.
 
+
+## Engine release preflight
+
+`phase-state.mjs start 8` читает корневой `forge.engine.json`. Продолжай только при
+`engineRuntime.capabilities.releaseExport=true`. Web/Yandex ZIP нельзя выдать за Godot release,
+а Godot EXE/PCK не закрывают Web store route.
+
+**Web/Yandex route (без изменений):**
 
 0a. Гейт Яндекса (техгейт §1.14, автоматический с их стороны): игра ОБЯЗАНА быть запущена
    в режиме черновика до отправки — заливка и прогон чекера на черновике закрывают это;
@@ -67,6 +78,32 @@ machine-readable progression state, а сами артефакты остают�
    и перезапись предыдущей версии запрещены. Гейт принимает только новый комплект
    production/debug/marketing одной версии, которой не было на старте Фазы 8.
 3. Вывести MANUAL-чеклист «Проверь сам» — он на человеке.
+
+**Godot Windows desktop route (GDScript):**
+
+Перед сборкой прочитай общий native contract:
+[../godot-engine/references/godot-test-release.md](../godot-engine/references/godot-test-release.md).
+
+1. Добавь корневой `forge.godot.export.json` ровно для preset `Windows Desktop` и target
+   `windows-x86_64`; в `export_presets.cfg` должен существовать preset с тем же именем, явным
+   `binary_format/architecture="x86_64"`, отдельным PCK и без credential values. Matching export
+   templates обязательны.
+2. Сначала получи `TOTAL: N pass, 0 fail` и запиши его в `wiki/deploy-log.md`. Текущая Фаза 4
+   должна по-прежнему проходить trusted capture/proof/review gate.
+3. Запусти `node <Forge>/scripts/build-godot-release.mjs <slug> --root . --json`. Экспорт выполняется
+   только из изолированной копии через Godot `--headless --export-release/--export-debug`; gameplay
+   проверки headless не используют.
+4. Каждый успешный запуск автоматически создаёт новую patch-версию в
+   `Release/<slug>/godot/windows/<vN.N.N>/`: production ZIP (EXE+PCK), debug ZIP (debug EXE+PCK),
+   marketing ZIP (только текущее Phase 4 evidence/media) и внешний release manifest. Вся папка версии
+   публикуется одним rename; старые версии не перезаписываются.
+5. Реальный builder создаёт подписанную engine-owned build receipt вне проекта. Запусти
+   `node <Forge>/scripts/godot-release-verify.mjs . --json`: verifier читает ZIP без распаковки на диск,
+   сверяет receipt, хеши/состав/current source/preset/export flags/Phase 4 binding и запрещает test exporter.
+
+Godot C# и подпись Windows пока не выдаются за готовые: это последующие environment-specific lanes.
+Официальные CLI/export требования:
+https://docs.godotengine.org/en/stable/tutorials/export/exporting_projects.html
 
 Следующая фаза: `/phase-9-live`
 

@@ -24,6 +24,7 @@ risk_external: none
 references:
   - references/godot-csharp.md
   - references/godot-visual-qa.md
+  - references/godot-test-release.md
 completion_contract: status/references/phase-contracts/phase-3.json
 ---
 
@@ -72,6 +73,10 @@ If Phase 2 has an approved Godot screen flow, also read
 [references/godot-visual-qa.md](references/godot-visual-qa.md) and build its native state/proof
 adapter during Phase 3. Do not postpone the adapter until visual acceptance: Phase 4 must inspect
 the real runtime states, not retrofit test-only screens after construction.
+
+For the Phase 5/7 native state/save protocol and Phase 8 Windows bundles, read
+[references/godot-test-release.md](references/godot-test-release.md). Those later phase adapters are
+engine-profile capabilities; they do not turn the common Forge pipeline into a Godot-only workflow.
 
 Prefer GDScript for the fastest dependency-light pilot. Use C# only when the project needs it and the
 machine has a .NET-enabled Godot editor plus a compatible SDK. For C#, read

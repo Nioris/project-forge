@@ -1,4 +1,4 @@
-# Project Forge v4.68.51 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.52 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.52 changelog (engine-neutral Godot native test and release)
+
+Godot GDScript closes native Phases 5/7/8 with real-window proof, two-process save/reload and immutable
+Windows export. Engine-owned signed receipts, no-extract ZIP verification and an isolated test exporter
+block project-local false PASS. Common phases stay engine-neutral; Godot is the first complete adapter.
+
 ## v4.68.51 changelog (evidence-bound visual acceptance)
 
 Phase 2 inventory → GPT Image targets → adapter capture → independent review.
@@ -509,10 +515,3 @@ Missing/stale/fake shots, self-review, <6/10 and Critical/Major cannot complete 
 `$status` now uses artifact inference only for projects with zero valid phase markers. In a modern
 marker-managed project, the first missing marker remains the current gate; later visual/SDK/listing/QA
 artifacts are reported as evidence ahead of gate without silently completing or skipping phases.
-
-## v4.68.49 changelog (complete Unicode evidence classification)
-
-Unicode-aware Russian KPI/research enforcement now distinguishes document-level market vocabulary from
-line-level external facts. Internal Retention headings and Cyrillic research section labels do not cause
-false rejection, while inflected factual claims still require line-local evidence. The real CardGame
-Phase 1 documents pass without English workaround labels.

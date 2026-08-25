@@ -262,6 +262,22 @@ try {
   const noAutoload = run(captureScript, project);
   check(noAutoload.child.status === 1 && noAutoload.value?.issues?.some(item => item.code === 'GODOT_VISUAL_ADAPTER'),
     'missing project.godot autoload registration blocks capture');
+
+  const linkedProject = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-visual-link-'));
+  const externalGame = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-visual-external-'));
+  try {
+    createProject(linkedProject);
+    const localGame = path.join(linkedProject, 'WorkProgress', 'game');
+    fs.cpSync(localGame, externalGame, { recursive: true });
+    fs.rmSync(localGame, { recursive: true, force: true });
+    fs.symlinkSync(externalGame, localGame, process.platform === 'win32' ? 'junction' : 'dir');
+    const linked = run(captureScript, linkedProject);
+    check(linked.child.status === 1 && linked.value?.issues?.some(item => item.code === 'GODOT_VISUAL_PROJECT_LINK'),
+      'implementation root junction cannot escape the managed Godot project');
+  } finally {
+    fs.rmSync(linkedProject, { recursive: true, force: true });
+    fs.rmSync(externalGame, { recursive: true, force: true });
+  }
 } finally {
   fs.rmSync(project, { recursive: true, force: true });
 }

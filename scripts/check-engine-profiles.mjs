@@ -41,12 +41,9 @@ const registry = loadEngineRegistry();
 expect('installed registry validates', registry.kind === 'forge.engine-profile-registry');
 expect('stable web is the installed default', registry.defaultEngine === 'web' && registry.profiles.web?.status === 'stable');
 expect('Godot is explicitly experimental', registry.profiles.godot?.status === 'experimental');
-expect('Godot exposes only completed construct and native visual capabilities', registry.profiles.godot?.capabilities?.constructVerifier === true
-  && registry.profiles.godot?.capabilities?.visualCapture === true
-  && registry.profiles.godot?.capabilities?.proofVideo === true
-  && Object.entries(registry.profiles.godot?.capabilities || {})
-    .filter(([key]) => !['constructVerifier', 'visualCapture', 'proofVideo'].includes(key))
-    .every(([, value]) => value === false));
+expect('Godot exposes completed native construct, visual, tech, playtest and release capabilities',
+  ['constructVerifier', 'visualCapture', 'proofVideo', 'techVerifier', 'playtest', 'releaseExport']
+    .every(key => registry.profiles.godot?.capabilities?.[key] === true));
 expect('Godot C# profile does not claim web export', registry.profiles.godot?.webExport === false);
 
 const schema = JSON.parse(readFileSync(join(ROOT, 'schemas', 'engine-profile.schema.json'), 'utf8'));

@@ -15,6 +15,7 @@ writes:
   - wiki/**
   - screenshots/**
   - test-results/**
+  - qa/**
 verifiers: []
 stop_points: []
 risk_shell: write
@@ -40,8 +41,9 @@ node .claude/skills/status/references/phase-state.mjs complete 7 wiki/testing.md
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
-`complete` не принимает папку как evidence: нужны два конкретных отчёта,
-чистый `playtest-out/report.json` и `stage-out/rt.json` с ready/i18n фактами.
+`complete` не принимает папку как evidence: нужны два конкретных wiki-отчёта. Затем trusted engine
+profile выбирает runtime evidence: Web требует чистые `playtest-out/report.json` и `stage-out/rt.json`,
+Godot сам запускает двухпроцессный native playtest и проверяет `qa/godot-playtest/report.json`.
 
 
 **Модели:** Claude `sonnet`, непонятное падение — `opus`. Codex base
@@ -49,6 +51,14 @@ machine-readable progression state, а сами артефакты остают�
 обычной воспроизводимой диагностики.
 Канон: `status/references/model-policy.json`.
 
+
+## Engine playtest preflight
+
+`phase-state.mjs start 7` сохраняет `engineRuntime` из корневого `forge.engine.json`. Продолжай
+только при `engineRuntime.capabilities.playtest=true`; проектная копия registry не может включить
+capability. Browser reports не подтверждают Godot, а native Godot report не подменяет Web route.
+
+**Web route (без изменений):**
 
 1. `/test-game` целиком: ЭТАП 1 (verify+smoke) → ЭТАП 1.5 (playtest: скрипт ИГРАЕТ, 4 скриншота —
    **смотреть глазами**, 01≈04 = мёртвый инпут) → ЭТАП 1.6 (local-stage --ai: rt.json,
@@ -69,6 +79,24 @@ machine-readable progression state, а сами артефакты остают�
    гача: крутка работает, pity-счётчик тикает и переживает F5, шансы открываются.
    Клавиатура: переключись на РУССКУЮ раскладку — WASD обязан работать (e.code).
 2. Найденное чинить по одному и перегонять — не копить.
+
+**Godot desktop route (GDScript):**
+
+Сначала прочитай общий native contract:
+[../godot-engine/references/godot-test-release.md](../godot-engine/references/godot-test-release.md).
+
+1. Убедись, что Ф5 уже приняла строгий `forge.godot.playtest.json` и точную установленную копию
+   `ForgePlaytestQA.gd`; не ослабляй ожидания ради PASS.
+2. Запусти `node <Forge>/scripts/godot-playtest.mjs . --json` без `--headless`.
+3. PASS требует два новых реальных процесса с одним изолированным user data root: первый вызывает
+   реальные `Input.action_press/release`, сверяет состояние после каждого шага и сохраняет; второй
+   загружает save и обязан вернуть точное сохранённое состояние. Source до/после идентичен,
+   runtime errors отсутствуют, test harness запрещён.
+4. Перенеси факты и найденные дефекты из `qa/godot-playtest/report.json` в
+   `wiki/qa/phase-7-report.md`; любое несовпадение состояния/прогресса/save — FAIL, а не «почти готово».
+
+Godot C# остаётся environment block до отдельного доверенного .NET adapter. О расположении `user://`:
+https://docs.godotengine.org/en/stable/tutorials/io/data_paths.html
 
 Следующая фаза: `/phase-8-release`
 

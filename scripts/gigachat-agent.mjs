@@ -21,6 +21,7 @@ import { readSkillContract } from '../.claude/skills/status/references/skill-con
 import { resolveActiveTaskScope, assertTaskWrite } from '../.claude/skills/status/references/task-scope-guard.mjs';
 import { validatePhase4VisualEvidence } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 import { screenInventoryPayload, screenInventorySha256 } from '../.claude/skills/status/references/screen-flow-contract.mjs';
+import { readTrustedProjectEngine } from '../.claude/skills/status/references/project-engine.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -29,8 +30,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.51';
-const CONTRACT_VERSION = '6.3.10-screen-blueprint-visual-receipts-2026-08-25';
+const AUDITED_FORGE_VERSION = '4.68.52';
+const CONTRACT_VERSION = '6.3.11-godot-native-test-release-2026-08-26';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -66,6 +67,9 @@ function safePath(input = '.') {
   return p;
 }
 function rel(p) { return relative(PROJECT, p).replace(/\\/g, '/') || '.'; }
+function trustedProjectEngine() {
+  return readTrustedProjectEngine(PROJECT, { moduleRoot: ENGINE, environmentRoot: ENGINE });
+}
 function assertWritablePath(p) {
   if (process.env.FORGE_ALLOW_PROTECTED_WRITE === '1') return;
   const segments = rel(p).toLowerCase().split('/').filter(Boolean);
@@ -224,6 +228,18 @@ function taskScopedForgeScriptBlock(scriptPath, args=[]) {
     const operation = `forge_script:${base.replace(/\.mjs$/i, '')}`;
     const denied = taskScopedAssertTargets([`${rootPrefix}screens/review/.forge-scope-probe`], operation);
     return denied ? taskScopeDeny(operation,targetDir,`Forge Task scope blocks visual capture output: ${denied}`) : null;
+  }
+  if (base === 'godot-tech-check.mjs' || base === 'godot-playtest.mjs' || base === 'godot-release-verify.mjs') {
+    const output = base === 'godot-tech-check.mjs' ? 'qa/godot-tech/report.json'
+      : base === 'godot-playtest.mjs' ? 'qa/godot-playtest/report.json'
+        : 'qa/godot-release/report.json';
+    const operation = `forge_script:${base.replace(/\.mjs$/i, '')}`;
+    const denied = taskScopedAssertTargets([output], operation);
+    return denied ? taskScopeDeny(operation,output,`Forge Task scope blocks native Godot verifier output: ${denied}`) : null;
+  }
+  if (base === 'build-godot-release.mjs') {
+    const denied = taskScopedAssertTargets(['Release/.forge-scope-probe'], 'forge_script:build-godot-release');
+    return denied ? taskScopeDeny('forge_script:build-godot-release','Release',`Forge Task scope blocks Godot release publication: ${denied}`) : null;
   }
   if (base === 'local-stage.mjs') {
     if (!args.some(arg => /^--ai$/i.test(String(arg)))) return null;
@@ -681,6 +697,11 @@ function pathLooksGameChange(path) {
   if(!p.toLowerCase().startsWith('workprogress/')) return false;
   return GAME_CODE_EXTS.has(extOf(p)) || VISUAL_EXTS.has(extOf(p));
 }
+function pathLooksGodotGameChange(path) {
+  const normalized=String(path).replace(/\\/g,'/').toLowerCase();
+  if(/^(?:\.git|\.claude|\.agents|\.codex|wiki|qa|screens\/review|release|gameintegration)(?:\/|$)/i.test(normalized)) return false;
+  return new Set(['.godot','.tscn','.tres','.res','.gd','.cs','.gdshader','.png','.jpg','.jpeg','.webp','.svg','.ttf','.otf']).has(extOf(normalized));
+}
 function listInvalidChangedMedia() {
   return changedSinceBaseline(p=>VISUAL_EXTS.has(extOf(p))).filter(p=>!isValidMediaFile(p));
 }
@@ -833,7 +854,7 @@ function classifyFailure(name,a={},r={}) {
   if(/oauth|tls|certificate|cert_|fetch failed|econn|enotfound|network/i.test(body)) return 'auth-network';
   if(/enospc|disk full|permission denied|eacces|eperm/i.test(body)) return 'environment-hard';
   if(/web_search|image_search|browser|pixellab|mcp|capabilit/i.test(body)) return 'capability';
-  if(/playtest|screens-shoot|visual-qa|ui-review|release-ready|check-setup-guide|test-game|local-stage|gameplay-balance|record-promo|check-inline-strings|--check/i.test(cmd)) return 'verifier';
+  if(/playtest|godot-tech-check|godot-release-verify|screens-shoot|visual-qa|ui-review|release-ready|check-setup-guide|test-game|local-stage|gameplay-balance|record-promo|check-inline-strings|--check/i.test(cmd)) return 'verifier';
   return 'recoverable';
 }
 function failureMessage(v){ return typeof v==='string'?v:String(v?.message||v?.error||JSON.stringify(v)); }
@@ -850,7 +871,7 @@ function commandLooksMutating(command=''){
   if(/^(git\s+(status|diff|log)|dir\b|ls\b|find\b|du\b|grep\b|type\b|cat\b)/i.test(c)) return false;
   if(/phase-state\.mjs.*\b(?:start|reopen|block|complete)\b/i.test(c)) return true;
   if(/ai-studio-init\.mjs/i.test(c) && !/--check/i.test(c)) return true;
-  if(/integrate-gacha|screen-targets|screens-shoot|godot-proof-video|prepare-godot-phase4-review|bind-phase4-visual-evidence|record-phase4-visual-review|record-image-provenance|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
+  if(/integrate-gacha|screen-targets|screens-shoot|godot-proof-video|godot-tech-check|godot-playtest|godot-release-verify|build-godot-release|prepare-godot-phase4-review|bind-phase4-visual-evidence|record-phase4-visual-review|record-image-provenance|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
   return false;
 }
 function verifierEntrySuccess(re,phaseOverride=activePhase){
@@ -1291,8 +1312,8 @@ const PHASE_CONTRACTS=Object.freeze({
   2:{name:'Design',files:[['wiki/design/gdd.md',200],['wiki/plan/02-development-plan.md',120],['wiki/design/cross-review.md',80],['wiki/architecture/modules.md',80],['wiki/design/layout-system.md',80],['wiki/ai/studio-plan.md',80]]},
   3:{name:'Construct',files:[['wiki/plan/02-development-plan.md',80]]},
   4:{name:'Visual',files:[['wiki/design/target-frame.md',120],['assets/style/STYLE-BIBLE.md',120]]},
-  5:{name:'Tech',files:[]},6:{name:'Listing',files:[['SETUP_GUIDE.md',80],['screens/video/promo.mp4',64]]},
-  7:{name:'Test',files:[]},8:{name:'Release',files:[]},9:{name:'Live',files:[['wiki/metrics.md',80]]}
+  5:{name:'Tech',files:[['.forge-ai.json',2],['wiki/qa/phase-5-tech.md',100]]},6:{name:'Listing',files:[['SETUP_GUIDE.md',80],['screens/video/promo.mp4',64]]},
+  7:{name:'Test',files:[['wiki/testing.md',120],['wiki/qa/phase-7-report.md',120]]},8:{name:'Release',files:[['wiki/deploy-log.md',120],['SETUP_GUIDE.md',160]]},9:{name:'Live',files:[['wiki/metrics.md',80]]}
 });
 function phaseContractDriftWarnings(){
   const out=[], v=currentForgeVersion();
@@ -1401,6 +1422,12 @@ function resolveForgeScript(name=''){
 function requiredFileBlock(path,min=1) { return fileExistsNonEmpty(path,min)?null:`missing/non-empty evidence: ${path}`; }
 function hasSuccessfulCommand(re) { return phaseSuccessfulCommands.some(c=>re.test(c)); }
 function hasOutput(re) { return phaseCommandOutputs.some(x=>re.test(`${x.stdout}\n${x.stderr}`)); }
+function passedGodotReport(path,kind) {
+  try {
+    const value=JSON.parse(readText(safePath(path)));
+    return value?.kind===kind && value?.status==='passed' && value?.testHarness!==true;
+  } catch { return null; }
+}
 
 function phaseGateReport(phase=activePhase) {
   const p=Number(phase||0), blockers=[], evidence={phase:p,contractVersion:CONTRACT_VERSION,started:phaseStarted,unresolvedFailures:unresolvedFailures.size};
@@ -1409,6 +1436,14 @@ function phaseGateReport(phase=activePhase) {
     return {ok:true,phase:p,blockers:[],evidence:{...evidence,archivedComplete:true,completedAt:marker.completedAt||null,artifacts:marker.evidence||[]}};
   }
   if(!p) blockers.push('no active Forge phase detected');
+  let engineProfile=null;
+  try {
+    engineProfile=trustedProjectEngine();
+    evidence.engineRuntime={engine:engineProfile.engine,implementation:engineProfile.implementation,capabilities:engineProfile.capabilities};
+  } catch(error) {
+    if(p>=1&&p<=9) blockers.push(`trusted engine profile rejected: ${error.code||'ENGINE_PROFILE'} ${error.message}`);
+  }
+  const nativeGodot=engineProfile?.engine==='godot';
   if(pendingDecision) blockers.push(`STOP-point waiting for user: ${pendingDecision.question}`);
   blockers.push(...decisionBlockers(p));
   refreshMandatoryCapabilityBlock();
@@ -1440,6 +1475,7 @@ function phaseGateReport(phase=activePhase) {
   }
   const contract=PHASE_CONTRACTS[p];
   if(contract) for(const [path,min] of contract.files){
+    if(nativeGodot&&p===6&&path==='screens/video/promo.mp4') continue;
     if(path==='screens/video/promo.mp4'){
       if(!fileExistsNonEmpty(path,min)||!isValidMediaFile(path)) blockers.push(`missing/invalid media evidence: ${path}`);
     }else{const b=requiredFileBlock(path,min); if(b) blockers.push(b);}
@@ -1460,64 +1496,98 @@ function phaseGateReport(phase=activePhase) {
     if(!findFiles('assets/prompts',/\.json$/i,20,50).length) blockers.push('Phase 2 requires at least one draft AI prompt pack at assets/prompts/*.json');
   }
   if(p===3){
-    const gameChanges=changedSinceBaseline(pathLooksGameChange); evidence.gameChanges=gameChanges;
-    if(!gameChanges.length) blockers.push('Phase 3 requires real WorkProgress game/code changes since phase start');
-    if(!commandSucceeded(/playtest\.mjs/i,p)) blockers.push('Phase 3 requires successful playtest.mjs');
-    const shots=[
-      ...findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200),
-      ...findFiles('WorkProgress',/playtest-out[\\/].*\.(png|jpg|jpeg|webp)$/i,32,200)
-    ].filter(isValidMediaFile);
-    if(shots.length<2||distinctValidImages(shots)<2) blockers.push('Phase 3 requires at least two distinct real playtest screenshots');
+    const gameChanges=changedSinceBaseline(nativeGodot?pathLooksGodotGameChange:pathLooksGameChange); evidence.gameChanges=gameChanges;
+    if(!gameChanges.length) blockers.push('Phase 3 requires real active implementation game/code changes since phase start');
+    if(nativeGodot){
+      if(!commandSucceeded(/check-godot-project\.mjs/i,p)) blockers.push('Godot Phase 3 requires successful installed check-godot-project.mjs');
+    }else{
+      if(!commandSucceeded(/playtest\.mjs/i,p)) blockers.push('Phase 3 requires successful playtest.mjs');
+      const shots=[
+        ...findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200),
+        ...findFiles('WorkProgress',/playtest-out[\\/].*\.(png|jpg|jpeg|webp)$/i,32,200)
+      ].filter(isValidMediaFile);
+      if(shots.length<2||distinctValidImages(shots)<2) blockers.push('Phase 3 requires at least two distinct real playtest screenshots');
+    }
     const mp=[...loadDecisionLedger()].reverse().find(d=>String(d.decision_key||'')==='phase2-multiplayer');
     if(mp&&!/(нет|no|вариант\s*а|без\s+мультиплеер|single[- ]?player|одиночн)/i.test(String(mp.answer||''))&&!anyProjectText(/websocket|socket\.io|leaderboard|clan|клан|multiplayer/i)) blockers.push('Phase 3 multiplayer approved but implementation evidence missing');
   }
   if(p===4){
-    if(!commandSucceeded(/asset-find\.mjs/i,p)) blockers.push('Phase 4 requires successful asset-find.mjs');
+    if(!nativeGodot&&!commandSucceeded(/asset-find\.mjs/i,p)) blockers.push('Web Phase 4 requires successful asset-find.mjs');
     if(!phase4SelectionPath()) blockers.push('Phase 4 requires selection.json');
     if(!phase4TargetFramePath()) blockers.push('Phase 4 canonical target-frame image missing/invalid (PNG/JPEG/WebP accepted)');
     const refs=findFiles('assets/refs',/\.(png|jpg|jpeg|webp)$/i,32,100).filter(isValidMediaFile); if(refs.length<3) blockers.push('Phase 4 requires at least 3 real reference images');
     const variants=phase4TargetVariantPaths(); if(distinctValidImages(variants)<3) blockers.push('Phase 4 requires 3 distinct target-frame variants');
     const production=changedSinceBaseline(pathLooksProductionAsset).filter(isValidMediaFile); evidence.productionAssets=production; if(!production.length) blockers.push('Phase 4 requires changed production visual asset');
-    if(!changedSinceBaseline(pathLooksGameChange).length) blockers.push('Phase 4 requires visual integration inside WorkProgress');
+    if(!changedSinceBaseline(nativeGodot?pathLooksGodotGameChange:pathLooksGameChange).length) blockers.push('Phase 4 requires visual integration inside the active implementation');
     const visualQaReports=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
     const visualQaDone=commandSucceeded(/visual-qa|ui-review/i,p)||visualQaReports.length>0;
-    if(!commandSucceeded(/screens-shoot\.mjs/i,p)||!visualQaDone) blockers.push('Phase 4 requires screenshot capture AND visual QA report');
+    if(nativeGodot){
+      if(!commandSucceeded(/godot-screens-shoot\.mjs/i,p)) blockers.push('Godot Phase 4 requires successful native godot-screens-shoot.mjs');
+      if(!commandSucceeded(/godot-proof-video\.mjs/i,p)) blockers.push('Godot Phase 4 requires successful native godot-proof-video.mjs motion proof');
+      if(!visualQaDone) blockers.push('Godot Phase 4 requires an independent visual QA report');
+    }else if(!commandSucceeded(/screens-shoot\.mjs/i,p)||!visualQaDone) blockers.push('Web Phase 4 requires screenshot capture AND visual QA report');
     const visualEvidence=validatePhase4VisualEvidence({root:PROJECT});
     evidence.visualEvidence={ok:visualEvidence.ok,states:visualEvidence.states||[],frames:visualEvidence.frames||0};
     if(!visualEvidence.ok) blockers.push(...visualEvidence.failures.map(item=>`Phase 4 visual evidence: ${item}`));
   }
   if(p===5){
-    if(!anyProjectText(/YaGames|YandexSDK|LoadingAPI\.ready|GameplayAPI/i)) blockers.push('Phase 5 requires Yandex SDK integration');
-    if(!anyProjectText(/startGameplay|GameplayAPI\.start/i)||!anyProjectText(/stopGameplay|GameplayAPI\.stop/i)) blockers.push('Phase 5 requires GameplayAPI start/stop lifecycle');
-    if(!anyProjectText(/showRewarded|showInterstitial/i)) blockers.push('Phase 5 requires ads integration');
-    if(!anyProjectText(/touchstart|pointerdown|touch-action|safe-area|44px/i)) blockers.push('Phase 5 requires mobile/touch adaptation');
-    if(!commandSucceeded(/ai-studio-init\.mjs.*--check/i,p)) blockers.push('Phase 5 requires ai-studio-init --check');
+    if(nativeGodot){
+      if(!commandSucceeded(/godot-tech-check\.mjs/i,p)) blockers.push('Godot Phase 5 requires successful installed godot-tech-check.mjs');
+      if(!passedGodotReport('qa/godot-tech/report.json','forge.godot-tech-report')) blockers.push('Godot Phase 5 requires a current native qa/godot-tech/report.json PASS without test harness');
+    }else{
+      if(!anyProjectText(/YaGames|YandexSDK|LoadingAPI\.ready|GameplayAPI/i)) blockers.push('Phase 5 requires Yandex SDK integration');
+      if(!anyProjectText(/startGameplay|GameplayAPI\.start/i)||!anyProjectText(/stopGameplay|GameplayAPI\.stop/i)) blockers.push('Phase 5 requires GameplayAPI start/stop lifecycle');
+      if(!anyProjectText(/showRewarded|showInterstitial/i)) blockers.push('Phase 5 requires ads integration');
+      if(!anyProjectText(/touchstart|pointerdown|touch-action|safe-area|44px/i)) blockers.push('Phase 5 requires mobile/touch adaptation');
+      if(!commandSucceeded(/ai-studio-init\.mjs.*--check/i,p)) blockers.push('Phase 5 requires ai-studio-init --check');
+    }
   }
   if(p===6){
     if(!findFiles('.',/(listing|description|seo|how[-_ ]?to[-_ ]?play|yandex).*\.md$/i,80,100).filter(x=>!x.startsWith('wiki/sessions/')).length) blockers.push('Phase 6 requires listing text artifact(s)');
     if(!findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,200).filter(isValidMediaFile).length) blockers.push('Phase 6 requires promo screenshots');
-    if(!commandSucceeded(/record-promo\.mjs/i,p)) blockers.push('Phase 6 requires record-promo.mjs');
-    if(!commandSucceeded(/check-inline-strings|localize|i18n/i,p)&&!anyProjectText(/\bt\(['"`]/i)) blockers.push('Phase 6 requires i18n evidence');
+    if(nativeGodot){
+      if(!commandSucceeded(/godot-proof-video\.mjs/i,p)) blockers.push('Godot Phase 6 requires current native proof video for promotional media');
+      const visual=validatePhase4VisualEvidence({root:PROJECT});
+      evidence.visualEvidence={ok:visual.ok,states:visual.states||[],frames:visual.frames||0};
+      if(!visual.ok) blockers.push(...visual.failures.map(item=>`Godot Phase 6 current visual evidence: ${item}`));
+    }else if(!commandSucceeded(/record-promo\.mjs/i,p)) blockers.push('Web Phase 6 requires record-promo.mjs');
+    if(!commandSucceeded(/check-inline-strings|localize|i18n/i,p)&&!anyProjectText(/\b(?:t|tr)\(['"`]/i)) blockers.push('Phase 6 requires i18n evidence');
     if(!HOST_CAPABILITIES.web_search&&!findFiles('wiki',/(catalog|listing|competitor|выдач).*\.md$/i,60,100).length) blockers.push('Phase 6 live catalog review requires web_search or persisted evidence');
   }
   if(p===7){
-    for(const [re,label,skill] of [[/test-game/i,'test-game','test-game'],[/playtest\.mjs/i,'playtest',null],[/local-stage.*--ai|--ai.*local-stage/i,'local-stage --ai',null],[/screens-shoot\.mjs/i,'screens-shoot',null],[/gameplay-balance/i,'gameplay-balance','gameplay-balance']]){
-      const skillSatisfied=skill&&(loadedSkills.has(skill)||completedSkills.has(skill));
-      if(!commandSucceeded(re,p)&&!skillSatisfied) blockers.push(`Phase 7 requires successful ${label}`);
+    if(nativeGodot){
+      if(!commandSucceeded(/godot-playtest\.mjs/i,p)) blockers.push('Godot Phase 7 requires successful installed godot-playtest.mjs');
+      if(!passedGodotReport('qa/godot-playtest/report.json','forge.godot-playtest-report')) blockers.push('Godot Phase 7 requires a current two-process native playtest PASS without test harness');
+      const visual=validatePhase4VisualEvidence({root:PROJECT});
+      evidence.visualEvidence={ok:visual.ok,states:visual.states||[],frames:visual.frames||0};
+      if(!visual.ok) blockers.push(...visual.failures.map(item=>`Godot Phase 7 current visual evidence: ${item}`));
+    }else{
+      for(const [re,label,skill] of [[/test-game/i,'test-game','test-game'],[/playtest\.mjs/i,'playtest',null],[/local-stage.*--ai|--ai.*local-stage/i,'local-stage --ai',null],[/screens-shoot\.mjs/i,'screens-shoot',null],[/gameplay-balance/i,'gameplay-balance','gameplay-balance']]){
+        const skillSatisfied=skill&&(loadedSkills.has(skill)||completedSkills.has(skill));
+        if(!commandSucceeded(re,p)&&!skillSatisfied) blockers.push(`Phase 7 requires successful ${label}`);
+      }
+      const phase7VisualQa=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
+      if(!commandSucceeded(/visual-qa|ui-review/i,p)&&!phase7VisualQa.length) blockers.push('Phase 7 requires successful visual QA');
+      const shots=findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,300).filter(isValidMediaFile); if(shots.length<4||distinctValidImages(shots)<2) blockers.push('Phase 7 requires 4+ screenshots with state diversity');
     }
-    const phase7VisualQa=findFiles('wiki/qa',/visual.*qa.*\.md$/i,80,50);
-    if(!commandSucceeded(/visual-qa|ui-review/i,p)&&!phase7VisualQa.length) blockers.push('Phase 7 requires successful visual QA');
-    const shots=findFiles('screens',/\.(png|jpg|jpeg|webp)$/i,32,300).filter(isValidMediaFile); if(shots.length<4||distinctValidImages(shots)<2) blockers.push('Phase 7 requires 4+ screenshots with state diversity');
     if(!existsSync(safePath('wiki/qa'))) blockers.push('Phase 7 requires wiki/qa evidence');
   }
   if(p===8){
-    if(!commandSucceeded(/check-setup-guide/i,p)) blockers.push('Phase 8 requires check-setup-guide success');
-    if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i,p)) blockers.push('Phase 8 requires exact release-ready GREEN output');
-    if(!commandSucceeded(/release-yandex|build-yandex-3zips/i,p)) blockers.push('Phase 8 requires release-yandex/build-yandex-3zips success');
     const fresh=changedSinceBaseline(x=>x.toLowerCase().startsWith('release/')); evidence.freshRelease=fresh; if(!fresh.length) blockers.push('Phase 8 requires fresh Release artifacts');
     const versionEvidence=phase8ReleaseVersionEvidence(); evidence.releaseBuild=versionEvidence; blockers.push(...versionEvidence.blockers);
-    const plan=optionalText('wiki/plan/02-development-plan.md',100000); if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(plan)) blockers.push('Phase 8 TOTAL line must be copied into wiki plan');
-    if(!/(MANUAL|Проверь сам|ручн)/i.test(`${plan}\n${optionalText('SETUP_GUIDE.md',50000)}`)) blockers.push('Phase 8 requires manual checklist evidence');
+    const plan=optionalText('wiki/plan/02-development-plan.md',100000),deploy=optionalText('wiki/deploy-log.md',100000),setup=optionalText('SETUP_GUIDE.md',50000);
+    if(nativeGodot){
+      if(!commandSucceeded(/build-godot-release\.mjs/i,p)) blockers.push('Godot Phase 8 requires successful immutable build-godot-release.mjs');
+      if(!commandSucceeded(/godot-release-verify\.mjs/i,p)) blockers.push('Godot Phase 8 requires successful independent godot-release-verify.mjs');
+      if(!passedGodotReport('qa/godot-release/report.json','forge.godot-release-verification')) blockers.push('Godot Phase 8 requires a current native release verification PASS without test exporter');
+      if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(`${deploy}\n${plan}`)) blockers.push('Godot Phase 8 requires exact TOTAL: N pass, 0 fail in deploy evidence');
+    }else{
+      if(!commandSucceeded(/check-setup-guide/i,p)) blockers.push('Phase 8 requires check-setup-guide success');
+      if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i,p)) blockers.push('Phase 8 requires exact release-ready GREEN output');
+      if(!commandSucceeded(/release-yandex|build-yandex-3zips/i,p)) blockers.push('Phase 8 requires release-yandex/build-yandex-3zips success');
+      if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(plan)) blockers.push('Phase 8 TOTAL line must be copied into wiki plan');
+    }
+    if(!/(MANUAL|Проверь сам|ручн)/i.test(`${plan}\n${setup}`)) blockers.push('Phase 8 requires manual checklist evidence');
   }
   if(p===9){ evidence.expectedTerminalState='ongoing'; if(!HOST_CAPABILITIES.scheduler)evidence.schedulerWarning='No scheduler capability; recurring checks require external/manual scheduling.'; }
   blockers.push(...phaseContractDriftWarnings().filter(x=>/audited for Forge/i.test(x)));
@@ -4097,8 +4167,9 @@ Mandatory rules:
 - Official GigaChat built-in text2image is available through gigachat_generate_image. When the user chooses AI generation in Phase 4, use that tool to create REAL binary assets, then integrate them into WorkProgress and verify with screenshots/visual QA. Never substitute a text file or a description for an image.
 - Official GigaChat built-in text2model3d is exposed through gigachat_generate_3d for genuinely 3D projects. Do not use it for 2D projects just because it exists.
 - Before committing to a visual provider/tool in Phase 4, call forge_capabilities. PixelLab remains unavailable unless separately integrated; offer GigaChat built-in image generation as the callable AI option when appropriate.
-- Phase 3 cannot complete without real WorkProgress implementation changes plus successful playtest evidence.
-- Phase 4 cannot complete from approvals/style documents alone: it requires a valid binary target-frame PNG, real production visual assets, actual WorkProgress visual integration, and a successful screenshot/visual-QA command.
+- Phase 3 cannot complete without real implementation changes plus its trusted engine verifier: browser playtest for Web, check-godot-project for Godot. Never substitute one engine's evidence for another.
+- Phase 4 cannot complete from approvals/style documents alone: it requires a valid binary target-frame PNG, real production visual assets, actual active-implementation integration, and a successful engine-native screenshot/visual-QA command.
+- Godot Phases 5/7/8 use the installed godot-tech-check, two-process godot-playtest, and immutable build/independent release verifier. Do not demand Yandex DOM/SDK, browser playtest-out/stage-out, or Web ZIPs from a Godot project; do not accept Godot evidence for Web.
 - A failed verifier/tool remains a blocker until the same operation is successfully rerun or the failure is otherwise explicitly cleared by real evidence.
 - Keep edits inside the project.
 - Never expose API keys or secret file contents.
@@ -5168,6 +5239,7 @@ if (REQUEST_DOCTOR) {
   test('only registered read-only verifier scripts bypass the scoped forge-script block',()=>/declaredReadOnlyForgeVerifier/.test(taskScopedForgeScriptBlock.toString())&&/mutates !== false/.test(declaredReadOnlyForgeVerifier.toString()));
   test('active Task trusts engine verifier scripts, never project-local shadows',()=>!/projectPath/.test(declaredReadOnlyForgeVerifier.toString())&&/scopedTask&&existsSync\(engine\)/.test(resolveForgeScript.toString()));
   test('scoped canonical mutators enumerate their output roots',()=>{const x=taskScopedForgeScriptBlock.toString();return /gacha-backups/.test(x)&&/modularize-backups/.test(x)&&/\.forge-ai\.json/.test(x)&&/assets\/target\/screens\/manifest\.json/.test(x)&&/phase-4-visual-evidence\.template\.json/.test(x)&&/phase-4-visual-evidence\.json/.test(x)&&/stage-out/.test(x)&&/stage\.png/.test(x);});
+  test('scoped Godot verifier/release scripts enumerate native output roots',()=>{const x=taskScopedForgeScriptBlock.toString();return /qa\/godot-tech\/report\.json/.test(x)&&/qa\/godot-playtest\/report\.json/.test(x)&&/qa\/godot-release\/report\.json/.test(x)&&/Release\/\.forge-scope-probe/.test(x);});
   test('scoped output maps handle nested AI Studio targets and --out=value',()=>{const x=taskScopedForgeScriptBlock.toString();return /rootPrefix/.test(x)&&/--out=/.test(x)&&forgeScriptTargetArg(['--out','Release/escape','WorkProgress/game'])==='WorkProgress/game'&&forgeScriptTargetArg(['--out=Release/escape','WorkProgress/game'])==='WorkProgress/game';});
   test('Task scope denials emit bounded Forge diagnostics',()=>/GIGA_TASK_SCOPE_DENIED/.test(reportTaskScopeDenied.toString())&&/slice\(0,700\)/.test(reportTaskScopeDenied.toString())&&/taskScopeDeny/.test(taskScopedForgeScriptBlock.toString()));
   test('phase lifecycle exception is forge_script-only, not a shell substring bypass',()=>!/phase-state/.test(taskScopedShellMutationBlock.toString())&&/phase-state\\\.mjs/.test(taskScopedForgeScriptBlock.toString()));
@@ -5175,6 +5247,7 @@ if (REQUEST_DOCTOR) {
   test('phase complete hard gate active',()=>/Phase 4 completion blocked/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md')||''));
   test('forge_script phase complete cannot bypass the hard gate',()=>/hard gate/i.test(forgeScriptPhaseCompletionBlocked('.claude/skills/status/references/phase-state.mjs',['complete','4'])||''));
   test('phase complete requires explicit evidence arguments',()=>/explicit evidence artifact arguments/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4')||''));
+  test('phase hard gate has engine-specific Godot routes without browser substitution',()=>{const x=phaseGateReport.toString();return /nativeGodot/.test(x)&&/godot-screens-shoot/.test(x)&&/godot-proof-video/.test(x)&&/godot-tech-check/.test(x)&&/godot-playtest/.test(x)&&/build-godot-release/.test(x)&&/godot-release-verify/.test(x)&&/p===6&&path==='screens\/video\/promo\.mp4'/.test(x);});
   test('phase 4 named decisions',()=>requiredDecisionKeysForPhase(4).has('phase4-target-frame')&&requiredDecisionKeysForPhase(4).has('phase4-style-bible'));
   test('phase 1 named STOP gates',()=>PHASE1_REQUIRED_DECISIONS.has('phase1-research-direction')&&PHASE1_REQUIRED_DECISIONS.has('phase1-brief')&&PHASE1_REQUIRED_DECISIONS.has('phase1-content-budget'));
   test('phase execution intent detector',()=>phaseExecutionRequestedByText('Прочитай FORGE.md и выполни Forge skill phase-1-analyze для текущего проекта ".".'));

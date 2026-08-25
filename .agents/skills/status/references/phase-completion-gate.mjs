@@ -22,6 +22,11 @@ const PROJECT_CHECK_IDS = new Set([
   'engine-construct-capability',
   'engine-visual-capture-capability',
   'engine-tech-capability',
+  'engine-playtest-capability',
+  'engine-release-capability',
+  'godot-native-tech',
+  'godot-native-playtest',
+  'godot-native-release',
   'non-placeholder-evidence',
   'implementation-source',
   'clean-playtest-report',
@@ -479,7 +484,51 @@ function runGodotConstructVerifier(root, engineProfile, failures) {
   return normalized;
 }
 
-function runProjectCheck(id, root, contract, evidence, failures, engineSupport, engineProfile) {
+function runGodotInstalledVerifier(root, engineProfile, failures, { id, scriptName, timeoutMs }) {
+  const script = path.join(engineProfile.engineRoot || '', 'scripts', scriptName);
+  if (!engineProfile.engineRoot || !fs.existsSync(script)) {
+    const message = `Installed Godot verifier is missing: ${scriptName}`;
+    failures.push(message);
+    return { id, status: 'environment_failure', summary: message, toolchain: null, checks: [] };
+  }
+  const child = spawnSync(process.execPath, [script, root, '--json'], {
+    cwd: engineProfile.engineRoot,
+    env: process.env,
+    encoding: 'utf8',
+    timeout: timeoutMs,
+    maxBuffer: 4 * 1024 * 1024,
+    windowsHide: true,
+  });
+  let report = null;
+  try { report = JSON.parse(child.stdout || ''); } catch {}
+  const status = report?.status || (child.status === 1 ? 'failed' : 'environment_failure');
+  const issueSummary = Array.isArray(report?.issues)
+    ? report.issues.slice(0, 3).map(item => item?.message).filter(Boolean).join('; ')
+    : '';
+  const summary = issueSummary || child.error?.message || child.stderr?.trim() || `${scriptName} returned invalid output`;
+  const normalized = {
+    id,
+    status,
+    summary: String(summary).slice(0, 1000),
+    toolchain: report?.engine || null,
+    report: report ? {
+      kind: report.kind || null,
+      generatedAt: report.generatedAt || null,
+      renderer: report.renderer || null,
+      testHarness: report.testHarness === true,
+      runtimeProcesses: Number(report.runtimeProcesses) || 0,
+      manifest: report.manifest || null,
+      version: report.version || null,
+    } : null,
+    checks: [],
+  };
+  if (child.status !== 0 || status !== 'passed' || report?.testHarness === true) {
+    failures.push(`Godot ${id} verifier ${status}: ${normalized.summary}`);
+  }
+  return normalized;
+}
+
+function runProjectCheck(id, root, contract, evidence, failures, engineSupport, engineProfile, engineVerification) {
   if (id === 'phase-1-integrity') validatePhase1(root, evidence, failures);
   else if (id.startsWith('engine-') && engineSupport && !engineSupport.supported) failures.push(engineSupport.message);
   else if (id === 'non-placeholder-evidence') checkNonPlaceholderEvidence(root, contract, failures);
@@ -492,6 +541,9 @@ function runProjectCheck(id, root, contract, evidence, failures, engineSupport, 
   else if (id === 'phase-4-visual-evidence') checkPhase4VisualEvidence(root, failures);
   else if (id === 'screen-flow-contract') checkScreenFlow(root, failures);
   else if (id === 'tech-runtime') checkTechRuntime(root, failures);
+  else if (id === 'godot-native-tech' && engineProfile?.engine === 'godot' && engineVerification?.id !== 'native-tech') failures.push('Phase 5 requires the installed native Godot tech verifier');
+  else if (id === 'godot-native-playtest' && engineProfile?.engine === 'godot' && engineVerification?.id !== 'native-playtest') failures.push('Phase 7 requires the installed two-process native Godot playtest');
+  else if (id === 'godot-native-release' && engineProfile?.engine === 'godot' && engineVerification?.id !== 'native-release') failures.push('Phase 8 requires independent verification of the current immutable Godot release');
   else if (id === 'listing-output') checkListingOutput(root, failures);
   else if (id === 'clean-local-stage-report') checkCleanLocalStageReport(root, failures);
   else if (id === 'release-green-report') checkReleaseGreenReport(root, failures);
@@ -542,10 +594,25 @@ export function validatePhaseCompletion({ root = process.cwd(), phase, evidence 
     if (requiredEvidenceReady && Number(contract.phase) === 3 && engineProfile?.engine === 'godot' && engineSupport?.supported) {
       engineVerification = runGodotConstructVerifier(projectRoot, engineProfile, failures);
     }
-    const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'tech-runtime']);
+    if (requiredEvidenceReady && engineProfile?.engine === 'godot' && engineSupport?.supported) {
+      if (Number(contract.phase) === 5) {
+        engineVerification = runGodotInstalledVerifier(projectRoot, engineProfile, failures, {
+          id: 'native-tech', scriptName: 'godot-tech-check.mjs', timeoutMs: 120_000,
+        });
+      } else if (Number(contract.phase) === 7) {
+        engineVerification = runGodotInstalledVerifier(projectRoot, engineProfile, failures, {
+          id: 'native-playtest', scriptName: 'godot-playtest.mjs', timeoutMs: 240_000,
+        });
+      } else if (Number(contract.phase) === 8) {
+        engineVerification = runGodotInstalledVerifier(projectRoot, engineProfile, failures, {
+          id: 'native-release', scriptName: 'godot-release-verify.mjs', timeoutMs: 180_000,
+        });
+      }
+    }
+    const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'tech-runtime', 'clean-local-stage-report']);
     for (const id of contract.projectChecks) {
       if (engineProfile?.implementation !== 'browser' && browserOnlyChecks.has(id)) continue;
-      runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport, engineProfile);
+      runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport, engineProfile, engineVerification);
     }
   }
   return {

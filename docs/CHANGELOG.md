@@ -4806,6 +4806,13 @@ The gate verifies complete PNG chunks/CRC/IDAT, realpath containment, production
 per-frame target comparisons and different host sessions; self-selected subsets, identical state frames,
 future timestamps, project-local reviewer claims and affirmative completion wording are rejected.
 
+## v4.68.49 changelog (complete Unicode evidence classification)
+
+Unicode-aware Russian KPI/research enforcement now distinguishes document-level market vocabulary from
+line-level external facts. Internal Retention headings and Cyrillic research section labels do not cause
+false rejection, while inflected factual claims still require line-local evidence. The real CardGame
+Phase 1 documents pass without English workaround labels.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

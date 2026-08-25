@@ -30,11 +30,11 @@
       "webExport": false,
       "capabilities": {
         "constructVerifier": true,
-        "techVerifier": false,
+        "techVerifier": true,
         "visualCapture": true,
         "proofVideo": true,
-        "playtest": false,
-        "releaseExport": false
+        "playtest": true,
+        "releaseExport": true
       }
     }
   }

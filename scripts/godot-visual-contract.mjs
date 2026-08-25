@@ -58,6 +58,17 @@ function inside(root, candidate) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+function noReparsePath(root, candidate, label) {
+  if (!inside(root, candidate)) fail('GODOT_VISUAL_PROJECT_CONTRACT', `${label} escapes the canonical project root`);
+  const relative = path.relative(root, candidate);
+  let current = root;
+  for (const segment of relative ? relative.split(path.sep) : []) {
+    current = path.join(current, segment);
+    let stat; try { stat = fs.lstatSync(current); } catch { fail('GODOT_VISUAL_PROJECT_CONTRACT', `${label} is missing`); }
+    if (stat.isSymbolicLink()) fail('GODOT_VISUAL_PROJECT_LINK', `${label} crosses a symlink, junction, or reparse point`);
+  }
+}
+
 function positiveInteger(value, min, max, label) {
   if (!Number.isInteger(value) || value < min || value > max) fail('GODOT_VISUAL_CONTRACT', `${label} must be an integer in ${min}..${max}`);
   return value;
@@ -86,11 +97,15 @@ function validateViewport(value, label, { widthMin, widthMax, heightMin, heightM
 }
 
 export function readGodotVisualContract(projectRoot = process.cwd()) {
-  const root = path.resolve(projectRoot);
+  let root;
+  try { root = fs.realpathSync(path.resolve(projectRoot)); }
+  catch { fail('GODOT_VISUAL_PROJECT_CONTRACT', 'project root is unavailable'); }
   const engine = readEngineProfile(root);
   if (engine.engine !== 'godot') fail('GODOT_VISUAL_ENGINE', `Godot visual capture requires forge.engine.json engine=godot; got ${engine.engine}`);
 
-  const godotContract = parseJson(path.join(root, GODOT_PROJECT_CONTRACT_FILE), GODOT_PROJECT_CONTRACT_FILE);
+  const godotContractFile = path.join(root, GODOT_PROJECT_CONTRACT_FILE);
+  noReparsePath(root, godotContractFile, GODOT_PROJECT_CONTRACT_FILE);
+  const godotContract = parseJson(godotContractFile, GODOT_PROJECT_CONTRACT_FILE);
   exactKeys(godotContract, ['schemaVersion', 'kind', 'projectPath', 'scripting', 'entryScene', 'smoke', 'sceneContract'], GODOT_PROJECT_CONTRACT_FILE);
   if (godotContract.schemaVersion !== 1 || godotContract.kind !== 'forge.godot-project') {
     fail('GODOT_VISUAL_PROJECT_CONTRACT', `${GODOT_PROJECT_CONTRACT_FILE} has the wrong schemaVersion/kind`);
@@ -99,12 +114,17 @@ export function readGodotVisualContract(projectRoot = process.cwd()) {
   if (!projectPath || !['gdscript', 'csharp'].includes(godotContract.scripting)) {
     fail('GODOT_VISUAL_PROJECT_CONTRACT', `${GODOT_PROJECT_CONTRACT_FILE} has invalid projectPath/scripting`);
   }
-  const implementationRoot = path.resolve(root, projectPath);
-  if (!inside(root, implementationRoot) || !fs.existsSync(implementationRoot) || !fs.statSync(implementationRoot).isDirectory()) {
+  const implementationCandidate = path.resolve(root, projectPath);
+  if (!inside(root, implementationCandidate) || !fs.existsSync(implementationCandidate)) {
     fail('GODOT_VISUAL_PROJECT_CONTRACT', 'Godot implementation root is missing or outside the managed project');
   }
+  noReparsePath(root, implementationCandidate, 'Godot implementation root');
+  const implementationRoot = fs.realpathSync(implementationCandidate);
+  if (!inside(root, implementationRoot) || !fs.statSync(implementationRoot).isDirectory()) fail('GODOT_VISUAL_PROJECT_CONTRACT', 'Godot implementation root is not a canonical project directory');
 
-  const visual = parseJson(path.join(root, GODOT_VISUAL_CONTRACT_FILE), GODOT_VISUAL_CONTRACT_FILE);
+  const visualContractFile = path.join(root, GODOT_VISUAL_CONTRACT_FILE);
+  noReparsePath(root, visualContractFile, GODOT_VISUAL_CONTRACT_FILE);
+  const visual = parseJson(visualContractFile, GODOT_VISUAL_CONTRACT_FILE);
   exactKeys(visual, ['schemaVersion', 'kind', 'adapter', 'capture', 'proofVideo'], GODOT_VISUAL_CONTRACT_FILE);
   if (visual.schemaVersion !== 1 || visual.kind !== 'forge.godot-visual') {
     fail('GODOT_VISUAL_CONTRACT', `${GODOT_VISUAL_CONTRACT_FILE} has the wrong schemaVersion/kind`);
@@ -122,11 +142,14 @@ export function readGodotVisualContract(projectRoot = process.cwd()) {
   const targetNode = String(visual.adapter.targetNode || '');
   if (targetNode !== '.' && !safeRelative(targetNode)) fail('GODOT_VISUAL_CONTRACT', 'visual adapter targetNode is unsafe');
   const adapterFile = path.join(implementationRoot, adapterScript.rel);
-  if (!inside(implementationRoot, adapterFile) || !fs.existsSync(adapterFile) || !fs.statSync(adapterFile).isFile()) {
+  if (!inside(implementationRoot, adapterFile) || !fs.existsSync(adapterFile)) {
     fail('GODOT_VISUAL_ADAPTER', `visual adapter script is missing: ${adapterScript.resource}`);
   }
+  noReparsePath(implementationRoot, adapterFile, 'visual adapter script');
+  if (!fs.statSync(adapterFile).isFile()) fail('GODOT_VISUAL_ADAPTER', `visual adapter script is not a regular file: ${adapterScript.resource}`);
 
   const projectFile = path.join(implementationRoot, 'project.godot');
+  noReparsePath(implementationRoot, projectFile, 'project.godot');
   let projectText;
   try { projectText = fs.readFileSync(projectFile, 'utf8'); }
   catch (error) { fail('GODOT_VISUAL_ADAPTER', `project.godot is missing: ${error.message}`); }

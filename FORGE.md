@@ -24,7 +24,12 @@ The AI host and project engine are independent choices. Resolve root `forge.engi
 the installed Forge `scripts/engine-profile.mjs`; a missing file means stable `web`. Every phase uses
 only adapters declared by that installed profile. An unavailable capability is an infrastructure
 blocker, never permission to substitute a browser verifier for Godot/native evidence. Engine profiles
-do not add phases or replace the nine canonical phase markers.
+do not add phases or replace the nine canonical phase markers. Phase routing is capability-based
+(`constructVerifier`, `visualCapture`, `techVerifier`, `playtest`, `releaseExport`), so another engine
+can add equivalent trusted adapters without rewriting the pipeline. Godot GDScript is the first complete
+native profile; that implementation fact does not make Forge Godot-only.
+Native release evidence must be bound to an engine-owned receipt. Project-local manifests and archives
+cannot authorize their own PASS.
 
 ## Authoritative project state
 

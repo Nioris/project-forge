@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current public version:** `v4.68.51`
+**Current public version:** `v4.68.52`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -69,6 +69,14 @@ It provides:
 ```
 
 SDK integration, localization, AI generation and other capabilities live inside these phases instead of creating extra pseudo-phases.
+
+Project engine and AI host are independent. Web remains the stable default. The experimental Godot
+GDScript profile now has native construct, screenshot/motion proof, tech, two-process playtest and
+immutable Windows export adapters. These are reference implementations of common engine capabilities,
+not Godot-specific phases: Unity, Defold or another engine can implement the same capability contracts
+without changing the nine-phase workflow. Missing adapters always fail closed instead of borrowing Web evidence.
+Godot releases are committed as immutable version directories and require an engine-owned signed build
+receipt; a project-local manifest and self-consistent ZIP files are not sufficient evidence.
 
 Phase 4 cannot pass on CSS, DOM assertions or clean console output. The user first approves the full
 Phase 2 state/transition inventory. Each key state then receives a mobile/desktop GPT Image blueprint
@@ -201,7 +209,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.51` keeps separate normal-account and API profiles.
+`v4.68.52` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription

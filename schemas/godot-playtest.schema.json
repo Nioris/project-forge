@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/godot-playtest.schema.json",
+  "title": "Project Forge Godot native playtest contract",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "adapter", "timeoutSeconds", "scenario"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "kind": { "const": "forge.godot-playtest" },
+    "adapter": { "type": "object", "additionalProperties": false, "required": ["autoloadName", "protocol", "script", "targetNode"], "properties": {
+      "autoloadName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{2,63}$" },
+      "protocol": { "const": "forge-godot-playtest-v1" },
+      "script": { "type": "string", "pattern": "^res://[A-Za-z0-9._/-]+\\.(?:gd|cs)$" },
+      "targetNode": { "type": "string", "pattern": "^(?:\\.|[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*)$" }
+    }},
+    "timeoutSeconds": { "type": "integer", "minimum": 5, "maximum": 90 },
+    "scenario": { "type": "object", "additionalProperties": false, "required": ["initialExpect", "steps", "progress", "saveReload"], "properties": {
+      "initialExpect": { "type": "object", "minProperties": 1 },
+      "steps": { "type": "array", "minItems": 2, "maxItems": 30, "items": { "type": "object", "additionalProperties": false, "required": ["action", "expect"], "properties": { "action": { "type": "string", "pattern": "^[A-Za-z0-9_]{2,64}$" }, "expect": { "type": "object", "minProperties": 1 } } },
+      "progress": { "type": "object", "minProperties": 1 }, "saveReload": { "type": "object", "minProperties": 1 }
+    }}
+  }
+}

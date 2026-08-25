@@ -73,6 +73,7 @@
 .agents/skills/gate/SKILL.md
 .agents/skills/godot-engine/SKILL.md
 .agents/skills/godot-engine/references/godot-csharp.md
+.agents/skills/godot-engine/references/godot-test-release.md
 .agents/skills/godot-engine/references/godot-visual-qa.md
 .agents/skills/grilling/SKILL.md
 .agents/skills/handoff/SKILL.md
@@ -166,6 +167,7 @@
 .agents/skills/status/references/execution-contract.mjs
 .agents/skills/status/references/forge-engine-root.mjs
 .agents/skills/status/references/forge-event.mjs
+.agents/skills/status/references/godot-release-receipts.mjs
 .agents/skills/status/references/image-provenance.mjs
 .agents/skills/status/references/model-policy.json
 .agents/skills/status/references/phase-4-visual-evidence.mjs
@@ -328,6 +330,7 @@
 .claude/skills/gate/SKILL.md
 .claude/skills/godot-engine/SKILL.md
 .claude/skills/godot-engine/references/godot-csharp.md
+.claude/skills/godot-engine/references/godot-test-release.md
 .claude/skills/godot-engine/references/godot-visual-qa.md
 .claude/skills/grilling/SKILL.md
 .claude/skills/handoff/SKILL.md
@@ -421,6 +424,7 @@
 .claude/skills/status/references/execution-contract.mjs
 .claude/skills/status/references/forge-engine-root.mjs
 .claude/skills/status/references/forge-event.mjs
+.claude/skills/status/references/godot-release-receipts.mjs
 .claude/skills/status/references/image-provenance.mjs
 .claude/skills/status/references/model-policy.json
 .claude/skills/status/references/phase-4-visual-evidence.mjs
@@ -743,6 +747,8 @@ schemas/agent-profile.schema.json
 schemas/agent-result.schema.json
 schemas/ai-prompt.schema.json
 schemas/engine-profile.schema.json
+schemas/godot-export.schema.json
+schemas/godot-playtest.schema.json
 schemas/godot-project.schema.json
 schemas/godot-visual.schema.json
 schemas/run-result.schema.json
@@ -765,6 +771,7 @@ scripts/audit-forge-diagnostics.mjs
 scripts/backup-data.mjs
 scripts/bind-phase4-visual-evidence.mjs
 scripts/build-all-platforms.mjs
+scripts/build-godot-release.mjs
 scripts/build-release.sh
 scripts/build-yandex-3zips.mjs
 scripts/bump-version.mjs
@@ -791,9 +798,15 @@ scripts/check-execution-contract.mjs
 scripts/check-external-cdn.mjs
 scripts/check-forge-diagnostics.mjs
 scripts/check-gacha-integration.mjs
+scripts/check-godot-native-playtest.mjs
+scripts/check-godot-native-release.mjs
 scripts/check-godot-phase4-evidence.mjs
+scripts/check-godot-playtest-real.mjs
+scripts/check-godot-playtest.mjs
 scripts/check-godot-project-fixtures.mjs
 scripts/check-godot-project.mjs
+scripts/check-godot-release.mjs
+scripts/check-godot-tech.mjs
 scripts/check-godot-visual-capture.mjs
 scripts/check-inline-strings.mjs
 scripts/check-modularize-existing-project.mjs
@@ -827,6 +840,7 @@ scripts/cx.bat
 scripts/data-dir.mjs
 scripts/engine-profile.mjs
 scripts/fixtures/clean-game.html
+scripts/fixtures/godot-playtest/fake-godot-playtest.mjs
 scripts/fixtures/godot-projects/fail-serialization/forge.engine.json
 scripts/fixtures/godot-projects/fail-serialization/forge.godot.json
 scripts/fixtures/godot-projects/fail-serialization/main.gd
@@ -837,6 +851,7 @@ scripts/fixtures/godot-projects/pass-gdscript/forge.godot.json
 scripts/fixtures/godot-projects/pass-gdscript/main.gd
 scripts/fixtures/godot-projects/pass-gdscript/main.tscn
 scripts/fixtures/godot-projects/pass-gdscript/project.godot
+scripts/fixtures/godot-release/fake-godot-exporter.mjs
 scripts/fixtures/godot-tools/fake-godot.mjs
 scripts/forge-agent.mjs
 scripts/forge-search-doctor.mjs
@@ -854,8 +869,14 @@ scripts/gigachat-3d.mjs
 scripts/gigachat-agent.mjs
 scripts/gigachat-image.mjs
 scripts/git-init-games.mjs
+scripts/godot-export-contract.mjs
+scripts/godot-playtest-contract.mjs
+scripts/godot-playtest-runtime.mjs
+scripts/godot-playtest.mjs
 scripts/godot-proof-video.mjs
+scripts/godot-release-verify.mjs
 scripts/godot-screens-shoot.mjs
+scripts/godot-tech-check.mjs
 scripts/godot-visual-contract.mjs
 scripts/godot-visual-runtime.mjs
 scripts/integrate-gacha.mjs
@@ -865,6 +886,7 @@ scripts/lib/forge-secrets.mjs
 scripts/lib/gigachat-api.mjs
 scripts/lib/release-zip-selection.mjs
 scripts/lib/runtime-version.mjs
+scripts/lib/safe-zip.mjs
 scripts/live-codex-task-scope-smoke.mjs
 scripts/local-stage.mjs
 scripts/migrate-sessions.mjs
@@ -997,6 +1019,7 @@ templates/backend/async/api/server.mjs
 templates/backend/async/api/sig.mjs
 templates/backend/async/db/schema.sql
 templates/backend/async/docker-compose.yml
+templates/godot/ForgePlaytestQA.gd
 templates/godot/ForgeVisualQA.cs
 templates/godot/ForgeVisualQA.gd
 templates/html5/cheats-base.js
@@ -1040,6 +1063,7 @@ wiki/decisions/032-trusted-verifier-repair-runtime.md
 wiki/decisions/033-machine-contract-authority.md
 wiki/decisions/034-native-task-write-boundary.md
 wiki/decisions/035-evidence-bound-visual-acceptance.md
+wiki/decisions/036-engine-capability-adapter-boundary.md
 wiki/decisions/036-engine-profile-authority.md
 wiki/decisions/_template.md
 wiki/deploy-log.md

@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.51 (latest released)
+### Version: v4.68.52 (latest released)
 
+- 2026-08-26: **v4.68.52** — Engine-neutral native capability routing completes Godot GDScript Phases 5/7/8: real-window tech proof, two-process save/reload playtest and atomic immutable Windows release directories bound to engine-owned signed build receipts and safe no-extract ZIP verification.
 - 2026-08-25: **v4.68.51** — user-approved Phase 2 inventory → reference-conditioned GPT Image blueprints (provider-backed batch or trusted native attestation) → runtime-adapter capture → independent tamper-evident review; CSS, clean console output, self-selected states and builder self-approval cannot complete Phase 4.
 - 2026-08-23: **v4.68.50** — Marker-managed projects stop at the first missing phase marker; later visual, SDK, listing and QA artifacts remain visible as evidence ahead of gate but cannot bypass executable phase contracts.
 - 2026-08-23: **v4.68.49** — Complete Unicode evidence classification preserves Russian KPI/research enforcement without treating internal Retention headings as uncited external facts; the real CardGame Phase 1 evidence passes without English labels.
@@ -487,12 +488,12 @@
 - `Q3-004` — native Godot Phase 3 verifier with isolated import/startup and scene-contract regressions.
 - `Q3-005` — native state screenshots and MovieWriter proof video with real Godot 4.7 forward-test.
 - `Q3-006` — native capture/proof receipts, current implementation snapshots and independent Phase 4 review.
+- `Q3-007` — real-window native tech, two-process playtest and signed immutable Windows release verification.
 
 ### Next
 
-1. `Q3-007`
-2. `Q3-008`
-3. `Q3-009`
+1. `Q3-008`
+2. `Q3-009`
 
 ### Existing v4.8 backlog — priority order
 
@@ -528,6 +529,7 @@
 - [[architecture/data-flow]] — how Forge processes a project from sources to release
 
 ### Key decisions (selected)
+- [[decisions/036-engine-capability-adapter-boundary]] — phases stay engine-neutral; each engine supplies trusted capability adapters
 - [[decisions/034-native-task-write-boundary]] — guarded native writes inherit durable Task scope; full shell isolation remains a worktree boundary
 - [[decisions/033-machine-contract-authority]] — runtime authority comes only from declared contracts and host-recorded operations
 - [[decisions/032-trusted-verifier-repair-runtime]] — verifier execution trusts only the installed engine registry and routes outcomes mechanically

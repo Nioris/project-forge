@@ -12,7 +12,9 @@ reads:
   - "**"
 writes:
   - .forge-ai.json
+  - forge.godot.playtest.json
   - WorkProgress/**
+  - qa/**
   - wiki/**
   - assets/**
 verifiers: []
@@ -40,9 +42,10 @@ node .claude/skills/status/references/phase-state.mjs complete 5 .forge-ai.json 
 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
-`complete` читает контракт Ф5 и сам проверяет SDK init/ready, GameplayAPI
-start/stop, рекламу, mobile/touch и безопасный `.forge-ai.json`. Перед командой
-запиши фактические результаты техгейта в `wiki/qa/phase-5-tech.md`.
+`complete` читает контракт Ф5 и выбирает проверку по trusted engine profile. Для Web он
+проверяет SDK init/ready, GameplayAPI start/stop, рекламу и mobile/touch; для Godot запускает
+нативный техгейт ниже. В обоих маршрутах `.forge-ai.json` остаётся безопасной конфигурацией без
+секретов. Перед командой запиши фактические результаты в `wiki/qa/phase-5-tech.md`.
 
 
 **Модели:** Claude `sonnet`. Codex base `gpt-5.6-sol/high`; routes `repeated-failure` и
@@ -59,8 +62,27 @@ start/stop, рекламу, mobile/touch и безопасный `.forge-ai.json
 могут подтвердить native Godot runtime, а проектная копия registry не может включить capability.
 
 - `engineRuntime.implementation=browser` — выполняй Web/Yandex route ниже без изменений;
-- `engineRuntime.implementation=godot` — нужен отдельный native mobile/input/SDK/ads verifier и
-  экспортный профиль. До его появления не обещай Web export и не закрывай Ф5 браузерным отчётом.
+- `engineRuntime.implementation=godot` — выполняй Godot desktop route. DOM, touch и Yandex SDK
+  не относятся к Windows desktop и не являются заменой нативной проверки.
+
+**Godot desktop route (GDScript):**
+
+Перед настройкой прочитай общий native contract:
+[../godot-engine/references/godot-test-release.md](../godot-engine/references/godot-test-release.md).
+
+1. Создай строгий корневой `forge.godot.playtest.json`; объяви минимум два существующих InputMap
+   action и конкретные ожидаемые состояния до/после каждого действия, прогресс и save/reload.
+2. Скопируй установленный `templates/godot/ForgePlaytestQA.gd` без изменений в Godot-проект и
+   зарегистрируй его autoload под именем из контракта. Адаптер инертен без Forge CLI flags.
+3. Production scene реализует `forge_playtest_state/reset/save/load`; QA-шима вместо этих методов
+   запрещена.
+4. Запусти `node <Forge>/scripts/godot-tech-check.mjs . --json`. PASS требует обычное окно/renderer,
+   реальный Godot, InputMap, production methods, изолированную запись `user://`, неизменившийся source
+   и `qa/godot-tech/report.json` без test harness.
+
+Godot C# пока возвращает честный environment block: нужен отдельный доверенный .NET QA adapter.
+CLI export допускает `--headless`, но техпроверка gameplay — нет: dummy DisplayServer не доказывает
+рендер и ввод. Справка: https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
 
 **Web/Yandex route:**

@@ -15,7 +15,8 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [x] Q3-004: native Godot Phase 3 verifier passes 16 fixture regressions, including exact node types and script attachments.
 - [x] Q3-005: native state capture + MovieWriter proof video pass 24 regressions and a real Godot 4.7 forward-test.
 - [x] Q3-006: native Phase 4 binds capture/proof receipts, current implementation and independent review; 25 isolated adversarial scenarios pass.
-- [ ] Q3-007..Q3-009: test, release, optimize assets and pilot the native Godot path.
+- [x] Q3-007: real-window Phase 5 tech, two-process Phase 7 save/reload and signed immutable Windows Phase 8 release pass adversarial plus real Godot 4.7.2 checks.
+- [ ] Q3-008..Q3-009: optimize native assets and run the complete Godot pilot release.
 
 ### Previous v4.68.51 release
 
@@ -149,12 +150,10 @@ nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Blockers
 
-Godot Phase 4 capture and independent acceptance now pass real forward-testing. Native Phase 5,
-scripted playtest and export/release remain fail-closed until Q3-007 supplies their adapters. The installed Godot 4.7 editor import currently hangs on this PC; the bounded
-native verifier classifies it as an environment blocker and kills its process tree instead of claiming
-PASS. An abandoned verifier lock is never stolen automatically; after confirming
-that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
-Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
+Godot GDScript native Phases 3–5, 7 and Windows 8 now have trusted adapters. The real-window Q3-007
+forward test passes on official Godot 4.7.2. A project still needs matching official Windows export
+templates for a real EXE/PCK release; Godot C#, Android and Windows signing remain explicit follow-up
+lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
 ## Last 3 decisions
 
@@ -181,5 +180,7 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Once any valid phase marker exists, every missing phase marker remains an unpassed gate; legacy artifact inference may describe later evidence but never advance marker-managed progression.
 - 2026-08-25: Screenshot existence proves capture, not visual quality; Phase 4 acceptance binds exact current pixels to complete state/viewport coverage and an independent reviewer session.
 - 2026-08-25: Game engine selection is orthogonal to terminal AI hosts; missing profile means stable web, and an unavailable adapter never falls back to a browser verifier.
+- 2026-08-26: Common phases route by engine capability; Godot is the first complete native adapter, not a Godot-only workflow.
+- 2026-08-26: A native release needs an engine-owned signed build receipt; project-local manifests and self-consistent ZIPs cannot authorize their own PASS.
 
-<!-- last updated 2026-08-25 after completing Q3-006 native Godot visual evidence binding -->
+<!-- last updated 2026-08-26 after completing Q3-007 native Godot test and release -->

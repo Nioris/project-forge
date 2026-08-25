@@ -13,6 +13,8 @@ export const ENGINE_PHASE_CAPABILITIES = Object.freeze({
   3: 'constructVerifier',
   4: 'visualCapture',
   5: 'techVerifier',
+  7: 'playtest',
+  8: 'releaseExport',
 });
 
 function bridgeError(code, message, details = {}) {
@@ -93,7 +95,11 @@ export function enginePhaseSupport(profile, phase) {
     ? 'Browser screenshots and window.__FORGE_VISUAL_QA__ are not valid evidence for this engine.'
     : numericPhase === 3
       ? 'A browser playtest cannot substitute for this engine construct verifier.'
-      : 'Browser DOM, touch and Yandex SDK checks cannot substitute for this engine tech verifier.';
+      : numericPhase === 5
+        ? 'Browser DOM, touch and Yandex SDK checks cannot substitute for this engine tech verifier.'
+        : numericPhase === 7
+          ? 'Browser playtest-out and stage-out reports cannot substitute for a native engine playtest.'
+          : 'Web/Yandex ZIPs cannot substitute for this engine release exporter.';
   return {
     supported: false,
     phase: numericPhase,
