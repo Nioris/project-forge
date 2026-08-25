@@ -14,7 +14,8 @@ writes:
   - WorkProgress/**
   - wiki/**
   - assets/**
-verifiers: []
+verifiers:
+  - godot-project
 stop_points: []
 risk_shell: write
 risk_external: none
@@ -49,6 +50,17 @@ machine-readable progression state, а сами артефакты остают�
 мультиплеера, backend architecture или повторного провала.
 Канон: `status/references/model-policy.json`.
 
+## 🧩 Engine route before sprint 1
+
+`phase-state.mjs start 3` читает `forge.engine.json` через единый доверенный reader и пишет
+выбранный профиль в `wiki/phases/phase-3.json → engineRuntime`. Не начинай спринт, если marker
+получил infrastructure block `ENGINE_CAPABILITY_UNAVAILABLE`: это означает, что у выбранного
+движка ещё нет проверенного `constructVerifier`, и браузерный playtest не является заменой.
+
+- `engineRuntime.engine=web` — штатный `scripts/playtest.mjs` и browser QA остаются без изменений;
+- `engineRuntime.engine=godot` — вызови `$godot-engine`, затем установленный
+  `check-godot-project.mjs`; локальная подмена registry или ручной `PASS` запрещены.
+
 
 Фазы 1-2 производят ЧЕРТЕЖИ (метрики, GDD, план). Фазы 4+ полируют ПОСТРОЕННОЕ. $phase-3-construct («стройка») — то,
 что между: **писать код игры**, превращая дефицит контента в работающие фичи. Если после
@@ -62,8 +74,10 @@ machine-readable progression state, а сами артефакты остают�
 ## Процедура (спринт за спринтом)
 1. Возьми спринт 1 (самый ценный по retention-математике: обычно D1-контент → D2-D7).
 2. **Пиши код в файлы игры.** Дисциплина $do: диагноз → правка → проверка фактом.
-3. После КАЖДОГО спринта: `node scripts/playtest.mjs <игра>` — игра жива, фича видна на
-   скриншотах (01≠04). Сломал — чини до перехода к следующему.
+3. После КАЖДОГО спринта запускай verifier/playtest выбранного engine profile. Для `web` это
+   `node scripts/playtest.mjs <игра>` — игра жива, фича видна на скриншотах (01≠04).
+   Для native engine используй только его adapter; capability отсутствует → infrastructure block.
+   Сломал — чини до перехода к следующему.
 4. Отметь таск в wiki/plan/ как done, короткая запись в sessions.
 5. Следующий спринт. Между спринтами НЕ спрашивай разрешения продолжать — план уже утверждён
    пользователем на STOP-point'е фазы 2; останавливайся только на реальных развилках
@@ -82,11 +96,11 @@ machine-readable progression state, а сами артефакты остают�
   за сессию, а не обещай всё сразу.
 
 ## Обязательные системные спринты (не только фичи контента)
-- **визуальный QA adapter** по утверждённому `wiki/design/screen-flow.json`: только при query
-  `?forgeVisualQa=1` выставить `window.__FORGE_VISUAL_QA__` с `listStates()`, асинхронным
-  `showState(id)` и `currentState()`. Он переключает реальные production-состояния без сетевых
-  сайд-эффектов и не виден игроку. Список обязан точно совпасть с Phase 2 inventory — иначе
-  `screens-shoot.mjs` в Ф4 не сможет доказать ни полноту экранов, ни фактический переход;
+- **визуальный QA adapter** по утверждённому `wiki/design/screen-flow.json`: для `web` только при
+  query `?forgeVisualQa=1` выставить `window.__FORGE_VISUAL_QA__` с `listStates()`, асинхронным
+  `showState(id)` и `currentState()`. Для Godot/другого native engine нужен его собственный
+  state/capture adapter; создавать фальшивый browser bridge нельзя. Список обязан точно совпасть
+  с Phase 2 inventory — иначе Ф4 не сможет доказать полноту экранов и фактический переход;
 - RV-хуки по утверждённой карте монетизации (каждый = своя награда и момент);
 - гача-мета модуль (механики из GDD: pity видим, шансы показаны, дубли конвертятся);
 - **бэкенд мультиплеера**, если он утверждён на Ф2: взять шаблон командой
@@ -109,7 +123,8 @@ machine-readable progression state, а сами артефакты остают�
 - parallel writers не трогают один файл/одну систему состояния одновременно.
 
 AI Studio здесь ускоряет **код**, но не делает финальный арт: placeholders допустимы до Ф4.
-После каждой агентной партии всё равно обязателен общий `playtest.mjs`; отчёт агента не заменяет запуск.
+После каждой агентной партии всё равно обязателен профильный playtest/verifier (`playtest.mjs` для
+`web`); отчёт агента не заменяет запуск.
 
 ## Выход
 Игра, в которой фичи GDD работают (проверено playtest'ом), план-таски закрыты.

@@ -261,6 +261,43 @@ safe('runtime-release-zip-selection', () => {
   }
 });
 
+safe('engine-profile-contract', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-engine-profiles.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (r.status !== 0) {
+    err('engine profile authority regression failed — run scripts/check-engine-profiles.mjs');
+  } else {
+    ok.push('engine profiles keep legacy projects on stable web and Godot fail-closed experimental');
+  }
+});
+
+safe('engine-phase-routing', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-engine-phase-routing.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (r.status !== 0) {
+    err('engine-aware phase routing regression failed — run scripts/check-engine-phase-routing.mjs');
+  } else {
+    ok.push('phases use trusted engine adapters and reject browser evidence for unsupported Godot routes');
+  }
+});
+
+safe('godot-project-verifier', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-godot-project-fixtures.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  if (r.status !== 0) {
+    err('Godot construct verifier regression failed — run scripts/check-godot-project-fixtures.mjs');
+  } else {
+    ok.push('Godot construct verification is isolated, bounded and scene-serialization aware');
+  }
+});
+
 // ---- 9. i18n-completeness must keep the data-i18n awareness -------------------------------
 // REQ-8.2.3 validator flagged data-i18n elements as "hardcoded Russian" (8 false BLOCKERs) because
 // its "covered" check ignored the data-i18n attribute that applyStaticLang() actually keys on.

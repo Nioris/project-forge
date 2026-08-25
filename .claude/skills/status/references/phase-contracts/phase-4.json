@@ -11,5 +11,5 @@
     { "path": "wiki/qa/phase-4-visual-review.md", "minBytes": 240 },
     { "path": "wiki/qa/phase-4-visual-evidence.json", "minBytes": 600 }
   ],
-  "projectChecks": ["non-placeholder-evidence", "visual-integration", "phase-4-visual-evidence"]
+  "projectChecks": ["engine-visual-capture-capability", "non-placeholder-evidence", "visual-integration", "phase-4-visual-evidence"]
 }

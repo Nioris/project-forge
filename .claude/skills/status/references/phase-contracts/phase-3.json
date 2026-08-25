@@ -6,5 +6,5 @@
     { "path": "wiki/plan/02-development-plan.md", "minBytes": 160 },
     { "path": "wiki/testing.md", "minBytes": 100 }
   ],
-  "projectChecks": ["non-placeholder-evidence", "implementation-source", "clean-playtest-report"]
+  "projectChecks": ["engine-construct-capability", "non-placeholder-evidence", "implementation-source", "clean-playtest-report"]
 }

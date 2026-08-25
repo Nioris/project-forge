@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/engine-profile.schema.json",
+  "title": "Project Forge engine profile",
+  "description": "Long-lived project engine selection. Missing file means the installed registry default (web).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "engine"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.engine-profile" },
+    "engine": { "enum": ["web", "godot"] }
+  }
+}

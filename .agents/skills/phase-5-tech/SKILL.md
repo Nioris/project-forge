@@ -50,6 +50,20 @@ start/stop, рекламу, mobile/touch и безопасный `.forge-ai.json
 платежей/secrets/auth/non-standard SDK conflicts.
 Канон: `status/references/model-policy.json`.
 
+## 🧩 Engine tech preflight
+
+`phase-state.mjs start 5` читает `forge.engine.json` единым доверенным reader и сохраняет
+`wiki/phases/phase-5.json → engineRuntime`. Продолжай только при
+`engineRuntime.capabilities.techVerifier=true`. Если marker сообщает
+`ENGINE_CAPABILITY_UNAVAILABLE`, это infrastructure block: DOM/touch/Yandex regex-проверки не
+могут подтвердить native Godot runtime, а проектная копия registry не может включить capability.
+
+- `engineRuntime.implementation=browser` — выполняй Web/Yandex route ниже без изменений;
+- `engineRuntime.implementation=godot` — нужен отдельный native mobile/input/SDK/ads verifier и
+  экспортный профиль. До его появления не обещай Web export и не закрывай Ф5 браузерным отчётом.
+
+
+**Web/Yandex route:**
 
 1. `$mobile-game-ui` — тач-управление, цели ≥44px, безопасные зоны.
 2. `$yandex-sdk-integration` — порядок: init → detectLang → applyLang → ready ДО инпута;

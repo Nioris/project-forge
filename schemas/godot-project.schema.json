@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/godot-project.schema.json",
+  "title": "Project Forge Godot project contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "projectPath", "scripting", "entryScene", "smoke", "sceneContract"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.godot-project" },
+    "projectPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^(?:\\.|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)$"
+    },
+    "scripting": { "enum": ["gdscript", "csharp"] },
+    "entryScene": {
+      "type": "string",
+      "minLength": 12,
+      "maxLength": 240,
+      "pattern": "^res://[A-Za-z0-9._/-]+\\.(?:tscn|scn)$"
+    },
+    "smoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["successMarker", "quitAfterFrames"],
+      "properties": {
+        "successMarker": { "type": "string", "pattern": "^[A-Z0-9_:-]{4,80}$" },
+        "quitAfterFrames": { "type": "integer", "minimum": 2, "maximum": 600 }
+      }
+    },
+    "sceneContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimumNodeCount", "requiredNodes", "requiredNodeTypes", "requiredScripts", "requiredScriptAttachments"],
+      "properties": {
+        "minimumNodeCount": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "requiredNodes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$" }
+        },
+        "requiredNodeTypes": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 200,
+          "propertyNames": { "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$" },
+          "additionalProperties": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+        },
+        "requiredScripts": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^res://[A-Za-z0-9._/-]+\\.(?:gd|cs)$" }
+        },
+        "requiredScriptAttachments": {
+          "type": "object",
+          "maxProperties": 200,
+          "propertyNames": { "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$" },
+          "additionalProperties": { "type": "string", "pattern": "^res://[A-Za-z0-9._/-]+\\.(?:gd|cs)$" }
+        }
+      }
+    }
+  }
+}

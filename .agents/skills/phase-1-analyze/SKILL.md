@@ -64,6 +64,19 @@ machine-readable progression state, а сами артефакты остают�
 `gpt-5.6-sol/xhigh` только при противоречивых источниках или KPI/content-budget.
 Канон: `status/references/model-policy.json`; Max/Ultra автоматически не включать.
 
+## 🧩 Engine-aware preflight
+
+Команда `phase-state.mjs start 1` уже вызывает **единый доверенный reader** установленного Forge
+и записывает результат в `wiki/phases/phase-1.json → engineRuntime`. Прочитай этот snapshot до
+инвентаризации. `forge.engine.json` хранит только выбор проекта; не разбирай его вручную, не
+угадывай движок по файлам и не доверяй проектной копии registry.
+
+- `engineRuntime.engine=web` — инвентаризируй HTML/CSS/JS и браузерный runtime как раньше;
+- `engineRuntime.engine=godot` — инвентаризируй `project.godot`, сцены, resources и GDScript/C#;
+  если реализации ещё нет и есть только GDD, честно запиши «native scaffold не построен»;
+- запиши в `wiki/_map.md` строку `**Движок:** <engine> (<status>)`. Размерность 2D/2.5D/3D —
+  отдельное решение и не подменяет engine profile.
+
 
 Проходит целиком: прототип → wiki → метрики с контент-бюджетом.
 
@@ -150,6 +163,8 @@ node ../project-forge/scripts/ai-studio-init.mjs .
 grep -l "three\.\|WebGLRenderer\|babylon\|PlayCanvas" <игра>/**/*.js   → 3D
 grep -l "getContext(['\"]webgl" <игра>/**/*.js                            → 3D/WebGL
 grep -l "getContext(['\"]2d" <игра>/**/*.js                               → 2D canvas
+Godot: project.godot + типы Node2D/Control/CanvasItem                       → 2D
+Godot: project.godot + типы Node3D/MeshInstance3D/Camera3D                 → 3D
 изометрия/псевдо-3D спрайтами                                            → 2.5D
 ```
 **Прототипа нет (старт с концепта) → 🔴 РЕШЕНИЕ ПОЛЬЗОВАТЕЛЯ:**

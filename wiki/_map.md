@@ -479,11 +479,20 @@
 - 2026-04-21: **v4.6.0** — auto-research конкурентов в /start phase 0
 - ранее: v4.5.x (sync mode safe merge), v4.4.x (research-references), etc.
 
-### In Progress
+### Done — Godot engine profile integration
 
-Idle — awaiting user requests for v4.8 backlog or hot fixes.
+- `Q3-001` — trusted installed engine-profile authority with stable Web fallback.
+- `Q3-002` — engine selection in new-project and Dashboard.
+- `Q3-003` — engine-aware Phase 1/3–5 routing with browser-substitution rejection.
+- `Q3-004` — native Godot Phase 3 verifier with isolated import/startup and scene-contract regressions.
 
-### Next (v4.8 backlog — priority order)
+### Next
+
+1. `Q3-005`
+2. `Q3-006`
+3. `Q3-007`
+
+### Existing v4.8 backlog — priority order
 
 1. **Forge wiki/ self-application** — applies own pattern (wiki/, decisions/, plan/) to itself. PARTIALLY DONE: this file is the start.
 

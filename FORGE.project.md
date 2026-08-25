@@ -18,6 +18,33 @@ Forge has exactly nine canonical phases:
 
 AI Studio, image generation, multi-agent work, MCP and provider integrations operate *inside* those phases. They are not extra phases.
 
+## Project engine profile
+
+The terminal AI host and the game/application engine are separate choices. Project engine selection
+lives in root `forge.engine.json` and is validated against the installed Forge registry:
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "forge.engine-profile",
+  "engine": "web"
+}
+```
+
+Missing `forge.engine.json` means stable `web` for backward compatibility. Never infer a different
+engine merely from filenames, store the selection in `.forge-ai.json`, or trust a project-local registry.
+Use the installed reader: `node scripts/engine-profile.mjs check <project>`.
+
+`godot` is experimental and game-only. Its native Phase 3 construct verifier is installed; capture,
+tech, playtest and export adapters remain gated until verified. A browser-only check cannot prove a
+Godot project and must not be used as fallback.
+
+### Phase routing
+
+`phase-state.mjs` records the live trusted profile as `engineRuntime`. Phase 1 uses it for inventory;
+Phases 3–5 require the selected construct, capture and tech capabilities. A false capability blocks the
+phase as infrastructure work instead of allowing a different engine's verifier to claim completion.
+
 ## Authoritative project state
 
 Use these sources in this order:

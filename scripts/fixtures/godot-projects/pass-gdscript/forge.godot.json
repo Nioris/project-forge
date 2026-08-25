@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "forge.godot-project",
+  "projectPath": ".",
+  "scripting": "gdscript",
+  "entryScene": "res://main.tscn",
+  "smoke": {
+    "successMarker": "FORGE_SMOKE_READY",
+    "quitAfterFrames": 12
+  },
+  "sceneContract": {
+    "minimumNodeCount": 3,
+    "requiredNodes": ["Main", "Main/World", "Main/UI"],
+    "requiredNodeTypes": {
+      "Main": "Node",
+      "Main/World": "Node",
+      "Main/UI": "Control"
+    },
+    "requiredScripts": ["res://main.gd"],
+    "requiredScriptAttachments": {
+      "Main": "res://main.gd"
+    }
+  }
+}

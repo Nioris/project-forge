@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePhaseCompletion } from './phase-completion-gate.mjs';
 import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, recordTaskResult } from './execution-contract.mjs';
+import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
 
 const PHASES = {
   1: 'Analyze', 2: 'Design', 3: 'Construct', 4: 'Visual', 5: 'Tech',
@@ -76,6 +77,13 @@ const subagentLimit = Math.min(
 );
 
 const root = process.cwd();
+let engineProfile;
+try {
+  engineProfile = readTrustedProjectEngine(root);
+} catch (error) {
+  console.error(`[BLOCKED] Engine profile rejected (${error.code || 'ENGINE_PROFILE'}): ${error.message}`);
+  process.exit(2);
+}
 const outDir = path.join(root, 'wiki', 'phases');
 fs.mkdirSync(outDir, { recursive: true });
 const outPath = path.join(outDir, `phase-${phase}.json`);
@@ -103,6 +111,17 @@ const record = {
     ? { ...prev.execution, attemptId: runAttemptId, resultStatus: null, resultCode: null, resultAt: null }
     : (runAttemptId ? { taskId: null, workflow: 'phase', currentNode: null, status: 'running', attemptId: runAttemptId, resultStatus: null, resultCode: null, resultAt: null } : null),
   forgeVersion,
+  engineRuntime: {
+    schemaVersion: engineProfile.schemaVersion,
+    engine: engineProfile.engine,
+    source: engineProfile.source,
+    defaulted: engineProfile.defaulted,
+    status: engineProfile.status,
+    implementation: engineProfile.implementation,
+    capture: engineProfile.capture,
+    webExport: engineProfile.webExport,
+    capabilities: engineProfile.capabilities,
+  },
   modelRuntime: {
     policyVersion: modelPolicy?.policyVersion || null,
     mode: modelPolicy?.mode || null,
@@ -129,6 +148,10 @@ const record = {
     },
   },
 };
+
+if (command === 'start' || command === 'reopen' || command === 'answer') {
+  console.log(`[Forge] Engine -> ${engineProfile.engine} (${engineProfile.status}, ${engineProfile.source})`);
+}
 
 function persistMarker() {
   atomicWriteJson(outPath, record);
@@ -168,6 +191,27 @@ function executionResult({ status, code, message, failure = null, stop = null, e
     attemptId: result.attemptId,
   };
   return run;
+}
+
+const startEngineSupport = enginePhaseSupport(engineProfile, phase);
+if ((command === 'start' || command === 'reopen' || command === 'answer') && !startEngineSupport.supported) {
+  record.state = 'blocked';
+  record.startedAt = record.startedAt || now;
+  record.completedAt = null;
+  record.reason = startEngineSupport.message;
+  record.block = { owner: 'infrastructure', code: 'ENGINE_CAPABILITY_UNAVAILABLE', decisionKey: null, resumePolicy: 'environment_change' };
+  persistMarker();
+  executionResult({
+    status: 'environment_failure',
+    code: 'ENGINE_CAPABILITY_UNAVAILABLE',
+    message: record.reason,
+    failure: { type: 'ENVIRONMENT_ERROR', retryable: false, message: record.reason },
+    stop: record.block,
+    forceNew: command === 'reopen',
+  });
+  persistMarker();
+  console.error(`[BLOCKED] ${record.reason}`);
+  process.exit(1);
 }
 
 if (command === 'start' || command === 'reopen' || command === 'answer') {
@@ -217,18 +261,26 @@ if (command === 'start' || command === 'reopen' || command === 'answer') {
 } else if (command === 'complete') {
   const gate = validatePhaseCompletion({ root, phase, evidence: rest });
   if (!gate.ok) {
+    const engineCapabilityBlocked = gate.engine?.supported === false;
+    const engineVerifierBlocked = gate.engineVerification?.status === 'environment_failure';
+    const engineBlocked = engineCapabilityBlocked || engineVerifierBlocked;
+    const engineBlockCode = engineCapabilityBlocked ? 'ENGINE_CAPABILITY_UNAVAILABLE' : 'ENGINE_VERIFIER_ENVIRONMENT';
     record.state = 'blocked';
     record.startedAt = record.startedAt || now;
     record.completedAt = null;
     record.reason = `Completion gate rejected: ${gate.failures.join('; ')}`;
-    record.block = { owner: 'agent', code: 'COMPLETION_GATE_REJECTED', decisionKey: null, resumePolicy: 'agent_retry' };
-    record.completionGate = { checkedAt: now, status: 'rejected', contract: gate.contract, failures: gate.failures };
+    record.block = engineBlocked
+      ? { owner: 'infrastructure', code: engineBlockCode, decisionKey: null, resumePolicy: 'environment_change' }
+      : { owner: 'agent', code: 'COMPLETION_GATE_REJECTED', decisionKey: null, resumePolicy: 'agent_retry' };
+    record.completionGate = { checkedAt: now, status: 'rejected', contract: gate.contract, engineVerification: gate.engineVerification || null, failures: gate.failures };
     persistMarker();
     executionResult({
-      status: 'retryable_failure',
-      code: 'COMPLETION_GATE_REJECTED',
+      status: engineBlocked ? 'environment_failure' : 'retryable_failure',
+      code: engineBlocked ? engineBlockCode : 'COMPLETION_GATE_REJECTED',
       message: record.reason,
-      failure: { type: 'VERIFIER_FAILURE', retryable: true, message: record.reason.slice(0, 2000) },
+      failure: engineBlocked
+        ? { type: 'ENVIRONMENT_ERROR', retryable: false, message: record.reason.slice(0, 2000) }
+        : { type: 'VERIFIER_FAILURE', retryable: true, message: record.reason.slice(0, 2000) },
       stop: record.block,
       evidence: gate.evidence || [],
     });
@@ -243,7 +295,7 @@ if (command === 'start' || command === 'reopen' || command === 'answer') {
   record.reason = null;
   record.block = null;
   record.evidence = gate.evidence;
-  record.completionGate = { checkedAt: now, status: 'passed', contract: gate.contract, failures: [] };
+  record.completionGate = { checkedAt: now, status: 'passed', contract: gate.contract, engineVerification: gate.engineVerification || null, failures: [] };
   // Canonical phase state is authoritative; persist the passed gate before the supplemental graph result.
   persistMarker();
   executionResult({

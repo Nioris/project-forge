@@ -32,7 +32,19 @@ for (const collision of ['status','plan','review']) {
 }
 if (!dash.includes('./new-project.bat '+"'+slug+'"+' --type '+"'+kind+'")) {
   // String is assembled dynamically; verify the literal command prefix and both agent entry points instead.
-  if (!dash.includes('./new-project.bat ')) fail('dashboard project wizard still lacks new-project.bat');
+if (!dash.includes('./new-project.bat ')) fail('dashboard project wizard still lacks new-project.bat');
+}
+if (!dash.includes("var ENGINES=[") || !dash.includes("{id:'web',label:'Web / HTML5'") || !dash.includes("{id:'godot',label:'Godot 4 · эксперимент'")) {
+  fail('dashboard lacks the stable web / experimental Godot engine registry');
+}
+if (!dash.includes('var SCHEMA_VERSION = 6;') || !dash.includes("if (KNOWN_ENGINES.indexOf(p.engine) < 0) { p.engine = 'web'")) {
+  fail('dashboard does not migrate legacy projects to engine=web');
+}
+if (!dash.includes('data-group="engine"') || !dash.includes("--engine '+engine")) {
+  fail('dashboard project wizard does not select/pass the engine profile');
+}
+if (!dash.includes("if(d.type==='app'&&d.engine==='godot')")) {
+  fail('dashboard does not reject app + Godot');
 }
 if (!dash.includes("var codexEntry=kind==='app'?'$app':'$phase-1-analyze .';")) fail('dashboard project wizard lacks Codex game/app entry routing');
 if (!dash.includes("var claudeEntry=kind==='app'?'/app':'/phase-1-analyze .';")) fail('dashboard project wizard lacks Claude game/app entry routing');

@@ -9,14 +9,19 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validatePhase4VisualEvidence } from './phase-4-visual-evidence.mjs';
 import { validateScreenFlow } from './screen-flow-contract.mjs';
+import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
 
 const CONTRACT_SCHEMA_VERSION = 1;
 const CONTRACT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'phase-contracts');
 const PROJECT_CHECK_IDS = new Set([
   'phase-1-integrity',
+  'engine-construct-capability',
+  'engine-visual-capture-capability',
+  'engine-tech-capability',
   'non-placeholder-evidence',
   'implementation-source',
   'clean-playtest-report',
@@ -394,8 +399,49 @@ function checkScreenFlow(root, failures) {
   if (!result.ok) failures.push(...result.failures.map(item => `Screen flow: ${item}`));
 }
 
-function runProjectCheck(id, root, contract, evidence, failures) {
+function runGodotConstructVerifier(root, engineProfile, failures) {
+  const script = path.join(engineProfile.engineRoot || '', 'scripts', 'check-godot-project.mjs');
+  if (!engineProfile.engineRoot || !fs.existsSync(script)) {
+    const message = 'Installed Godot construct verifier is missing';
+    failures.push(message);
+    return { id: 'godot-project', status: 'environment_failure', summary: message, toolchain: null, checks: [] };
+  }
+  const child = spawnSync(process.execPath, [script, root, '--json'], {
+    cwd: engineProfile.engineRoot,
+    env: process.env,
+    encoding: 'utf8',
+    timeout: 180_000,
+    maxBuffer: 1024 * 1024,
+    windowsHide: true,
+  });
+  let report = null;
+  try { report = JSON.parse(child.stdout || ''); } catch {}
+  const status = report?.status || (child.status === 1 ? 'failed' : 'environment_failure');
+  const summary = report?.summary || child.error?.message || child.stderr?.trim() || 'Godot construct verifier returned invalid output';
+  const normalized = {
+    id: 'godot-project',
+    status,
+    summary: String(summary).slice(0, 1000),
+    toolchain: report?.toolchain || null,
+    checks: Array.isArray(report?.checks) ? report.checks.map(item => ({
+      id: String(item.id || '').slice(0, 120),
+      status: item.status,
+      message: String(item.message || '').slice(0, 500),
+      durationMs: Number(item.durationMs) || 0,
+    })).slice(0, 20) : [],
+  };
+  if (child.status !== 0 || status !== 'passed') {
+    const details = Array.isArray(report?.issues)
+      ? report.issues.slice(0, 3).map(item => item.message).filter(Boolean).join('; ')
+      : '';
+    failures.push(`Godot construct verifier ${status}: ${details || normalized.summary}`);
+  }
+  return normalized;
+}
+
+function runProjectCheck(id, root, contract, evidence, failures, engineSupport) {
   if (id === 'phase-1-integrity') validatePhase1(root, evidence, failures);
+  else if (id.startsWith('engine-') && engineSupport && !engineSupport.supported) failures.push(engineSupport.message);
   else if (id === 'non-placeholder-evidence') checkNonPlaceholderEvidence(root, contract, failures);
   else if (id === 'implementation-source' && !hasImplementationSource(root)) failures.push(`Phase ${contract.phase} requires real implementation source`);
   else if (id === 'clean-playtest-report') checkCleanPlaytestReport(root, failures);
@@ -413,6 +459,15 @@ function runProjectCheck(id, root, contract, evidence, failures) {
 export function validatePhaseCompletion({ root = process.cwd(), phase, evidence = [] } = {}) {
   const projectRoot = path.resolve(root);
   const failures = [];
+  let engineProfile = null;
+  let engineSupport = null;
+  let engineVerification = null;
+  try {
+    engineProfile = readTrustedProjectEngine(projectRoot);
+    engineSupport = enginePhaseSupport(engineProfile, phase);
+  } catch (error) {
+    failures.push(`Engine profile rejected (${error.code || 'ENGINE_PROFILE'}): ${error.message}`);
+  }
   const normalizedEvidence = [...new Set(evidence.map(normalizeRelative).filter(Boolean))];
   let contract = null;
   try { contract = loadPhaseContract(phase); }
@@ -435,12 +490,35 @@ export function validatePhaseCompletion({ root = process.cwd(), phase, evidence 
         } catch {}
       }
     }
-    for (const id of contract.projectChecks) runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures);
+    const requiredEvidenceReady = contract.requiredEvidence.every(requirement => {
+      const rel = normalizeRelative(requirement.path);
+      const file = safeProjectFile(projectRoot, rel);
+      if (!evidenceSet.has(rel) || !file) return false;
+      try { return fs.statSync(file.absolute).size >= requirement.minBytes; } catch { return false; }
+    });
+    if (requiredEvidenceReady && Number(contract.phase) === 3 && engineProfile?.engine === 'godot' && engineSupport?.supported) {
+      engineVerification = runGodotConstructVerifier(projectRoot, engineProfile, failures);
+    }
+    const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'visual-integration', 'phase-4-visual-evidence', 'tech-runtime']);
+    for (const id of contract.projectChecks) {
+      if (engineProfile?.implementation !== 'browser' && browserOnlyChecks.has(id)) continue;
+      runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport);
+    }
   }
   return {
     ok: failures.length === 0,
     failures: [...new Set(failures)],
     evidence: normalizedEvidence,
+    engine: engineProfile ? {
+      engine: engineProfile.engine,
+      source: engineProfile.source,
+      status: engineProfile.status,
+      implementation: engineProfile.implementation,
+      capture: engineProfile.capture,
+      capability: engineSupport?.capability || null,
+      supported: engineSupport?.supported ?? false,
+    } : null,
+    engineVerification,
     contract: contract ? { schemaVersion: contract.schemaVersion, phase: contract.phase, name: contract.name, projectChecks: contract.projectChecks } : null,
   };
 }

@@ -76,11 +76,13 @@ Rules:
 
 ## 🎛️ AI STUDIO 4.67 — 9 фаз остаются каноническими
 
-AI Studio не добавляет «десятую фазу». `/studio`, `/prompt-compiler`, `/image-studio` и
-`/visual-qa` являются capabilities внутри Ф1–Ф9 и обязаны соблюдать гейты текущей фазы.
-Primary image path: Codex-native ImageGen; optional unattended fallback: OpenAI API GPT Image 2.
-OpenRouter не является primary image provider. `.forge-ai.json` хранит только настройки, ключи
-туда не записывать.
+Studio/image tools — capabilities внутри Ф1–Ф9. Images: Codex ImageGen; batch — OpenAI GPT Image 2.
+OpenRouter не primary. `.forge-ai.json` без ключей.
+
+## 🧩 ENGINE PROFILE — отдельный от AI host контракт
+
+`phase-state.mjs` доверенно читает `forge.engine.json` в `engineRuntime`; нет файла → `web`.
+Ф3–Ф5 используют только его adapters: отсутствие capability блокирует, а не включает browser fallback.
 
 ## 💾 ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ ЖИВУТ ВНЕ ПАПКИ ДВИЖКА
 

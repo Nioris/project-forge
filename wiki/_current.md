@@ -4,10 +4,18 @@
 
 ## Session goal
 
-Ship Project Forge v4.68.51 so Phase 4 cannot be completed from CSS, DOM assertions, screenshot
-existence or clean console output without complete current-pixel evidence and independent visual review.
+Add engine profiles to Project Forge and prove a Godot path without weakening the existing web pipeline,
+nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Active task
+
+- [x] Q3-001: installed-engine profile authority passes 25 regressions with stable `web` fallback and experimental `godot`.
+- [x] Q3-002: project creation and Dashboard select `web|godot`; 26 engine regressions and Dashboard checks pass.
+- [x] Q3-003: trusted engine routing blocks unsupported Godot Phase 4–5 and direct browser visual bypasses; 32 regressions pass.
+- [x] Q3-004: native Godot Phase 3 verifier passes 16 fixture regressions, including exact node types and script attachments.
+- [ ] Q3-005..Q3-009: capture, review, test, release and pilot the native Godot path.
+
+### Previous v4.68.51 release
 
 - [x] Reproduce the Card Chaos false visual acceptance in the central Phase 4 contract.
 - [x] Remove the CSS-only visual-integration bypass.
@@ -139,7 +147,10 @@ existence or clean console output without complete current-pixel evidence and in
 
 ## Blockers
 
-No v4.68.51 engine blocker. An abandoned verifier lock is never stolen automatically; after confirming
+Godot capture/playtest/export adapters do not exist yet; the experimental profile must fail closed until
+their task is complete. The installed Godot 4.7 editor import currently hangs on this PC; the bounded
+native verifier classifies it as an environment blocker and kills its process tree instead of claiming
+PASS. An abandoned verifier lock is never stolen automatically; after confirming
 that no verifier process is alive, remove the exact stale `.verify.lock` reported by the runtime and retry.
 Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
@@ -167,5 +178,6 @@ Ox Alpha remains restricted to intentionally public, synthetic benchmark materia
 - 2026-08-23: Document-level market vocabulary and line-level external facts are separate classifications; an internal Retention heading is not itself sourced research.
 - 2026-08-23: Once any valid phase marker exists, every missing phase marker remains an unpassed gate; legacy artifact inference may describe later evidence but never advance marker-managed progression.
 - 2026-08-25: Screenshot existence proves capture, not visual quality; Phase 4 acceptance binds exact current pixels to complete state/viewport coverage and an independent reviewer session.
+- 2026-08-25: Game engine selection is orthogonal to terminal AI hosts; missing profile means stable web, and an unavailable adapter never falls back to a browser verifier.
 
-<!-- last updated 2026-08-25 after publishing v4.68.51 evidence-bound visual acceptance -->
+<!-- last updated 2026-08-25 after completing Q3-004 native Godot construct verification -->

@@ -12,6 +12,7 @@ import { inspectPng } from './png-integrity.mjs';
 import { findImageProvenance } from './image-provenance.mjs';
 import { SCREEN_FLOW_PATH, validateScreenFlow } from './screen-flow-contract.mjs';
 import { verifyVisualReceipt } from './visual-receipts.mjs';
+import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
 
 export const PHASE4_VISUAL_EVIDENCE_PATH = 'wiki/qa/phase-4-visual-evidence.json';
 export const PHASE4_VISUAL_REPORT_PATH = 'wiki/qa/phase-4-visual-review.md';
@@ -391,6 +392,19 @@ function validateScreenTargets(root, descriptor, masterTargetHash, screenFlow, f
 export function validatePhase4VisualEvidence({ root = process.cwd(), evidencePath = PHASE4_VISUAL_EVIDENCE_PATH } = {}) {
   const projectRoot = path.resolve(root);
   const failures = [];
+  try {
+    const engineProfile = readTrustedProjectEngine(projectRoot);
+    const support = enginePhaseSupport(engineProfile, 4);
+    if (!support.supported) {
+      return { ok: false, failures: [support.message], evidencePath: normalizeVisualPath(evidencePath) };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      failures: [`Engine profile rejected (${error.code || 'ENGINE_PROFILE'}): ${error.message}`],
+      evidencePath: normalizeVisualPath(evidencePath),
+    };
+  }
   const evidenceFile = safeProjectFile(projectRoot, evidencePath);
   if (!evidenceFile) {
     return { ok: false, failures: [`Phase 4 visual evidence is missing: ${PHASE4_VISUAL_EVIDENCE_PATH}`], evidencePath: normalizeVisualPath(evidencePath) };

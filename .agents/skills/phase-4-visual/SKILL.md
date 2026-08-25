@@ -54,6 +54,20 @@ machine-readable progression state, а сами артефакты остают�
 проверки style bible, target frame или визуального направления.
 Канон: `status/references/model-policy.json`.
 
+## 🧩 Engine capture preflight
+
+`phase-state.mjs start 4` читает `forge.engine.json` единым доверенным reader и сохраняет
+`wiki/phases/phase-4.json → engineRuntime`. Продолжай только если выбранный профиль объявляет
+`engineRuntime.capabilities.visualCapture=true`. При `ENGINE_CAPABILITY_UNAVAILABLE` остановись:
+браузерные кадры, `window.__FORGE_VISUAL_QA__` и ручной импорт PNG не доказывают Godot/native build.
+
+- `engineRuntime.capture=browser` — используй существующий `screens-shoot.mjs` route ниже;
+- `engineRuntime.capture=godot` — используй только установленный native capture adapter и его
+  receipt. Пока adapter не зарегистрирован, Phase 4 остаётся честно заблокированной.
+
+Независимый reviewer, state coverage, сравнение с target frame, порог 6/10 и запрет
+self-review одинаковы для всех движков; меняется способ получения достоверного кадра.
+
 
 ## Шаг 0 — ВОПРОС ПОЛЬЗОВАТЕЛЮ: библиотека или генерация?
 
@@ -183,18 +197,22 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
 поставил, дальше не возвращаешься. Ничего не нашлось — одна строка и работаешь нашими скилами.
 
 ## 📸 Перед сдачей — самооценка по кадрам
-`node <движок>/scripts/screens-shoot.mjs .` → через локальный QA adapter оцени КАЖДЫЙ экран баллом
-по ui-review §самооценка (мобильный 412 + десктоп). Ниже 6/10 — в работу, не показывать.
+Запусти capture adapter выбранного engine profile и оцени КАЖДЫЙ экран баллом по ui-review
+§самооценка (мобильный 412 + десктоп). Для `web`: `node <движок>/scripts/screens-shoot.mjs .`.
+Для native engine браузерную команду не использовать. Ниже 6/10 — в работу, не показывать.
 
 ## 🔒 Исполняемый визуальный gate (обязателен для `complete`)
 
 Самооценка builder-а — внутренний цикл исправлений, но **не приёмка**. После последнего изменения:
 
-1. Реализация обязана включать локальный QA adapter `window.__FORGE_VISUAL_QA__` только при
+1. **Web route:** реализация обязана включать локальный QA adapter `window.__FORGE_VISUAL_QA__` только при
    `?forgeVisualQa=1`, с методами `listStates()`, `showState(id)`, `currentState()`. Запусти
    `screens-shoot.mjs` без ручного `--states`: он сам берёт **все состояния из screen-flow**,
    переключает их через adapter и создаёт
    `screens/review/capture-manifest.json` с реальными размерами, SHA-256, coverage и browser errors.
+   **Godot/native route:** эти browser-механизмы запрещены; native adapter обязан создать
+   эквивалентные state-bound frames, manifest и engine-owned receipt. Если capability ещё false,
+   дальнейшие пункты не выполняются и Phase 4 не заявляется готовой.
 2. Передай `assets/target/screens/manifest.json`, style bible и **каждый** mobile/desktop кадр другому
    reviewer-сеансу или отдельному visual-qa агенту. Builder session не может принять сам себя.
 3. Reviewer открывает live screenshot рядом с его state-specific mobile/desktop target, а не только

@@ -1,25 +1,45 @@
 #!/usr/bin/env node
 /**
  * Create a sibling Project Forge project and immediately sync the unified Claude+Codex runtime.
- * Usage: node scripts/new-project.mjs <name> [--type game|app] [--title "Title"]
+ * Usage: node scripts/new-project.mjs <name> [--type game|app] [--engine web|godot] [--title "Title"]
  */
 import { existsSync, mkdirSync, writeFileSync, readdirSync, copyFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { checkpointProjectGit } from '../.claude/skills/status/references/project-git.mjs';
+import { createEngineProfileDocument, loadEngineRegistry } from './engine-profile.mjs';
 
 const ENGINE = resolve(dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const args = process.argv.slice(2);
 const valueAfter = flag => { const i=args.indexOf(flag); return i >= 0 ? args[i+1] : null; };
 const type = (valueAfter('--type') || 'game').toLowerCase();
+const engine = (valueAfter('--engine') || 'web').toLowerCase();
 const titleArg = valueAfter('--title');
-const positional = args.filter((a, i) => !a.startsWith('--') && (i === 0 || !['--type','--title'].includes(args[i-1])));
+const positional = args.filter((a, i) => !a.startsWith('--') && (i === 0 || !['--type','--engine','--title'].includes(args[i-1])));
 const name = positional[0];
 const title = titleArg || name;
+const engineRegistry = loadEngineRegistry();
+const engineDefinition = engineRegistry.profiles[engine];
 
-if (!name || !/^[a-z0-9][a-z0-9_-]*$/i.test(name) || !['game','app'].includes(type)) {
-  console.error('Usage: node scripts/new-project.mjs <name-latin> [--type game|app] [--title "Title"]');
+if (!name || !/^[a-z0-9][a-z0-9_-]*$/i.test(name) || !['game','app'].includes(type) || !engineDefinition) {
+  console.error('Usage: node scripts/new-project.mjs <name-latin> [--type game|app] [--engine web|godot] [--title "Title"]');
   process.exit(2);
+}
+if (!engineDefinition.projectTypes.includes(type)) {
+  console.error(`[X] Engine ${engine} does not support project type ${type}. Allowed: ${engineDefinition.projectTypes.join(', ')}`);
+  process.exit(2);
+}
+if (args.includes('--validate-only')) {
+  console.log(JSON.stringify({
+    ok: true,
+    name,
+    title,
+    type,
+    engine,
+    status: engineDefinition.status,
+    profile: createEngineProfileDocument(engine, engineRegistry),
+  }, null, 2));
+  process.exit(0);
 }
 const dir = resolve(ENGINE, '..', name);
 if (existsSync(dir)) { console.error('[X] Folder already exists:', dir); process.exit(2); }
@@ -29,9 +49,11 @@ for (const d of ['', 'GameIntegration', 'WorkProgress', 'Release', 'wiki', 'wiki
 
 const nextClaude = type === 'game' ? '/phase-1-analyze .' : '/app';
 const nextCodex = type === 'game' ? '$phase-1-analyze .' : '$app';
-writeFileSync(join(dir, 'CLAUDE.md'), `# ${title}\n\nProject Forge managed ${type} project. Engine runtime rules are synced into AGENTS.md.\n\n## Project type\n${type}\n\n## What this is\n<one sentence: product/genre, platform, audience>\n\n## Forge state\nMutable progress does NOT live in this file. Use wiki/_current.md and wiki/phases/; /status derives progress from phase markers + artifacts.\n\nClaude Code: \`${nextClaude}\`\nCodex: \`${nextCodex}\`\n\n## Version\n0.1.0\n`);
-writeFileSync(join(dir, 'wiki', '_map.md'), `# ${title} — project map\n\n### Done — major milestones\n\n### In progress\n- project created (${type})\n`);
-writeFileSync(join(dir, 'wiki', '_current.md'), `# Current state\n\nProject created (${type}). No phase is complete yet.\n\nNext:\n- Claude Code: ${nextClaude}\n- Codex: ${nextCodex}\n`);
+const engineDocument = createEngineProfileDocument(engine, engineRegistry);
+writeFileSync(join(dir, 'forge.engine.json'), JSON.stringify(engineDocument, null, 2) + '\n', 'utf8');
+writeFileSync(join(dir, 'CLAUDE.md'), `# ${title}\n\nProject Forge managed ${type} project. Engine runtime rules are synced into AGENTS.md.\n\n## Project type\n${type}\n\n## Game engine\n${engine} (${engineDefinition.status})\n\n## What this is\n<one sentence: product/genre, platform, audience>\n\n## Forge state\nMutable progress does NOT live in this file. Use wiki/_current.md and wiki/phases/; /status derives progress from phase markers + artifacts.\n\nClaude Code: \`${nextClaude}\`\nCodex: \`${nextCodex}\`\n\n## Version\n0.1.0\n`);
+writeFileSync(join(dir, 'wiki', '_map.md'), `# ${title} — project map\n\n### Done — major milestones\n\n### In progress\n- project created (${type}, engine: ${engine})\n`);
+writeFileSync(join(dir, 'wiki', '_current.md'), `# Current state\n\nProject created (${type}, engine: ${engine}, status: ${engineDefinition.status}). No phase is complete yet.\n\nNext:\n- Claude Code: ${nextClaude}\n- Codex: ${nextCodex}\n`);
 try {
   const tpl = join(ENGINE, 'templates', 'wiki', 'brief.md');
   if (existsSync(tpl)) copyFileSync(tpl, join(dir, 'wiki', 'design', 'brief.md'));
@@ -44,11 +66,11 @@ try {
 writeFileSync(join(dir, '.gitignore'),
   'node_modules/\noutput/\nhandoff/\nscreens/video/\nscreens/review/\nassets/bible/\nassets/refs/\nassets/target/\nbackend/node_modules/\n.forge/runs/\n.forge/*.tmp\nwiki/diagnostics/forge-events*.jsonl\n.*_key\n.*_token\n*.key\n*.secret\n.env\n');
 
-console.log(`Created ${type} project: ${dir}`);
+console.log(`Created ${type} project (${engine}, ${engineDefinition.status}): ${dir}`);
 console.log('Syncing universal Forge runtime (Claude/Codex/generic agents)...\n');
 execFileSync(process.execPath, [join(ENGINE, 'scripts', 'sync.mjs'), '--game', name], { stdio: 'inherit' });
 
-const must = ['.claude/skills', '.claude/agents', '.agents/skills', '.codex/agents', '.codex/hooks.json', 'AGENTS.md', 'FORGE.md', '.gitverse/pr_rules/forge.md', '.forge-managed.json'];
+const must = ['.claude/skills', '.claude/agents', '.agents/skills', '.codex/agents', '.codex/hooks.json', 'AGENTS.md', 'FORGE.md', 'forge.engine.json', '.gitverse/pr_rules/forge.md', '.forge-managed.json'];
 const missing = must.filter(m => !existsSync(join(dir, m)));
 if (missing.length) {
   console.error('[X] Sync incomplete:', missing.join(', '));

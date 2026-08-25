@@ -615,3 +615,4 @@ loop-1 → loop-2 → loop-3 уже есть в каркасе через bossPr
 | $visual-qa | Visual QA for games/apps: capture real mobile/desktop states, inspect clipping, hierarchy, readability, style consistency and target-frame distance; can use Codex Computer Use when available, with scr |
 | $forge-diagnostics | Record a machine-readable incident when Forge itself behaves incorrectly: malformed phase or STOP output, adapter mismatch, hook/runtime failure, wrong capability mapping, validator contradiction, or  |
 | $modularize-existing-project | Safely decompose an existing monolithic web game/app before feature work. Use when an HTML/JS/CSS entrypoint is over 32 KB, over 800 lines, repeatedly exhausts model context, or a targeted edit risks  |
+| $godot-engine | Создаёт и проверяет native Godot 4 scaffold в Project Forge: project.godot, entry scene, GDScript/C#, headless import/build/startup и serialization contract. Только когда forge.engine.json выбирает go |

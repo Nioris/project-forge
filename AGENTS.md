@@ -1,6 +1,6 @@
 # Project Forge v4.68.51 — Codex engine instructions
 
-<!-- GENERATED from Forge canonical sources; claude-hash:afc163aa1fdf6726; target:engine; do not edit by hand. -->
+<!-- GENERATED from Forge canonical sources; claude-hash:8f085addd2bde5de; target:engine; do not edit by hand. -->
 
 This is the Project Forge engine repository. Claude Code support in `.claude/` remains canonical. Codex is a generated/native adapter over that source; `FORGE.md` + `adapters/agents.json` provide a host-neutral contract for additional terminal agents such as GigaCode.
 
@@ -22,7 +22,7 @@ This is the Project Forge engine repository. Claude Code support in `.claude/` r
 
 ## Skills and commands
 
-- 143 canonical Forge skills are shipped under `.claude/skills/<name>/SKILL.md`. Codex gets those plus 3 generated smart-router skills from `.claude/commands/`, for 146 discoverable skills under `.agents/skills/`.
+- 144 canonical Forge skills are shipped under `.claude/skills/<name>/SKILL.md`. Codex gets those plus 3 generated smart-router skills from `.claude/commands/`, for 147 discoverable skills under `.agents/skills/`.
 - In Codex, invoke a Forge skill explicitly with `$skill-name` or browse skills through `/skills`.
 - Do not confuse Forge skills with Codex native slash commands: Forge project status/plan/review are `$status`, `$plan`, `$review`; Codex `/status`, `/plan`, `/review` control the Codex session/mode/review surface.
 - Claude slash-command wording inside canonical sources names the same Forge workflow; generated Codex skill mirrors translate known `/skill` references to `$skill`. Unknown slash commands remain untouched because they may be Codex built-ins.

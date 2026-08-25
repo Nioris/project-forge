@@ -333,7 +333,7 @@ ls F:\ProjectForgeUniversal\<sibling-project>\.claude\commands
 ### Шаг 1 — Создать изолированный проект
 
 ```powershell
-.\new-project.bat shooter-game --type game
+.\new-project.bat shooter-game --type game --engine web
 cd ..\shooter-game
 cf      # Claude Code
 # или: codex
@@ -1468,11 +1468,14 @@ ls .claude/skills/              # Linux/Mac
 
 | Действие | Команда |
 |----------|---------|
-| Новый проект | `.\new-project.bat name --type game|app --title "описание"` |
+| Новый проект | `.\new-project.bat name --type game|app --engine web|godot --title "описание"` |
 | Список проектов | `.\scripts\forge.ps1 list` |
 | Статус всех | `.\scripts\forge.ps1 status` |
 | Открыть проект | `cd ..\name && cf` |
 | Удалить проект | `.\scripts\forge.ps1 remove name` |
+
+`web` — стабильный движок по умолчанию для игр и приложений. `godot` пока экспериментальный,
+доступен только для игр и не подменяет native-проверки браузерными; Godot C# не имеет Web-экспорта.
 
 ### Внутри Claude Code — Общие
 

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "forge.engine-profile-registry",
+  "defaultEngine": "web",
+  "profiles": {
+    "web": {
+      "displayName": "Web / HTML5",
+      "status": "stable",
+      "projectTypes": ["game", "app"],
+      "implementation": "browser",
+      "capture": "browser",
+      "projectMarkers": ["index.html"],
+      "webExport": true,
+      "capabilities": {
+        "constructVerifier": true,
+        "techVerifier": true,
+        "visualCapture": true,
+        "proofVideo": false,
+        "playtest": true,
+        "releaseExport": true
+      }
+    },
+    "godot": {
+      "displayName": "Godot 4",
+      "status": "experimental",
+      "projectTypes": ["game"],
+      "implementation": "godot",
+      "capture": "godot",
+      "projectMarkers": ["project.godot"],
+      "webExport": false,
+      "capabilities": {
+        "constructVerifier": true,
+        "techVerifier": false,
+        "visualCapture": false,
+        "proofVideo": false,
+        "playtest": false,
+        "releaseExport": false
+      }
+    }
+  }
+}

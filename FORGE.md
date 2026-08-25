@@ -18,6 +18,14 @@ Forge has exactly nine canonical phases:
 
 AI Studio, image generation, multi-agent work, MCP and provider integrations operate *inside* those phases. They are not extra phases.
 
+## Project engine routing
+
+The AI host and project engine are independent choices. Resolve root `forge.engine.json` only through
+the installed Forge `scripts/engine-profile.mjs`; a missing file means stable `web`. Every phase uses
+only adapters declared by that installed profile. An unavailable capability is an infrastructure
+blocker, never permission to substitute a browser verifier for Godot/native evidence. Engine profiles
+do not add phases or replace the nine canonical phase markers.
+
 ## Authoritative project state
 
 Use these sources in this order:

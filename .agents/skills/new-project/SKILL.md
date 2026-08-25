@@ -1,126 +1,86 @@
 ---
 name: new-project
 kind: architectural
-description: "Create a new isolated project workspace using git worktrees. Use when user says \"new project\", \"новый проект\", \"create workspace\", \"ещё один проект\", or wants to work on multiple…"
+description: "Create a new isolated Project Forge project with its own local Git repository, managed runtime and explicit engine profile. Use when user says \"new project\", \"новый проект\"…"
 ---
 
-# New Project (Isolated Workspace)
+# New Project
 
 ## Purpose
-Creates a completely isolated workspace for a new project using git worktrees.
-Each project gets its own branch, directory, and context — no file conflicts.
 
-**v4.4 change:** before creating the worktree, this skill now runs research + skill discovery phases. Plan built from references beats plan built from assumptions.
+Creates a sibling project with the canonical `GameIntegration → WorkProgress → Release` layout,
+durable wiki state, Claude/Codex/generic-agent runtime, local Git history and an explicit game-engine
+profile. Projects do not share mutable code or phase state.
 
-## Instructions
+## Step 1 — Research the direction
 
-### Phase 0a: Research references (MANDATORY, v4.4+)
+For a genuinely new product idea, run `$research-references` and `$find-or-make-skill` before
+implementation. Show the user the compact research direction and stop for confirmation when the
+research skill requires it. Do not spend on assets or start implementation before that STOP is resolved.
 
-Before creating the worktree — understand what already exists in the space.
+If the user supplied a finished GDD/brief and explicitly asked for execution, create the project and let
+Phase 1 validate the supplied evidence instead of inventing a second brief.
 
-Invoke `$research-references` with the project topic as argument. Example:
+## Step 2 — Select project type and engine
 
-```
-$research-references hypercasual timing game with obstacle course
-```
+Engine selection is independent from the terminal AI host:
 
-This produces `wiki/research/{Project}-references.md` with:
-- 3-5 real competitors (from web_search, not memory)
-- Table-stakes features + differentiation opportunities
-- UI/UX visual references (from image_search if applicable)
-- Platform-specific conventions (if platforms specified)
-- Open questions for the user to confirm
+| Engine | Status | Project types | Boundary |
+|---|---|---|---|
+| `web` | stable, default | game, app | Existing HTML/browser pipeline |
+| `godot` | experimental | game only | Native desktop/mobile path; incomplete adapters fail closed; Godot C# has no Web export |
 
-**Stop after this phase.** Show the user the one-screen summary from research-references and wait for them to confirm or correct the direction before moving forward.
+If the user did not select an engine, use `web`. Never put engine selection in `.forge-ai.json`, Task,
+RunResult or an agent profile. The authoritative project file is `forge.engine.json`; missing files in
+legacy projects mean `web`.
 
-### Phase 0b: Skill discovery for specialized competencies (v4.4+)
+## Step 3 — Create the sibling project
 
-Identify specialized competencies the project will need beyond general coding:
-- Physics engine? Animation library? Specific monetization model?
-- Particular design aesthetic (retro, brutalist, editorial)?
-- Platform-specific SDK integrations?
+From the installed Project Forge root:
 
-For each specialized need, invoke `$find-or-make-skill` with the topic. Example:
-
-```
-$find-or-make-skill physics-based puzzle mechanics for canvas games
+```powershell
+node scripts/new-project.mjs my-game --type game --engine web --title "Название игры"
 ```
 
-This checks (in order):
-1. Local `.claude/skills/` — is there already a skill for this?
-2. Local `.claude/agents/` — is there a subagent?
-3. Anthropic official skills (code.claude.com, anthropics/skills, anthropics/claude-plugins-official)
-4. Community marketplaces (claudepluginhub, buildwithclaude, vercel-labs/agent-skills)
-5. **Last resort:** falls back to `$write-skill` to create one locally
+Godot pilot:
 
-**Never hallucinate a solution** when a skill could exist. Discovery-first discipline. If Phase 0b finds skills that need installation — show user and wait for approval before installing.
-
-### Step 1: Create the worktree
-
-```bash
-# From the project-forge root directory
-PROJECT_NAME="$1"  # e.g., "my-cool-app"
-BRANCH_NAME="project/${PROJECT_NAME}"
-
-# Create isolated worktree
-git worktree add "../${PROJECT_NAME}" -b "${BRANCH_NAME}" main
-
-# Copy skill references (symlink to save space)
-cd "../${PROJECT_NAME}"
-ln -s ../project-forge/skills ./skills 2>/dev/null || cp -r ../project-forge/skills ./skills
+```powershell
+node scripts/new-project.mjs my-godot-game --type game --engine godot --title "Название игры"
 ```
 
-Or use Claude Code's built-in worktree:
-```bash
-claude --worktree "${PROJECT_NAME}"
+The command creates the folder beside `project-forge`, writes `forge.engine.json`, syncs the managed
+runtime and initializes a local Git checkpoint. Private GitHub creation follows the existing workspace
+Git policy; a remote failure must not destroy the local repository.
+
+## Step 4 — Add source material and start
+
+Put user-provided sources only in `GameIntegration/`. Phase 1 copies them to `WorkProgress/`; all active
+edits happen there. Then open the project and start the canonical phase:
+
+```powershell
+cd ..\my-game
+node ..\project-forge\scripts\codex-pipeline.mjs --cwd .
 ```
 
-Or use forge CLI:
-```bash
-./scripts/forge.sh new "${PROJECT_NAME}" "описание проекта"
+Claude Code starts with `$phase-1-analyze .`; Codex uses `$phase-1-analyze .` in a manual session.
+
+## Verification
+
+```powershell
+node scripts/engine-profile.mjs check ..\my-game
+node scripts/check-project-git.mjs
 ```
 
-### Step 2: Initialize the project
+Confirm the new project contains `forge.engine.json`, `.forge-managed.json`, `FORGE.md`, `AGENTS.md`,
+both skill surfaces and a local Git commit. For `godot`, experimental status is expected until the native
+construct/capture/playtest/export tasks are complete; browser checks must never substitute for them.
 
-In the new worktree, run:
-```
-$start {project description}
-```
+## Non-Negotiable Acceptance Criteria
 
-This creates wiki/_map.md, wiki/architecture/, wiki/decisions/, and builds the first feature — all isolated from other projects.
-
-### Step 3: Switch between projects
-
-```bash
-# List all active projects (worktrees)
-git worktree list
-
-# Open a specific project
-cd "../${PROJECT_NAME}" && claude
-
-# Or use tmux for parallel sessions
-claude --worktree "${PROJECT_NAME}" --tmux
-
-# Remove finished project
-git worktree remove "../${PROJECT_NAME}"
-```
-
-## Quick Reference
-
-| Action | Command |
-|--------|---------|
-| New project | `claude --worktree my-app` |
-| List projects | `git worktree list` |
-| Switch project | `cd ../my-app && claude` |
-| Parallel (tmux) | `claude --worktree my-app --tmux` |
-| Remove project | `git worktree remove ../my-app` |
-
-## Non-Negotiable
-- [ ] **Phase 0a executed:** wiki/research/{Project}-references.md exists before worktree creation
-- [ ] **Phase 0b executed:** for each specialized competency, find-or-make-skill chain ran (not skipped)
-- [ ] **User confirmed direction** after research summary (stop + wait, don't barrel through)
-- [ ] Each project in its own worktree (never share working directory)
-- [ ] Skills accessible from every worktree
-- [ ] wiki/_map.md created immediately via $start
-- [ ] Wiki structure (features/, decisions/, bugs/, sessions/, research/) created
-- [ ] No file conflicts between projects
+- [ ] Project lives beside the Forge engine and has its own local Git repository.
+- [ ] `forge.engine.json` is valid; missing legacy config defaults only to `web`.
+- [ ] `app + godot` and unknown engines are rejected.
+- [ ] Managed runtime sync completed for Claude, Codex and generic agents.
+- [ ] Sources remain read-only in `GameIntegration/`; active edits use `WorkProgress/`.
+- [ ] Research/decision STOP-points are preserved.
+- [ ] Experimental Godot cannot claim completion through browser-only evidence.
