@@ -75,15 +75,25 @@ try {
     env: isolatedUserEnv(isolated.tempRoot),
   });
   const output = combinedOutput(run);
-  const errors = godotErrorLines(output);
-  if (run.status !== 0 || run.timedOut || errors.length || !fs.existsSync(nativeReport)) {
+  const nativeReportExists = fs.existsSync(nativeReport);
+  let proof = null;
+  let proofParseError = null;
+  if (nativeReportExists) {
+    try { proof = JSON.parse(fs.readFileSync(nativeReport, 'utf8')); }
+    catch (error) { proofParseError = error; }
+  }
+  const trustedProtocolSuccess = run.status === 0 && !run.timedOut && !run.error && proof
+    && proof.protocol === GODOT_PLAYTEST_PROTOCOL && proof.mode === 'tech'
+    && proof.testHarness !== true && usableRenderer(proof);
+  const errors = godotErrorLines(output, { ignoreRootCertificateWarning: trustedProtocolSuccess });
+  if (run.status !== 0 || run.timedOut || run.error || errors.length || !nativeReportExists) {
     const environment = isVisualEnvironmentFailure(run, output);
     fail('GODOT_TECH_RUNTIME', errors[0] || (environment
       ? 'Godot visual environment is unavailable'
       : 'native tech protocol did not complete'), environment);
   }
 
-  const proof = JSON.parse(fs.readFileSync(nativeReport, 'utf8'));
+  if (proofParseError || !proof) fail('GODOT_TECH_PROOF', 'native tech report is invalid JSON');
   if (proof.protocol !== GODOT_PLAYTEST_PROTOCOL || proof.mode !== 'tech' || proof.testHarness === true
     || proof.actions !== true || proof.methods !== true || proof.userDataWritten !== true) {
     fail('GODOT_TECH_PROOF', 'native tech report lacks InputMap, production methods, or isolated user-data proof');

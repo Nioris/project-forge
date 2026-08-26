@@ -5,6 +5,11 @@ import path from 'node:path';
 
 const args = process.argv.slice(2);
 const mode = process.env.FORGE_GODOT_PLAYTEST_FIXTURE_MODE || 'pass';
+const certificateNoise = mode.startsWith('certificate-');
+const behaviorMode = certificateNoise
+  ? (mode.slice('certificate-'.length) === 'noise' ? 'pass' : mode.slice('certificate-'.length))
+  : mode;
+if (certificateNoise) console.error('ERROR: Failed to read the root certificate store.');
 const option = name => {
   const value = args.find(item => item.startsWith(`--${name}=`));
   return value ? value.slice(name.length + 3) : '';
@@ -40,16 +45,16 @@ if (process.env.FORGE_GODOT_EXPECT_CLASS_CACHE) {
     process.exit(43);
   }
 }
-if (mode === 'timeout') {
+if (behaviorMode === 'timeout') {
   setTimeout(() => process.exit(0), 120_000);
-} else if (mode === 'environment') {
+} else if (behaviorMode === 'environment') {
   console.error('ERROR: failed to create display window');
   process.exit(2);
 } else {
   const runMode = option('forge-playtest-mode');
   const output = option('forge-playtest-report');
   const contract = option('forge-playtest-contract');
-  if (mode === 'runtime-error') {
+  if (behaviorMode === 'runtime-error') {
     console.error('SCRIPT ERROR: forged runtime error');
     process.exit(2);
   }
@@ -57,42 +62,42 @@ if (mode === 'timeout') {
     console.error('FORGE_PLAYTEST_ERROR: output missing');
     process.exit(2);
   }
-  if (mode === 'stale-source' && contract) {
+  if (behaviorMode === 'stale-source' && contract) {
     fs.appendFileSync(path.join(path.dirname(contract), 'project.godot'), '\n# hostile fixture mutation\n');
   }
   const value = {
     protocol: 'forge-godot-playtest-v1',
     mode: runMode,
-    testHarness: mode === 'harness-report-rejected',
+    testHarness: behaviorMode === 'harness-report-rejected',
     renderer: {
-      headless: mode === 'headless-renderer',
-      displayServer: mode === 'dummy-renderer' ? 'Dummy' : 'Windows',
-      viewport: { width: mode === 'empty-viewport' ? 0 : 480, height: mode === 'empty-viewport' ? 0 : 270 },
-      window: { width: mode === 'empty-window' ? 0 : 480, height: mode === 'empty-window' ? 0 : 270 },
+      headless: behaviorMode === 'headless-renderer',
+      displayServer: behaviorMode === 'dummy-renderer' ? 'Dummy' : 'Windows',
+      viewport: { width: behaviorMode === 'empty-viewport' ? 0 : 480, height: behaviorMode === 'empty-viewport' ? 0 : 270 },
+      window: { width: behaviorMode === 'empty-window' ? 0 : 480, height: behaviorMode === 'empty-window' ? 0 : 270 },
     },
   };
   if (runMode === 'tech') {
     Object.assign(value, {
-      actions: mode !== 'missing-action',
+      actions: behaviorMode !== 'missing-action',
       methods: true,
       userDataWritten: true,
     });
   } else if (runMode === 'save') {
     Object.assign(value, {
       initial: { hp: 1 },
-      steps: mode === 'missing-action' ? [
+      steps: behaviorMode === 'missing-action' ? [
         { action: 'move_left', state: { hp: 2 } },
       ] : [
         { action: 'move_left', state: { hp: 2 } },
-        { action: 'move_right', state: { hp: mode === 'state-mismatch' ? 999 : 3 } },
+        { action: 'move_right', state: { hp: behaviorMode === 'state-mismatch' ? 999 : 3 } },
       ],
-      progress: { hp: mode === 'no-progress' ? 2 : 3 },
-      saved: mode !== 'save-failure',
+      progress: { hp: behaviorMode === 'no-progress' ? 2 : 3 },
+      saved: behaviorMode !== 'save-failure',
     });
   } else if (runMode === 'reload') {
     Object.assign(value, {
-      loaded: mode !== 'reload-failure',
-      state: { hp: mode === 'reload-failure' ? 1 : 3 },
+      loaded: behaviorMode !== 'reload-failure',
+      state: { hp: behaviorMode === 'reload-failure' ? 1 : 3 },
     });
   }
   fs.mkdirSync(path.dirname(output), { recursive: true });

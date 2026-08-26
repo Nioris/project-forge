@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { godotVersionLine, isGodotRootCertificateWarning } from './lib/godot-output.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BOUNDED_RUNNER = path.join(SCRIPT_DIR, 'run-bounded-command.mjs');
@@ -226,7 +227,7 @@ export function runBounded(command, args, { cwd, timeoutMs = 30_000, env = {} } 
 
 function detect(command, prefix = []) {
   const run = runBounded(command, [...prefix, '--version'], { timeoutMs: 10_000 });
-  const version = `${run.stdout}\n${run.stderr}`.trim().split(/\r?\n/u).find(Boolean) || null;
+  const version = godotVersionLine(`${run.stdout}\n${run.stderr}`);
   return { ok: run.status === 0 && !run.error, command, prefix, version, testHarness: prefix.length > 0, run };
 }
 
@@ -255,9 +256,10 @@ export function combinedOutput(run) {
   return `${run.stdout || ''}\n${run.stderr || ''}`.slice(-MAX_OUTPUT);
 }
 
-export function godotErrorLines(output) {
+export function godotErrorLines(output, { ignoreRootCertificateWarning = false } = {}) {
   return [...new Set(String(output).split(/\r?\n/u).map(line => line.trim()).filter(line =>
-    /^(?:ERROR:|SCRIPT ERROR:|Parse Error:|Parser Error:|E\s+\d+:|FORGE_VISUAL_ERROR:)|\berror\s+CS\d+\b/iu.test(line)))].slice(0, 30);
+    /^(?:ERROR:|SCRIPT ERROR:|Parse Error:|Parser Error:|E\s+\d+:|FORGE_VISUAL_ERROR:)|\berror\s+CS\d+\b/iu.test(line)
+      && !(ignoreRootCertificateWarning && isGodotRootCertificateWarning(line))))].slice(0, 30);
 }
 
 export function godotProjectErrorLines(output) {
@@ -267,7 +269,7 @@ export function godotProjectErrorLines(output) {
 
 export function isVisualEnvironmentFailure(run, output = combinedOutput(run)) {
   if (godotProjectErrorLines(output).length) return false;
-  return Boolean(run.timedOut || run.error || /(?:failed to read (?:the )?root certificate store|could not (?:open|create).*user:\/\/|cannot (?:save|write|open).*editor_settings|error saving editor settings|display driver|cannot open display|failed to create (?:display|window|rendering device)|vulkan.*(?:unavailable|failed)|opengl.*(?:unavailable|failed)|no available video device|movie writer.*(?:unavailable|failed)|codec.*(?:unavailable|failed)|d3d12.*failed)/iu.test(output));
+  return Boolean(run.timedOut || run.error || /(?:could not (?:open|create).*user:\/\/|cannot (?:save|write|open).*editor_settings|error saving editor settings|display driver|cannot open display|failed to create (?:display|window|rendering device)|vulkan.*(?:unavailable|failed)|opengl.*(?:unavailable|failed)|no available video device|movie writer.*(?:unavailable|failed)|codec.*(?:unavailable|failed)|d3d12.*failed)/iu.test(output));
 }
 
 export function parseMarkerLines(output, prefix) {

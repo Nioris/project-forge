@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readEngineProfile } from './engine-profile.mjs';
 import { isolatedGodotUserEnv, writeIsolatedGdscriptClassCache } from './godot-visual-runtime.mjs';
+import { godotVersionLine, isGodotRootCertificateWarning } from './lib/godot-output.mjs';
 
 const CONTRACT_FILE = 'forge.godot.json';
 const MAX_FILES = 20_000;
@@ -299,7 +300,7 @@ function runTool(command, toolArgs, options = {}) {
 
 function detectTool(command, versionArgs = ['--version'], prefix = []) {
   const run = runTool(command, [...prefix, ...versionArgs], { timeoutMs: 10_000 });
-  const version = `${run.stdout}\n${run.stderr}`.trim().split(/\r?\n/u).find(Boolean) || null;
+  const version = godotVersionLine(`${run.stdout}\n${run.stderr}`);
   return { ok: run.status === 0 && !run.error, command, prefix, version, run, testHarness: prefix.length > 0 };
 }
 
@@ -337,7 +338,7 @@ function dotnetEnvironmentError(output) {
 }
 
 function godotUserEnvironmentError(output) {
-  return /(?:failed to read (?:the )?root certificate store|could not (?:open|create).*user:\/\/|cannot (?:save|write|open).*editor_settings|error saving editor settings)/iu.test(output);
+  return /(?:could not (?:open|create).*user:\/\/|cannot (?:save|write|open).*editor_settings|error saving editor settings)/iu.test(output);
 }
 
 function godotProjectErrorLines(output) {
@@ -348,9 +349,10 @@ function godotProjectErrorLines(output) {
 function runGodotCheck(id, command, commandArgs, { cwd, timeoutMs, logFile, marker = null, csharp = false, timeoutEnvironment = false, env = {} } = {}) {
   const run = runTool(command, commandArgs, { cwd, timeoutMs, env });
   const output = toolOutput(run, logFile);
-  const errors = errorLines(output);
   const projectErrors = godotProjectErrorLines(output);
   const markerMissing = marker && !output.includes(marker);
+  const trustedMarkerSuccess = Boolean(marker) && run.status === 0 && !run.error && !run.timedOut && !markerMissing;
+  const errors = errorLines(output).filter(line => !(trustedMarkerSuccess && isGodotRootCertificateWarning(line)));
   if (run.status === 0 && !run.error && !errors.length && !markerMissing) {
     addCheck(id, 'passed', marker ? `startup reached ${marker}` : `${id} completed`, run.durationMs);
     return true;

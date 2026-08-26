@@ -49,8 +49,10 @@
 
 ## Current Status
 
-### Version: v4.68.58 (current source line)
+### Version: v4.68.59 (current source line)
 
+- 2026-08-26: **v4.68.59** — an exact Windows root-certificate diagnostic is nonblocking only after trusted Godot protocol/artifact success; terminal phase block replay is idempotent and only `reopen` may create a fresh Task.
+- 2026-08-26: **Q3-009 pilot, Run 04** — v4.68.58 installed cleanly across 34 siblings; Circuit Courier passed host construct plus native BFS/save/tutorial/layout/capture checks, while the restricted session exposed certificate-noise misclassification and terminal-block replay defects fixed by v4.68.59.
 - 2026-08-26: **v4.68.58** — Godot construct/visual/tech/playtest runs now use isolated writable user profiles and regenerated temporary GDScript class caches; GDScript verification loads the real game without the editor-only import path that crashed or stalled under Codex.
 - 2026-08-26: **v4.68.58 release guard** — version metadata uses truthful source-line wording before packaging; `--dry-run`, help and invalid bump options are full-tree hash-verified as side-effect free after an audit probe briefly normalized the local candidate to 4.68.59.
 - 2026-08-26: **Q3-009 pilot, Run 03** — v4.68.57 reconciled Phase 1 and completed Phase 2 as local-only commits while GitHub stayed unchanged. Phase 3 built Circuit Courier and exposed the host-profile/editor-import defect; the v4.68.58 regressions pass, while durable native pilot revalidation waits for installation.
@@ -502,8 +504,8 @@
 
 ### Next
 
-1. Ship, install and synchronize the v4.68.58 isolated Godot runtime repair.
-2. Resume Q3-009 Phase 3 in a fresh Codex session and require the installed native construct gate to pass.
+1. Ship, install and synchronize the v4.68.59 certificate-noise and terminal-block repair.
+2. Explicitly reopen Q3-009 Phase 3 and require the installed restricted-session native construct gate to pass.
 3. Continue the end-to-end native Godot pilot through Phase 8 without an early GitHub push.
 4. Start Q3-008 only if the real pilot exposes an asset/runtime need.
 

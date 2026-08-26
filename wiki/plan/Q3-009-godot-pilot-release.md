@@ -18,7 +18,10 @@ files:
   - RELEASE_NOTES_v4.68.56.md
   - RELEASE_NOTES_v4.68.57.md
   - RELEASE_NOTES_v4.68.58.md
+  - RELEASE_NOTES_v4.68.59.md
   - wiki/bugs/godot-clean-profile-editor-import.md
+  - wiki/bugs/godot-root-certificate-warning-false-block.md
+  - wiki/bugs/phase-block-terminal-replay-crash.md
   - wiki/bugs/bump-version-dry-run-mutated-source.md
   - scripts/package-forge.mjs
   - scripts/check-package-forge.mjs
@@ -161,3 +164,22 @@ full operation lease.
 - Release review also exposed that unknown `--dry-run` was ignored by `bump-version.mjs` and mutated the
   candidate to 4.68.59. v4.68.58 now supports both dry aliases, rejects unknown/ambiguous modes before
   writes and hashes a complete fixture tree to prove informational calls are side-effect free.
+
+## Pilot run 04 — construction verified, certificate noise misclassified
+
+- v4.68.58 was installed and synchronized across all 34 sibling projects with no drift.
+- The host-native construct check passed on Godot `4.7.stable.official.5b4e0cb0f` and reached
+  `CIRCUIT_COURIER_READY` from a clean isolated copy.
+- The fresh Phase 3 session repaired the tutorial input unlock, responsive portrait HUD and procedural audio,
+  then passed BFS/domain/save/tutorial/layout smoke checks and produced eight distinct native state captures.
+- Inside the restricted Codex process the same successful startup also printed the Windows root-certificate
+  diagnostic. Forge treated that one line as fatal even though the trusted marker was present.
+- Repeating an explicit block after the bounded Task reached terminal `blocked` exposed a second runtime defect:
+  marker mutation occurred before terminal-state rejection.
+
+## v4.68.59 corrective scope
+
+- Ignore only the exact root-certificate diagnostic, and only after adapter-specific trusted success evidence.
+- Preserve fail-closed project, protocol, renderer and artifact validation across Phases 3–8.
+- Make terminal phase block replay idempotent; require explicit `reopen` for any different transition.
+- Repeat the installed Phase 3 gate before advancing to Phase 4.

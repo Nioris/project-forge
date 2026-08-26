@@ -194,6 +194,25 @@ try {
     'capture and proof are bound to the same Godot implementation snapshot');
   check(!videoManifest.command.includes('--headless'), 'proof video uses a real renderer rather than headless capture');
 
+  const certificateCapture = run(captureScript, project, 'certificate-noise');
+  check(certificateCapture.child.status === 0 && certificateCapture.value?.status === 'passed'
+    && certificateCapture.value?.engine?.version === '4.7.test.fixture',
+  'root-certificate noise is nonblocking only after every trusted capture marker and PNG succeeds');
+
+  const certificateVideo = run(videoScript, project, 'certificate-noise');
+  check(certificateVideo.child.status === 0 && certificateVideo.value?.status === 'passed',
+    'root-certificate noise is nonblocking after the complete trusted proof protocol and artifact validation');
+
+  const certificateMismatch = run(captureScript, project, 'certificate-state-mismatch');
+  check(certificateMismatch.child.status === 1 && certificateMismatch.value?.status === 'failed'
+    && certificateMismatch.value?.issues?.some(item => item.code === 'GODOT_VISUAL_RUNTIME'),
+  'root-certificate noise cannot hide a visual state mismatch');
+
+  const certificateMalformedVideo = run(videoScript, project, 'certificate-malformed-avi');
+  check(certificateMalformedVideo.child.status === 1 && certificateMalformedVideo.value?.status === 'failed'
+    && certificateMalformedVideo.value?.issues?.some(item => item.code === 'GODOT_PROOF_CODEC'),
+  'root-certificate noise cannot hide a malformed proof artifact');
+
   const mismatch = run(captureScript, project, 'state-mismatch');
   check(mismatch.child.status === 1 && mismatch.value?.status === 'failed'
     && mismatch.value?.issues?.some(item => item.code === 'GODOT_VISUAL_RUNTIME'),

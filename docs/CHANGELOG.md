@@ -4840,6 +4840,13 @@ policy; invalid resume policies fail before durable state changes.
 The parent host owns Git while Codex stays workspace-scoped. This immutable candidate was rejected before
 publication/install because a failed Phase 8 push was not restart-safe.
 
+## v4.68.56 changelog (rejected checkpoint candidate)
+
+An ignored atomic ledger makes completed-phase Git state restart-safe. Before the next model, Forge
+reconciles missing/failed checkpoints; failures also hold status and direct phase commands. Phases 1–7
+remain local-only; Phase 8+ requires a confirmed private push. The immutable ZIP was rejected before
+publication/install: `--help` unexpectedly built it, and manual checkpoints still bypassed the full lease.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

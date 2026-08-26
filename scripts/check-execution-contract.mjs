@@ -236,6 +236,87 @@ try {
     fs.rmSync(phaseFixture, { recursive: true, force: true });
   }
 
+  const terminalPhaseFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-phase-terminal-block-'));
+  try {
+    let terminalRun = ensurePhaseTaskRun({ projectRoot: terminalPhaseFixture, phase: 3, phaseName: 'Construct' });
+    for (let attempt = 0; attempt < 4; attempt++) {
+      terminalRun = recordTaskResult({
+        projectRoot: terminalPhaseFixture,
+        taskId: terminalRun.task.id,
+        result: resultFor(terminalRun, 'retryable_failure', {
+          code: 'COMPLETION_GATE_REJECTED',
+          failure: { type: 'VERIFIER_FAILURE', retryable: true, message: `Terminal phase failure ${attempt + 1}` },
+          stop: { owner: 'agent', code: 'COMPLETION_GATE_REJECTED', decisionKey: null, resumePolicy: 'agent_retry' },
+        }),
+      });
+    }
+    const terminalMarkerPath = path.join(terminalPhaseFixture, 'wiki', 'phases', 'phase-3.json');
+    atomicWriteJson(terminalMarkerPath, {
+      schemaVersion: 3,
+      phase: 3,
+      name: 'Construct',
+      state: 'blocked',
+      startedAt: '2026-08-26T00:00:00.000Z',
+      updatedAt: '2026-08-26T00:00:00.000Z',
+      completedAt: null,
+      reason: 'Original completion failure',
+      block: { owner: 'agent', code: 'COMPLETION_GATE_REJECTED', decisionKey: null, resumePolicy: 'agent_retry' },
+      evidence: [],
+      execution: {
+        taskId: terminalRun.task.id,
+        workflow: terminalRun.workflow.id,
+        currentNode: terminalRun.state.currentNode,
+        status: terminalRun.state.status,
+        resultStatus: terminalRun.lastResult.status,
+        resultCode: terminalRun.lastResult.code,
+        resultAt: terminalRun.lastResult.createdAt,
+        attemptId: terminalRun.lastResult.attemptId,
+      },
+    });
+    const terminalTaskPath = taskRunPath(terminalPhaseFixture, terminalRun.task.id);
+    const markerBeforeReplay = fs.readFileSync(terminalMarkerPath, 'utf8');
+    const taskBeforeReplay = fs.readFileSync(terminalTaskPath, 'utf8');
+    const identicalReplay = spawnSync(process.execPath, [
+      phaseScript, 'block', '3', 'A later generic explanation', '--host', 'codex', '--owner', 'agent',
+      '--code', 'COMPLETION_GATE_REJECTED', '--resume-policy', 'agent_retry',
+    ], { cwd: terminalPhaseFixture, encoding: 'utf8', env: { ...process.env, FORGE_RUN_ATTEMPT_ID: 'fixture-terminal-replay' } });
+    check(identicalReplay.status === 0 && /same durable terminal block/u.test(identicalReplay.stdout)
+      && fs.readFileSync(terminalMarkerPath, 'utf8') === markerBeforeReplay
+      && fs.readFileSync(terminalTaskPath, 'utf8') === taskBeforeReplay,
+    'an equivalent terminal block replay is idempotent and preserves the first durable cause byte-for-byte');
+
+    const conflictingReplay = spawnSync(process.execPath, [
+      phaseScript, 'block', '3', 'Conflicting relabel', '--host', 'codex', '--owner', 'infrastructure',
+      '--code', 'DIFFERENT_BLOCK', '--resume-policy', 'environment_change',
+    ], { cwd: terminalPhaseFixture, encoding: 'utf8', env: { ...process.env, FORGE_RUN_ATTEMPT_ID: 'fixture-terminal-conflict' } });
+    check(conflictingReplay.status === 2 && /terminal \(blocked\).*use .*reopen 3/iu.test(conflictingReplay.stderr)
+      && !/at recordTaskResult|execution-contract\.mjs:\d+/u.test(conflictingReplay.stderr)
+      && fs.readFileSync(terminalMarkerPath, 'utf8') === markerBeforeReplay
+      && fs.readFileSync(terminalTaskPath, 'utf8') === taskBeforeReplay,
+    'a conflicting terminal block is rejected before marker mutation and without a stack trace');
+
+    const terminalStart = spawnSync(process.execPath, [phaseScript, 'start', '3', '--host', 'codex'], {
+      cwd: terminalPhaseFixture, encoding: 'utf8', env: { ...process.env, FORGE_RUN_ATTEMPT_ID: 'fixture-terminal-start' },
+    });
+    check(terminalStart.status === 2 && /use .*reopen 3/iu.test(terminalStart.stderr)
+      && fs.readFileSync(terminalMarkerPath, 'utf8') === markerBeforeReplay
+      && fs.readFileSync(terminalTaskPath, 'utf8') === taskBeforeReplay,
+    'start cannot mutate or reset a terminal blocked phase; recovery requires explicit reopen');
+
+    const reopened = spawnSync(process.execPath, [phaseScript, 'reopen', '3', '--host', 'codex'], {
+      cwd: terminalPhaseFixture, encoding: 'utf8', env: { ...process.env, FORGE_RUN_ATTEMPT_ID: 'fixture-terminal-reopen' },
+    });
+    const reopenedMarker = JSON.parse(fs.readFileSync(terminalMarkerPath, 'utf8'));
+    const reopenedRun = readTaskRun(terminalPhaseFixture, reopenedMarker.execution?.taskId);
+    check(reopened.status === 0 && reopenedMarker.state === 'in_progress'
+      && reopenedMarker.execution?.taskId !== terminalRun.task.id
+      && reopenedRun?.state?.currentNode === 'execute' && reopenedRun?.task?.status === 'running'
+      && fs.readFileSync(terminalTaskPath, 'utf8') === taskBeforeReplay,
+    'reopen is the only transition that creates a fresh running Task while preserving the terminal history');
+  } finally {
+    fs.rmSync(terminalPhaseFixture, { recursive: true, force: true });
+  }
+
   const managedFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-managed-runtime-'));
   try {
     const installedEngine = path.join(managedFixture, 'project-forge');

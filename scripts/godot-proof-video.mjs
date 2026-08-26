@@ -104,7 +104,6 @@ try {
     const timeoutMs = Math.max(120_000, contract.proofVideo.durationSeconds * 12_000);
     const run = runBounded(godot.command, args, { cwd: isolated.isolatedProject, timeoutMs, env: godotUserEnv });
     const output = combinedOutput(run);
-    const errors = godotErrorLines(output);
     const protocol = parseMarkerLines(output, 'FORGE_VISUAL_PROTOCOL:').at(-1);
     const ready = parseMarkerLines(output, 'FORGE_VISUAL_PROOF_READY:').at(-1) || '';
     const complete = Number(parseMarkerLines(output, 'FORGE_VISUAL_PROOF_COMPLETE:').at(-1));
@@ -116,6 +115,11 @@ try {
       const match = /^(\d+):(.*)$/su.exec(value);
       return match ? { frame: Number(match[1]), absolute: path.resolve(match[2]) } : { frame: NaN, absolute: '' };
     });
+    const trustedProtocolSuccess = run.status === 0 && !run.timedOut && !run.error
+      && protocol === FORGE_GODOT_VISUAL_PROTOCOL
+      && ready === `${expectedFrames}:${contract.proofVideo.fps}`
+      && complete === expectedFrames;
+    const errors = godotErrorLines(output, { ignoreRootCertificateWarning: trustedProtocolSuccess });
     const environment = isVisualEnvironmentFailure(run, output);
     if (run.status !== 0 || errors.length || protocol !== FORGE_GODOT_VISUAL_PROTOCOL
       || ready !== `${expectedFrames}:${contract.proofVideo.fps}` || complete !== expectedFrames) {

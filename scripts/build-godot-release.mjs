@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { validatePhase4VisualEvidence } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 import { createGodotReleaseReceiptPayload, recordGodotReleaseReceipt } from '../.claude/skills/status/references/godot-release-receipts.mjs';
 import { readGodotExportContract, safeSlug, sha256File, snapshotTree } from './godot-export-contract.mjs';
+import { isGodotRootCertificateWarning } from './lib/godot-output.mjs';
 
 const SCRIPT_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const RELEASE_FIXTURE_ROOT = path.join(SCRIPT_ROOT, 'fixtures', 'godot-release');
@@ -281,12 +282,18 @@ try {
     ], isolated);
     const outputText = `${run.stdout || ''}\n${run.stderr || ''}`;
     const templatesMissing = /export templates?.*(?:missing|not found|unavailable)|no export template/iu.test(outputText);
-    if (run.status !== 0 || run.error || /(?:^|\n)(?:ERROR|SCRIPT ERROR):/iu.test(outputText)) {
-      fail(templatesMissing ? 'GODOT_RELEASE_TEMPLATES' : 'GODOT_RELEASE_EXPORT',
-        `${variant} export failed: ${run.stderr || run.stdout || run.error?.message}`, templatesMissing);
-    }
     const pck = path.join(directory, `${slug}.pck`);
-    if (!fs.existsSync(exe) || !fs.existsSync(pck) || fs.statSync(exe).size < 1 || fs.statSync(pck).size < 1) {
+    const artifactsReady = fs.existsSync(exe) && fs.existsSync(pck)
+      && fs.statSync(exe).size > 0 && fs.statSync(pck).size > 0;
+    const trustedExportSuccess = run.status === 0 && !run.error && artifactsReady;
+    const exportErrors = String(outputText).split(/\r?\n/u).map(line => line.trim()).filter(line =>
+      /^(?:ERROR|SCRIPT ERROR):/iu.test(line)
+      && !(trustedExportSuccess && isGodotRootCertificateWarning(line)));
+    if (run.status !== 0 || run.error || exportErrors.length) {
+      fail(templatesMissing ? 'GODOT_RELEASE_TEMPLATES' : 'GODOT_RELEASE_EXPORT',
+        `${variant} export failed: ${exportErrors[0] || run.stderr || run.stdout || run.error?.message}`, templatesMissing);
+    }
+    if (!artifactsReady) {
       fail('GODOT_RELEASE_ARTIFACT', `${variant} export must contain non-empty EXE and PCK`);
     }
     binaryHashes[variant] = { exe: sha256File(exe), pck: sha256File(pck) };

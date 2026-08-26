@@ -113,10 +113,14 @@ try {
           env: godotUserEnv,
         });
         const outputText = combinedOutput(run);
-        const errors = godotErrorLines(outputText);
         const protocol = parseMarkerLines(outputText, 'FORGE_VISUAL_PROTOCOL:');
         const reported = parseMarkerLines(outputText, 'FORGE_VISUAL_STATE:');
         const written = parseMarkerLines(outputText, 'FORGE_VISUAL_CAPTURED:');
+        const trustedProtocolSuccess = run.status === 0 && !run.timedOut && !run.error
+          && protocol.at(-1) === FORGE_GODOT_VISUAL_PROTOCOL
+          && reported.at(-1) === state.capture.adapterState
+          && normalizePath(written.at(-1)) === normalizePath(output);
+        const errors = godotErrorLines(outputText, { ignoreRootCertificateWarning: trustedProtocolSuccess });
         const environment = isVisualEnvironmentFailure(run, outputText);
         if (run.status !== 0 || errors.length || protocol.at(-1) !== FORGE_GODOT_VISUAL_PROTOCOL
           || reported.at(-1) !== state.capture.adapterState || normalizePath(written.at(-1)) !== normalizePath(output)) {

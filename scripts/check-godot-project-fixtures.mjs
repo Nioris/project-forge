@@ -52,6 +52,25 @@ check(pass.value?.toolchain?.godot?.version === '4.7.test.fixture', 'verifier re
 const sourceCacheAfter = fs.existsSync(sourceCache) ? fs.statSync(sourceCache).mtimeMs : null;
 check(sourceCacheAfter === sourceCacheBefore, 'isolated verification does not create or touch the source .godot cache');
 
+const certificateNoise = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'certificate-noise' });
+check(certificateNoise.child.status === 0 && certificateNoise.value?.status === 'passed',
+  'exact Windows root-certificate noise is nonblocking after the trusted smoke marker');
+check(certificateNoise.value?.toolchain?.godot?.version === '4.7.test.fixture',
+  'root-certificate noise cannot replace the factual Godot version');
+
+const certificateMissingMarker = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'certificate-missing-marker' });
+check(certificateMissingMarker.child.status === 1 && certificateMissingMarker.value?.status === 'failed',
+  'root-certificate noise without the required smoke marker remains a failure');
+
+const certificateExitFailure = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'certificate-exit-fail' });
+check(certificateExitFailure.child.status === 1 && certificateExitFailure.value?.status === 'failed',
+  'root-certificate noise cannot hide a nonzero Godot exit');
+
+const certificateParseFailure = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'certificate-parse-fail' });
+check(certificateParseFailure.child.status === 1 && certificateParseFailure.value?.status === 'failed'
+  && certificateParseFailure.value?.issues?.some(item => /Parse Error: fixture parse failure/u.test(item.message)),
+  'root-certificate noise cannot mask a GDScript parse failure');
+
 const classCacheRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-class-cache-'));
 try {
   fs.cpSync(passRoot, classCacheRoot, { recursive: true, filter: source => path.basename(source) !== '.godot' });

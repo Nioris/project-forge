@@ -6,6 +6,12 @@ import zlib from 'node:zlib';
 
 const args = process.argv.slice(2);
 const fixtureMode = String(process.env.FORGE_GODOT_FIXTURE_MODE || 'pass');
+const certificateNoise = fixtureMode.startsWith('certificate-');
+const behaviorMode = certificateNoise
+  ? (fixtureMode.slice('certificate-'.length) === 'noise' ? 'pass' : fixtureMode.slice('certificate-'.length))
+  : fixtureMode;
+
+if (certificateNoise) console.error('ERROR: Failed to read the root certificate store.');
 
 function inside(root, candidate) {
   const relative = path.relative(path.resolve(root), path.resolve(candidate));
@@ -46,17 +52,17 @@ if (process.env.FORGE_GODOT_EXPECT_CLASS_CACHE && !args.includes('--version')) {
   }
 }
 
-if (fixtureMode === 'user-store-fail' && !args.includes('--version')) {
+if (behaviorMode === 'user-store-fail' && !args.includes('--version')) {
   console.error("ERROR: Could not open 'user://' directory: 'user://'.");
   process.exit(2);
 }
 
-if (fixtureMode === 'parse-fail' && !args.includes('--version')) {
+if (behaviorMode === 'parse-fail' && !args.includes('--version')) {
   console.error('SCRIPT ERROR: Parse Error: fixture parse failure');
   process.exit(1);
 }
 
-if (fixtureMode === 'parse-display-fail' && !args.includes('--version')) {
+if (behaviorMode === 'parse-display-fail' && !args.includes('--version')) {
   console.error('SCRIPT ERROR: Parse Error: fixture parse failure');
   console.error('ERROR: failed to create display window');
   process.exit(1);
@@ -193,10 +199,12 @@ function option(name, fallback = '') {
   return item ? item.slice(name.length + 3) : fallback;
 }
 
-if (fixtureMode === 'display-fail' && !args.includes('--version')) {
+if (behaviorMode === 'display-fail' && !args.includes('--version')) {
   console.error('ERROR: failed to create display window');
   process.exit(2);
 }
+
+if (behaviorMode === 'exit-fail' && !args.includes('--version')) process.exit(2);
 
 if (args.includes('--version')) {
   console.log('4.7.test.fixture');
@@ -208,9 +216,9 @@ if (args.includes('--version')) {
   const resolution = String(args[args.indexOf('--resolution') + 1] || '412x915').split('x').map(Number);
   const state = option('forge-visual-state');
   const output = option('forge-visual-output');
-  writePng(output, resolution[0], resolution[1], fixtureMode === 'identical-state-pixels' ? 'same-pixels' : state);
+  writePng(output, resolution[0], resolution[1], behaviorMode === 'identical-state-pixels' ? 'same-pixels' : state);
   console.log('FORGE_VISUAL_PROTOCOL:forge-godot-visual-v1');
-  console.log(`FORGE_VISUAL_STATE:${fixtureMode === 'state-mismatch' ? 'wrong-state' : state}`);
+  console.log(`FORGE_VISUAL_STATE:${behaviorMode === 'state-mismatch' ? 'wrong-state' : state}`);
   console.log(`FORGE_VISUAL_CAPTURED:${output}`);
 } else if (option('forge-visual-mode') === 'proof') {
   const resolution = String(args[args.indexOf('--resolution') + 1] || '1920x1080').split('x').map(Number);
@@ -219,11 +227,11 @@ if (args.includes('--version')) {
   const frames = Number(option('forge-proof-total-frames', '450'));
   const states = option('forge-proof-states').split(',').filter(Boolean);
   const samplesDir = option('forge-proof-samples-dir');
-  const encodedFrames = fixtureMode === 'short-video' ? frames - 2 : frames;
+  const encodedFrames = behaviorMode === 'short-video' ? frames - 2 : frames;
   writeAvi(video, resolution[0], resolution[1], fps, encodedFrames, {
-    malformed: fixtureMode === 'malformed-avi',
-    frozen: fixtureMode === 'frozen-video' || fixtureMode === 'frozen-avi',
-    badIndex: fixtureMode === 'bad-avi-index',
+    malformed: behaviorMode === 'malformed-avi',
+    frozen: behaviorMode === 'frozen-video' || behaviorMode === 'frozen-avi',
+    badIndex: behaviorMode === 'bad-avi-index',
   });
   console.log('FORGE_VISUAL_PROTOCOL:forge-godot-visual-v1');
   console.log(`FORGE_VISUAL_PROOF_READY:${frames}:${fps}`);
@@ -233,11 +241,11 @@ if (args.includes('--version')) {
   for (let second = 0; second < sampleCount; second++) {
     const frame = second * fps;
     const sample = path.join(samplesDir, `sample-${String(frame).padStart(6, '0')}.png`);
-    const seed = fixtureMode === 'frozen-video' ? 1 : second + 1;
+    const seed = behaviorMode === 'frozen-video' ? 1 : second + 1;
     writePng(sample, resolution[0], resolution[1], seed);
     console.log(`FORGE_VISUAL_PROOF_SAMPLE:${frame}:${sample}`);
   }
   console.log(`FORGE_VISUAL_PROOF_COMPLETE:${frames}`);
 } else {
-  console.log('FORGE_SMOKE_READY');
+  if (behaviorMode !== 'missing-marker') console.log('FORGE_SMOKE_READY');
 }

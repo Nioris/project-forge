@@ -69,20 +69,23 @@ function make(name) {
 }
 
 function expectedCode(script, mode) {
-  if (mode === 'environment' || mode === 'runtime-error' || mode === 'timeout') {
+  const behaviorMode = mode.startsWith('certificate-')
+    ? (mode.slice('certificate-'.length) === 'noise' ? 'pass' : mode.slice('certificate-'.length))
+    : mode;
+  if (behaviorMode === 'environment' || behaviorMode === 'runtime-error' || behaviorMode === 'timeout') {
     return script === 'godot-tech-check.mjs' ? 'GODOT_TECH_RUNTIME' : 'GODOT_PLAYTEST_RUNTIME';
   }
-  if (mode === 'stale-source') {
+  if (behaviorMode === 'stale-source') {
     return script === 'godot-tech-check.mjs' ? 'GODOT_TECH_SOURCE_MUTATED' : 'GODOT_PLAYTEST_SOURCE_MUTATED';
   }
-  if (mode === 'harness-report-rejected') {
+  if (behaviorMode === 'harness-report-rejected') {
     return script === 'godot-tech-check.mjs' ? 'GODOT_TECH_PROOF' : 'GODOT_PLAYTEST_PROTOCOL';
   }
-  if (['headless-renderer', 'dummy-renderer', 'empty-viewport', 'empty-window'].includes(mode)) {
+  if (['headless-renderer', 'dummy-renderer', 'empty-viewport', 'empty-window'].includes(behaviorMode)) {
     return script === 'godot-tech-check.mjs' ? 'GODOT_TECH_RENDERER' : 'GODOT_PLAYTEST_RENDERER';
   }
   if (script === 'godot-tech-check.mjs') {
-    return mode === 'missing-action' ? 'GODOT_TECH_PROOF' : 'GODOT_TECH_TEST_HARNESS';
+    return behaviorMode === 'missing-action' ? 'GODOT_TECH_PROOF' : 'GODOT_TECH_TEST_HARNESS';
   }
   return {
     pass: 'GODOT_PLAYTEST_TEST_HARNESS',
@@ -91,7 +94,7 @@ function expectedCode(script, mode) {
     'no-progress': 'GODOT_PLAYTEST_PROGRESS',
     'save-failure': 'GODOT_PLAYTEST_PROGRESS',
     'reload-failure': 'GODOT_PLAYTEST_RELOAD',
-  }[mode];
+  }[behaviorMode];
 }
 
 function run(script, project, mode) {
@@ -142,7 +145,8 @@ function run(script, project, mode) {
 try {
   const modes = ['pass', 'missing-action', 'state-mismatch', 'no-progress', 'save-failure',
     'reload-failure', 'runtime-error', 'timeout', 'environment', 'stale-source', 'harness-report-rejected',
-    'headless-renderer', 'dummy-renderer', 'empty-viewport', 'empty-window', 'path-escape', 'qa-junction'];
+    'headless-renderer', 'dummy-renderer', 'empty-viewport', 'empty-window',
+    'certificate-noise', 'certificate-runtime-error', 'path-escape', 'qa-junction'];
   for (const mode of modes) {
     run('godot-tech-check.mjs', make(`tech-${mode}`), mode);
     run('godot-playtest.mjs', make(`play-${mode}`), mode);

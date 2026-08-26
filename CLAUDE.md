@@ -1,4 +1,4 @@
-# Project Forge v4.68.58 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.59 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,11 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.59 changelog (trusted Godot certificate-noise recovery)
+
+The exact Windows root-certificate diagnostic is nonblocking only after trusted native markers/reports and
+valid artifacts. Terminal phase block replay is idempotent; conflicting transitions require explicit reopen.
+
 ## v4.68.58 changelog (crash-safe isolated Godot runtime)
 
 Godot runtimes use temporary user profiles and class caches. GDScript construct checks bounded native
@@ -508,10 +513,3 @@ startup without editor import; real parse/compiler errors remain project defects
 
 Forge reconciles durable Git checkpoints before model access; Phase 8+ requires a private push. One
 PID-owned lease covers phase and manual entrypoints. Packaging help/errors cannot consume a version.
-
-## v4.68.56 changelog (rejected checkpoint candidate)
-
-An ignored atomic ledger makes completed-phase Git state restart-safe. Before the next model, Forge
-reconciles missing/failed checkpoints; failures also hold status and direct phase commands. Phases 1–7
-remain local-only; Phase 8+ requires a confirmed private push. The immutable ZIP was rejected before
-publication/install: `--help` unexpectedly built it, and manual checkpoints still bypassed the full lease.

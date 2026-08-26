@@ -118,6 +118,21 @@ try {
   ok(fs.readFileSync(path.join(good, 'project.godot'), 'utf8') === before, 'isolated export leaves source project unchanged');
   ok(openSafeZip(first.value.artifacts[0].file).entries.length === 2, 'safe ZIP reader accepts the generated binary bundle');
 
+  const certificateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-certificate-')); seed(certificateRoot);
+  const certificateBuild = run(certificateRoot, 'certificate-noise');
+  ok(certificateBuild.result.status === 1 && certificateBuild.value?.status === 'test_harness'
+    && certificateBuild.value?.artifacts?.length === 3,
+  'root-certificate noise is nonblocking after both exports produce complete non-empty artifacts');
+  fs.rmSync(certificateRoot, { recursive: true, force: true });
+
+  const certificateMissingRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-certificate-missing-')); seed(certificateMissingRoot);
+  const certificateMissing = run(certificateMissingRoot, 'certificate-missing-pck');
+  ok(certificateMissing.result.status === 1 && certificateMissing.value?.status === 'failed'
+    && certificateMissing.value?.issues?.some(item => ['GODOT_RELEASE_EXPORT', 'GODOT_RELEASE_ARTIFACT'].includes(item.code)),
+  'root-certificate noise cannot hide an incomplete export artifact set');
+  ok(!fs.existsSync(path.join(certificateMissingRoot, 'Release')), 'certificate noise plus missing artifacts cannot publish production output');
+  fs.rmSync(certificateMissingRoot, { recursive: true, force: true });
+
   const second = run(good, 'pass', 'v1.0.0');
   ok(second.result.status === 1 && second.value?.version === 'v1.0.1', 'same requested version auto-bumps instead of overwriting');
   const third = run();

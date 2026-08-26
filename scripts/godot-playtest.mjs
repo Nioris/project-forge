@@ -80,14 +80,24 @@ function runPhase(tool, contract, userRoot, mode) {
     env: isolatedUserEnv(userRoot),
   });
   const output = combinedOutput(run);
-  const errors = godotErrorLines(output);
-  if (run.status !== 0 || run.timedOut || errors.length || !fs.existsSync(nativeReport)) {
+  const nativeReportExists = fs.existsSync(nativeReport);
+  let value = null;
+  let reportParseError = null;
+  if (nativeReportExists) {
+    try { value = JSON.parse(fs.readFileSync(nativeReport, 'utf8')); }
+    catch (error) { reportParseError = error; }
+  }
+  const trustedProtocolSuccess = run.status === 0 && !run.timedOut && !run.error && value
+    && value.protocol === GODOT_PLAYTEST_PROTOCOL && value.mode === mode
+    && value.testHarness !== true && usableRenderer(value);
+  const errors = godotErrorLines(output, { ignoreRootCertificateWarning: trustedProtocolSuccess });
+  if (run.status !== 0 || run.timedOut || run.error || errors.length || !nativeReportExists) {
     const environment = isVisualEnvironmentFailure(run, output);
     fail('GODOT_PLAYTEST_RUNTIME', errors[0] || (environment
       ? 'Godot visual environment is unavailable'
       : `${mode} process did not produce native evidence`), environment);
   }
-  const value = JSON.parse(fs.readFileSync(nativeReport, 'utf8'));
+  if (reportParseError || !value) fail('GODOT_PLAYTEST_PROTOCOL', `${mode} report is invalid JSON`);
   if (value.protocol !== GODOT_PLAYTEST_PROTOCOL || value.mode !== mode || value.testHarness === true) {
     fail('GODOT_PLAYTEST_PROTOCOL', `${mode} report is not native protocol evidence`);
   }

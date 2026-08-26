@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePhaseCompletion } from './phase-completion-gate.mjs';
-import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, recordTaskResult, RESUME_POLICIES } from './execution-contract.mjs';
+import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, readTaskRun, recordTaskResult, RESUME_POLICIES } from './execution-contract.mjs';
 import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
 import { readGitCheckpointLedger, runPhaseGitCheckpoint, sanitizeGitCheckpointMessage } from './project-git.mjs';
 
@@ -109,7 +109,6 @@ try {
   process.exit(2);
 }
 const outDir = path.join(root, 'wiki', 'phases');
-fs.mkdirSync(outDir, { recursive: true });
 const outPath = path.join(outDir, `phase-${phase}.json`);
 let prev = {};
 try { prev = JSON.parse(fs.readFileSync(outPath, 'utf8')); } catch {}
@@ -173,6 +172,45 @@ const record = {
   },
 };
 
+function linkedPhaseRun() {
+  const taskId = prev.execution?.taskId || process.env.FORGE_TASK_ID || null;
+  if (!taskId) return null;
+  try {
+    const run = readTaskRun(root, taskId);
+    return run?.task?.mode === 'phase' && Number(run.task.phase) === phase ? run : null;
+  } catch (error) {
+    console.error(`[BLOCKED] Phase ${phase} linked Task is unreadable: ${String(error.message || error).slice(0, 500)}`);
+    process.exit(2);
+  }
+}
+
+function terminalPhaseRun(run) {
+  return run && ['completed', 'cancelled', 'blocked'].includes(run.task.status);
+}
+
+function terminalTransitionRejected(run) {
+  console.error(`[BLOCKED] Phase ${phase} Task ${run.task.id} is terminal (${run.task.status}); use "phase-state.mjs reopen ${phase}" before changing it.`);
+  process.exit(2);
+}
+
+function executionProjection(run, result = run.lastResult) {
+  return {
+    taskId: run.task.id,
+    workflow: run.workflow.id,
+    currentNode: run.state.currentNode,
+    status: run.state.status,
+    resultStatus: result?.status || null,
+    resultCode: result?.code || null,
+    resultAt: result?.createdAt || null,
+    attemptId: result?.attemptId || null,
+  };
+}
+
+const linkedRun = linkedPhaseRun();
+if (command !== 'reopen' && command !== 'block' && terminalPhaseRun(linkedRun)) {
+  terminalTransitionRejected(linkedRun);
+}
+
 if (command === 'start' || command === 'reopen' || command === 'answer') {
   console.log(`[Forge] Engine -> ${engineProfile.engine} (${engineProfile.status}, ${engineProfile.source})`);
 }
@@ -204,16 +242,7 @@ function executionResult({ status, code, message, failure = null, stop = null, e
     stop,
   });
   const run = recordTaskResult({ projectRoot: root, taskId: initial.task.id, result });
-  record.execution = {
-    taskId: run.task.id,
-    workflow: run.workflow.id,
-    currentNode: run.state.currentNode,
-    status: run.state.status,
-    resultStatus: result.status,
-    resultCode: result.code,
-    resultAt: result.createdAt,
-    attemptId: result.attemptId,
-  };
+  record.execution = executionProjection(run, result);
   return run;
 }
 
@@ -273,11 +302,29 @@ if (command === 'start' || command === 'reopen' || command === 'answer') {
     process.exit(2);
   }
   const reason = rest.join(' ').trim() || (owner === 'user' ? 'Awaiting user decision' : owner === 'agent' ? 'Agent work is required' : 'Infrastructure capability is unavailable');
+  const requestedStop = { owner, code, decisionKey: options['decision-key'] || null, resumePolicy };
+  if (terminalPhaseRun(linkedRun)) {
+    const previous = linkedRun.lastResult;
+    const equivalent = linkedRun.task.status === 'blocked'
+      && previous?.status === defaults.status
+      && previous?.code === code
+      && previous?.failure?.type === defaults.failure
+      && previous?.failure?.retryable === defaults.retryable
+      && previous?.stop?.owner === requestedStop.owner
+      && previous?.stop?.code === requestedStop.code
+      && (previous?.stop?.decisionKey ?? null) === requestedStop.decisionKey
+      && previous?.stop?.resumePolicy === requestedStop.resumePolicy;
+    if (equivalent) {
+      console.log(`[OK] Phase ${phase} ${PHASES[phase]} already has the same durable terminal block; no state was changed.`);
+      process.exit(0);
+    }
+    terminalTransitionRejected(linkedRun);
+  }
   record.state = 'blocked';
   record.startedAt = record.startedAt || now;
   record.reason = reason;
   record.completedAt = null;
-  record.block = { owner, code, decisionKey: options['decision-key'] || null, resumePolicy };
+  record.block = requestedStop;
   persistMarker();
   executionResult({
     status: defaults.status,
