@@ -1,7 +1,7 @@
 ---
 name: godot-engine
 kind: architectural
-description: "Создаёт и проверяет native Godot 4 scaffold в Project Forge: project.godot, entry scene, GDScript/C#, headless import/build/startup и serialization contract. Только когда…"
+description: "Создаёт и проверяет native Godot 4 scaffold в Project Forge: project.godot, entry scene, GDScript cache/startup, C# import/build и serialization contract. Только когда…"
 contract_version: 1
 phases:
   - 3
@@ -90,10 +90,13 @@ Run from the managed Forge project root:
 node ../project-forge/scripts/check-godot-project.mjs . --json
 ```
 
-The verifier copies the implementation to an isolated temporary directory, so headless import/build
-cannot write `.godot` caches into the project. It checks the factual tool versions, contract, serialized
-scene graph, exact node types, actual script attachment, import, C# build when selected, and bounded
-startup marker. Exit `0` is PASS, `1` is a project defect, and `2` is an environment/toolchain blocker.
+The verifier copies the implementation to an isolated temporary directory and gives Godot a temporary
+writable user profile, so `user://`, editor settings and `.godot` caches cannot touch the project or the
+developer profile. For GDScript it regenerates the global `class_name` cache inside that copy and loads
+the real game through a bounded startup; it does not start editor-only `--import`. For C# it retains the
+separate isolated import/build path. It checks the factual tool versions, contract, serialized scene
+graph, exact node types, actual script attachment and startup marker. Exit `0` is PASS, `1` is a project
+defect, and `2` is an environment/toolchain blocker.
 
 Do not replace this with `playtest.mjs`, browser screenshots, a manually written PASS report, or an
 editor window that was merely opened. Fix every project defect; surface environment blockers with the

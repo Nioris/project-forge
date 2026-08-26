@@ -14,6 +14,32 @@ if (args.includes('--version')) {
   console.log('4.7.playtest.fixture');
   process.exit(0);
 }
+
+function inside(root, candidate) {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+if (process.env.FORGE_GODOT_REQUIRE_ISOLATED_USER_ENV === '1') {
+  const runtimeRoot = path.dirname(path.resolve(process.cwd()));
+  for (const key of ['APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'HOME', 'XDG_DATA_HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME']) {
+    const directory = String(process.env[key] || '').trim();
+    if (!directory || !inside(runtimeRoot, directory)) {
+      console.error(`ERROR: ${key} escaped isolated Godot runtime`);
+      process.exit(41);
+    }
+  }
+}
+
+if (process.env.FORGE_GODOT_EXPECT_CLASS_CACHE) {
+  const cache = path.join(process.cwd(), '.godot', 'global_script_class_cache.cfg');
+  let cacheText = '';
+  try { cacheText = fs.readFileSync(cache, 'utf8'); } catch {}
+  if (!cacheText.includes(`"class": &"${process.env.FORGE_GODOT_EXPECT_CLASS_CACHE}"`)) {
+    console.error('ERROR: isolated GDScript class cache is missing');
+    process.exit(43);
+  }
+}
 if (mode === 'timeout') {
   setTimeout(() => process.exit(0), 120_000);
 } else if (mode === 'environment') {

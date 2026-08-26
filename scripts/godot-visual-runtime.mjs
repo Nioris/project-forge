@@ -20,6 +20,35 @@ export function inside(root, candidate) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+export function isolatedGodotUserEnv(root) {
+  const runtimeRoot = path.resolve(root);
+  const home = path.join(runtimeRoot, 'godot-user');
+  const appData = path.join(home, 'AppData', 'Roaming');
+  const localAppData = path.join(home, 'AppData', 'Local');
+  const xdgData = path.join(home, '.local', 'share');
+  const xdgConfig = path.join(home, '.config');
+  const xdgCache = path.join(home, '.cache');
+  for (const directory of [home, appData, localAppData, xdgData, xdgConfig, xdgCache]) {
+    if (!inside(runtimeRoot, directory)) throw new Error(`Godot user directory escapes isolated runtime: ${directory}`);
+    fs.mkdirSync(directory, { recursive: true });
+  }
+  const env = {
+    APPDATA: appData,
+    LOCALAPPDATA: localAppData,
+    USERPROFILE: home,
+    HOME: home,
+    XDG_DATA_HOME: xdgData,
+    XDG_CONFIG_HOME: xdgConfig,
+    XDG_CACHE_HOME: xdgCache,
+  };
+  if (process.platform === 'win32') {
+    const driveRoot = path.parse(home).root;
+    env.HOMEDRIVE = driveRoot.replace(/[\\/]$/u, '');
+    env.HOMEPATH = home.slice(env.HOMEDRIVE.length);
+  }
+  return env;
+}
+
 export function normalizePath(value) {
   return String(value || '').replaceAll('\\', '/');
 }
@@ -54,6 +83,65 @@ export function copyGodotImplementation(source, target) {
   }
   visit(path.resolve(source), path.resolve(target));
   return { files, bytes };
+}
+
+export function writeIsolatedGdscriptClassCache(implementationRoot) {
+  const root = path.resolve(implementationRoot);
+  const scripts = [];
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw new Error(`isolated Godot project contains an unexpected symlink/junction: ${absolute}`);
+      if (entry.isDirectory()) {
+        if (!COPY_SKIP.has(entry.name.toLowerCase())) visit(absolute);
+        continue;
+      }
+      if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== '.gd') continue;
+      const text = fs.readFileSync(absolute, 'utf8');
+      const className = text.match(/^[ \t]*class_name[ \t]+([A-Za-z_][A-Za-z0-9_]*)\b/mu)?.[1] || null;
+      const extendsValue = text.match(/^[ \t]*extends[ \t]+([^#\r\n]+?)[ \t]*(?:#.*)?$/mu)?.[1]?.trim() || '';
+      const pathBase = extendsValue.match(/^"([^"]+)"$/u)?.[1]
+        || extendsValue.match(/^preload\("([^"]+)"\)$/u)?.[1] || null;
+      const namedBase = /^[A-Za-z_][A-Za-z0-9_]*$/u.test(extendsValue) ? extendsValue : null;
+      const relative = normalizePath(path.relative(root, absolute));
+      scripts.push({
+        resource: `res://${relative}`,
+        className,
+        extendsPath: pathBase,
+        extendsName: namedBase,
+        icon: text.match(/^[ \t]*@icon\("([^"]+)"\)[ \t]*$/mu)?.[1] || '',
+        isTool: /^[ \t]*@tool[ \t]*$/mu.test(text),
+        isAbstract: /^[ \t]*@abstract[ \t]*$/mu.test(text),
+      });
+    }
+  }
+  visit(root);
+  const byResource = new Map(scripts.map(script => [script.resource, script]));
+  const declared = scripts.filter(script => script.className).sort((left, right) => left.className.localeCompare(right.className));
+  if (new Set(declared.map(script => script.className)).size !== declared.length) {
+    throw new Error('GDScript class_name declarations must be unique');
+  }
+  function nativeBase(script, seen = new Set()) {
+    if (script.extendsName) return script.extendsName;
+    if (!script.extendsPath || !script.extendsPath.startsWith('res://') || seen.has(script.resource)) return 'RefCounted';
+    seen.add(script.resource);
+    const parent = byResource.get(script.extendsPath);
+    if (!parent) return 'RefCounted';
+    return parent.className || nativeBase(parent, seen);
+  }
+  const rows = declared.map(script => `{
+"base": &${JSON.stringify(nativeBase(script))},
+"class": &${JSON.stringify(script.className)},
+"icon": ${JSON.stringify(script.icon)},
+"is_abstract": ${script.isAbstract},
+"is_tool": ${script.isTool},
+"language": &"GDScript",
+"path": ${JSON.stringify(script.resource)}
+}`);
+  const cacheDirectory = path.join(root, '.godot');
+  fs.mkdirSync(cacheDirectory, { recursive: true });
+  fs.writeFileSync(path.join(cacheDirectory, 'global_script_class_cache.cfg'), `list=[${rows.join(', ')}]\n`);
+  return { classes: declared.length, scripts: scripts.length };
 }
 
 export function snapshotGodotVisualInputs(implementationRoot) {
@@ -172,8 +260,14 @@ export function godotErrorLines(output) {
     /^(?:ERROR:|SCRIPT ERROR:|Parse Error:|Parser Error:|E\s+\d+:|FORGE_VISUAL_ERROR:)|\berror\s+CS\d+\b/iu.test(line)))].slice(0, 30);
 }
 
+export function godotProjectErrorLines(output) {
+  return [...new Set(String(output).split(/\r?\n/u).map(line => line.trim()).filter(line =>
+    /(?:^|\s)(?:SCRIPT ERROR:|Parse Error:|Parser Error:)|\berror\s+CS\d+\b/iu.test(line)))].slice(0, 30);
+}
+
 export function isVisualEnvironmentFailure(run, output = combinedOutput(run)) {
-  return Boolean(run.timedOut || run.error || /(?:display driver|cannot open display|failed to create (?:display|window|rendering device)|vulkan.*(?:unavailable|failed)|opengl.*(?:unavailable|failed)|no available video device|movie writer.*(?:unavailable|failed)|codec.*(?:unavailable|failed)|d3d12.*failed)/iu.test(output));
+  if (godotProjectErrorLines(output).length) return false;
+  return Boolean(run.timedOut || run.error || /(?:failed to read (?:the )?root certificate store|could not (?:open|create).*user:\/\/|cannot (?:save|write|open).*editor_settings|error saving editor settings|display driver|cannot open display|failed to create (?:display|window|rendering device)|vulkan.*(?:unavailable|failed)|opengl.*(?:unavailable|failed)|no available video device|movie writer.*(?:unavailable|failed)|codec.*(?:unavailable|failed)|d3d12.*failed)/iu.test(output));
 }
 
 export function parseMarkerLines(output, prefix) {
@@ -432,7 +526,8 @@ export function makeIsolatedGodotCopy(implementationRoot) {
   const isolatedProject = path.join(tempRoot, 'project');
   try {
     const copied = copyGodotImplementation(implementationRoot, isolatedProject);
-    return { tempRoot, isolatedProject, copied };
+    const classCache = writeIsolatedGdscriptClassCache(isolatedProject);
+    return { tempRoot, isolatedProject, copied, classCache };
   } catch (error) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
     throw error;

@@ -32,7 +32,7 @@
  *
  * Usage:
  *   node scripts/bump-version.mjs 4.10.24
- *   node scripts/bump-version.mjs 4.10.24 --dry
+ *   node scripts/bump-version.mjs 4.10.24 --dry|--dry-run
  *   node scripts/bump-version.mjs --current        # show current version
  */
 
@@ -41,9 +41,33 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
-const DRY = args.includes('--dry');
+const usage = 'Usage: node scripts/bump-version.mjs <X.Y.Z> [--dry|--dry-run]\n       node scripts/bump-version.mjs --current';
+const HELP = args.includes('--help') || args.includes('-h');
+const DRY = args.includes('--dry') || args.includes('--dry-run');
 const SHOW = args.includes('--current');
-const targetVersion = args.find(a => /^\d+\.\d+\.\d+$/.test(a));
+const allowedOptions = new Set(['--help', '-h', '--dry', '--dry-run', '--current']);
+const unknownOptions = args.filter(arg => arg.startsWith('-') && !allowedOptions.has(arg));
+const positional = args.filter(arg => !arg.startsWith('-'));
+
+if (HELP) {
+  console.log(usage);
+  process.exit(0);
+}
+if (unknownOptions.length) {
+  console.error(`[X] Unknown option(s): ${unknownOptions.join(', ')}`);
+  console.error(usage);
+  process.exit(2);
+}
+if (SHOW && (DRY || positional.length)) {
+  console.error('[X] --current cannot be combined with a target version or dry-run option.');
+  console.error(usage);
+  process.exit(2);
+}
+if (!SHOW && (positional.length !== 1 || !/^\d+\.\d+\.\d+$/.test(positional[0]))) {
+  console.error(usage);
+  process.exit(2);
+}
+const targetVersion = SHOW ? null : positional[0];
 
 // Корень определяем от РАСПОЛОЖЕНИЯ скрипта (scripts/ → родитель), cwd — запасной вариант:
 // позволяет `node F:\...\project-forge\scripts\bump-version.mjs --current` из любой папки.
@@ -68,7 +92,7 @@ if (SHOW) {
 }
 
 if (!targetVersion) {
-  console.error('Usage: node scripts/bump-version.mjs <X.Y.Z>');
+  console.error(usage);
   console.error(`Current: ${currentVersion}`);
   process.exit(2);
 }
@@ -147,12 +171,12 @@ const RULES = [
     desc: 'README.md zip filename examples',
     allowMultiple: true,
   },
-  // Public repository README format (English + Russian)
+  // Repository source-version markers stay truthful before and after immutable packaging.
   {
     file: 'README.md',
-    find: /^\*\*Current public version:\*\* `v\d+\.\d+\.\d+`$/m,
-    replace: `**Current public version:** \`v${targetVersion}\``,
-    desc: 'README.md public version marker',
+    find: /^\*\*(?:Current public version|Current source version):\*\* `v\d+\.\d+\.\d+`$/m,
+    replace: `**Current source version:** \`v${targetVersion}\``,
+    desc: 'README.md source version marker',
   },
   {
     file: 'README.md',
@@ -162,9 +186,9 @@ const RULES = [
   },
   {
     file: 'README_RU.md',
-    find: /^\*\*Текущая публичная версия:\*\* `v\d+\.\d+\.\d+`$/m,
-    replace: `**Текущая публичная версия:** \`v${targetVersion}\``,
-    desc: 'README_RU.md public version marker',
+    find: /^\*\*(?:Текущая публичная версия|Текущая версия исходников):\*\* `v\d+\.\d+\.\d+`$/m,
+    replace: `**Текущая версия исходников:** \`v${targetVersion}\``,
+    desc: 'README_RU.md source version marker',
   },
   {
     file: 'README_RU.md',
@@ -200,12 +224,12 @@ const RULES = [
     desc: 'dashboard.html quick-start version',
     allowMultiple: true,
   },
-  // wiki/_map.md "latest released" pointer (single line)
+  // wiki/_map.md source line stays truthful while the matching ZIP is still a candidate.
   {
     file: 'wiki/_map.md',
-    find: /### Version: v\d+\.\d+\.\d+ \(latest released\)/,
-    replace: `### Version: v${targetVersion} (latest released)`,
-    desc: 'wiki/_map.md latest release pointer',
+    find: /### Version: v\d+\.\d+\.\d+ \((?:latest released|current source line)\)/,
+    replace: `### Version: v${targetVersion} (current source line)`,
+    desc: 'wiki/_map.md current source line',
   },
 ];
 

@@ -4835,6 +4835,11 @@ block project-local false PASS. Common phases stay engine-neutral; Godot is the 
 Fresh Codex phases select `workspace-write` without full-host/hook bypasses. STOP resumes inherit that
 policy; invalid resume policies fail before durable state changes.
 
+## v4.68.55 changelog (rejected host-owned Git candidate)
+
+The parent host owns Git while Codex stays workspace-scoped. This immutable candidate was rejected before
+publication/install because a failed Phase 8 push was not restart-safe.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

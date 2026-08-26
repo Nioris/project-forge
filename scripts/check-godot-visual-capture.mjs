@@ -45,6 +45,8 @@ function run(script, root, fixtureMode = 'pass') {
       FORGE_GODOT_TEST_SHIM: shim,
       FORGE_GODOT_BIN: '',
       FORGE_GODOT_FIXTURE_MODE: fixtureMode,
+      FORGE_GODOT_REQUIRE_ISOLATED_USER_ENV: '1',
+      FORGE_GODOT_EXPECT_CLASS_CACHE: 'FixtureVisualClass',
       FORGE_RUN_ATTEMPT_ID: `visual-fixture-${fixtureMode}`,
       FORGE_AGENT_ID: 'fixture-agent',
     },
@@ -126,6 +128,7 @@ func forge_visual_show_state(state): visual_state = state
 func forge_visual_current_state(): return visual_state
 func forge_visual_tick_proof(frame, total_frames, fps): $World.position.x = float(frame % fps)
 `);
+  write(root, `${game}/fixture_visual_class.gd`, 'class_name FixtureVisualClass\nextends RefCounted\n');
   write(root, `${game}/qa/ForgeVisualQA.gd`, fs.readFileSync(adapterTemplate));
   write(root, `${game}/screens/reference.txt`, 'game-owned visual reference asset');
   const flow = {
@@ -233,6 +236,11 @@ try {
   const displayFailure = run(captureScript, project, 'display-fail');
   check(displayFailure.child.status === 2 && displayFailure.value?.status === 'environment_failure',
     'missing native display/GPU is an environment blocker, not PASS');
+
+  const parseDisplayFailure = run(captureScript, project, 'parse-display-fail');
+  check(parseDisplayFailure.child.status === 1 && parseDisplayFailure.value?.status === 'failed'
+    && parseDisplayFailure.value?.issues?.some(item => /Parse Error: fixture parse failure/u.test(item.message)),
+  'visual capture does not mask a project parse error as a display environment blocker');
 
   const visualFile = path.join(project, 'forge.godot.visual.json');
   const validVisual = JSON.parse(fs.readFileSync(visualFile, 'utf8'));

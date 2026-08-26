@@ -7,6 +7,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readEngineProfile } from './engine-profile.mjs';
+import { isolatedGodotUserEnv, writeIsolatedGdscriptClassCache } from './godot-visual-runtime.mjs';
 
 const CONTRACT_FILE = 'forge.godot.json';
 const MAX_FILES = 20_000;
@@ -335,23 +336,34 @@ function dotnetEnvironmentError(output) {
   return /(?:no \.net sdks were found|compatible installed \.net sdk|hostfxr|not compiled with (?:mono|\.net)|\.net-enabled|unable to find package Godot\.NET\.Sdk|could not (?:find|execute).*dotnet|dotnet.*not found)/iu.test(output);
 }
 
-function runGodotCheck(id, command, commandArgs, { cwd, timeoutMs, logFile, marker = null, csharp = false, timeoutEnvironment = false } = {}) {
-  const run = runTool(command, commandArgs, { cwd, timeoutMs });
+function godotUserEnvironmentError(output) {
+  return /(?:failed to read (?:the )?root certificate store|could not (?:open|create).*user:\/\/|cannot (?:save|write|open).*editor_settings|error saving editor settings)/iu.test(output);
+}
+
+function godotProjectErrorLines(output) {
+  return [...new Set(String(output).split(/\r?\n/u).map(line => line.trim()).filter(line =>
+    /(?:^|\s)(?:SCRIPT ERROR:|Parse Error:|Parser Error:)|\berror\s+CS\d+\b/iu.test(line)))].slice(0, 20);
+}
+
+function runGodotCheck(id, command, commandArgs, { cwd, timeoutMs, logFile, marker = null, csharp = false, timeoutEnvironment = false, env = {} } = {}) {
+  const run = runTool(command, commandArgs, { cwd, timeoutMs, env });
   const output = toolOutput(run, logFile);
   const errors = errorLines(output);
+  const projectErrors = godotProjectErrorLines(output);
   const markerMissing = marker && !output.includes(marker);
   if (run.status === 0 && !run.error && !errors.length && !markerMissing) {
     addCheck(id, 'passed', marker ? `startup reached ${marker}` : `${id} completed`, run.durationMs);
     return true;
   }
-  const environment = Boolean((timeoutEnvironment && run.timedOut) || (csharp && dotnetEnvironmentError(output)));
+  const environment = !projectErrors.length && Boolean((timeoutEnvironment && run.timedOut)
+    || (csharp && dotnetEnvironmentError(output)) || godotUserEnvironmentError(output));
   const summary = run.timedOut
-    ? `${id} timed out after ${timeoutMs} ms`
+    ? projectErrors[0] || `${id} timed out after ${timeoutMs} ms`
     : run.error
-      ? `${id} could not run: ${run.error.message}`
+      ? projectErrors[0] || `${id} could not run: ${run.error.message}`
       : markerMissing && run.status === 0 && !errors.length
         ? `${id} exited without smoke marker ${marker}`
-        : errors[0] || `${id} exited with code ${run.status ?? 'unknown'}`;
+        : projectErrors[0] || errors[0] || `${id} exited with code ${run.status ?? 'unknown'}`;
   addCheck(id, environment ? 'environment_failure' : 'failed', summary, run.durationMs);
   addIssue(id, summary, null, null, environment);
   for (const line of errors.slice(0, 5)) addIssue(id, line);
@@ -437,23 +449,35 @@ try {
     }
 
     if (!result.checks.some(check => check.status === 'failed')) {
-      const importLog = path.join(tempRoot, 'import.log');
-      runGodotCheck('headless-import', godot.command,
-        [...godot.prefix, '--headless', '--path', isolatedProject, '--import', '--quit', '--log-file', importLog],
-        { cwd: isolatedProject, timeoutMs: 45_000, logFile: importLog, timeoutEnvironment: true });
+      const godotUserEnv = isolatedGodotUserEnv(tempRoot);
+      if (contract.value.scripting === 'csharp') {
+        const importLog = path.join(tempRoot, 'import.log');
+        runGodotCheck('headless-import', godot.command,
+          [...godot.prefix, '--headless', '--path', isolatedProject, '--import', '--quit', '--log-file', importLog],
+          { cwd: isolatedProject, timeoutMs: 120_000, logFile: importLog, timeoutEnvironment: true, env: godotUserEnv });
+      } else {
+        try {
+          const cache = writeIsolatedGdscriptClassCache(isolatedProject);
+          addCheck('gdscript-class-cache', 'passed', `generated isolated class cache for ${cache.classes} class_name declarations across ${cache.scripts} scripts`);
+          addCheck('gdscript-runtime-policy', 'passed', 'GDScript resources are loaded by bounded game startup; editor-only --import is skipped');
+        } catch (error) {
+          addCheck('gdscript-class-cache', 'failed', error.message);
+          addIssue('gdscript-class-cache', error.message);
+        }
+      }
 
       if (contract.value.scripting === 'csharp' && !result.checks.some(check => check.status !== 'passed')) {
         const buildLog = path.join(tempRoot, 'build.log');
         runGodotCheck('csharp-build', godot.command,
           [...godot.prefix, '--headless', '--path', isolatedProject, '--build-solutions', '--quit', '--log-file', buildLog],
-          { cwd: isolatedProject, timeoutMs: 120_000, logFile: buildLog, csharp: true });
+          { cwd: isolatedProject, timeoutMs: 120_000, logFile: buildLog, csharp: true, env: godotUserEnv });
       }
 
       if (!result.checks.some(check => check.status === 'failed' || check.status === 'environment_failure')) {
         const startupLog = path.join(tempRoot, 'startup.log');
         runGodotCheck('headless-startup', godot.command,
           [...godot.prefix, '--headless', '--path', isolatedProject, '--quit-after', String(contract.value.smoke.quitAfterFrames), '--log-file', startupLog],
-          { cwd: isolatedProject, timeoutMs: 45_000, logFile: startupLog, marker: contract.value.smoke.successMarker, csharp: contract.value.scripting === 'csharp' });
+          { cwd: isolatedProject, timeoutMs: 45_000, logFile: startupLog, marker: contract.value.smoke.successMarker, csharp: contract.value.scripting === 'csharp', env: godotUserEnv });
       }
     }
   }

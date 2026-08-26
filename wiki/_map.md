@@ -49,8 +49,11 @@
 
 ## Current Status
 
-### Version: v4.68.57 (latest released)
+### Version: v4.68.58 (current source line)
 
+- 2026-08-26: **v4.68.58** — Godot construct/visual/tech/playtest runs now use isolated writable user profiles and regenerated temporary GDScript class caches; GDScript verification loads the real game without the editor-only import path that crashed or stalled under Codex.
+- 2026-08-26: **v4.68.58 release guard** — version metadata uses truthful source-line wording before packaging; `--dry-run`, help and invalid bump options are full-tree hash-verified as side-effect free after an audit probe briefly normalized the local candidate to 4.68.59.
+- 2026-08-26: **Q3-009 pilot, Run 03** — v4.68.57 reconciled Phase 1 and completed Phase 2 as local-only commits while GitHub stayed unchanged. Phase 3 built Circuit Courier and exposed the host-profile/editor-import defect; the v4.68.58 regressions pass, while durable native pilot revalidation waits for installation.
 - 2026-08-26: **v4.68.57** — Restart-safe host checkpoints now share one full operation lease across phase and manual entrypoints; packaging help/errors are side-effect free, while Phase 8+ still fails closed without a confirmed private push.
 - 2026-08-26: **v4.68.56 candidate rejected** — the immutable ZIP is preserved but was not published or installed: `package-forge.mjs --help` unexpectedly built it, and final review found that manual checkpoints still bypassed the phase runner's full lease.
 - 2026-08-26: **v4.68.55 candidate rejected** — the immutable ZIP is preserved but was not published or installed because a failed required Phase 8 push could be forgotten after restart, allowing Phase 9 selection without publication reconciliation.
@@ -492,16 +495,16 @@
 - `Q3-001` — trusted installed engine-profile authority with stable Web fallback.
 - `Q3-002` — engine selection in new-project and Dashboard.
 - `Q3-003` — engine-aware Phase 1/3–5 routing with browser-substitution rejection.
-- `Q3-004` — native Godot Phase 3 verifier with isolated import/startup and scene-contract regressions.
+- `Q3-004` — native Godot Phase 3 verifier with isolated GDScript class-cache/startup, C# import/build and scene-contract regressions.
 - `Q3-005` — native state screenshots and MovieWriter proof video with real Godot 4.7 forward-test.
 - `Q3-006` — native capture/proof receipts, current implementation snapshots and independent Phase 4 review.
 - `Q3-007` — real-window native tech, two-process playtest and signed immutable Windows release verification.
 
 ### Next
 
-1. Ship, install and synchronize the v4.68.57 restart-safe host-owned Git checkpoint repair.
-2. Start Q3-009 Phase 2; verify the pending Phase 1 work becomes a local-only commit.
-3. Finish the end-to-end native Godot pilot.
+1. Ship, install and synchronize the v4.68.58 isolated Godot runtime repair.
+2. Resume Q3-009 Phase 3 in a fresh Codex session and require the installed native construct gate to pass.
+3. Continue the end-to-end native Godot pilot through Phase 8 without an early GitHub push.
 4. Start Q3-008 only if the real pilot exposes an asset/runtime need.
 
 ### Existing v4.8 backlog — priority order

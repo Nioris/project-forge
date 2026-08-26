@@ -33,18 +33,52 @@ function run(target, env = {}) {
   return { child, value };
 }
 
-const harness = { FORGE_ALLOW_TEST_HARNESS: '1', FORGE_GODOT_TEST_SHIM: shim, FORGE_GODOT_BIN: '' };
+const harness = {
+  FORGE_ALLOW_TEST_HARNESS: '1',
+  FORGE_GODOT_TEST_SHIM: shim,
+  FORGE_GODOT_BIN: '',
+  FORGE_GODOT_REQUIRE_ISOLATED_USER_ENV: '1',
+};
 const passRoot = path.join(fixtures, 'pass-gdscript');
 const sourceCache = path.join(passRoot, '.godot');
 const sourceCacheBefore = fs.existsSync(sourceCache) ? fs.statSync(sourceCache).mtimeMs : null;
 const pass = run(passRoot, harness);
 check(pass.child.status === 0 && pass.value?.status === 'passed', 'valid GDScript fixture passes the isolated construct verifier', `${pass.child.stdout}\n${pass.child.stderr}`);
-check(pass.value?.checks?.some(item => item.id === 'headless-import' && item.status === 'passed')
-  && pass.value?.checks?.some(item => item.id === 'headless-startup' && item.status === 'passed'),
-'pass fixture proves both import and bounded startup');
+check(pass.value?.checks?.some(item => item.id === 'gdscript-runtime-policy' && item.status === 'passed')
+  && pass.value?.checks?.some(item => item.id === 'headless-startup' && item.status === 'passed')
+  && !pass.value?.checks?.some(item => item.id === 'headless-import'),
+'pass fixture proves editor-free GDScript resource loading and bounded startup');
 check(pass.value?.toolchain?.godot?.version === '4.7.test.fixture', 'verifier records the factual Godot version returned by the tool');
 const sourceCacheAfter = fs.existsSync(sourceCache) ? fs.statSync(sourceCache).mtimeMs : null;
 check(sourceCacheAfter === sourceCacheBefore, 'isolated verification does not create or touch the source .godot cache');
+
+const classCacheRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-class-cache-'));
+try {
+  fs.cpSync(passRoot, classCacheRoot, { recursive: true, filter: source => path.basename(source) !== '.godot' });
+  fs.writeFileSync(path.join(classCacheRoot, 'fixture_thing.gd'), 'class_name FixtureThing\nextends RefCounted\n');
+  const classCache = run(classCacheRoot, { ...harness, FORGE_GODOT_EXPECT_CLASS_CACHE: 'FixtureThing' });
+  check(classCache.child.status === 0 && classCache.value?.status === 'passed'
+    && classCache.value?.checks?.some(item => item.id === 'gdscript-class-cache' && /1 class_name/u.test(item.message)),
+  'clean GDScript verification regenerates the global class cache inside the isolated copy');
+} finally {
+  fs.rmSync(classCacheRoot, { recursive: true, force: true });
+}
+
+const userStoreFailure = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'user-store-fail' });
+check(userStoreFailure.child.status === 2 && userStoreFailure.value?.status === 'environment_failure',
+  'unwritable Godot user storage is classified as an environment failure');
+check(userStoreFailure.value?.checks?.some(item => item.id === 'headless-startup' && item.status === 'environment_failure'),
+  'Godot user storage failure remains attached to the runtime check');
+
+const parseFailure = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'parse-fail' });
+check(parseFailure.child.status === 1 && parseFailure.value?.status === 'failed',
+  'GDScript parse errors remain project failures');
+check(parseFailure.value?.issues?.some(item => /Parse Error: fixture parse failure/u.test(item.message)),
+  'GDScript parse failure remains visible in verifier issues');
+
+const mixedFailure = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'parse-display-fail' });
+check(mixedFailure.child.status === 1 && mixedFailure.value?.status === 'failed',
+  'a parse error is not masked by a simultaneous host display error');
 
 const broken = run(path.join(fixtures, 'fail-serialization'), harness);
 check(broken.child.status === 1 && broken.value?.status === 'failed', 'broken serialization fixture is a project failure');

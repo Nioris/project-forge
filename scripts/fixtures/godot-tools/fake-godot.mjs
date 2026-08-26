@@ -7,6 +7,61 @@ import zlib from 'node:zlib';
 const args = process.argv.slice(2);
 const fixtureMode = String(process.env.FORGE_GODOT_FIXTURE_MODE || 'pass');
 
+function inside(root, candidate) {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function verifyIsolatedUserEnvironment() {
+  if (process.env.FORGE_GODOT_REQUIRE_ISOLATED_USER_ENV !== '1' || args.includes('--version')) return;
+  const runtimeRoot = path.dirname(path.resolve(process.cwd()));
+  const required = ['APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'HOME', 'XDG_DATA_HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME'];
+  for (const key of required) {
+    const directory = String(process.env[key] || '').trim();
+    if (!directory || !inside(runtimeRoot, directory)) {
+      console.error(`ERROR: ${key} escaped isolated Godot runtime: ${directory || '<missing>'}`);
+      process.exit(41);
+    }
+    const probe = path.join(directory, `.forge-godot-env-probe-${process.pid}`);
+    try {
+      fs.writeFileSync(probe, key);
+      fs.unlinkSync(probe);
+    } catch (error) {
+      console.error(`ERROR: ${key} is not writable: ${error.message}`);
+      process.exit(42);
+    }
+  }
+}
+
+verifyIsolatedUserEnvironment();
+
+if (process.env.FORGE_GODOT_EXPECT_CLASS_CACHE && !args.includes('--version')) {
+  const cache = path.join(process.cwd(), '.godot', 'global_script_class_cache.cfg');
+  const expected = String(process.env.FORGE_GODOT_EXPECT_CLASS_CACHE);
+  let text = '';
+  try { text = fs.readFileSync(cache, 'utf8'); } catch {}
+  if (!text.includes(`"class": &"${expected}"`)) {
+    console.error(`ERROR: isolated GDScript class cache is missing ${expected}`);
+    process.exit(43);
+  }
+}
+
+if (fixtureMode === 'user-store-fail' && !args.includes('--version')) {
+  console.error("ERROR: Could not open 'user://' directory: 'user://'.");
+  process.exit(2);
+}
+
+if (fixtureMode === 'parse-fail' && !args.includes('--version')) {
+  console.error('SCRIPT ERROR: Parse Error: fixture parse failure');
+  process.exit(1);
+}
+
+if (fixtureMode === 'parse-display-fail' && !args.includes('--version')) {
+  console.error('SCRIPT ERROR: Parse Error: fixture parse failure');
+  console.error('ERROR: failed to create display window');
+  process.exit(1);
+}
+
 let crcTable = null;
 function crc32(data) {
   if (!crcTable) {

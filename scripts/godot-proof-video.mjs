@@ -9,6 +9,7 @@ import {
   createVisualRunId,
   detectGodotVisualTool,
   godotErrorLines,
+  isolatedGodotUserEnv,
   inspectMjpegAvi,
   isVisualEnvironmentFailure,
   makeIsolatedGodotCopy,
@@ -71,6 +72,7 @@ try {
   if (!result.issues.length) {
     const implementationSnapshot = snapshotGodotVisualInputs(contract.implementationRoot);
     isolated = makeIsolatedGodotCopy(contract.implementationRoot);
+    const godotUserEnv = isolatedGodotUserEnv(isolated.tempRoot);
     const startedAt = new Date().toISOString();
     const runId = createVisualRunId(new Date(startedAt));
     const reviewRoot = path.join(projectRoot, 'screens', 'review');
@@ -100,7 +102,7 @@ try {
       `--forge-visual-height=${dimensions.height}`,
     ];
     const timeoutMs = Math.max(120_000, contract.proofVideo.durationSeconds * 12_000);
-    const run = runBounded(godot.command, args, { cwd: isolated.isolatedProject, timeoutMs });
+    const run = runBounded(godot.command, args, { cwd: isolated.isolatedProject, timeoutMs, env: godotUserEnv });
     const output = combinedOutput(run);
     const errors = godotErrorLines(output);
     const protocol = parseMarkerLines(output, 'FORGE_VISUAL_PROTOCOL:').at(-1);

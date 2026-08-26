@@ -17,11 +17,10 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [x] Q3-006: native Phase 4 binds capture/proof receipts, current implementation and independent review; 25 isolated adversarial scenarios pass.
 - [x] Q3-007: real-window Phase 5 tech, two-process Phase 7 save/reload and signed immutable Windows Phase 8 release pass adversarial plus real Godot 4.7.2 checks.
 - [ ] Q3-008: add the optional cost-aware native asset lane after the base pilot proves it is needed.
-- [ ] Q3-009: end-to-end Godot pilot is in progress. Run 02 passed real Phase 1 on v4.68.54. The immutable
-  v4.68.55 host-checkpoint candidate was rejected before publication because failed Phase 8 publication
-  could be forgotten after restart. v4.68.56 added the ledger but was rejected as an immutable candidate
-  after an informational packaging call consumed its version and final review found a manual-lock escape.
-  v4.68.57 carries the completed released repair; installation and real pilot reconciliation are next.
+- [ ] Q3-009: end-to-end Godot pilot is in progress. v4.68.57 reconciled Phase 1 and completed Phase 2
+  as local-only commits. Phase 3 built Circuit Courier, then exposed inherited Godot profile writes and
+  editor-only import stalls. The v4.68.58 repair passes its construct/visual/playtest regressions and is
+  being packaged/installed before the real Phase 3 gate is repeated.
 
 ### Previous v4.68.51 release
 
@@ -155,9 +154,10 @@ nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Blockers
 
-Q3-009 Phase 1 is complete. Phase 2 is deliberately paused until v4.68.57 is installed and startup
-reconciliation commits the pending Phase 1 work locally. Diagnostic `daa837b168842956d2d3` remains open
-until that real checkpoint succeeds; the pilot's GitHub HEAD must remain unchanged through Phase 7.
+Q3-009 Phases 1–2 are complete and checkpointed locally; GitHub correctly remains unchanged through
+Phase 7. Phase 3 files are preserved with an `in_progress` marker. Install v4.68.58, resume Phase 3 in a
+fresh session and resolve diagnostic `c530d96159c9038b1875` only after the installed verifier repeats the
+real native PASS.
 
 Godot GDScript native Phases 3–5, 7 and Windows 8 now have trusted adapters. The real-window Q3-007
 forward test passes on official Godot 4.7.2. A project still needs matching official Windows export
@@ -171,6 +171,9 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 - 2026-08-26: A completed marker and its Git checkpoint are separate durable facts; restart reconciles the
   latter before any later model access, and Phase 8+ cannot complete without a confirmed private push.
 - 2026-08-26: A phase launcher selects its write boundary explicitly; inherited read-only mode is an infrastructure block, never a reason to weaken evidence or fabricate completion.
+- 2026-08-26: GDScript construct authority is bounded native game startup from a cache-free isolated copy; editor-only import is reserved for the C# build lane.
+- 2026-08-26: Godot user/profile state belongs inside each verifier temp root; a developer `.godot` cache or writable host `APPDATA` is never a prerequisite for PASS.
+- 2026-08-26: Informational release CLI modes must reject unknown flags and prove full-tree hash stability before they can be used in a pre-package audit.
 - 2026-08-26: A resumed Codex phase inherits its original trusted session policy; broad sandbox and hook-trust bypass flags are not a retry mechanism.
 - 2026-08-21: A model may propose evidence, but only the phase-state runtime may persist completion.
 - 2026-08-21: Missing external evidence is represented as `TBD`/hypothesis, never filled from model memory.
@@ -198,4 +201,4 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 - 2026-08-26: Common phases route by engine capability; Godot is the first complete native adapter, not a Godot-only workflow.
 - 2026-08-26: A native release needs an engine-owned signed build receipt; project-local manifests and self-consistent ZIPs cannot authorize their own PASS.
 
-<!-- last updated 2026-08-26 for v4.68.57 release and Q3-009 pilot reconciliation -->
+<!-- last updated 2026-08-26 for v4.68.58 Godot runtime repair and Q3-009 Phase 3 -->

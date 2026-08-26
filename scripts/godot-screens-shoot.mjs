@@ -10,6 +10,7 @@ import {
   createVisualRunId,
   detectGodotVisualTool,
   godotErrorLines,
+  isolatedGodotUserEnv,
   isVisualEnvironmentFailure,
   makeIsolatedGodotCopy,
   normalizePath,
@@ -74,6 +75,7 @@ try {
   if (!result.issues.length) {
     const implementationSnapshot = snapshotGodotVisualInputs(contract.implementationRoot);
     isolated = makeIsolatedGodotCopy(contract.implementationRoot);
+    const godotUserEnv = isolatedGodotUserEnv(isolated.tempRoot);
     const startedAt = new Date().toISOString();
     const runId = createVisualRunId(new Date(startedAt));
     const reviewRoot = path.join(projectRoot, 'screens', 'review');
@@ -108,6 +110,7 @@ try {
         const run = runBounded(godot.command, args, {
           cwd: isolated.isolatedProject,
           timeoutMs: contract.capture.timeoutSeconds * 1000,
+          env: godotUserEnv,
         });
         const outputText = combinedOutput(run);
         const errors = godotErrorLines(outputText);

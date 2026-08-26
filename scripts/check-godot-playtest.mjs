@@ -53,6 +53,7 @@ function make(name) {
     },
   }));
   fs.copyFileSync(trustedAdapter, path.join(project, 'ForgePlaytestQA.gd'));
+  write(path.join(project, 'fixture_playtest_class.gd'), 'class_name FixturePlaytestClass\nextends RefCounted\n');
   write(path.join(project, 'project.godot'), [
     '[autoload]',
     'ForgePlaytestQA="*res://ForgePlaytestQA.gd"',
@@ -112,6 +113,8 @@ function run(script, project, mode) {
       FORGE_ALLOW_TEST_HARNESS: '1',
       FORGE_GODOT_TEST_SHIM: shim,
       FORGE_GODOT_PLAYTEST_FIXTURE_MODE: mode,
+      FORGE_GODOT_REQUIRE_ISOLATED_USER_ENV: '1',
+      FORGE_GODOT_EXPECT_CLASS_CACHE: 'FixturePlaytestClass',
     },
     timeout: 20_000,
   });

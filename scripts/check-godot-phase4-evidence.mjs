@@ -41,7 +41,7 @@ function png(width, height, seed = 1) {
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), pngChunk('IHDR', ihdr), pngChunk('tEXt', Buffer.concat([Buffer.from('Comment\0'), Buffer.alloc(1200, 65 + seed % 20)])), pngChunk('IDAT', zlib.deflateSync(raw)), pngChunk('IEND', Buffer.alloc(0))]);
 }
-function env(identity = 'builder-run') { return { ...process.env, FORGE_ALLOW_TEST_HARNESS: '1', FORGE_GODOT_TEST_SHIM: SHIM, FORGE_GODOT_BIN: '', FORGE_GODOT_FIXTURE_MODE: 'pass', FORGE_RUN_ATTEMPT_ID: identity, FORGE_AGENT_ID: identity.startsWith('review') ? 'independent-reviewer' : 'fixture-builder' }; }
+function env(identity = 'builder-run') { return { ...process.env, FORGE_ALLOW_TEST_HARNESS: '1', FORGE_GODOT_TEST_SHIM: SHIM, FORGE_GODOT_BIN: '', FORGE_GODOT_FIXTURE_MODE: 'pass', FORGE_GODOT_REQUIRE_ISOLATED_USER_ENV: '1', FORGE_RUN_ATTEMPT_ID: identity, FORGE_AGENT_ID: identity.startsWith('review') ? 'independent-reviewer' : 'fixture-builder' }; }
 function run(script, root, identity = 'builder-run', args = []) { const child = spawnSync(process.execPath, [script, root, ...args], { cwd: ROOT, env: env(identity), encoding: 'utf8', timeout: 60_000, maxBuffer: 8 * 1024 * 1024, windowsHide: true }); return child; }
 function hostAttestSyntheticPolicyFixture(root) {
   const capRel = 'screens/review/capture-manifest.json', proofRel = 'screens/review/proof-video-manifest.json';

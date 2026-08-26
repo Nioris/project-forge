@@ -17,8 +17,15 @@ files:
   - RELEASE_NOTES_v4.68.55.md
   - RELEASE_NOTES_v4.68.56.md
   - RELEASE_NOTES_v4.68.57.md
+  - RELEASE_NOTES_v4.68.58.md
+  - wiki/bugs/godot-clean-profile-editor-import.md
+  - wiki/bugs/bump-version-dry-run-mutated-source.md
   - scripts/package-forge.mjs
   - scripts/check-package-forge.mjs
+  - scripts/bump-version.mjs
+  - scripts/check-bump-version.mjs
+  - scripts/check-drift.mjs
+  - mcp-server/verifiers.json
   - wiki/plan/Q3-009-godot-pilot-release.md
   - wiki/_current.md
   - wiki/_map.md
@@ -128,3 +135,29 @@ full operation lease.
 - Dedicated regressions prove manual-vs-phase exclusion and side-effect-free package CLI errors.
 - All v4.68.56 restart reconciliation, private Phase 8+ publication and redaction changes are carried
   forward unchanged.
+
+## Pilot run 03 — Phase 2 passed, Godot runtime boundary repaired
+
+- v4.68.57 startup reconciled Phase 1 into local commit `111bdf1`; Phase 2 completed as local commit
+  `603b04c`. GitHub correctly remained at `fb1bd5e` because publication is deferred through Phase 7.
+- Phase 3 created the real modular Circuit Courier project and repaired genuine serialization and
+  GDScript parse defects before the native construct gate.
+- The remaining failure reproduced on an empty Godot project: inherited profile paths caused
+  certificate/editor-settings/user-store errors and signal 11 inside the Codex boundary.
+- An isolated profile removed the crash, but editor-only `--import` stalled while Godot 4.7 generated a
+  clean editor theme. A normal native game startup loaded all pilot resources and reached
+  `CIRCUIT_COURIER_READY` in about one second.
+
+## v4.68.58 corrective scope
+
+- Construct, capture, proof, tech and playtest processes use temporary writable Godot user/profile/XDG
+  roots instead of the developer profile.
+- GDScript construct verification regenerates `global_script_class_cache.cfg` inside the isolated copy
+  and validates bounded game startup without editor-only import; C# retains import/build.
+- Host user/certificate failures are infrastructure-owned, while parse/compiler errors always retain
+  project-failure priority.
+- Fixture regressions bind the environment and class-cache boundary. A direct diagnostic reaches the
+  Circuit Courier marker, but durable Phase 3 completion waits for the installed v4.68.58 gate.
+- Release review also exposed that unknown `--dry-run` was ignored by `bump-version.mjs` and mutated the
+  candidate to 4.68.59. v4.68.58 now supports both dry aliases, rejects unknown/ambiguous modes before
+  writes and hashes a complete fixture tree to prove informational calls are side-effect free.

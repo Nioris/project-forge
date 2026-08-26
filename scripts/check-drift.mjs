@@ -173,6 +173,18 @@ safe('forge-package-cli', () => {
   }
 });
 
+safe('forge-bump-version-cli', () => {
+  const result = spawnSync(process.execPath, ['scripts/check-bump-version.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    err(`Forge bump-version side-effect regression failed: ${(result.stderr || result.stdout || 'unknown').trim()}`);
+  } else {
+    ok.push('Forge bump-version help/dry/invalid options cannot mutate version surfaces');
+  }
+});
+
 // ---- 7. debugcheck.js must not diverge -----------------------------------------------------
 // The two debugcheck copies (platforms/yandex/templates + templates/html5) MUST be byte-identical.
 // A stale fork is how genetic-lab shipped with a weak 4.4/lang checker and passed Forge but failed
