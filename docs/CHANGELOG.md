@@ -3,6 +3,13 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.57 changelog (restart-safe host Git checkpoints)
+
+Forge reconciles durable Git checkpoints before model access; Phase 8+ requires a private push. One
+PID-owned lease covers phase and manual entrypoints. Packaging help/errors cannot consume a version.
+
+---
+
 ## v4.68.11 changelog (fleet behavioral diagnostics)
 
 Forge-managed projects now keep a local `wiki/diagnostics/forge-events.jsonl` stream for behavioral defects in Forge itself. Claude/Codex/generic instructions and a native GigaChat function report malformed phase/STOP output, adapter/hook/runtime failures, state/capability contradictions and incorrect Forge formats while excluding ordinary game/app bugs. The dependency-free logger bounds fields, redacts common credentials and the project root, accepts only project-relative evidence, rotates non-destructively and adds a local Git exclude.

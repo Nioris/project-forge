@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.59 (current source line)
+### Version: v4.68.60 (current source line)
 
+- 2026-08-26: **v4.68.60** — project-specific Godot scene/script smokes now run only through an isolated headless process-tree-bounded runner with explicit success markers; raw working-tree `godot_console` smoke commands are forbidden.
 - 2026-08-26: **v4.68.59** — an exact Windows root-certificate diagnostic is nonblocking only after trusted Godot protocol/artifact success; terminal phase block replay is idempotent and only `reopen` may create a fresh Task.
 - 2026-08-26: **Q3-009 pilot, Run 04** — v4.68.58 installed cleanly across 34 siblings; Circuit Courier passed host construct plus native BFS/save/tutorial/layout/capture checks, while the restricted session exposed certificate-noise misclassification and terminal-block replay defects fixed by v4.68.59.
 - 2026-08-26: **v4.68.58** — Godot construct/visual/tech/playtest runs now use isolated writable user profiles and regenerated temporary GDScript class caches; GDScript verification loads the real game without the editor-only import path that crashed or stalled under Codex.

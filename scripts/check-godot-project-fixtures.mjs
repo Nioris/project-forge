@@ -9,10 +9,14 @@ import { validatePhaseCompletion } from '../.claude/skills/status/references/pha
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const checker = path.join(ROOT, 'scripts', 'check-godot-project.mjs');
+const supplementalSmoke = path.join(ROOT, 'scripts', 'run-godot-smoke.mjs');
 const fixtures = path.join(ROOT, 'scripts', 'fixtures', 'godot-projects');
 const shim = path.join(ROOT, 'scripts', 'fixtures', 'godot-tools', 'fake-godot.mjs');
 const errors = [];
 const passed = [];
+
+check(!fs.readFileSync(supplementalSmoke, 'utf8').includes("'--log-file'"),
+'supplemental runner does not pass Windows NUL or another unbounded Godot log file');
 
 function check(condition, message, details = '') {
   if (condition) passed.push(message);
@@ -25,6 +29,20 @@ function run(target, env = {}) {
     env: { ...process.env, ...env },
     encoding: 'utf8',
     timeout: 20_000,
+    maxBuffer: 1024 * 1024,
+    windowsHide: true,
+  });
+  let value = null;
+  try { value = JSON.parse(child.stdout); } catch {}
+  return { child, value };
+}
+
+function runSupplemental(target, targetArgs, env = {}) {
+  const child = spawnSync(process.execPath, [supplementalSmoke, target, ...targetArgs, '--json'], {
+    cwd: ROOT,
+    env: { ...process.env, ...env },
+    encoding: 'utf8',
+    timeout: 10_000,
     maxBuffer: 1024 * 1024,
     windowsHide: true,
   });
@@ -51,6 +69,40 @@ check(pass.value?.checks?.some(item => item.id === 'gdscript-runtime-policy' && 
 check(pass.value?.toolchain?.godot?.version === '4.7.test.fixture', 'verifier records the factual Godot version returned by the tool');
 const sourceCacheAfter = fs.existsSync(sourceCache) ? fs.statSync(sourceCache).mtimeMs : null;
 check(sourceCacheAfter === sourceCacheBefore, 'isolated verification does not create or touch the source .godot cache');
+
+const sceneSmoke = runSupplemental(passRoot,
+  ['--scene', 'res://main.tscn', '--marker', 'FORGE_SMOKE_READY'], harness);
+check(sceneSmoke.child.status === 0 && sceneSmoke.value?.status === 'passed'
+  && sceneSmoke.value?.target?.kind === 'scene' && sceneSmoke.value?.isolated === true,
+'supplemental scene smoke uses an isolated bounded headless process', `${sceneSmoke.child.stdout}\n${sceneSmoke.child.stderr}`);
+
+const scriptSmoke = runSupplemental(passRoot,
+  ['--script', 'res://main.gd', '--marker', 'FORGE_SMOKE_READY'], harness);
+check(scriptSmoke.child.status === 0 && scriptSmoke.value?.status === 'passed'
+  && scriptSmoke.value?.target?.kind === 'script',
+'supplemental script smoke reaches its required marker');
+const sourceCacheAfterSupplemental = fs.existsSync(sourceCache) ? fs.statSync(sourceCache).mtimeMs : null;
+check(sourceCacheAfterSupplemental === sourceCacheBefore,
+'supplemental smoke does not create or touch the source .godot cache');
+
+const traversalSupplemental = runSupplemental(passRoot,
+  ['--scene', 'res://../main.tscn', '--marker', 'FORGE_SMOKE_READY'], harness);
+check(traversalSupplemental.child.status === 1 && traversalSupplemental.value?.status === 'failed'
+  && traversalSupplemental.value?.issues?.some(item => item.code === 'GODOT_SMOKE_TARGET'),
+'supplemental smoke rejects traversal outside the isolated Godot project');
+
+const missingSupplementalMarker = runSupplemental(passRoot,
+  ['--scene', 'res://main.tscn', '--marker', 'MISSING_MARKER'], { ...harness, FORGE_GODOT_FIXTURE_MODE: 'missing-marker' });
+check(missingSupplementalMarker.child.status === 1 && missingSupplementalMarker.value?.status === 'failed'
+  && missingSupplementalMarker.value?.issues?.some(item => item.code === 'GODOT_SMOKE_MARKER'),
+'supplemental smoke cannot pass without its explicit marker');
+
+const hungSupplemental = runSupplemental(passRoot,
+  ['--scene', 'res://main.tscn', '--marker', 'FORGE_SMOKE_READY', '--timeout-ms', '250'],
+  { ...harness, FORGE_GODOT_FIXTURE_MODE: 'hang' });
+check(hungSupplemental.child.status === 1 && hungSupplemental.value?.status === 'failed'
+  && hungSupplemental.value?.timedOut === true && hungSupplemental.value?.durationMs < 5000,
+'supplemental smoke kills a hung Godot process tree at the bounded timeout');
 
 const certificateNoise = run(passRoot, { ...harness, FORGE_GODOT_FIXTURE_MODE: 'certificate-noise' });
 check(certificateNoise.child.status === 0 && certificateNoise.value?.status === 'passed',

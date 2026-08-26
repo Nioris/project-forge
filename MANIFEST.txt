@@ -918,6 +918,7 @@ scripts/record-phase4-visual-review.mjs
 scripts/record-promo.mjs
 scripts/rotate-changelog.mjs
 scripts/run-bounded-command.mjs
+scripts/run-godot-smoke.mjs
 scripts/runtime-test.mjs
 scripts/screen-targets.mjs
 scripts/screens-shoot.mjs

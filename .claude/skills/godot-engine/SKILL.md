@@ -101,3 +101,18 @@ defect, and `2` is an environment/toolchain blocker.
 Do not replace this with `playtest.mjs`, browser screenshots, a manually written PASS report, or an
 editor window that was merely opened. Fix every project defect; surface environment blockers with the
 reported code and exact detected versions.
+
+Project-specific smoke scenes or scripts are supplementary and must never be launched through a raw
+`godot`, `godot_console`, positional scene command, or an unbounded shell timeout against the working
+project. Use the installed isolated runner instead:
+
+```bash
+node ../project-forge/scripts/run-godot-smoke.mjs . --scene res://tests/smoke/example.tscn --marker EXAMPLE_SMOKE_PASS --json
+node ../project-forge/scripts/run-godot-smoke.mjs . --script res://tests/smoke/example.gd --marker EXAMPLE_SCRIPT_PASS --json -- --mode=verify
+```
+
+It copies only the Godot implementation to a temporary directory, regenerates the GDScript class
+cache there, supplies a separate writable `user://`, forces headless execution and kills the entire
+process tree on timeout. A timeout, missing marker or nonzero exit is a failure; do not reinterpret a
+forced Godot crash-handler backtrace as harmless success. Real-window rendering remains exclusive to
+the canonical visual/tech/playtest tools described in the references.

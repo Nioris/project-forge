@@ -206,6 +206,10 @@ if (behaviorMode === 'display-fail' && !args.includes('--version')) {
 
 if (behaviorMode === 'exit-fail' && !args.includes('--version')) process.exit(2);
 
+if (behaviorMode === 'hang' && !args.includes('--version')) {
+  setInterval(() => {}, 1000);
+}
+
 if (args.includes('--version')) {
   console.log('4.7.test.fixture');
 } else if (args.includes('--import')) {
