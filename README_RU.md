@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая версия исходников:** `v4.68.60`
+**Текущая версия исходников:** `v4.68.61`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -192,6 +192,8 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 После каждой завершённой фазы родительский оркестратор печатает и сохраняет локальный cost/context-отчёт в `wiki/diagnostics/codex-cost/phase-N-latest.json`. Когда доступен rollout Codex, отчёт считает модельные ответы, input/cache/output tokens, compaction, подагентов, объём tool output, фактическую модель и неожиданные остановки. Промпты, сообщения, содержимое файлов, состояние лимита и секреты не сохраняются. Несколько отчётов можно открыть в панели **Codex Cost / Context** в Dashboard.
 
+Дополнительно Forge автоматически ведёт локальную карточку релиза в `.forge/metrics/`: календарный и tracked-active time-to-release, exact/estimated/unknown AI cost, продуктовые и инфраструктурные repair cycles, структурированные дефекты до релиза, first-pass/eventual moderation rate и долю автоматизированных переходов workflow. Смена фазы обновляет snapshot, Phase 8 создаёт запись релиза. Один проект: `node ../project-forge/scripts/forge-metrics.mjs snapshot --cwd .`; портфель: `portfolio --root .. --split-at <ISO-дата>`. Каждый KPI содержит `n` и coverage, неизвестная стоимость/модерация не считается нулём. Формулы: [Forge Product Telemetry](wiki/architecture/forge-product-telemetry.md).
+
 Перед первой фазой launcher проверяет унаследованные из пользовательского Codex-конфига loopback HTTP MCP. Недоступный локальный endpoint временно отключается только для этого pipeline-run: например, остановленный Unity MCP больше не ломает разработку HTML5-игры, а глобальная настройка остаётся без изменений. `--keep-local-mcp` отменяет это поведение. Stdin дочернего Codex остаётся подключённым к терминалу, поэтому готовый фазовый prompt больше не определяется как дополнительный piped input.
 
 Примеры:
@@ -206,7 +208,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.60` обычная авторизация и API-профили остаются разделены.
+В `v4.68.61` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка

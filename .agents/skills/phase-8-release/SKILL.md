@@ -8,7 +8,8 @@ phases:
 modes:
   - phase
   - release
-requires: []
+requires:
+  - skill:forge-metrics
 reads:
   - "**"
 writes:
@@ -117,6 +118,13 @@ https://docs.godotengine.org/en/stable/tutorials/export/exporting_projects.html
 - `$visual-qa` Ф7 не имеет открытых Critical/Major для release flow.
 
 Агентный security/moderation review может идти параллельно, но GREEN определяется только реальными verifiers.
+
+## 📐 Release telemetry
+
+Phase state автоматически обновляет `.forge/metrics/latest.json`, а успешный Phase 8 создаёт карточку
+релиза. Перед финальной сводкой загрузи `$forge-metrics` и покажи coverage: неизвестная стоимость API
+или ещё не полученная модерация должны остаться `unknown`, не `$0`/FAIL. Внешний provider/store факт
+записывается только bounded-командой `scripts/forge-metrics.mjs event ...`.
 
 ## Правила фазы (общие)
 - Каждый под-скил сохраняет свои гейты (game-design жёстко стоит без metrics.md и т.д.) — фаза их НЕ обходит.

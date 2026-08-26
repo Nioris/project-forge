@@ -2,6 +2,7 @@
 /** Record the independent reviewer identity in the trusted engine store and close Phase 4 evidence. */
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import {
   captureReceiptPayload,
   currentVisualRuntimeIdentity,
@@ -11,6 +12,7 @@ import {
 } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 import { recordVisualReceipt, verifyVisualReceipt } from '../.claude/skills/status/references/visual-receipts.mjs';
 import { readTrustedProjectEngine } from '../.claude/skills/status/references/project-engine.mjs';
+import { appendProductTelemetryEvent, refreshProductTelemetry } from '../.claude/skills/status/references/product-telemetry.mjs';
 
 const projectRoot = fs.realpathSync(path.resolve(process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : '.'));
 const evidenceRel = 'wiki/qa/phase-4-visual-evidence.json';
@@ -76,6 +78,26 @@ try {
   fs.renameSync(temp, evidenceFile);
 
   const result = validatePhase4VisualEvidence({ root: projectRoot });
+  try {
+    const defects = [...(evidence.reviews || []).flatMap(review => review.defects || []), ...(evidence.proofReview?.defects || [])];
+    const unique = new Map(defects.filter(defect => defect?.summary).map(defect => {
+      const severity = ['critical', 'major', 'minor'].includes(String(defect.severity || '').toLowerCase())
+        ? String(defect.severity).toLowerCase() : 'unclassified';
+      const fingerprint = createHash('sha256').update(`${severity}\0${defect.summary}`).digest('hex').slice(0, 20);
+      return [fingerprint, { severity, fingerprint }];
+    }));
+    for (const defect of unique.values()) appendProductTelemetryEvent(projectRoot, {
+      type: 'defect', at: evidence.reviewedAt, severity: defect.severity, stage: 'pre_release',
+      fingerprint: defect.fingerprint, source: 'phase-4-review',
+    });
+    if (evidence.verdict === 'reject' || !result.ok) appendProductTelemetryEvent(projectRoot, {
+      type: 'repair', at: evidence.reviewedAt, category: 'product', code: 'PHASE4_VISUAL_REJECT',
+      fingerprint: evidence.reviewReceiptId,
+    });
+    refreshProductTelemetry(projectRoot);
+  } catch (error) {
+    console.warn(`[Forge Metrics] visual review telemetry unavailable: ${String(error?.message || error).slice(0, 500)}`);
+  }
   if (!result.ok) {
     console.error('[X] Review receipt recorded, but Phase 4 evidence is still rejected:');
     for (const failure of result.failures) console.error(`  - ${failure}`);

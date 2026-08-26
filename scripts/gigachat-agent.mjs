@@ -30,7 +30,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.60';
+const AUDITED_FORGE_VERSION = '4.68.61';
 const CONTRACT_VERSION = '6.3.11-godot-native-test-release-2026-08-26';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
@@ -165,6 +165,7 @@ function taskScopedForgeScriptBlock(scriptPath, args=[]) {
   const scope = activeTaskScopeForModel();
   if (!taskScopeIsActive(scope)) return null;
   if (/phase-state\.mjs$/i.test(String(scriptPath || ''))) return null; // host-owned durable phase lifecycle
+  if (/forge-metrics\.mjs$/i.test(String(scriptPath || ''))) return null; // bounded host-owned product telemetry
   if (/project-status\.mjs$/i.test(String(scriptPath || '')) || declaredReadOnlyForgeVerifier(scriptPath)) return null;
   const base = String(scriptPath || '').replace(/\\/g, '/').split('/').pop().toLowerCase();
   const positional = forgeScriptTargetArg(args);
@@ -5243,6 +5244,7 @@ if (REQUEST_DOCTOR) {
   test('scoped output maps handle nested AI Studio targets and --out=value',()=>{const x=taskScopedForgeScriptBlock.toString();return /rootPrefix/.test(x)&&/--out=/.test(x)&&forgeScriptTargetArg(['--out','Release/escape','WorkProgress/game'])==='WorkProgress/game'&&forgeScriptTargetArg(['--out=Release/escape','WorkProgress/game'])==='WorkProgress/game';});
   test('Task scope denials emit bounded Forge diagnostics',()=>/GIGA_TASK_SCOPE_DENIED/.test(reportTaskScopeDenied.toString())&&/slice\(0,700\)/.test(reportTaskScopeDenied.toString())&&/taskScopeDeny/.test(taskScopedForgeScriptBlock.toString()));
   test('phase lifecycle exception is forge_script-only, not a shell substring bypass',()=>!/phase-state/.test(taskScopedShellMutationBlock.toString())&&/phase-state\\\.mjs/.test(taskScopedForgeScriptBlock.toString()));
+  test('product telemetry exception is the bounded forge_script only',()=>!/forge-metrics/.test(taskScopedShellMutationBlock.toString())&&/forge-metrics\\\.mjs/.test(taskScopedForgeScriptBlock.toString()));
   test('binary write extension blocked',()=>{ try{assertTextWritableExtension('x.png');return false;}catch{return true;} });
   test('phase complete hard gate active',()=>/Phase 4 completion blocked/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md')||''));
   test('forge_script phase complete cannot bypass the hard gate',()=>/hard gate/i.test(forgeScriptPhaseCompletionBlocked('.claude/skills/status/references/phase-state.mjs',['complete','4'])||''));

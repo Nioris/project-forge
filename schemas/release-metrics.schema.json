@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-forge.local/schemas/release-metrics.schema.json",
+  "title": "Project Forge release metrics v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "dateTime": { "type": ["string", "null"], "format": "date-time" },
+    "nonNegative": { "type": "number", "minimum": 0 },
+    "nullableNonNegative": { "type": ["number", "null"], "minimum": 0 },
+    "count": { "type": "integer", "minimum": 0 },
+    "percent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
+  },
+  "required": [
+    "schemaVersion", "kind", "generatedAt", "project", "release", "workflow", "time", "ai",
+    "repairs", "defects", "moderation", "automation", "coverage", "privacy"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.release-metrics" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "project": { "type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[^/\\\\\\u0000-\\u001f]+$" },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "status", "cycleStartedAt", "releasedAt", "forgeVersion", "gitCommit", "privateRemotePublished", "measuredThrough"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+        "version": { "type": ["string", "null"], "maxLength": 80 },
+        "status": { "enum": ["in_progress", "released"] },
+        "cycleStartedAt": { "$ref": "#/$defs/dateTime" },
+        "releasedAt": { "$ref": "#/$defs/dateTime" },
+        "forgeVersion": { "type": ["string", "null"], "maxLength": 40 },
+        "gitCommit": { "type": ["string", "null"], "maxLength": 80 },
+        "privateRemotePublished": { "type": "boolean" },
+        "measuredThrough": { "type": "string", "format": "date-time" }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completedPhases", "observedPhases", "engine", "host"],
+      "properties": {
+        "completedPhases": { "$ref": "#/$defs/count" },
+        "observedPhases": { "$ref": "#/$defs/count" },
+        "engine": { "type": ["string", "null"], "maxLength": 80 },
+        "host": { "type": ["string", "null"], "maxLength": 80 }
+      }
+    },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leadTimeMs", "recordedPhaseSpanMs", "trackedActiveMs", "userDecisionWaitMs", "infrastructureWaitMs", "phaseSpanCount", "definition"],
+      "properties": {
+        "leadTimeMs": { "$ref": "#/$defs/nullableNonNegative" },
+        "recordedPhaseSpanMs": { "$ref": "#/$defs/nonNegative" },
+        "trackedActiveMs": { "$ref": "#/$defs/nonNegative" },
+        "userDecisionWaitMs": { "$ref": "#/$defs/nonNegative" },
+        "infrastructureWaitMs": { "$ref": "#/$defs/nonNegative" },
+        "phaseSpanCount": { "$ref": "#/$defs/count" },
+        "definition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["leadTime", "trackedActive"],
+          "properties": {
+            "leadTime": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "trackedActive": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        }
+      }
+    },
+    "ai": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reports", "tokens", "costUsd", "costBasis", "reportedExactUsd", "estimatedUsd", "pricedReports", "pricingCoveragePct", "definition"],
+      "properties": {
+        "reports": { "$ref": "#/$defs/count" },
+        "tokens": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["input", "cachedInput", "output", "reasoningOutput"],
+          "properties": {
+            "input": { "$ref": "#/$defs/nonNegative" },
+            "cachedInput": { "$ref": "#/$defs/nonNegative" },
+            "output": { "$ref": "#/$defs/nonNegative" },
+            "reasoningOutput": { "$ref": "#/$defs/nonNegative" }
+          }
+        },
+        "costUsd": { "$ref": "#/$defs/nullableNonNegative" },
+        "costBasis": { "enum": ["exact", "estimated", "partial", "unknown"] },
+        "reportedExactUsd": { "$ref": "#/$defs/nonNegative" },
+        "estimatedUsd": { "$ref": "#/$defs/nonNegative" },
+        "pricedReports": { "$ref": "#/$defs/count" },
+        "pricingCoveragePct": { "$ref": "#/$defs/percent" },
+        "definition": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    },
+    "repairs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "product", "infrastructure", "visualReviewRejects", "codes", "definition"],
+      "properties": {
+        "total": { "$ref": "#/$defs/count" },
+        "product": { "$ref": "#/$defs/count" },
+        "infrastructure": { "$ref": "#/$defs/count" },
+        "visualReviewRejects": { "$ref": "#/$defs/count" },
+        "codes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/count" } },
+        "definition": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    },
+    "defects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preRelease", "severity", "structuredSources", "definition"],
+      "properties": {
+        "preRelease": { "$ref": "#/$defs/count" },
+        "severity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["critical", "major", "minor", "unclassified"],
+          "properties": {
+            "critical": { "$ref": "#/$defs/count" },
+            "major": { "$ref": "#/$defs/count" },
+            "minor": { "$ref": "#/$defs/count" },
+            "unclassified": { "$ref": "#/$defs/count" }
+          }
+        },
+        "structuredSources": { "type": "array", "uniqueItems": true, "items": { "type": "string", "maxLength": 120 } },
+        "definition": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    },
+    "moderation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempts", "decidedAttempts", "passed", "rejected", "firstPass", "eventualPass", "platforms", "definition"],
+      "properties": {
+        "attempts": { "$ref": "#/$defs/count" },
+        "decidedAttempts": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "rejected": { "$ref": "#/$defs/count" },
+        "firstPass": { "type": ["boolean", "null"] },
+        "eventualPass": { "type": ["boolean", "null"] },
+        "platforms": { "type": "array", "uniqueItems": true, "items": { "type": "string", "maxLength": 80 } },
+        "definition": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automatedTransitions", "manualTransitions", "percent", "basis", "definition"],
+      "properties": {
+        "automatedTransitions": { "$ref": "#/$defs/count" },
+        "manualTransitions": { "$ref": "#/$defs/count" },
+        "percent": { "$ref": "#/$defs/percent" },
+        "basis": { "const": "tracked workflow transitions" },
+        "definition": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timeToRelease", "aiCost", "repairs", "defects", "moderation", "automation", "invalidEventLines"],
+      "properties": {
+        "timeToRelease": { "type": "boolean" },
+        "aiCost": { "type": "boolean" },
+        "repairs": { "type": "boolean" },
+        "defects": { "type": "boolean" },
+        "moderation": { "type": "boolean" },
+        "automation": { "type": "boolean" },
+        "invalidEventLines": { "$ref": "#/$defs/count" }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["localOnly", "storesPrompts", "storesMessages", "storesSourceFiles", "storesSecrets", "storesAbsoluteProjectPath"],
+      "properties": {
+        "localOnly": { "const": true },
+        "storesPrompts": { "const": false },
+        "storesMessages": { "const": false },
+        "storesSourceFiles": { "const": false },
+        "storesSecrets": { "const": false },
+        "storesAbsoluteProjectPath": { "const": false }
+      }
+    }
+  }
+}

@@ -62,6 +62,10 @@ else ok.push('dashboard command mode, project wizard, upgrade and sync guidance 
 if (!dash.includes('id="costReportPanel"') || !dash.includes('phase-N-latest.json') || !dash.includes('function costLoadFiles')) {
   fail('dashboard lacks the local Codex cost/context report reader');
 } else ok.push('dashboard can render privacy-bounded per-phase Codex cost/context reports');
+if (!dash.includes('id="productMetricsPanel"') || !dash.includes('forge.release-metrics')
+  || !dash.includes('function productLoadFiles') || !dash.includes('eligibleMetrics')) {
+  fail('dashboard lacks the privacy-bounded release/portfolio metrics reader and claim-readiness gate');
+} else ok.push('dashboard renders release KPIs, coverage and metric-level claim readiness');
 
 console.log('\nDashboard integrity audit\n'+'─'.repeat(38));
 for (const x of ok) console.log('  ✓ '+x);

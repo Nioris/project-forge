@@ -41,6 +41,7 @@ references: []
 1. `wiki/phases/phase-N.json` — machine-readable phase marker, если он уже существует.
 2. Фактические артефакты и код проекта.
 3. `.forge/runs/*.json` — локальное supplemental execution state активной Task; никогда не progression фаз.
+4. `.forge/metrics/latest.json` — локальный derived snapshot доставки (cost/repairs/defects/moderation/automation); никогда не authority фаз и неизвестные поля не заменяются нулями.
 4. `wiki/_current.md` — дополнительный контекст/STOP-point, но не доказательство выполнения.
 5. Project `CLAUDE.md` — **правила и описание проекта, НЕ mutable progress state**. Фразы вроде
    `Just created` / «проект только что создан» не имеют права откатывать фактическую фазу.

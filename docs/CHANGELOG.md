@@ -3,6 +3,13 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.58 changelog (crash-safe isolated Godot runtime)
+
+Godot runtimes use temporary user profiles and class caches. GDScript construct checks bounded native
+startup without editor import; real parse/compiler errors remain project defects.
+
+---
+
 ## v4.68.57 changelog (restart-safe host Git checkpoints)
 
 Forge reconciles durable Git checkpoints before model access; Phase 8+ requires a private push. One

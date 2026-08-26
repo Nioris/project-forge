@@ -25,6 +25,8 @@ try {
   fs.writeFileSync(path.join(project, '.gitignore'), 'custom-cache/\n');
   fs.mkdirSync(path.join(project, '.forge', 'runs'), { recursive: true });
   fs.writeFileSync(path.join(project, '.forge', 'runs', 'pending.json'), '{}\n');
+  fs.mkdirSync(path.join(project, '.forge', 'metrics'), { recursive: true });
+  fs.writeFileSync(path.join(project, '.forge', 'metrics', 'latest.json'), '{}\n');
   const phase1RemotePolicy = phaseCheckpointRemotePolicy(1);
   recordPhaseGitCheckpoint(project, {
     phase: 1, status: 'pending', stage: 'complete', remotePolicy: phase1RemotePolicy,
@@ -39,6 +41,9 @@ try {
     'managed ignores are appended without destroying project rules');
   check(!git('ls-files', '--error-unmatch', '.forge/runs/pending.json').stdout.trim(),
     'late Git initialization keeps durable Task runs outside project history');
+  check(git('check-ignore', '-q', '.forge/metrics/latest.json').status === 0
+    && !git('ls-files', '--error-unmatch', '.forge/metrics/latest.json').stdout.trim(),
+  'local product telemetry stays outside project history');
   const checkpointState = readPhaseGitCheckpoint(project, 1);
   check(git('check-ignore', '-q', '.forge/git-checkpoints.json').status === 0
     && git('check-ignore', '-q', '.forge/git-checkpoints.lock').status === 0

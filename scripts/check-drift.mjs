@@ -464,6 +464,14 @@ safe('codex-adapter', () => {
   else err('Codex adapter compatibility failed — run: node scripts/check-codex-compat.mjs');
 });
 
+safe('product-telemetry', () => {
+  const r = cpModule.spawnSync(process.execPath, ['scripts/test-forge-product-metrics.mjs'], {
+    cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 4 * 1024 * 1024,
+  });
+  if (r.status === 0) ok.push('release telemetry derives truthful KPI coverage and claim-ready cohort comparisons');
+  else err('Forge product telemetry regression failed — run scripts/test-forge-product-metrics.mjs');
+});
+
 
 // ---- 15. Dashboard build metadata + dual-agent command surface -----------------------------
 safe('dashboard-meta', () => {

@@ -88,7 +88,9 @@ try {
   check(run.task.verifiers[0] === 'fixture-check' && run.task.verificationTarget === '.'
     && run.events.at(-1).event === 'verifier_plan_configured', 'host can attach a bounded verifier plan before implementation completes');
   check(fs.readFileSync(markerPath, 'utf8') === markerBefore, 'creating a Task does not mutate canonical phase state');
-  check(fs.readFileSync(path.join(tmp, '.git', 'info', 'exclude'), 'utf8').includes('.forge/runs/'), 'durable local runs are excluded from project Git');
+  const localExclude = fs.readFileSync(path.join(tmp, '.git', 'info', 'exclude'), 'utf8');
+  check(localExclude.includes('.forge/runs/') && localExclude.includes('.forge/metrics/'),
+    'durable local runs and product telemetry are excluded from project Git');
 
   const lockPath = `${taskRunPath(tmp, run.task.id)}.lock`;
   fs.writeFileSync(lockPath, 'held');
@@ -194,8 +196,9 @@ try {
     scope: { read: ['**'], write: [] },
   }) });
   check(worktreeRun.state.currentNode === 'review'
-    && fs.readFileSync(path.join(commonGit, 'info', 'exclude'), 'utf8').includes('.forge/runs/'),
-  'linked Git worktrees persist Task state and resolve the shared exclude file');
+    && fs.readFileSync(path.join(commonGit, 'info', 'exclude'), 'utf8').includes('.forge/runs/')
+    && fs.readFileSync(path.join(commonGit, 'info', 'exclude'), 'utf8').includes('.forge/metrics/'),
+  'linked Git worktrees persist local runtime state and resolve the shared exclude file');
 
   const phaseScript = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
   const phaseFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-phase-graph-'));

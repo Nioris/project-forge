@@ -157,11 +157,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cost-metric{background:var(--bg2);border-radius:8px;padding:8px}.cost-metric span{display:block;color:var(--text3);font-size:10px;margin-bottom:3px}.cost-metric b{font-size:13px}
 .cost-warnings{margin-top:10px;display:grid;gap:6px}.cost-warning{font-size:11px;line-height:1.45;border-left:3px solid var(--amber);background:var(--bg2);padding:6px 8px}.cost-warning.error{border-left-color:var(--red)}
 .cost-ok{font-size:11px;color:var(--green);margin-top:10px}
+.product-gate{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;border:1px solid var(--border);border-left:5px solid var(--amber);border-radius:12px;background:var(--bg);padding:13px 14px;margin:12px 0}
+.product-gate.ready{border-left-color:var(--green)}.product-gate.empty{border-left-color:var(--border)}
+.product-stamp{font:800 11px/1.15 monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--amber);max-width:105px}.product-gate.ready .product-stamp{color:var(--green)}
+.product-gate-copy{font-size:12px;line-height:1.45;color:var(--text2)}
+.product-rail{height:6px;border-radius:8px;background:var(--bg3);overflow:hidden;margin-top:7px}.product-rail>i{display:block;height:100%;background:var(--amber);border-radius:inherit}.product-gate.ready .product-rail>i{background:var(--green)}
+.product-ledger{display:grid;gap:7px;margin-top:12px}.product-row{display:grid;grid-template-columns:minmax(130px,1.4fr) repeat(5,minmax(78px,1fr));gap:1px;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--border)}
+.product-cell{background:var(--bg);padding:8px 9px;min-width:0}.product-cell span{display:block;color:var(--text3);font-size:9px;text-transform:uppercase;letter-spacing:.05em}.product-cell b{display:block;font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:760px){.product-gate{grid-template-columns:1fr}.product-row{grid-template-columns:1fr 1fr}.product-cell:first-child{grid-column:1/-1}}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>Project Forge <span>Dashboard · v4.68.60</span></h1>
+  <h1>Project Forge <span>Dashboard · v4.68.61</span></h1>
   <div class="header-actions">
     <select id="agentModeSelect" class="btn" onchange="setAgentMode(this.value)" title="Как показывать Forge-команды в подсказках: Claude slash skills или Codex $skills">
       <option value="claude">Claude Code</option>
@@ -220,7 +228,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="help-panel" id="helpPanel">
 
 <div class="help-section">
-  <button class="help-toggle" onclick="toggleSection(this)">⭐ Quick start (v4.68.60) — 3 команды на всё <span class="arrow">&#9654;</span></button>
+  <button class="help-toggle" onclick="toggleSection(this)">⭐ Quick start (v4.68.61) — 3 команды на всё <span class="arrow">&#9654;</span></button>
   <div class="help-content">
     <h4>Главные команды (используй их в 99% случаев)</h4>
     <div class="tip good">Переключатель в шапке меняет Forge-команды: Claude Code использует <code>/skill</code>, Codex — <code>$skill</code>. В Codex <code>/status</code>, <code>/plan</code>, <code>/review</code> — нативные команды Codex; Forge-варианты: <code>$status</code>, <code>$plan</code>, <code>$review</code>.</div>
@@ -238,7 +246,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <div class="help-section">
-  <button class="help-toggle" onclick="toggleSection(this)">Все доступные skills (для power users) — 144 canonical / 147 Codex<span class="arrow">&#9654;</span></button>
+  <button class="help-toggle" onclick="toggleSection(this)">Все доступные skills (для power users) — 145 canonical / 148 Codex<span class="arrow">&#9654;</span></button>
   <div class="help-content">
     <h4>Управление проектом</h4>
     <div class="cmd-row"><span class="cmd-name">/start {описание}</span><span class="cmd-desc">Создать проект с нуля. Auto-research конкурентов через /research-references как Phase 0 (v4.10.14+)</span></div>
@@ -722,11 +730,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="costReports" class="cost-grid"></div>
   </div>
 </section>
+<section id="productMetricsPanel" class="cost-panel">
+  <h2 style="font-size:15px;letter-spacing:.08em;opacity:.85">📐 FORGE DELIVERY EVIDENCE</h2>
+  <div class="cost-shell">
+    <div class="cost-toolbar">
+      <button class="btn btn-accent" onclick="document.getElementById('productMetricFiles').click()">Открыть метрики релизов</button>
+      <input id="productMetricFiles" type="file" accept=".json,application/json" multiple hidden onchange="productLoadFiles(this.files)">
+      <div class="cost-hint">Forge автоматически обновляет <code>.forge/metrics/latest.json</code> после фаз и сохраняет карточку завершённого релиза. Для сравнения когорт откройте JSON команды <code>forge-metrics.mjs portfolio</code>. Неизвестная стоимость или модерация остаётся <b>unknown</b>, а не превращается в догадку.</div>
+    </div>
+    <div id="productDrop" class="cost-drop" ondragover="productDrag(event,true)" ondragleave="productDrag(event,false)" ondrop="productDropFiles(event)">Перетащите сюда <b>latest.json</b>, карточки релизов или <b>portfolio.json</b></div>
+    <div id="productClaim" class="product-gate empty"><div class="product-stamp">Нет данных</div><div class="product-gate-copy">Откройте локальные метрики — Dashboard не сканирует проекты без вашего выбора.<div class="product-rail"><i style="width:0%"></i></div></div></div>
+    <div id="productSummary" class="cost-grid"></div>
+    <div id="productLedger" class="product-ledger"></div>
+  </div>
+</section>
 <div class="toast" id="toast"></div>
 <div class="modal-overlay hidden" id="modalOverlay"><div class="modal" id="modal"></div></div>
 <script>
 /* FORGE_META_START — generated by scripts/sync-dashboard-meta.mjs */
-var FORGE_META={"version":"4.68.60","canonicalSkills":144,"codexSkills":147,"routerSkills":3,"skillNames":["3d-perf","add-pipeline","advisor","analyze-game","analyze-project","anon-auth-sync","app","app-data-flow","app-data-model","app-notifications","app-onboarding-flow","app-permissions","app-search","app-settings","app-ux-polish","appmetrica-integration","art-direction","art-prompts","asset-generation","asset-library","asset-scan","audit-requirements","auto-release","autopilot","build-apk","bundle-libs","business-app-foundation","capacitor-wrap","choose-backend-stack","continue","convert","convert-all","credentials-check","debugcheck-enhance","deepen-game","deploy","design-pipeline","do","doc","education-foundation","fill-rustore","fill-steam","fill-vk","fill-vkplay","fill-yandex","finance-app-foundation","find-or-make-skill","find-skill","find-skills","fix-moderation","fix-ui","forge-diagnostics","full-pipeline","gacha-meta","game","game-design","game-polish","game-tutorial","gameplay-balance","gate","godot-engine","grilling","handoff","health-app-foundation","i18n-foundation","image-studio","improve","info-hierarchy","layout-system","learn-sdk","level-design","localize","mcp-server","mobile-adapt","mobile-game-ui","mobile-ready","modularize-existing-project","monetization-design","monetization-strategy","multiplayer","mvp-to-yandex","mytracker","new-project","phase-1-analyze","phase-2-design","phase-3-construct","phase-4-visual","phase-5-tech","phase-6-listing","phase-7-test","phase-8-release","phase-9-live","pipeline","pixel-art","pixel-art-pipeline","plan","polish-app","port","procedural-geo","product-metrics","promo-screens","prompt-compiler","pwa-convert","rebuild","release-all","release-max","release-ok","release-ready","release-rustore","release-steam","release-telegram","release-vk","release-vkplay","release-web","release-yandex","reprocess","research-references","review","rustore-publish","saas-foundation","screen-flow","seasonal-event","server-detect","shader-fx","social-foundation","sound-design","start","status","steam-sdk-integration","store-creatives","store-listing","studio","subscription-design","team","test-game","three-setup","twa-wrap","ui-pipeline","ui-review","visual-qa","visual-style","visual-upgrade","vk-sdk-integration","vkplay-sdk-integration","write-skill","yandex-ads","yandex-sdk-integration"]};
+var FORGE_META={"version":"4.68.61","canonicalSkills":145,"codexSkills":148,"routerSkills":3,"skillNames":["3d-perf","add-pipeline","advisor","analyze-game","analyze-project","anon-auth-sync","app","app-data-flow","app-data-model","app-notifications","app-onboarding-flow","app-permissions","app-search","app-settings","app-ux-polish","appmetrica-integration","art-direction","art-prompts","asset-generation","asset-library","asset-scan","audit-requirements","auto-release","autopilot","build-apk","bundle-libs","business-app-foundation","capacitor-wrap","choose-backend-stack","continue","convert","convert-all","credentials-check","debugcheck-enhance","deepen-game","deploy","design-pipeline","do","doc","education-foundation","fill-rustore","fill-steam","fill-vk","fill-vkplay","fill-yandex","finance-app-foundation","find-or-make-skill","find-skill","find-skills","fix-moderation","fix-ui","forge-diagnostics","forge-metrics","full-pipeline","gacha-meta","game","game-design","game-polish","game-tutorial","gameplay-balance","gate","godot-engine","grilling","handoff","health-app-foundation","i18n-foundation","image-studio","improve","info-hierarchy","layout-system","learn-sdk","level-design","localize","mcp-server","mobile-adapt","mobile-game-ui","mobile-ready","modularize-existing-project","monetization-design","monetization-strategy","multiplayer","mvp-to-yandex","mytracker","new-project","phase-1-analyze","phase-2-design","phase-3-construct","phase-4-visual","phase-5-tech","phase-6-listing","phase-7-test","phase-8-release","phase-9-live","pipeline","pixel-art","pixel-art-pipeline","plan","polish-app","port","procedural-geo","product-metrics","promo-screens","prompt-compiler","pwa-convert","rebuild","release-all","release-max","release-ok","release-ready","release-rustore","release-steam","release-telegram","release-vk","release-vkplay","release-web","release-yandex","reprocess","research-references","review","rustore-publish","saas-foundation","screen-flow","seasonal-event","server-detect","shader-fx","social-foundation","sound-design","start","status","steam-sdk-integration","store-creatives","store-listing","studio","subscription-design","team","test-game","three-setup","twa-wrap","ui-pipeline","ui-review","visual-qa","visual-style","visual-upgrade","vk-sdk-integration","vkplay-sdk-integration","write-skill","yandex-ads","yandex-sdk-integration"]};
 /* FORGE_META_END */
 var FORGE_AGENT_MODE=localStorage.getItem('forge_agent_mode')||'claude';
 function setAgentMode(mode){
@@ -1689,7 +1711,7 @@ render();
 /* ФАЗЫ КОНВЕЙЕРА — единый источник для кнопок копирования.
    ПРАВИЛО ДВИЖКА: при изменении фаз обновляй PH_DATA здесь же (drift-guard следит,
    что все phase-слаги из .claude/skills присутствуют в этом файле). */
-const PH_VER='v4.68.60';
+const PH_VER='v4.68.61';
 const PH_DATA=[
  {id:'phase-1-analyze',model:'Claude opus · Codex Sol H',hk:'1',name:'Ф1 Анализ+метрики',c:'/phase-1-analyze <папка>',x:'$phase-1-analyze <папка>',launch:'node ../project-forge/scripts/codex-phase.mjs 1 --cwd .'},
  {id:'phase-2-design',model:'Claude opus · Codex Sol H',hk:'2',name:'Ф2 Дизайн+монетизация',c:'/phase-2-design',x:'$phase-2-design',launch:'node ../project-forge/scripts/codex-phase.mjs 2 --cwd .'},
@@ -1780,6 +1802,85 @@ function costRender(){
       '<div class="cost-metric" style="grid-column:1/-1"><span>Model policy</span><b>'+costEsc(policy.expectedModel||'n/a')+'/'+costEsc(policy.expectedReasoning||'n/a')+' — '+(policy.observed?(policy.respected?'✓ respected':'✗ mismatch'):'launch enforced; rollout unavailable')+'</b></div>'+
       '</div>'+warningHtml+'</article>';
   }).join('');
+}
+const PRODUCT_RELEASES=new Map();
+let PRODUCT_PORTFOLIO=null;
+function productDrag(e,on){e.preventDefault();document.getElementById('productDrop').classList.toggle('drag',on)}
+function productDropFiles(e){e.preventDefault();productDrag(e,false);productLoadFiles(e.dataTransfer.files)}
+function productMedian(values){values=values.filter(Number.isFinite).sort(function(a,b){return a-b});if(!values.length)return null;const m=Math.floor(values.length/2);return values.length%2?values[m]:(values[m-1]+values[m])/2}
+function productMetric(records,pick){const values=records.map(pick).filter(function(v){return v!=null&&Number.isFinite(Number(v))}).map(Number);return{median:productMedian(values),samples:values.length,coveragePct:records.length?Math.round(values.length/records.length*10000)/100:0}}
+function productLocalSummary(records){
+  const released=records.filter(function(r){return r.release&&r.release.status==='released'});
+  const knownMod=released.filter(function(r){return r.moderation&&r.moderation.firstPass!=null});
+  return{releases:released.length,
+    timeToReleaseMs:productMetric(released,function(r){return r.time&&r.time.leadTimeMs}),
+    trackedActiveMs:productMetric(released,function(r){return r.time&&r.time.trackedActiveMs}),
+    aiCostUsd:productMetric(released,function(r){return r.ai&&r.ai.costUsd}),
+    repairCycles:productMetric(released,function(r){return r.repairs&&r.repairs.total}),
+    preReleaseDefects:productMetric(released,function(r){return r.defects&&r.defects.preRelease}),
+    automationPercent:productMetric(released,function(r){return r.automation&&r.automation.percent}),
+    moderation:{samples:knownMod.length,coveragePct:released.length?Math.round(knownMod.length/released.length*10000)/100:0,
+      firstPassRatePct:knownMod.length?Math.round(knownMod.filter(function(r){return r.moderation.firstPass}).length/knownMod.length*10000)/100:null,
+      eventualPassRatePct:knownMod.length?Math.round(knownMod.filter(function(r){return r.moderation.eventualPass}).length/knownMod.length*10000)/100:null}}
+}
+function productDuration(ms){if(ms==null||!Number.isFinite(Number(ms)))return'unknown';const h=Number(ms)/36e5;if(h>=48)return(h/24).toFixed(1)+' d';if(h>=1)return h.toFixed(1)+' h';return(Number(ms)/6e4).toFixed(1)+' min'}
+function productValue(metric,format){return metric&&metric.median!=null?format(metric.median):'unknown'}
+function productCoverage(metric){return metric?'n='+metric.samples+' · '+metric.coveragePct+'% coverage':'n=0'}
+async function productLoadFiles(files){
+  for(const file of Array.from(files||[])){
+    try{
+      const value=JSON.parse(await file.text());
+      if(value.kind==='forge.release-metrics'&&value.release&&value.time){
+        PRODUCT_RELEASES.set(String(value.project)+':'+String(value.release.id),value);
+      }else if(value.kind==='forge.portfolio-metrics'&&value.summary){PRODUCT_PORTFOLIO=value}
+      else throw new Error('неподдерживаемый формат Forge product metrics');
+    }catch(error){showToast(file.name+': '+error.message)}
+  }
+  productRender();
+  const input=document.getElementById('productMetricFiles');if(input)input.value='';
+}
+function productGateHtml(comparison,releaseCount){
+  if(!comparison){
+    const width=Math.min(100,releaseCount/60*100);
+    return '<div class="product-stamp">Evidence ledger</div><div class="product-gate-copy"><b>'+releaseCount+' релизов измерено.</b> Для доказуемого before/after сформируйте portfolio.json с датой разделения когорт. Цель 60 — ориентир, но каждый KPI всё равно требует собственной полноты.<div class="product-rail"><i style="width:'+width+'%"></i></div></div>';
+  }
+  const base=comparison.baseline&&comparison.baseline.releases||0,current=comparison.current&&comparison.current.releases||0,min=comparison.minimumCohort||10;
+  const width=Math.min(100,Math.min(base,current)/min*100);
+  const eligible=Array.isArray(comparison.eligibleMetrics)?comparison.eligibleMetrics.length:0;
+  const stamp=comparison.claimEligible?eligible+' KPI READY':'NOT READY';
+  const warning=comparison.warning?' '+costEsc(comparison.warning):'';
+  return '<div class="product-stamp">'+stamp+'</div><div class="product-gate-copy"><b>Baseline '+base+' / Current '+current+'.</b> Публично используйте только KPI с достаточным n; unknown и partial не считаются нулём.'+warning+'<div class="product-rail"><i style="width:'+width+'%"></i></div></div>';
+}
+function productSummaryCards(summary,comparison){
+  const cards=[
+    ['Цикл релиза',productValue(summary.timeToReleaseMs,productDuration),productCoverage(summary.timeToReleaseMs)],
+    ['AI cost / release',productValue(summary.aiCostUsd,function(v){return'$'+Number(v).toFixed(4)}),productCoverage(summary.aiCostUsd)],
+    ['Repair cycles',productValue(summary.repairCycles,function(v){return String(v)}),productCoverage(summary.repairCycles)],
+    ['Defects before release',productValue(summary.preReleaseDefects,function(v){return String(v)}),productCoverage(summary.preReleaseDefects)],
+    ['Автоматизировано',productValue(summary.automationPercent,function(v){return Number(v).toFixed(1)+'%'}),productCoverage(summary.automationPercent)],
+    ['Moderation first-pass',summary.moderation&&summary.moderation.firstPassRatePct!=null?summary.moderation.firstPassRatePct+'%':'unknown',summary.moderation?'n='+summary.moderation.samples+' · '+summary.moderation.coveragePct+'% coverage':'n=0']
+  ];
+  const changes=comparison&&comparison.changes||{};
+  const keys=['timeToReleaseMs','aiCostUsd','repairCycles','preReleaseDefects','automationPercent','moderationFirstPassRate'];
+  return cards.map(function(card,index){const change=changes[keys[index]];const delta=change&&change.claimEligible?'<div class="cost-ok">↑ '+change.improvementPct+'% improvement · n='+change.baselineSamples+'/'+change.currentSamples+'</div>':'';
+    return '<article class="cost-card"><div class="cost-card-title">'+costEsc(card[0])+'</div><div style="font:800 23px/1.1 monospace;margin:10px 0 5px">'+costEsc(card[1])+'</div><div class="cost-source">'+costEsc(card[2])+'</div>'+delta+'</article>'}).join('')
+}
+function productLedgerRows(records){
+  return records.slice().sort(function(a,b){return String(b.release.releasedAt||b.generatedAt).localeCompare(String(a.release.releasedAt||a.generatedAt))}).slice(0,30).map(function(r){
+    const mod=r.moderation&&r.moderation.firstPass!=null?(r.moderation.firstPass?'PASS':'FAIL'):'unknown';
+    const cost=r.ai&&r.ai.costUsd!=null?'$'+Number(r.ai.costUsd).toFixed(4):'unknown';
+    return '<div class="product-row"><div class="product-cell"><span>Release</span><b>'+costEsc(r.project)+' · '+costEsc(r.release.id)+'</b></div><div class="product-cell"><span>Cycle</span><b>'+productDuration(r.time&&r.time.leadTimeMs)+'</b></div><div class="product-cell"><span>AI cost</span><b>'+costEsc(cost)+'</b></div><div class="product-cell"><span>Repairs</span><b>'+costEsc(r.repairs&&r.repairs.total)+'</b></div><div class="product-cell"><span>Defects</span><b>'+costEsc(r.defects&&r.defects.preRelease)+'</b></div><div class="product-cell"><span>Moderation</span><b>'+costEsc(mod)+'</b></div></div>'
+  }).join('')
+}
+function productRender(){
+  const records=Array.from(PRODUCT_RELEASES.values());
+  const summary=PRODUCT_PORTFOLIO&&PRODUCT_PORTFOLIO.summary||productLocalSummary(records);
+  const comparison=PRODUCT_PORTFOLIO&&PRODUCT_PORTFOLIO.comparison||null;
+  const gate=document.getElementById('productClaim');
+  gate.className='product-gate '+(comparison&&comparison.claimEligible?'ready':records.length||summary.releases?'':'empty');
+  gate.innerHTML=productGateHtml(comparison,summary.releases||records.length);
+  document.getElementById('productSummary').innerHTML=productSummaryCards(summary,comparison);
+  document.getElementById('productLedger').innerHTML=productLedgerRows(records);
 }
 phRender();
 setAgentMode(FORGE_AGENT_MODE);

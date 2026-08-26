@@ -28,7 +28,7 @@
 Кратко:
 - **Core**: Node.js 20+, ES modules (.mjs), bash + PowerShell для setup
 - **Tooling**: только встроенные модули Node (`fs`, `path`, `child_process`) — no runtime deps
-- **Skills**: 143 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
+- **Skills**: 145 canonical markdown workflows в `.claude/skills/{name}/SKILL.md` + 3 generated Codex routers
 - **Hooks**: 9 .mjs файлов в `.claude/hooks/`
 - **Agents**: 21 canonical markdown roles в `.claude/agents/` + generated Codex TOML mirrors
 - **Knowledge base**: 61 SKILL.md в `./skills/` (referenced by command skills)
@@ -38,7 +38,7 @@
 
 - **9 platforms** — yandex, vk, telegram, ok, max, rustore, web, steam, vkplay
 - **34 validators** — pre-submit gate per platform
-- **143 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
+- **145 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
 - **9 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous, phase-visual-claim-gate
 - **21 agents** — platform builders + design/art/QA/security/research/AI Studio specialist roles
 - **Dashboard** — `dashboard.html` для project tracking + quick prompt copy
@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.60 (current source line)
+### Version: v4.68.61 (current source line)
 
+- 2026-08-27: **v4.68.61** — local release telemetry derives time/cost/repairs/defects/moderation/automation from durable evidence, records bounded external facts, compares median cohorts with per-KPI sample/coverage gates and renders claim readiness in Dashboard.
 - 2026-08-26: **v4.68.60** — project-specific Godot scene/script smokes now run only through an isolated headless process-tree-bounded runner with explicit success markers; raw working-tree `godot_console` smoke commands are forbidden.
 - 2026-08-26: **v4.68.59** — an exact Windows root-certificate diagnostic is nonblocking only after trusted Godot protocol/artifact success; terminal phase block replay is idempotent and only `reopen` may create a fresh Task.
 - 2026-08-26: **Q3-009 pilot, Run 04** — v4.68.58 installed cleanly across 34 siblings; Circuit Courier passed host construct plus native BFS/save/tutorial/layout/capture checks, while the restricted session exposed certificate-noise misclassification and terminal-block replay defects fixed by v4.68.59.

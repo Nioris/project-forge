@@ -30,6 +30,7 @@ backend/node_modules/
 wiki/diagnostics/forge-events*.jsonl
 wiki/diagnostics/codex-cost/*.json
 .forge/runs/
+.forge/metrics/
 .forge/git-checkpoints.json
 .forge/git-checkpoints.lock
 .forge/git-checkpoint-operation.lock

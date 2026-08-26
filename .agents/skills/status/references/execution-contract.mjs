@@ -5,7 +5,7 @@ import {
   statSync, unlinkSync, writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_FORGE_ROOT, assertSkillTaskCompatibility, contractScopeAllows, readSkillContract,
@@ -284,7 +284,7 @@ export function ensureRuntimeGitExclude(projectRoot) {
     const file = path.join(info, 'exclude');
     const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
     const needed = [
-      '.forge/runs/', '.forge/git-checkpoints.json', '.forge/git-checkpoints.lock',
+      '.forge/runs/', '.forge/metrics/', '.forge/git-checkpoints.json', '.forge/git-checkpoints.lock',
       '.forge/git-checkpoint-operation.lock', '.forge/*.tmp',
     ];
     const missing = needed.filter(line => !current.split(/\r?\n/).includes(line));
@@ -462,12 +462,16 @@ export function recordTaskResult({ projectRoot, taskId, result, workflowDir = WO
     const now = new Date().toISOString();
     const taskStatus = taskStatusForNode(target, targetNode);
     const completedNodes = [...new Set([...(run.state.completedNodes || []), ...(target !== current ? [current] : [])])];
+    const defectFingerprints = (normalized.verification?.items || []).flatMap(item => (item.issues || []).map(issue =>
+      createHash('sha256').update(`${item.id || ''}\0${issue.file || ''}\0${issue.line || ''}\0${issue.rule || ''}\0${issue.message || ''}`).digest('hex').slice(0, 20)))
+      .slice(0, 50);
     const event = {
       event: exhausted ? 'attempt_budget_exhausted' : 'run_result',
       node: current,
       result: normalized.status,
       next: target,
       code: normalized.code,
+      defectFingerprints,
       at: now,
     };
     const updated = {

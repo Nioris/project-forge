@@ -63,6 +63,8 @@
 .agents/skills/fix-moderation/SKILL.md
 .agents/skills/fix-ui/SKILL.md
 .agents/skills/forge-diagnostics/SKILL.md
+.agents/skills/forge-metrics/SKILL.md
+.agents/skills/forge-metrics/references/measurement-contract.md
 .agents/skills/full-pipeline/SKILL.md
 .agents/skills/gacha-meta/SKILL.md
 .agents/skills/game-design/SKILL.md
@@ -183,6 +185,7 @@
 .agents/skills/status/references/phase-contracts/phase-9.json
 .agents/skills/status/references/phase-state.mjs
 .agents/skills/status/references/png-integrity.mjs
+.agents/skills/status/references/product-telemetry.mjs
 .agents/skills/status/references/project-engine.mjs
 .agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
@@ -321,6 +324,8 @@
 .claude/skills/fix-moderation/SKILL.md
 .claude/skills/fix-ui/SKILL.md
 .claude/skills/forge-diagnostics/SKILL.md
+.claude/skills/forge-metrics/SKILL.md
+.claude/skills/forge-metrics/references/measurement-contract.md
 .claude/skills/full-pipeline/SKILL.md
 .claude/skills/gacha-meta/SKILL.md
 .claude/skills/game-design/SKILL.md
@@ -440,6 +445,7 @@
 .claude/skills/status/references/phase-contracts/phase-9.json
 .claude/skills/status/references/phase-state.mjs
 .claude/skills/status/references/png-integrity.mjs
+.claude/skills/status/references/product-telemetry.mjs
 .claude/skills/status/references/project-engine.mjs
 .claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
@@ -757,6 +763,7 @@ schemas/godot-export.schema.json
 schemas/godot-playtest.schema.json
 schemas/godot-project.schema.json
 schemas/godot-visual.schema.json
+schemas/release-metrics.schema.json
 schemas/run-result.schema.json
 schemas/skill-contract.schema.json
 schemas/store-listing.schema.json
@@ -862,6 +869,7 @@ scripts/fixtures/godot-projects/pass-gdscript/project.godot
 scripts/fixtures/godot-release/fake-godot-exporter.mjs
 scripts/fixtures/godot-tools/fake-godot.mjs
 scripts/forge-agent.mjs
+scripts/forge-metrics.mjs
 scripts/forge-search-doctor.mjs
 scripts/forge-search-selftest.mjs
 scripts/forge-secret-helper.mjs
@@ -930,6 +938,7 @@ scripts/sync-to-obsidian.ps1
 scripts/sync.bat
 scripts/sync.mjs
 scripts/sync.ps1
+scripts/test-forge-product-metrics.mjs
 scripts/update-advisor-catalog.mjs
 scripts/use-template.mjs
 scripts/validate-ai-prompt.mjs
@@ -1052,6 +1061,7 @@ wiki/_current.md.template
 wiki/_map.md
 wiki/api.md
 wiki/architecture/data-flow.md
+wiki/architecture/forge-product-telemetry.md
 wiki/architecture/stack.md
 wiki/bugs/_template.md
 wiki/bugs/bump-version-dry-run-mutated-source.md

@@ -7,7 +7,8 @@ phases:
   - 9
 modes:
   - phase
-requires: []
+requires:
+  - skill:forge-metrics
 reads:
   - "**"
 writes:
@@ -50,6 +51,8 @@ machine-readable progression state, а сами артефакты остают�
 2. Rating-watch: рейтинг из Консоли → таблица в metrics.md (красная линия 2.13, тревога <40).
 3. `$audit-requirements` — ежемесячно или при любом отказе.
 4. `$product-metrics` re-review — каждые 30 дней (факт против таргетов).
+5. `$forge-metrics` — запиши фактические `submitted/passed/rejected` moderation events и exact AI
+   invoice/API cost, затем обнови портфельный отчёт. Если площадка/API не отдали факт, оставь `unknown`.
 
 
 ## 🎛️ AI STUDIO 4.67 — измеряемый creative loop

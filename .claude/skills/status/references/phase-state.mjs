@@ -16,6 +16,7 @@ import { validatePhaseCompletion } from './phase-completion-gate.mjs';
 import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, readTaskRun, recordTaskResult, RESUME_POLICIES } from './execution-contract.mjs';
 import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
 import { readGitCheckpointLedger, runPhaseGitCheckpoint, sanitizeGitCheckpointMessage } from './project-git.mjs';
+import { refreshProductTelemetry } from './product-telemetry.mjs';
 
 const PHASES = {
   1: 'Analyze', 2: 'Design', 3: 'Construct', 4: 'Visual', 5: 'Tech',
@@ -219,6 +220,17 @@ function persistMarker() {
   atomicWriteJson(outPath, record);
 }
 
+function refreshTelemetry() {
+  try {
+    const { report } = refreshProductTelemetry(root);
+    console.log(`[Forge Metrics] ${report.release.id}: ${report.release.status}, ${report.repairs.total} repair cycle(s), ${report.defects.preRelease} pre-release defect(s)`);
+  } catch (error) {
+    // Measurement must never falsify phase authority. Surface the coverage gap and let the
+    // release gate/report show that telemetry is incomplete instead of rewriting phase state.
+    console.warn(`[Forge Metrics] snapshot unavailable: ${String(error?.message || error).slice(0, 500)}`);
+  }
+}
+
 function executionResult({ status, code, message, failure = null, stop = null, evidence = [], checks = [], forceNew = false }) {
   const initial = ensurePhaseTaskRun({
     projectRoot: root,
@@ -263,6 +275,7 @@ if ((command === 'start' || command === 'reopen' || command === 'answer') && !st
     forceNew: command === 'reopen',
   });
   persistMarker();
+  refreshTelemetry();
   console.error(`[BLOCKED] ${record.reason}`);
   process.exit(1);
 }
@@ -360,6 +373,7 @@ if (command === 'start' || command === 'reopen' || command === 'answer') {
       evidence: gate.evidence || [],
     });
     persistMarker();
+    refreshTelemetry();
     console.error(`[BLOCKED] Phase ${phase} ${PHASES[phase]} completion rejected.`);
     for (const failure of gate.failures) console.error(`  - ${failure}`);
     process.exit(1);
@@ -405,3 +419,5 @@ if (command === 'complete' && process.env.FORGE_HOST_OWNS_GIT_CHECKPOINT === '1'
     process.exitCode = 2;
   }
 }
+
+refreshTelemetry();

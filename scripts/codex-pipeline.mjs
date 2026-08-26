@@ -22,6 +22,7 @@ import {
   savePhaseCostReport,
 } from './lib/codex-cost-report.mjs';
 import { atomicWriteJson, ensurePhaseTaskRun, latestPhaseRunResult } from '../.claude/skills/status/references/execution-contract.mjs';
+import { refreshProductTelemetry } from '../.claude/skills/status/references/product-telemetry.mjs';
 import {
   checkpointProjectGit, readGitCheckpointLedger, runPhaseGitCheckpoint, sanitizeGitCheckpointMessage,
 } from '../.claude/skills/status/references/project-git.mjs';
@@ -667,6 +668,13 @@ export async function runPipeline({
       } catch (error) {
         reportHostGitCheckpointFailure(root, phase, 'complete', error);
         return 2;
+      }
+
+      try {
+        const { report: productReport } = refreshProductTelemetry(root);
+        console.log(`[Forge Metrics] refreshed ${productReport.release.id} after Phase ${phase} cost/Git evidence.`);
+      } catch (error) {
+        console.warn(`[Forge Metrics] post-phase snapshot unavailable: ${String(error?.message || error).slice(0, 500)}`);
       }
 
       if (phase === 9) {

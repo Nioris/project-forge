@@ -1,4 +1,4 @@
-# Project Forge v4.68.60 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.61 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,11 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.61 changelog (measurable release delivery)
+
+Phases refresh local `.forge/metrics`; Phase 8 archives time, AI cost, repairs, defects, moderation and
+automation. Portfolio medians require per-KPI coverage and 30+30 samples; unknown never becomes zero.
+
 ## v4.68.60 changelog (bounded isolated supplemental Godot smoke)
 
 Project-specific Godot smoke scenes/scripts now run through `run-godot-smoke.mjs`: an isolated
@@ -510,8 +515,3 @@ Regressions cover success, missing markers, traversal, source immutability and h
 
 The exact Windows root-certificate diagnostic is nonblocking only after trusted native markers/reports and
 valid artifacts. Terminal phase block replay is idempotent; conflicting transitions require explicit reopen.
-
-## v4.68.58 changelog (crash-safe isolated Godot runtime)
-
-Godot runtimes use temporary user profiles and class caches. GDScript construct checks bounded native
-startup without editor import; real parse/compiler errors remain project defects.
