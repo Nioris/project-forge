@@ -1,5 +1,5 @@
 ---
-status: fixed_pending_pilot
+status: fixed
 severity: high
 tags: [bug, codex, pipeline, sandbox, q3-009]
 ---
@@ -42,7 +42,8 @@ unknown resume policy `rerun`, which was validated too late and surfaced an inte
 
 - Pilot diagnostic fingerprint: `e082064537bb69ad2916`.
 - Targeted checks: `scripts/check-codex-pipeline.mjs` and `scripts/check-execution-contract.mjs`.
-- Real verification: reopen the same pilot on v4.68.54 and require Phase 1 evidence to pass its gate.
+- Real verification: the same pilot wrote all Phase 1 evidence and reached `PHASE_CONTRACT_PASSED` on
+  v4.68.54. Diagnostic `e082064537bb69ad2916` was resolved after that run.
 
 ## Related
 

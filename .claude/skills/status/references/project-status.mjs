@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { summarizeForgeDiagnostics } from '../../../hooks/lib/forge-diagnostics.mjs';
 import { listTaskRuns } from './execution-contract.mjs';
+import { readGitCheckpointLedger } from './project-git.mjs';
 
 const PHASES = [
   [1, 'Analyze'], [2, 'Design'], [3, 'Construct'], [4, 'Visual'], [5, 'Tech'],
@@ -158,6 +159,7 @@ for (const [n, name] of PHASES) {
     if (Number(r.phase) === n && ['in_progress', 'blocked', 'complete', 'ongoing'].includes(r.state)) explicit.set(n, r);
   } catch {}
 }
+const gitCheckpointState = readGitCheckpointLedger(root);
 
 const warnings = [];
 const phaseRows = [];
@@ -171,16 +173,45 @@ for (const [n, name] of PHASES) {
   let state;
   let source = marker ? 'marker' : markerManaged ? 'marker-absent' : 'inferred';
   let reason = marker?.reason || null;
+  const gitCheckpoint = gitCheckpointState.valid
+    ? gitCheckpointState.ledger.phases[String(n)] || null
+    : null;
   const ev = marker?.evidence?.length ? marker.evidence : fallback[n].evidence;
   if (marker) state = marker.state;
   else if (markerManaged) state = 'pending';
   else state = artifactState;
 
+  const markerCompleted = marker?.state === 'complete' || (n === 9 && marker?.state === 'ongoing');
+  const checkpointBlocked = markerCompleted && (
+    ['pending', 'failed'].includes(gitCheckpoint?.status)
+    || (n >= 8 && (!gitCheckpointState.valid || !gitCheckpoint))
+  );
+  if (checkpointBlocked) {
+    state = 'blocked';
+    source = 'marker-git-checkpoint';
+    reason = gitCheckpoint?.message
+      ? `Git checkpoint ${gitCheckpoint.status}: ${gitCheckpoint.message}`
+      : gitCheckpointState.valid && gitCheckpoint
+        ? `Git checkpoint ${gitCheckpoint?.status || 'pending'}; reconciliation is required before advancing.`
+        : gitCheckpointState.valid
+          ? 'Git checkpoint is missing; reconciliation is required before advancing.'
+          : `Git checkpoint ledger is invalid; reconciliation is required before advancing: ${gitCheckpointState.error}`;
+    warnings.push(`Phase ${n} ${name} is held at its Git checkpoint until reconciliation succeeds.`);
+  }
+
   if (!foundCurrent && !['complete'].includes(state)) {
     currentPhase = n;
     foundCurrent = true;
   }
-  phaseRows.push({ phase: n, name, state, source, reason, evidence: ev, artifactState });
+  phaseRows.push({
+    phase: n, name, state, source, reason, evidence: ev, artifactState,
+    gitCheckpoint: gitCheckpoint ? {
+      status: gitCheckpoint.status,
+      requiredRemote: gitCheckpoint.requiredRemote,
+      updatedAt: gitCheckpoint.updatedAt,
+      message: gitCheckpoint.message,
+    } : null,
+  });
 }
 if (!foundCurrent) currentPhase = 9;
 
@@ -266,6 +297,8 @@ const result = {
     artifactFacts: true,
     wikiCurrent: exists('wiki/_current.md') ? 'supplemental' : 'missing',
     claudeState: 'ignored-for-progress',
+    gitCheckpointLedger: !gitCheckpointState.present ? 'missing'
+      : gitCheckpointState.valid ? 'valid' : 'invalid',
   },
   warnings,
 };
@@ -277,7 +310,7 @@ if (jsonMode) {
 const icon = s => s === 'complete' ? '[OK]' : s === 'blocked' ? '[BLOCKED]' : s === 'in_progress' || s === 'partial' ? '[..]' : s === 'ongoing' ? '[LIVE]' : '[ ]';
 console.log(`Project Forge status snapshot: ${projectName}`);
 console.log(`Forge: ${forgeVersion || 'unknown'} | type: ${projectType} | current: Phase ${currentPhase} ${currentRow?.name || ''} (${currentRow?.state || 'unknown'})`);
-for (const p of phaseRows) console.log(`${icon(p.state)} ${p.phase} ${p.name}${p.source === 'marker' ? ' [marker]' : ''}`);
+for (const p of phaseRows) console.log(`${icon(p.state)} ${p.phase} ${p.name}${p.source.startsWith('marker') ? ' [marker]' : ''}`);
 console.log(`AI Studio: config=${aiConfig ? 'yes' : 'no'} style=${styleBibleState} prompts=${promptCount} approved=${approvedCount} visualQA=${visualQaCount}`);
 console.log(`Health: viewport=${health.viewport} touch=${health.touchAction} sdkInit=${health.yandexInit} ready=${health.loadingReady} i18n=${health.i18nRuntime} builds=${health.builds}`);
 console.log(`Forge diagnostics: open=${diagnostics.open.length} critical=${diagnostics.counts.critical} error=${diagnostics.counts.error} warn=${diagnostics.counts.warn} parseErrors=${diagnostics.parseErrors.length}`);

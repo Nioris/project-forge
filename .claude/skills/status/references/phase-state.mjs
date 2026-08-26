@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { validatePhaseCompletion } from './phase-completion-gate.mjs';
 import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, recordTaskResult, RESUME_POLICIES } from './execution-contract.mjs';
 import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
+import { readGitCheckpointLedger, runPhaseGitCheckpoint, sanitizeGitCheckpointMessage } from './project-git.mjs';
 
 const PHASES = {
   1: 'Analyze', 2: 'Design', 3: 'Construct', 4: 'Visual', 5: 'Tech',
@@ -77,6 +78,29 @@ const subagentLimit = Math.min(
 );
 
 const root = process.cwd();
+if (phase > 1) {
+  const checkpointState = readGitCheckpointLedger(root);
+  let blockedCheckpoint = null;
+  for (let priorPhase = 1; priorPhase < phase; priorPhase++) {
+    let priorMarker = null;
+    try {
+      priorMarker = JSON.parse(fs.readFileSync(path.join(root, 'wiki', 'phases', `phase-${priorPhase}.json`), 'utf8'));
+    } catch {}
+    const priorCompleted = priorMarker?.state === 'complete' || (priorPhase === 9 && priorMarker?.state === 'ongoing');
+    if (!priorCompleted) continue;
+    const checkpoint = checkpointState.valid ? checkpointState.ledger.phases[String(priorPhase)] : null;
+    if (['pending', 'failed'].includes(checkpoint?.status)
+      || (priorPhase >= 8 && (!checkpointState.valid || !checkpoint))) {
+      blockedCheckpoint = { phase: priorPhase, checkpoint, ledgerError: checkpointState.error };
+      break;
+    }
+  }
+  if (blockedCheckpoint) {
+    const detail = blockedCheckpoint.checkpoint?.message || blockedCheckpoint.ledgerError || blockedCheckpoint.checkpoint?.status || 'pending';
+    console.error(`[BLOCKED] Phase ${phase} cannot start before Phase ${blockedCheckpoint.phase} Git checkpoint reconciliation succeeds: ${detail}`);
+    process.exit(2);
+  }
+}
 let engineProfile;
 try {
   engineProfile = readTrustedProjectEngine(root);
@@ -314,14 +338,12 @@ if (command === 'start' || command === 'reopen' || command === 'answer') {
 persistMarker();
 console.log(`[OK] Phase ${phase} ${PHASES[phase]} -> ${record.state}${record.reason ? ` (${record.reason})` : ''}`);
 
-if (command === 'complete') {
+if (command === 'complete' && process.env.FORGE_HOST_OWNS_GIT_CHECKPOINT === '1') {
+  console.log('[Forge Git] checkpoint delegated to the pipeline host');
+} else if (command === 'complete') {
   try {
-    const { checkpointProjectGit } = await import('./project-git.mjs');
-    const git = checkpointProjectGit({
-      projectRoot: root,
-      message: `forge: complete phase ${phase} ${PHASES[phase]}`,
-      allowRemoteFailure: true,
-      allowRemote: phase >= 8 || !fs.existsSync(path.join(root, '.forge', 'agent.json')),
+    const { result: git } = runPhaseGitCheckpoint({
+      projectRoot: root, phase, phaseName: PHASES[phase], stage: 'complete',
     });
     if (git.skipped) console.log(`[Forge Git] skipped: ${git.reason}`);
     else {
@@ -332,6 +354,7 @@ if (command === 'complete') {
       console.log(`[Forge Git] ${parts.join('; ')}`);
     }
   } catch (error) {
-    console.warn(`[Forge Git] local checkpoint warning: ${error.message}`);
+    console.error(`[Forge Git] phase checkpoint failed; phase advancement is blocked until retry: ${sanitizeGitCheckpointMessage(error.message)}`);
+    process.exitCode = 2;
   }
 }

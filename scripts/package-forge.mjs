@@ -7,9 +7,26 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const args = process.argv.slice(2);
+const usage = `Usage: node scripts/package-forge.mjs [OUTPUT.zip] [--replace-incomplete]\n\nBuild one immutable Project Forge ZIP from MANIFEST.txt.\n\nOptions:\n  --replace-incomplete  Replace only an existing archive that fails manifest verification.\n  -h, --help            Show this help without creating or changing an archive.`;
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(usage);
+  process.exit(0);
+}
+
+const unknownOptions = args.filter(arg => arg.startsWith('-') && arg !== '--replace-incomplete');
+const positional = args.filter(arg => !arg.startsWith('-'));
+if (unknownOptions.length || positional.length > 1) {
+  if (unknownOptions.length) console.error(`[X] Unknown option(s): ${unknownOptions.join(', ')}`);
+  if (positional.length > 1) console.error('[X] Only one output ZIP path may be specified.');
+  console.error(usage);
+  process.exit(2);
+}
+
 const version = JSON.parse(readFileSync(join(root, '.claude-plugin', 'plugin.json'), 'utf8')).version;
-const output = resolve(process.argv.slice(2).find(arg => !arg.startsWith('--')) || join(root, '..', `project-forge-v${version}.zip`));
-const replaceIncomplete = process.argv.includes('--replace-incomplete');
+const output = resolve(positional[0] || join(root, '..', `project-forge-v${version}.zip`));
+const replaceIncomplete = args.includes('--replace-incomplete');
 
 const manifest = readFileSync(join(root, 'MANIFEST.txt'), 'utf8').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 const files = ['MANIFEST.txt', ...manifest];

@@ -283,7 +283,10 @@ export function ensureRuntimeGitExclude(projectRoot) {
     mkdirSync(info, { recursive: true });
     const file = path.join(info, 'exclude');
     const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
-    const needed = ['.forge/runs/', '.forge/*.tmp'];
+    const needed = [
+      '.forge/runs/', '.forge/git-checkpoints.json', '.forge/git-checkpoints.lock',
+      '.forge/git-checkpoint-operation.lock', '.forge/*.tmp',
+    ];
     const missing = needed.filter(line => !current.split(/\r?\n/).includes(line));
     if (!missing.length) return false;
     appendFileSync(file, `${current && !current.endsWith('\n') ? '\n' : ''}${missing.join('\n')}\n`, 'utf8');

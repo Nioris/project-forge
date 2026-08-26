@@ -571,6 +571,9 @@ RELEASE_NOTES_v4.68.5.md
 RELEASE_NOTES_v4.68.50.md
 RELEASE_NOTES_v4.68.51.md
 RELEASE_NOTES_v4.68.54.md
+RELEASE_NOTES_v4.68.55.md
+RELEASE_NOTES_v4.68.56.md
+RELEASE_NOTES_v4.68.57.md
 RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
 RELEASE_NOTES_v4.68.8.md
@@ -813,6 +816,7 @@ scripts/check-inline-strings.mjs
 scripts/check-modularize-existing-project.mjs
 scripts/check-nested-dirs.mjs
 scripts/check-no-float-money.mjs
+scripts/check-package-forge.mjs
 scripts/check-phase-completion-gate.mjs
 scripts/check-phase4-visual-evidence.mjs
 scripts/check-pipeline-state.mjs
@@ -1045,6 +1049,7 @@ wiki/api.md
 wiki/architecture/data-flow.md
 wiki/architecture/stack.md
 wiki/bugs/_template.md
+wiki/bugs/codex-model-git-checkpoint-sandbox.md
 wiki/bugs/codex-pipeline-inherited-read-only.md
 wiki/changelog.md
 wiki/decisions/001-three-folder-discipline.md

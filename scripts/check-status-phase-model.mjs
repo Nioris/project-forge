@@ -81,6 +81,83 @@ try {
     ? ok('active Task is visible but cannot become a competing phase state')
     : bad('Task runtime changed or disappeared from canonical phase status');
 
+  const pCheckpoint=mk('release-checkpoint-block');
+  for (let n=1; n<=8; n++) {
+    w(pCheckpoint,`wiki/phases/phase-${n}.json`,JSON.stringify({schemaVersion:3,phase:n,state:'complete',reason:null,evidence:[]}));
+  }
+  const checkpointFile='.forge/git-checkpoints.json';
+  const checkpointLedger = status => ({
+    schemaVersion:1,updatedAt:'2026-08-26T00:00:00.000Z',phases:{
+      '8':{
+        phase:8,status,stage:'complete',requiredRemote:true,commit:null,
+        pushed:status==='complete',remote:status==='complete'?'Nioris/release-fixture':null,
+        remoteDeferred:false,skipped:false,message:status==='failed'?'push rejected':null,
+        updatedAt:'2026-08-26T00:00:00.000Z',
+      },
+    },
+  });
+  w(pCheckpoint,checkpointFile,JSON.stringify(checkpointLedger('failed')));
+  s=snap(pCheckpoint);
+  const failedReleaseRow=s.phases.find(row=>row.phase===8);
+  (s.currentPhase===8 && s.currentState==='blocked' && /push rejected/.test(s.stopPoint||'')
+    && failedReleaseRow?.source==='marker-git-checkpoint' && failedReleaseRow?.gitCheckpoint?.status==='failed')
+    ? ok('failed required Phase 8 Git publication holds status at Release after restart')
+    : bad(`failed release checkpoint advanced incorrectly: phase=${s.currentPhase}, state=${s.currentState}`);
+  w(pCheckpoint,checkpointFile,JSON.stringify(checkpointLedger('pending')));
+  s=snap(pCheckpoint);
+  (s.currentPhase===8 && s.currentState==='blocked')
+    ? ok('pending required Phase 8 Git publication cannot advance to Live')
+    : bad(`pending release checkpoint advanced to Phase ${s.currentPhase}`);
+  w(pCheckpoint,checkpointFile,JSON.stringify(checkpointLedger('complete')));
+  s=snap(pCheckpoint);
+  s.currentPhase===9 ? ok('completed Phase 8 Git publication releases the Live gate') : bad(`completed release checkpoint stayed at Phase ${s.currentPhase}`);
+  const dishonestComplete=checkpointLedger('complete');
+  dishonestComplete.phases['8'].pushed=false;
+  dishonestComplete.phases['8'].remote=null;
+  w(pCheckpoint,checkpointFile,JSON.stringify(dishonestComplete));
+  s=snap(pCheckpoint);
+  (s.currentPhase===8 && s.currentState==='blocked' && s.sources.gitCheckpointLedger==='invalid')
+    ? ok('a required remote checkpoint cannot claim complete without confirmed private push')
+    : bad(`unconfirmed complete release checkpoint advanced to Phase ${s.currentPhase}`);
+  const forgedLocalComplete=checkpointLedger('complete');
+  forgedLocalComplete.phases['8'].requiredRemote=false;
+  forgedLocalComplete.phases['8'].pushed=false;
+  forgedLocalComplete.phases['8'].remote=null;
+  w(pCheckpoint,checkpointFile,JSON.stringify(forgedLocalComplete));
+  s=snap(pCheckpoint);
+  (s.currentPhase===8 && s.currentState==='blocked' && s.sources.gitCheckpointLedger==='invalid')
+    ? ok('Phase 8 cannot forge a local-only complete checkpoint by clearing requiredRemote')
+    : bad(`forged local-only release checkpoint advanced to Phase ${s.currentPhase}`);
+  fs.rmSync(path.join(pCheckpoint,checkpointFile),{force:true});
+  s=snap(pCheckpoint);
+  const missingLedgerDirectStart=spawnSync(process.execPath,[phaseScript,'start','9'],{cwd:pCheckpoint,encoding:'utf8'});
+  (s.currentPhase===8 && s.currentState==='blocked' && missingLedgerDirectStart.status===2
+    && /checkpoint reconciliation/.test(missingLedgerDirectStart.stderr||''))
+    ? ok('a missing legacy Phase 8 ledger requires reconciliation before status or direct Phase 9 start can advance')
+    : bad(`missing release ledger was bypassed: phase=${s.currentPhase}, startExit=${missingLedgerDirectStart.status}`);
+  w(pCheckpoint,checkpointFile,'{not-json\n');
+  s=snap(pCheckpoint);
+  (s.currentPhase===8 && s.currentState==='blocked' && s.sources.gitCheckpointLedger==='invalid')
+    ? ok('a corrupt checkpoint ledger fails closed at the completed Release gate')
+    : bad(`corrupt checkpoint ledger did not hold Phase 8: phase=${s.currentPhase}, state=${s.currentState}`);
+
+  const pLocalCheckpoint=mk('local-checkpoint-block');
+  w(pLocalCheckpoint,'wiki/phases/phase-1.json',JSON.stringify({schemaVersion:3,phase:1,state:'complete',reason:null,evidence:[]}));
+  w(pLocalCheckpoint,checkpointFile,JSON.stringify({
+    schemaVersion:1,updatedAt:'2026-08-26T00:00:00.000Z',phases:{
+      '1':{
+        phase:1,status:'failed',stage:'complete',requiredRemote:false,commit:null,pushed:false,remote:null,
+        remoteDeferred:false,skipped:false,message:'local index lock failed',updatedAt:'2026-08-26T00:00:00.000Z',
+      },
+    },
+  }));
+  s=snap(pLocalCheckpoint);
+  const blockedDirectStart=spawnSync(process.execPath,[phaseScript,'start','2'],{cwd:pLocalCheckpoint,encoding:'utf8'});
+  (s.currentPhase===1 && s.currentState==='blocked' && blockedDirectStart.status===2
+    && /checkpoint reconciliation/.test(blockedDirectStart.stderr||''))
+    ? ok('an explicit failed local checkpoint blocks status and direct next-phase start until reconciliation')
+    : bad(`failed local checkpoint was bypassed: statusPhase=${s.currentPhase}, startExit=${blockedDirectStart.status}`);
+
   const p4=mk('stale-claude');
   w(p4,'WorkProgress/stale-claude/ANALYSIS.md','# analysis');
   w(p4,'wiki/architecture/metrics.md','# metrics');

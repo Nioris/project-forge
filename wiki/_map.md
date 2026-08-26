@@ -49,9 +49,13 @@
 
 ## Current Status
 
-### Version: v4.68.54 (latest released)
+### Version: v4.68.57 (latest released)
 
+- 2026-08-26: **v4.68.57** — Restart-safe host checkpoints now share one full operation lease across phase and manual entrypoints; packaging help/errors are side-effect free, while Phase 8+ still fails closed without a confirmed private push.
+- 2026-08-26: **v4.68.56 candidate rejected** — the immutable ZIP is preserved but was not published or installed: `package-forge.mjs --help` unexpectedly built it, and final review found that manual checkpoints still bypassed the phase runner's full lease.
+- 2026-08-26: **v4.68.55 candidate rejected** — the immutable ZIP is preserved but was not published or installed because a failed required Phase 8 push could be forgotten after restart, allowing Phase 9 selection without publication reconciliation.
 - 2026-08-26: **v4.68.54** — Codex phase sessions now receive an explicit project-only writable sandbox, never a full-host or hook-trust bypass; resumed STOP turns inherit the original policy, and invalid resume policies fail before durable state mutation.
+- 2026-08-26: **Q3-009 pilot, Run 02** — real Phase 1 reached both STOPs, repaired two evidence-gate failures and completed on v4.68.54. The model sandbox then correctly refused `.git/index.lock`, exposing that checkpoints must be owned by the parent host; v4.68.57 completes that restart-safe boundary.
 - 2026-08-26: **v4.68.53 candidate rejected** — the complete immutable ZIP is preserved but was not published or installed because final review found a stale current-release link in the Russian README.
 - 2026-08-26: **Q3-009 pilot, Run 01** — Godot Circuit Courier entered canonical Phase 1 and correctly stopped before evidence writes when the Codex pipeline inherited a read-only sandbox. The durable block is `PHASE1_WRITE_SCOPE_BLOCKED`; v4.68.54 selects `workspace-write`, rejects invalid resume policies cleanly and then repeats the same pilot from Phase 1.
 - 2026-08-26: **v4.68.52** — Engine-neutral native capability routing completes Godot GDScript Phases 5/7/8: real-window tech proof, two-process save/reload playtest and atomic immutable Windows release directories bound to engine-owned signed build receipts and safe no-extract ZIP verification.
@@ -495,9 +499,10 @@
 
 ### Next
 
-1. Ship, install and synchronize the v4.68.54 launcher and resume-policy repair.
-2. Reopen Q3-009 Phase 1 and finish the end-to-end native Godot pilot.
-3. Start Q3-008 only if the real pilot exposes an asset/runtime need.
+1. Ship, install and synchronize the v4.68.57 restart-safe host-owned Git checkpoint repair.
+2. Start Q3-009 Phase 2; verify the pending Phase 1 work becomes a local-only commit.
+3. Finish the end-to-end native Godot pilot.
+4. Start Q3-008 only if the real pilot exposes an asset/runtime need.
 
 ### Existing v4.8 backlog — priority order
 

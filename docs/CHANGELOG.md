@@ -4819,6 +4819,22 @@ Phase 1 documents pass without English workaround labels.
 marker-managed project, the first missing marker remains the current gate; later visual/SDK/listing/QA
 artifacts are reported as evidence ahead of gate without silently completing or skipping phases.
 
+## v4.68.51 changelog (evidence-bound visual acceptance)
+
+Phase 2 inventory → GPT Image targets → adapter capture → independent review.
+Missing/stale/fake shots, self-review, <6/10 and Critical/Major cannot complete Phase 4.
+
+## v4.68.52 changelog (engine-neutral Godot native test and release)
+
+Godot GDScript closes native Phases 5/7/8 with real-window proof, two-process save/reload and immutable
+Windows export. Engine-owned signed receipts, no-extract ZIP verification and an isolated test exporter
+block project-local false PASS. Common phases stay engine-neutral; Godot is the first complete adapter.
+
+## v4.68.54 changelog (safe Codex phase write boundary)
+
+Fresh Codex phases select `workspace-write` without full-host/hook bypasses. STOP resumes inherit that
+policy; invalid resume policies fail before durable state changes.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

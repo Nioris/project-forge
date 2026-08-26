@@ -1,4 +1,4 @@
-# Project Forge v4.68.54 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.57 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,19 +499,19 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
-## v4.68.54 changelog (safe Codex phase write boundary)
+## v4.68.57 changelog (restart-safe host Git checkpoints)
 
-Fresh Codex phase sessions now select `workspace-write` explicitly and never use full-host or hook-trust
-bypasses. Resumed STOP turns inherit the original session policy. Invalid resume policies are rejected
-before durable state changes, with regressions for both paths.
+Forge reconciles durable Git checkpoints before model access; Phase 8+ requires a private push. One
+PID-owned lease covers phase and manual entrypoints. Packaging help/errors cannot consume a version.
 
-## v4.68.52 changelog (engine-neutral Godot native test and release)
+## v4.68.56 changelog (rejected checkpoint candidate)
 
-Godot GDScript closes native Phases 5/7/8 with real-window proof, two-process save/reload and immutable
-Windows export. Engine-owned signed receipts, no-extract ZIP verification and an isolated test exporter
-block project-local false PASS. Common phases stay engine-neutral; Godot is the first complete adapter.
+An ignored atomic ledger makes completed-phase Git state restart-safe. Before the next model, Forge
+reconciles missing/failed checkpoints; failures also hold status and direct phase commands. Phases 1–7
+remain local-only; Phase 8+ requires a confirmed private push. The immutable ZIP was rejected before
+publication/install: `--help` unexpectedly built it, and manual checkpoints still bypassed the full lease.
 
-## v4.68.51 changelog (evidence-bound visual acceptance)
+## v4.68.55 changelog (rejected host-owned Git candidate)
 
-Phase 2 inventory → GPT Image targets → adapter capture → independent review.
-Missing/stale/fake shots, self-review, <6/10 and Critical/Major cannot complete Phase 4.
+The parent host owns Git while Codex stays workspace-scoped. This immutable candidate was rejected before
+publication/install because a failed Phase 8 push was not restart-safe.

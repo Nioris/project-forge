@@ -7,6 +7,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { atomicWriteJson, ensureRuntimeGitExclude } from './execution-contract.mjs';
 
 const DEFAULT_POLICY = {
   schemaVersion: 1,
@@ -26,6 +28,12 @@ assets/refs/
 assets/target/
 backend/node_modules/
 wiki/diagnostics/forge-events*.jsonl
+wiki/diagnostics/codex-cost/*.json
+.forge/runs/
+.forge/git-checkpoints.json
+.forge/git-checkpoints.lock
+.forge/git-checkpoint-operation.lock
+.forge/*.tmp
 .env
 .env.*
 !.env.example
@@ -79,6 +87,173 @@ export function loadProjectGitPolicy(projectRoot) {
     throw new Error('Forge automation only creates private GitHub repositories.');
   }
   return { policy, sources };
+}
+
+export function phaseCheckpointRemotePolicy(phase, { preflight = false } = {}) {
+  const publish = !preflight && Number(phase) >= 8;
+  return { allowRemote: publish, allowRemoteFailure: !publish };
+}
+
+export const GIT_CHECKPOINTS_RELATIVE_PATH = '.forge/git-checkpoints.json';
+
+export function gitCheckpointStatePath(projectRoot) {
+  return path.join(path.resolve(projectRoot), ...GIT_CHECKPOINTS_RELATIVE_PATH.split('/'));
+}
+
+function emptyGitCheckpointLedger() {
+  return { schemaVersion: 1, updatedAt: null, phases: {} };
+}
+
+function validCheckpointRecord(record, phase) {
+  const structurallyValid = record && typeof record === 'object'
+    && Number(record.phase) === Number(phase)
+    && ['pending', 'complete', 'failed'].includes(record.status)
+    && ['complete', 'reconcile'].includes(record.stage)
+    && typeof record.requiredRemote === 'boolean'
+    && (record.commit === null || (typeof record.commit === 'string' && record.commit.length <= 80))
+    && typeof record.pushed === 'boolean'
+    && (record.remote === null || (typeof record.remote === 'string' && record.remote.length <= 200))
+    && typeof record.remoteDeferred === 'boolean'
+    && typeof record.skipped === 'boolean'
+    && (record.message === null || (typeof record.message === 'string' && record.message.length <= 1000))
+    && typeof record.updatedAt === 'string' && Number.isFinite(Date.parse(record.updatedAt));
+  if (!structurallyValid) return false;
+  if (record.status === 'complete' && Number(phase) >= 8) {
+    return record.requiredRemote === true && record.pushed === true && Boolean(record.remote);
+  }
+  return !(record.status === 'complete' && record.requiredRemote && (!record.pushed || !record.remote));
+}
+
+export function readGitCheckpointLedger(projectRoot) {
+  const file = gitCheckpointStatePath(projectRoot);
+  if (!fs.existsSync(file)) {
+    return { present: false, valid: true, file, ledger: emptyGitCheckpointLedger(), error: null };
+  }
+  try {
+    const ledger = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const valid = ledger?.schemaVersion === 1 && ledger.phases && typeof ledger.phases === 'object'
+      && !Array.isArray(ledger.phases)
+      && Object.entries(ledger.phases).every(([phase, record]) => /^[1-9]$/.test(phase) && validCheckpointRecord(record, phase));
+    if (!valid) throw new Error('Git checkpoint ledger schema is invalid.');
+    return { present: true, valid: true, file, ledger, error: null };
+  } catch (error) {
+    return { present: true, valid: false, file, ledger: emptyGitCheckpointLedger(), error: String(error.message || error) };
+  }
+}
+
+export function readPhaseGitCheckpoint(projectRoot, phase) {
+  const state = readGitCheckpointLedger(projectRoot);
+  return { ...state, record: state.valid ? state.ledger.phases[String(Number(phase))] || null : null };
+}
+
+export function sanitizeGitCheckpointMessage(value) {
+  return String(value || '')
+    .replace(/(https?:\/\/)[^\s/@:]+:[^\s/@]+@/gi, '$1[redacted]@')
+    .replace(/github_pat_[A-Za-z0-9_]{20,}/g, '[redacted-github-token]')
+    .replace(/gh[pousr]_[A-Za-z0-9]{30,}/g, '[redacted-github-token]')
+    .replace(/sk-[A-Za-z0-9_-]{24,}/g, '[redacted-api-key]')
+    .replace(/([?&](?:access_token|token|key)=)[^&\s]+/gi, '$1[redacted]');
+}
+
+function boundedCheckpointMessage(value) {
+  const text = sanitizeGitCheckpointMessage(value).replace(/[\r\n]+/g, ' ').trim();
+  return text ? text.slice(0, 1000) : null;
+}
+
+function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === 'EPERM';
+  }
+}
+
+function withOwnedCheckpointLock(root, fileName, conflictCode, action) {
+  const lock = path.join(root, '.forge', fileName);
+  fs.mkdirSync(path.dirname(lock), { recursive: true });
+  const token = `${process.pid}-${randomUUID()}`;
+  let handle = null;
+  try {
+    for (let attempt = 0; attempt < 2 && handle == null; attempt++) {
+      try {
+        handle = fs.openSync(lock, 'wx');
+        fs.writeFileSync(handle, JSON.stringify({ pid: process.pid, token, createdAt: new Date().toISOString() }) + '\n', 'utf8');
+      } catch (error) {
+        if (error?.code !== 'EEXIST') throw error;
+        let owner = null;
+        try {
+          owner = JSON.parse(fs.readFileSync(lock, 'utf8'));
+        } catch {}
+        const malformedStale = !owner?.pid && Date.now() - fs.statSync(lock).mtimeMs > 30_000;
+        if ((!owner?.pid || processIsAlive(Number(owner.pid))) && !malformedStale) break;
+        try { fs.unlinkSync(lock); } catch { break; }
+      }
+    }
+    if (handle == null) {
+      const conflict = new Error(`${conflictCode}: another checkpoint operation is active.`);
+      conflict.code = conflictCode;
+      throw conflict;
+    }
+    return action();
+  } finally {
+    if (handle != null) {
+      try { fs.closeSync(handle); } catch {}
+      try {
+        const owner = JSON.parse(fs.readFileSync(lock, 'utf8'));
+        if (owner.token === token) fs.unlinkSync(lock);
+      } catch {}
+    }
+  }
+}
+
+function withGitCheckpointLedgerLock(root, action) {
+  return withOwnedCheckpointLock(root, 'git-checkpoints.lock', 'GIT_CHECKPOINT_LEDGER_CONFLICT', action);
+}
+
+function withPhaseGitCheckpointLease(root, action) {
+  return withOwnedCheckpointLock(root, 'git-checkpoint-operation.lock', 'GIT_CHECKPOINT_CONFLICT', action);
+}
+
+export function recordPhaseGitCheckpoint(projectRoot, {
+  phase, status, stage = 'complete', remotePolicy, result = null, error = null,
+} = {}) {
+  const phaseNumber = Number(phase);
+  if (!Number.isInteger(phaseNumber) || phaseNumber < 1 || phaseNumber > 9) throw new Error('Git checkpoint phase must be 1..9.');
+  if (!['pending', 'complete', 'failed'].includes(status)) throw new Error(`Invalid Git checkpoint status: ${status}`);
+  if (!['complete', 'reconcile'].includes(stage)) throw new Error(`Invalid Git checkpoint stage: ${stage}`);
+  if (!remotePolicy || typeof remotePolicy.allowRemote !== 'boolean' || typeof remotePolicy.allowRemoteFailure !== 'boolean') {
+    throw new Error('Git checkpoint remote policy is required.');
+  }
+  const root = path.resolve(projectRoot);
+  ensureRuntimeGitExclude(root);
+  return withGitCheckpointLedgerLock(root, () => {
+    const loaded = readGitCheckpointLedger(root);
+    const ledger = loaded.valid ? loaded.ledger : emptyGitCheckpointLedger();
+    const now = new Date().toISOString();
+    const requiredRemote = remotePolicy.allowRemote && remotePolicy.allowRemoteFailure === false;
+    const record = {
+      phase: phaseNumber,
+      status,
+      stage,
+      requiredRemote,
+      commit: result?.commit || null,
+      pushed: result?.pushed === true,
+      remote: result?.remote?.fullName || null,
+      remoteDeferred: result?.remoteDeferred === true,
+      skipped: result?.skipped === true,
+      message: status === 'failed'
+        ? boundedCheckpointMessage(error)
+        : boundedCheckpointMessage(result?.warning || result?.reason),
+      updatedAt: now,
+    };
+    ledger.schemaVersion = 1;
+    ledger.updatedAt = now;
+    ledger.phases = { ...ledger.phases, [String(phaseNumber)]: record };
+    atomicWriteJson(gitCheckpointStatePath(root), ledger);
+    return record;
+  });
 }
 
 export function configureWorkspaceGitPolicy(workspaceRoot, owner) {
@@ -220,7 +395,7 @@ function ensurePrivateGitHub(root, github) {
   return { fullName, url: info.url };
 }
 
-export function checkpointProjectGit({ projectRoot = process.cwd(), message = 'forge: project checkpoint', allowRemoteFailure = true, allowRemote = true } = {}) {
+function checkpointProjectGitUnlocked({ projectRoot = process.cwd(), message = 'forge: project checkpoint', allowRemoteFailure = true, allowRemote = true } = {}) {
   const root = path.resolve(projectRoot);
   if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) throw new Error(`Project folder not found: ${root}`);
   const { policy, sources } = loadProjectGitPolicy(root);
@@ -228,6 +403,7 @@ export function checkpointProjectGit({ projectRoot = process.cwd(), message = 'f
 
   ensureManagedIgnore(root);
   const initialized = ensureLocalRepository(root);
+  ensureRuntimeGitExclude(root);
   const commit = commitCheckpoint(root, initialized ? 'forge: initialize project repository' : message);
   const result = { root, initialized, commit, pushed: false, remote: null, remoteDeferred: false, sources, warning: null };
   if (!policy.github?.enabled) return result;
@@ -247,6 +423,51 @@ export function checkpointProjectGit({ projectRoot = process.cwd(), message = 'f
     result.warning = error.message;
   }
   return result;
+}
+
+export function checkpointProjectGit(options = {}) {
+  const root = path.resolve(options.projectRoot || process.cwd());
+  return withPhaseGitCheckpointLease(root, () => {
+    ensureRuntimeGitExclude(root);
+    return checkpointProjectGitUnlocked({ ...options, projectRoot: root });
+  });
+}
+
+export function runPhaseGitCheckpoint({
+  projectRoot = process.cwd(), phase, phaseName, stage = 'complete', checkpoint = checkpointProjectGit,
+} = {}) {
+  if (!['preflight', 'complete', 'reconcile'].includes(stage)) throw new Error(`Invalid host Git checkpoint stage: ${stage}`);
+  const root = path.resolve(projectRoot);
+  const durableCompletion = stage !== 'preflight';
+  const remotePolicy = phaseCheckpointRemotePolicy(phase, { preflight: !durableCompletion });
+  const message = stage === 'complete'
+    ? `forge: complete phase ${phase} ${phaseName}`
+    : stage === 'reconcile'
+      ? `forge: reconcile complete phase ${phase} ${phaseName}`
+      : `forge: preserve work before phase ${phase} ${phaseName}`;
+
+  return withPhaseGitCheckpointLease(root, () => {
+    ensureRuntimeGitExclude(root);
+    const pending = durableCompletion
+      ? recordPhaseGitCheckpoint(root, { phase, status: 'pending', stage, remotePolicy })
+      : null;
+    try {
+      const executeCheckpoint = checkpoint === checkpointProjectGit ? checkpointProjectGitUnlocked : checkpoint;
+      const result = executeCheckpoint({ projectRoot: root, message, ...remotePolicy });
+      if (pending?.requiredRemote && result?.pushed !== true) {
+        throw new Error(`Required private GitHub push was not confirmed for Phase ${phase}.`);
+      }
+      if (durableCompletion) {
+        recordPhaseGitCheckpoint(root, { phase, status: 'complete', stage, remotePolicy, result });
+      }
+      return { result, remotePolicy, message };
+    } catch (error) {
+      if (durableCompletion) {
+        recordPhaseGitCheckpoint(root, { phase, status: 'failed', stage, remotePolicy, error });
+      }
+      throw error;
+    }
+  });
 }
 
 function valueAfter(args, flag) {

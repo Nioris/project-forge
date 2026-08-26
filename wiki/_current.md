@@ -17,8 +17,11 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [x] Q3-006: native Phase 4 binds capture/proof receipts, current implementation and independent review; 25 isolated adversarial scenarios pass.
 - [x] Q3-007: real-window Phase 5 tech, two-process Phase 7 save/reload and signed immutable Windows Phase 8 release pass adversarial plus real Godot 4.7.2 checks.
 - [ ] Q3-008: add the optional cost-aware native asset lane after the base pilot proves it is needed.
-- [ ] Q3-009: end-to-end Godot pilot is in progress. Run 01 stopped safely in Phase 1 because the Codex
-  launcher inherited a read-only sandbox; v4.68.54 repairs that boundary before the same pilot is reopened.
+- [ ] Q3-009: end-to-end Godot pilot is in progress. Run 02 passed real Phase 1 on v4.68.54. The immutable
+  v4.68.55 host-checkpoint candidate was rejected before publication because failed Phase 8 publication
+  could be forgotten after restart. v4.68.56 added the ledger but was rejected as an immutable candidate
+  after an informational packaging call consumed its version and final review found a manual-lock escape.
+  v4.68.57 carries the completed released repair; installation and real pilot reconciliation are next.
 
 ### Previous v4.68.51 release
 
@@ -152,9 +155,9 @@ nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Blockers
 
-Q3-009 Run 01 remains deliberately blocked by `PHASE1_WRITE_SCOPE_BLOCKED` until v4.68.54 is installed.
-The Task needs workspace-scoped writes for its authorised evidence. This is an infrastructure failure,
-not a Godot or game-content failure; Phase 1 has not passed and no later phase may begin.
+Q3-009 Phase 1 is complete. Phase 2 is deliberately paused until v4.68.57 is installed and startup
+reconciliation commits the pending Phase 1 work locally. Diagnostic `daa837b168842956d2d3` remains open
+until that real checkpoint succeeds; the pilot's GitHub HEAD must remain unchanged through Phase 7.
 
 Godot GDScript native Phases 3–5, 7 and Windows 8 now have trusted adapters. The real-window Q3-007
 forward test passes on official Godot 4.7.2. A project still needs matching official Windows export
@@ -163,6 +166,10 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 
 ## Last 3 decisions
 
+- 2026-08-26: A sandboxed model owns project content, while the parent host owns Git metadata and signed/external side effects.
+- 2026-08-26: Phase 1–7 checkpoints stay local; the verified private GitHub result is pushed at Phase 8+.
+- 2026-08-26: A completed marker and its Git checkpoint are separate durable facts; restart reconciles the
+  latter before any later model access, and Phase 8+ cannot complete without a confirmed private push.
 - 2026-08-26: A phase launcher selects its write boundary explicitly; inherited read-only mode is an infrastructure block, never a reason to weaken evidence or fabricate completion.
 - 2026-08-26: A resumed Codex phase inherits its original trusted session policy; broad sandbox and hook-trust bypass flags are not a retry mechanism.
 - 2026-08-21: A model may propose evidence, but only the phase-state runtime may persist completion.
@@ -191,4 +198,4 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 - 2026-08-26: Common phases route by engine capability; Godot is the first complete native adapter, not a Godot-only workflow.
 - 2026-08-26: A native release needs an engine-owned signed build receipt; project-local manifests and self-consistent ZIPs cannot authorize their own PASS.
 
-<!-- last updated 2026-08-26 after Q3-009 Run 01 infrastructure finding -->
+<!-- last updated 2026-08-26 for v4.68.57 release and Q3-009 pilot reconciliation -->

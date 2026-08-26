@@ -161,6 +161,18 @@ safe('release-versioning', () => {
   else ok.push('Yandex builds auto-increment versions, preserve old ZIPs, and Phase 8 requires a newly named trio');
 });
 
+safe('forge-package-cli', () => {
+  const result = spawnSync(process.execPath, ['scripts/check-package-forge.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    err(`Forge package CLI side-effect regression failed: ${(result.stderr || result.stdout || 'unknown').trim()}`);
+  } else {
+    ok.push('Forge package --help/invalid options cannot create release artifacts');
+  }
+});
+
 // ---- 7. debugcheck.js must not diverge -----------------------------------------------------
 // The two debugcheck copies (platforms/yandex/templates + templates/html5) MUST be byte-identical.
 // A stale fork is how genetic-lab shipped with a weak 4.4/lang checker and passed Forge but failed

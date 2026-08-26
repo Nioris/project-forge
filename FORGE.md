@@ -149,6 +149,17 @@ remains after that boundary.
 
 API secrets live outside projects under `forge-data/secrets/`; never copy them into project files, wiki, prompts or shell output. Switching profiles must not change the nine-phase state machine or skill semantics.
 
+## Git checkpoint boundary
+
+The model edits project content; the terminal host owns `.git` metadata and external publication. Completion
+checkpoints are recorded in ignored local runtime state at `.forge/git-checkpoints.json`. Before any later
+model session, the pipeline reconciles missing, pending or failed checkpoints for already completed phase
+markers. Phases 1–7 checkpoint locally without contacting GitHub. Phase 8+ must confirm a successful push
+to the configured private GitHub repository; a missing policy, failed push or corrupt release ledger blocks
+progress rather than becoming a completion claim. The ledger is supplemental recovery state and never
+replaces the nine canonical phase markers. One host lease covers the complete Git operation, so parallel
+pipelines cannot commit or push the same project concurrently.
+
 Anonymous retained-data previews such as OpenRouter Ox Alpha are evaluation-only. Forge requires
 their explicit `standard` profile and they must receive no confidential source, personal data,
 credentials or business-critical material.

@@ -7,9 +7,12 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   bindPhaseTaskMarker, classifyAfterTurn, classifyTurnResult, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
-  resolveCodexLauncher, resumeExecArgs, runPipeline, unavailableLocalMcpOverrides,
+  reconcileCompletedGitCheckpoints, resolveCodexLauncher, resumeExecArgs, runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
 import { ensurePhaseTaskRun, readTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
+import {
+  phaseCheckpointRemotePolicy, readPhaseGitCheckpoint, recordPhaseGitCheckpoint,
+} from '../.claude/skills/status/references/project-git.mjs';
 import {
   auditRolloutFile, buildPhaseCostReport, createExecTelemetry, formatPhaseCostReport,
   observeExecTelemetry, savePhaseCostReport,
@@ -132,6 +135,9 @@ check(version.status === 0 && /codex-cli/.test(version.stdout), 'Windows launche
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-codex-pipeline-'));
 try {
   fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), '# Fixture\n\n## Project type\ngame\n');
+  fs.writeFileSync(path.join(tmp, '.forge-git.json'), JSON.stringify({
+    github: { enabled: true, owner: 'Nioris', visibility: 'private', autoCreate: false, autoPush: true },
+  }));
   fs.mkdirSync(path.join(tmp, 'wiki', 'phases'), { recursive: true });
   fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-1.json'), JSON.stringify({ phase: 1, state: 'complete' }));
   fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({ phase: 2, state: 'in_progress' }));
@@ -192,6 +198,7 @@ if(args[0]==='mcp'&&args[1]==='list'){
   ])); process.exit(0);
 }
 fs.appendFileSync(path.join(root,'model-launch-count'),'1\\n');
+if(process.env.FORGE_HOST_OWNS_GIT_CHECKPOINT==='1') fs.writeFileSync(path.join(root,'host-git-env-ok'),'yes');
 if(process.env.FORGE_TASK_SCOPE_ENFORCE==='1'&&/^phase-\\d+-/.test(process.env.FORGE_TASK_ID||'')&&/^[a-f0-9]{64}$/.test(process.env.FORGE_TASK_CONTRACT_HASH||'')) fs.writeFileSync(path.join(root,'task-scope-env-ok'),'yes');
 const prompt=args.at(-1)||''; const m=prompt.match(/\\$phase-(\\d+)-/); const phase=Number(m?.[1]||1); const resumed=args[0]==='exec'&&args[1]==='resume';
 if(args.includes('mcp_servers.unityMCP.enabled=false')) fs.writeFileSync(path.join(root,'mcp-override-ok'),'yes');
@@ -214,6 +221,7 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
   check(disabledMcp.length === 1 && disabledMcp[0].name === 'unityMCP'
     && disabledMcp[0].override === 'mcp_servers.unityMCP.enabled=false',
     'preflight disables only an unreachable loopback HTTP MCP and leaves remote/stdio servers alone');
+  const noGitCheckpoint = () => ({ skipped: true, reason: 'fixture' });
   fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({
     schemaVersion: 3, phase: 2, state: 'blocked', reason: 'Approve restored fixture',
     block: { owner: 'user', code: 'RESTORED_APPROVAL', decisionKey: 'phase2-restored', resumePolicy: 'user_answer' },
@@ -224,6 +232,7 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
   const restoredStop = await runPipeline({
     projectRoot: tmp, fromPhase: 2, autoAdvance: true,
     launcher: { command: process.execPath, prefixArgs: [fake] },
+    gitCheckpoint: noGitCheckpoint,
     prompter: { async ask() { restoredPromptSawNoModel = !fs.existsSync(path.join(tmp, 'model-launch-count')); return ':stop'; }, close() {} },
   });
   check(restoredStop === 0 && restoredPromptSawNoModel && !fs.existsSync(path.join(tmp, 'model-launch-count')),
@@ -237,6 +246,7 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
   const legacyRestoredStop = await runPipeline({
     projectRoot: tmp, fromPhase: 2, autoAdvance: true,
     launcher: { command: process.execPath, prefixArgs: [fake] },
+    gitCheckpoint: noGitCheckpoint,
     prompter: { async ask() { legacyRestoredPromptSawNoModel = !fs.existsSync(path.join(tmp, 'model-launch-count')); return ':stop'; }, close() {} },
   });
   check(legacyRestoredStop === 0 && legacyRestoredPromptSawNoModel && !fs.existsSync(path.join(tmp, 'model-launch-count')),
@@ -245,15 +255,25 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
   const legacyAccepted = await runPipeline({
     projectRoot: tmp, fromPhase: 2, autoAdvance: false,
     launcher: { command: process.execPath, prefixArgs: [fake] },
+    gitCheckpoint: noGitCheckpoint,
     prompter: { async ask(question) { legacyAnswers.push(question); return legacyAnswers.length === 1 ? 'утверждаю' : 'n'; }, close() {} },
   });
   check(legacyAccepted === 0 && fs.existsSync(path.join(tmp, 'legacy-answer-upgraded')),
     'answering a legacy STOP upgrades its marker before the first model turn');
   fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({ phase: 2, state: 'in_progress' }));
   const answers = [];
+  const gitCalls = [];
   const integrated = await runPipeline({
     projectRoot: tmp, fromPhase: 1, autoAdvance: true,
     launcher: { command: process.execPath, prefixArgs: [fake] },
+    gitCheckpoint: (options) => {
+      gitCalls.push(options);
+      return {
+        commit: `fixture-${gitCalls.length}`, pushed: options.allowRemote === true,
+        remote: options.allowRemote ? { fullName: 'Nioris/fixture' } : null,
+        remoteDeferred: !options.allowRemote, warning: null,
+      };
+    },
     prompter: { async ask(question) { answers.push(question); return answers.length > 3 ? 'stop' : 'утверждаю'; }, close() {} },
   });
   const allComplete = Array.from({ length: 9 }, (_, i) => i + 1).every(phase => {
@@ -266,9 +286,133 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:10,output_
     'full pipeline applies the unavailable local MCP override to real phase launches');
   check(fs.existsSync(path.join(tmp, 'task-scope-env-ok')),
     'phase launch pre-binds a durable Task identity and contract hash before model access');
+  check(fs.existsSync(path.join(tmp, 'host-git-env-ok')),
+    'nested phase runtime knows that Git metadata is owned by the pipeline host');
+  const preflightGitCalls = gitCalls.filter(item => /^forge: preserve work before phase/.test(item.message));
+  const completedGitCalls = gitCalls.filter(item => /^forge: complete phase/.test(item.message));
+  check(preflightGitCalls.length === 9 && completedGitCalls.length === 9
+    && preflightGitCalls.every(item => item.allowRemote === false)
+    && completedGitCalls.slice(0, 7).every(item => item.allowRemote === false)
+    && completedGitCalls.slice(7).every(item => item.allowRemote === true && item.allowRemoteFailure === false),
+  'host checkpoints pre-phase state locally, commits every completed phase, and pushes only Phase 8+ privately');
+  const durableGitRecords = Array.from({ length: 9 }, (_, i) => readPhaseGitCheckpoint(tmp, i + 1).record);
+  check(durableGitRecords.every(record => record?.status === 'complete')
+    && durableGitRecords.slice(0, 7).every(record => record.requiredRemote === false)
+    && durableGitRecords.slice(7).every(record => record.requiredRemote === true && record.pushed === true),
+  'completed phase checkpoints are durable across restart, with strict private publication only for Phase 8+');
   check(Array.from({ length: 9 }, (_, i) => i + 1).every(phase =>
     fs.existsSync(path.join(tmp, 'wiki', 'diagnostics', 'codex-cost', `phase-${phase}-latest.json`))),
     'one-window pipeline saves a local cost/context report after every completed phase');
+
+  const makeRestartFixture = name => {
+    const project = path.join(tmp, name);
+    fs.mkdirSync(path.join(project, 'wiki', 'phases'), { recursive: true });
+    fs.writeFileSync(path.join(project, 'CLAUDE.md'), '# Restart fixture\n\n## Project type\ngame\n');
+    fs.writeFileSync(path.join(project, '.forge-git.json'), JSON.stringify({
+      github: { enabled: true, owner: 'Nioris', visibility: 'private', autoCreate: false, autoPush: true },
+    }));
+    fs.writeFileSync(path.join(project, 'wiki', 'phases', 'phase-8.json'), JSON.stringify({ phase: 8, state: 'complete' }));
+    fs.writeFileSync(path.join(project, 'wiki', 'phases', 'phase-9.json'), JSON.stringify({ phase: 9, state: 'in_progress' }));
+    recordPhaseGitCheckpoint(project, {
+      phase: 8, status: 'failed', stage: 'complete', remotePolicy: phaseCheckpointRemotePolicy(8),
+      error: 'fixture push failed before restart',
+    });
+    return project;
+  };
+
+  const restartSuccessProject = makeRestartFixture('restart-success');
+  const restartCalls = [];
+  const restartSuccess = await runPipeline({
+    projectRoot: restartSuccessProject, fromPhase: 9, autoAdvance: true,
+    launcher: { command: process.execPath, prefixArgs: [fake] },
+    gitCheckpoint: options => {
+      restartCalls.push(options);
+      return {
+        commit: null, pushed: options.allowRemote === true,
+        remote: options.allowRemote ? { fullName: 'Nioris/restart-success' } : null,
+        remoteDeferred: !options.allowRemote, warning: null,
+      };
+    },
+    prompter: { async ask() { return ':stop'; }, close() {} },
+  });
+  const firstRestartCall = restartCalls[0];
+  check(restartSuccess === 0
+    && /^forge: reconcile complete phase 8 Release/.test(firstRestartCall?.message || '')
+    && firstRestartCall?.allowRemote === true && firstRestartCall?.allowRemoteFailure === false
+    && readPhaseGitCheckpoint(restartSuccessProject, 8).record?.status === 'complete'
+    && fs.existsSync(path.join(restartSuccessProject, 'model-launch-count')),
+  'restart reconciles the failed strict Phase 8 push before any Phase 9 model launch, even with --from 9');
+
+  const missingMigrationProject = makeRestartFixture('restart-missing-ledger');
+  fs.rmSync(path.join(missingMigrationProject, '.forge', 'git-checkpoints.json'), { force: true });
+  const missingMigrationCalls = [];
+  const missingMigrated = reconcileCompletedGitCheckpoints({
+    projectRoot: missingMigrationProject,
+    checkpoint: options => {
+      missingMigrationCalls.push(options);
+      return { commit: null, pushed: true, remote: { fullName: 'Nioris/restart-missing-ledger' }, remoteDeferred: false, warning: null };
+    },
+  });
+  check(JSON.stringify(missingMigrated) === JSON.stringify([8])
+    && missingMigrationCalls[0]?.allowRemote === true && missingMigrationCalls[0]?.allowRemoteFailure === false
+    && readPhaseGitCheckpoint(missingMigrationProject, 8).record?.status === 'complete',
+  'a legacy completed Phase 8 marker with no ledger is migrated through the same strict private reconciliation');
+
+  const ongoingLiveProject = makeRestartFixture('restart-live-ongoing');
+  recordPhaseGitCheckpoint(ongoingLiveProject, {
+    phase: 8, status: 'complete', stage: 'reconcile', remotePolicy: phaseCheckpointRemotePolicy(8),
+    result: { commit: null, pushed: true, remote: { fullName: 'Nioris/restart-live-ongoing' }, remoteDeferred: false, warning: null },
+  });
+  fs.writeFileSync(path.join(ongoingLiveProject, 'wiki', 'phases', 'phase-9.json'), JSON.stringify({ phase: 9, state: 'ongoing' }));
+  const ongoingCalls = [];
+  const ongoingReconciled = reconcileCompletedGitCheckpoints({
+    projectRoot: ongoingLiveProject,
+    checkpoint: options => {
+      ongoingCalls.push(options);
+      return { commit: null, pushed: true, remote: { fullName: 'Nioris/restart-live-ongoing' }, remoteDeferred: false, warning: null };
+    },
+  });
+  check(JSON.stringify(ongoingReconciled) === JSON.stringify([9])
+    && ongoingCalls[0]?.allowRemote === true && readPhaseGitCheckpoint(ongoingLiveProject, 9).record?.status === 'complete',
+  'an ongoing Phase 9 marker is reconciled as a strict completed Live checkpoint after restart');
+
+  const restartFailureProject = makeRestartFixture('restart-failure');
+  let reconcileFailureCalls = 0;
+  let reconcileFailurePrompts = 0;
+  const restartFailure = await runPipeline({
+    projectRoot: restartFailureProject, fromPhase: 9, autoAdvance: true,
+    launcher: { command: process.execPath, prefixArgs: [fake] },
+    gitCheckpoint: options => {
+      reconcileFailureCalls++;
+      throw new Error(`still cannot publish: ${options.message}`);
+    },
+    prompter: { async ask() { reconcileFailurePrompts++; return ':stop'; }, close() {} },
+  });
+  const failedRestartRecord = readPhaseGitCheckpoint(restartFailureProject, 8).record;
+  check(restartFailure === 2 && reconcileFailureCalls === 1 && reconcileFailurePrompts === 0
+    && !fs.existsSync(path.join(restartFailureProject, 'model-launch-count'))
+    && failedRestartRecord?.status === 'failed' && /still cannot publish/.test(failedRestartRecord?.message || ''),
+  'failed restart reconciliation remains durable and stops before model launch or user prompt');
+
+  fs.writeFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), JSON.stringify({ phase: 2, state: 'in_progress' }));
+  fs.rmSync(path.join(tmp, 'model-launch-count'), { force: true });
+  let failingGitCalls = 0;
+  let failurePrompts = 0;
+  const blockedByGit = await runPipeline({
+    projectRoot: tmp, fromPhase: 2, autoAdvance: false,
+    launcher: { command: process.execPath, prefixArgs: [fake] },
+    gitCheckpoint: () => {
+      failingGitCalls++;
+      if (failingGitCalls === 2) throw new Error('fixture host Git inaccessible');
+      return { commit: null, pushed: false, remote: null, remoteDeferred: true, warning: null };
+    },
+    prompter: { async ask() { failurePrompts++; return 'n'; }, close() {} },
+  });
+  const markerAfterGitFailure = JSON.parse(fs.readFileSync(path.join(tmp, 'wiki', 'phases', 'phase-2.json'), 'utf8'));
+  check(blockedByGit === 2 && markerAfterGitFailure.state === 'complete'
+    && failingGitCalls === 2 && failurePrompts === 0
+    && readPhaseGitCheckpoint(tmp, 2).record?.status === 'failed',
+  'host checkpoint failure preserves the completed phase but stops before the next phase or prompt');
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

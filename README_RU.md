@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая публичная версия:** `v4.68.54`
+**Текущая публичная версия:** `v4.68.57`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -206,7 +206,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.54` обычная авторизация и API-профили остаются разделены.
+В `v4.68.57` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка
@@ -364,7 +364,7 @@ dashboard.html    локальный Dashboard
 - [GUIDE.md](GUIDE.md) — полное руководство
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — справочник команд
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.54.md](RELEASE_NOTES_v4.68.54.md) — изменения текущей версии
+- [RELEASE_NOTES_v4.68.57.md](RELEASE_NOTES_v4.68.57.md) — изменения текущей версии
 - [SECURITY.md](SECURITY.md) — правила по секретам и безопасности
 - [CONTRIBUTING.md](CONTRIBUTING.md) — правила contribution
 - [ROADMAP.md](ROADMAP.md) — публичное направление развития

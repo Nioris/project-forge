@@ -22,6 +22,10 @@ import {
   savePhaseCostReport,
 } from './lib/codex-cost-report.mjs';
 import { atomicWriteJson, ensurePhaseTaskRun, latestPhaseRunResult } from '../.claude/skills/status/references/execution-contract.mjs';
+import {
+  checkpointProjectGit, readGitCheckpointLedger, runPhaseGitCheckpoint, sanitizeGitCheckpointMessage,
+} from '../.claude/skills/status/references/project-git.mjs';
+import { appendForgeDiagnostic } from '../.claude/hooks/lib/forge-diagnostics.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -391,11 +395,67 @@ function answerIsYes(answer) { return answer === '' || /^(?:y|yes|д|да|нач
 function answerIsStop(answer) { return /^(?:n|no|н|нет|stop|стоп|:stop|exit|выход)$/i.test(answer); }
 function answerIsExitCommand(answer) { return /^(?:stop|стоп|:stop|exit|выход)$/i.test(answer); }
 
+function formatGitCheckpoint(result, stage) {
+  if (result?.skipped) return `skipped: ${result.reason}`;
+  const parts = [result?.commit ? `commit ${result.commit}` : 'working tree unchanged'];
+  if (result?.pushed) parts.push(`pushed private ${result.remote?.fullName || 'remote'}`);
+  if (result?.remoteDeferred) parts.push(stage === 'preflight'
+    ? 'private remote deferred to a completed release phase'
+    : 'private remote deferred until Phase 8');
+  if (result?.warning) parts.push(`remote warning: ${result.warning}`);
+  return parts.join('; ');
+}
+
+export function hostGitCheckpoint({ projectRoot, phase, phaseName, stage, checkpoint = checkpointProjectGit }) {
+  const { result } = runPhaseGitCheckpoint({ projectRoot, phase, phaseName, stage, checkpoint });
+  console.log(`[Forge Git] host ${stage}: ${formatGitCheckpoint(result, stage)}`);
+  return result;
+}
+
+export function completedPhaseMarkers(projectRoot) {
+  const completed = [];
+  for (let phase = 1; phase <= 9; phase++) {
+    const marker = readPhaseMarker(projectRoot, phase);
+    if (marker?.state === 'complete' || (phase === 9 && marker?.state === 'ongoing')) completed.push(phase);
+  }
+  return completed;
+}
+
+export function reconcileCompletedGitCheckpoints({ projectRoot, checkpoint = checkpointProjectGit } = {}) {
+  const root = path.resolve(projectRoot);
+  const state = readGitCheckpointLedger(root);
+  const reconciled = [];
+  for (const phase of completedPhaseMarkers(root)) {
+    const record = state.valid ? state.ledger.phases[String(phase)] : null;
+    if (record?.status === 'complete') continue;
+    hostGitCheckpoint({
+      projectRoot: root, phase, phaseName: PHASE_NAMES[phase], stage: 'reconcile', checkpoint,
+    });
+    reconciled.push(phase);
+  }
+  return reconciled;
+}
+
+function reportHostGitCheckpointFailure(projectRoot, phase, stage, error) {
+  const message = sanitizeGitCheckpointMessage(error?.message || error || 'unknown Git checkpoint error');
+  const diagnostic = appendForgeDiagnostic(projectRoot, {
+    action: 'report', severity: 'error', code: 'HOST_GIT_CHECKPOINT_FAILED',
+    kind: 'git_checkpoint', source: 'runtime', host: 'codex', phase,
+    component: 'codex-pipeline', operation: `host-${stage}-checkpoint`,
+    message, expected: 'A local checkpoint succeeds before the pipeline advances.',
+    actual: 'The durable phase state is preserved and the pipeline stopped before the next model session.',
+    evidence: [`wiki/phases/phase-${phase}.json`],
+  });
+  const suffix = diagnostic.ok ? `; fingerprint=${diagnostic.event.fingerprint}` : '';
+  console.error(`[Forge Git] host ${stage} checkpoint blocked: ${message}${suffix}`);
+}
+
 export async function runPipeline({
   projectRoot, fromPhase = null, autoAdvance = false, dryRun = false,
   keepLocalMcp = false,
   launcher = resolveCodexLauncher(),
   prompter = null,
+  gitCheckpoint = checkpointProjectGit,
 } = {}) {
   const root = path.resolve(projectRoot || process.cwd());
   if (!fs.existsSync(root)) throw new Error(`Project directory does not exist: ${root}`);
@@ -411,6 +471,19 @@ export async function runPipeline({
     return 0;
   }
 
+  try {
+    const reconciled = reconcileCompletedGitCheckpoints({ projectRoot: root, checkpoint: gitCheckpoint });
+    if (reconciled.length) console.log(`[Forge Git] reconciled completed phase checkpoints: ${reconciled.join(', ')}`);
+  } catch (error) {
+    const blockedPhase = completedPhaseMarkers(root).find(candidate => {
+      const state = readGitCheckpointLedger(root);
+      return !state.valid || state.ledger.phases[String(candidate)]?.status !== 'complete';
+    }) || phase;
+    reportHostGitCheckpointFailure(root, blockedPhase, 'reconcile', error);
+    return 2;
+  }
+  if (fromPhase == null) phase = currentProjectPhase(root);
+
   const unavailableMcp = keepLocalMcp ? [] : await unavailableLocalMcpOverrides(launcher, root);
   const mcpOverrides = unavailableMcp.map(item => item.override);
   for (const item of unavailableMcp) {
@@ -421,6 +494,14 @@ export async function runPipeline({
   const prompt = prompter || createPrompter();
   try {
     while (phase <= 9) {
+      try {
+        hostGitCheckpoint({
+          projectRoot: root, phase, phaseName: PHASE_NAMES[phase], stage: 'preflight', checkpoint: gitCheckpoint,
+        });
+      } catch (error) {
+        reportHostGitCheckpointFailure(root, phase, 'preflight', error);
+        return 2;
+      }
       const initial = firstExecArgs(policy, phase, root, null, mcpOverrides);
       // Bind the durable phase Task before model tool access. Native Codex file hooks
       // inherit this immutable identity and reject writes outside its declared scope.
@@ -441,6 +522,7 @@ export async function runPipeline({
         FORGE_TASK_ID: taskRun.task.id,
         FORGE_TASK_SCOPE_ENFORCE: '1',
         FORGE_TASK_CONTRACT_HASH: taskRun.task.contract?.hash || '',
+        FORGE_HOST_OWNS_GIT_CHECKPOINT: '1',
       };
       console.log(`\n[Forge] Phase ${phase} ${PHASE_NAMES[phase]} — NEW clean Codex session`);
       console.log(`[Forge] ${initial.selected.model}/${initial.selected.reasoning}, tier=${policy.serviceTier}`);
@@ -577,6 +659,15 @@ export async function runPipeline({
       const saved = savePhaseCostReport(root, report);
       const relativeReport = path.relative(root, saved.latestPath).replaceAll('\\', '/');
       console.log(formatPhaseCostReport(report, relativeReport));
+
+      try {
+        hostGitCheckpoint({
+          projectRoot: root, phase, phaseName: PHASE_NAMES[phase], stage: 'complete', checkpoint: gitCheckpoint,
+        });
+      } catch (error) {
+        reportHostGitCheckpointFailure(root, phase, 'complete', error);
+        return 2;
+      }
 
       if (phase === 9) {
         console.log('\n[Forge] Все девять фаз пройдены.');
