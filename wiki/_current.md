@@ -16,7 +16,9 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [x] Q3-005: native state capture + MovieWriter proof video pass 24 regressions and a real Godot 4.7 forward-test.
 - [x] Q3-006: native Phase 4 binds capture/proof receipts, current implementation and independent review; 25 isolated adversarial scenarios pass.
 - [x] Q3-007: real-window Phase 5 tech, two-process Phase 7 save/reload and signed immutable Windows Phase 8 release pass adversarial plus real Godot 4.7.2 checks.
-- [ ] Q3-008..Q3-009: optimize native assets and run the complete Godot pilot release.
+- [ ] Q3-008: add the optional cost-aware native asset lane after the base pilot proves it is needed.
+- [ ] Q3-009: end-to-end Godot pilot is in progress. Run 01 stopped safely in Phase 1 because the Codex
+  launcher inherited a read-only sandbox; v4.68.54 repairs that boundary before the same pilot is reopened.
 
 ### Previous v4.68.51 release
 
@@ -150,6 +152,10 @@ nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Blockers
 
+Q3-009 Run 01 remains deliberately blocked by `PHASE1_WRITE_SCOPE_BLOCKED` until v4.68.54 is installed.
+The Task needs workspace-scoped writes for its authorised evidence. This is an infrastructure failure,
+not a Godot or game-content failure; Phase 1 has not passed and no later phase may begin.
+
 Godot GDScript native Phases 3–5, 7 and Windows 8 now have trusted adapters. The real-window Q3-007
 forward test passes on official Godot 4.7.2. A project still needs matching official Windows export
 templates for a real EXE/PCK release; Godot C#, Android and Windows signing remain explicit follow-up
@@ -157,6 +163,8 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 
 ## Last 3 decisions
 
+- 2026-08-26: A phase launcher selects its write boundary explicitly; inherited read-only mode is an infrastructure block, never a reason to weaken evidence or fabricate completion.
+- 2026-08-26: A resumed Codex phase inherits its original trusted session policy; broad sandbox and hook-trust bypass flags are not a retry mechanism.
 - 2026-08-21: A model may propose evidence, but only the phase-state runtime may persist completion.
 - 2026-08-21: Missing external evidence is represented as `TBD`/hypothesis, never filled from model memory.
 - 2026-08-21: Experimental hosts publish the verified Phase 8 result, not intermediate phase claims.
@@ -183,4 +191,4 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 - 2026-08-26: Common phases route by engine capability; Godot is the first complete native adapter, not a Godot-only workflow.
 - 2026-08-26: A native release needs an engine-owned signed build receipt; project-local manifests and self-consistent ZIPs cannot authorize their own PASS.
 
-<!-- last updated 2026-08-26 after completing Q3-007 native Godot test and release -->
+<!-- last updated 2026-08-26 after Q3-009 Run 01 infrastructure finding -->

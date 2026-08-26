@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePhaseCompletion } from './phase-completion-gate.mjs';
-import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, recordTaskResult } from './execution-contract.mjs';
+import { atomicWriteJson, ensurePhaseTaskRun, makeRunResult, recordTaskResult, RESUME_POLICIES } from './execution-contract.mjs';
 import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
 
 const PHASES = {
@@ -24,7 +24,7 @@ const PHASES = {
 const [command, rawPhase, ...rawRest] = process.argv.slice(2);
 const phase = Number(rawPhase);
 if (!['start', 'answer', 'block', 'complete', 'reopen'].includes(command) || !Number.isInteger(phase) || !PHASES[phase]) {
-  console.error('Usage: phase-state.mjs <start|answer|block|complete|reopen> <1..9> [reason|evidence paths...] [--owner user|agent|infrastructure --code CODE --decision-key KEY --resume-policy POLICY --model X --reasoning X --route X --subagents N]');
+  console.error('Usage: phase-state.mjs <start|answer|block|complete|reopen> <1..9> [reason|evidence paths...] [--owner user|agent|infrastructure --code CODE --decision-key KEY --resume-policy user_answer|agent_retry|environment_change|none --model X --reasoning X --route X --subagents N]');
   process.exit(2);
 }
 
@@ -244,6 +244,10 @@ if (command === 'start' || command === 'reopen' || command === 'answer') {
       : { status: 'environment_failure', code: 'INFRASTRUCTURE_BLOCKED', policy: 'environment_change', failure: 'ENVIRONMENT_ERROR', retryable: false };
   const code = options.code || defaults.code;
   const resumePolicy = options['resume-policy'] || defaults.policy;
+  if (!RESUME_POLICIES.includes(resumePolicy)) {
+    console.error(`--resume-policy must be one of: ${RESUME_POLICIES.join(', ')}`);
+    process.exit(2);
+  }
   const reason = rest.join(' ').trim() || (owner === 'user' ? 'Awaiting user decision' : owner === 'agent' ? 'Agent work is required' : 'Infrastructure capability is unavailable');
   record.state = 'blocked';
   record.startedAt = record.startedAt || now;

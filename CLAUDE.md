@@ -1,4 +1,4 @@
-# Project Forge v4.68.52 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.54 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,12 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.54 changelog (safe Codex phase write boundary)
+
+Fresh Codex phase sessions now select `workspace-write` explicitly and never use full-host or hook-trust
+bypasses. Resumed STOP turns inherit the original session policy. Invalid resume policies are rejected
+before durable state changes, with regressions for both paths.
+
 ## v4.68.52 changelog (engine-neutral Godot native test and release)
 
 Godot GDScript closes native Phases 5/7/8 with real-window proof, two-process save/reload and immutable
@@ -509,9 +515,3 @@ block project-local false PASS. Common phases stay engine-neutral; Godot is the 
 
 Phase 2 inventory → GPT Image targets → adapter capture → independent review.
 Missing/stale/fake shots, self-review, <6/10 and Critical/Major cannot complete Phase 4.
-
-## v4.68.50 changelog (marker-authoritative status progression)
-
-`$status` now uses artifact inference only for projects with zero valid phase markers. In a modern
-marker-managed project, the first missing marker remains the current gate; later visual/SDK/listing/QA
-artifacts are reported as evidence ahead of gate without silently completing or skipping phases.

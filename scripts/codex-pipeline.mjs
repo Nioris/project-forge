@@ -112,6 +112,8 @@ export function firstExecArgs(policy, phase, projectRoot, routeId = null, config
     routeId: selectedRoute,
     args: [
       'exec', '--json', '-C', projectRoot,
+      '-s', 'workspace-write',
+      '-c', 'approval_policy="never"',
       '-m', selected.model,
       '-c', `model_reasoning_effort=${JSON.stringify(selected.reasoning)}`,
       '-c', `service_tier=${JSON.stringify(policy.serviceTier)}`,

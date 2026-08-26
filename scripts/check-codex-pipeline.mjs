@@ -27,12 +27,23 @@ const first = firstExecArgs(policy, 1, 'F:\\fixture');
 const second = firstExecArgs(policy, 2, 'F:\\fixture');
 check(first.args[0] === 'exec' && first.args.includes('--json') && first.args.at(-1).includes('$phase-1-analyze'),
   'phase launch uses non-interactive JSON exec with the canonical skill');
+check(first.args.includes('approval_policy="never"')
+  && first.args[first.args.indexOf('-s') + 1] === 'workspace-write'
+  && !first.args.includes('sandbox_mode="danger-full-access"')
+  && !first.args.includes('--dangerously-bypass-hook-trust')
+  && !first.args.includes('--dangerously-bypass-approvals-and-sandbox'),
+  'phase launch grants unattended write access only inside the project workspace');
 check(first.selected.model === 'gpt-5.6-sol' && second.selected.model === 'gpt-5.6-sol',
   'separate phases stay on Sol');
 
 const resumed = resumeExecArgs(policy, 1, 'thread-123', 'утверждаю');
 check(resumed.args[0] === 'exec' && resumed.args[1] === 'resume' && resumed.args.includes('thread-123'),
   'STOP answer resumes the current phase session');
+check(!resumed.args.includes('-s') && !resumed.args.some(arg => String(arg).startsWith('sandbox_mode='))
+  && !resumed.args.some(arg => String(arg).startsWith('approval_policy='))
+  && !resumed.args.includes('--dangerously-bypass-hook-trust')
+  && !resumed.args.includes('--dangerously-bypass-approvals-and-sandbox'),
+  'STOP resume inherits the original session sandbox without unsafe overrides');
 check(!second.args.includes('thread-123'), 'next phase launch does not inherit the previous session id');
 const mcpFirst = firstExecArgs(policy, 4, 'F:\\fixture', null, ['mcp_servers.unityMCP.enabled=false']);
 const mcpResume = resumeExecArgs(policy, 4, 'thread-456', 'continue', null, ['mcp_servers.unityMCP.enabled=false']);

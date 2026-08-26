@@ -218,6 +218,14 @@ try {
     marker = JSON.parse(fs.readFileSync(path.join(phaseFixture, 'wiki', 'phases', 'phase-2.json'), 'utf8'));
     check(resumed.status === 0 && marker.execution?.currentNode === 'execute'
       && marker.execution?.resultCode === 'USER_DECISION_RECEIVED', 'phase answer resumes a waiting graph exactly once');
+    const invalidPolicy = spawnSync(process.execPath, [phaseScript, 'block', '2', 'Invalid policy fixture', '--host', 'codex', '--owner', 'infrastructure', '--resume-policy', 'rerun'], {
+      cwd: phaseFixture, encoding: 'utf8', env: { ...process.env, FORGE_RUN_ATTEMPT_ID: 'fixture-attempt-invalid-policy' },
+    });
+    const afterInvalidPolicy = JSON.parse(fs.readFileSync(path.join(phaseFixture, 'wiki', 'phases', 'phase-2.json'), 'utf8'));
+    check(invalidPolicy.status === 2 && /user_answer, agent_retry, environment_change, none/.test(invalidPolicy.stderr)
+      && !/at makeRunResult/u.test(invalidPolicy.stderr) && afterInvalidPolicy.state === 'in_progress'
+      && afterInvalidPolicy.execution?.attemptId === 'fixture-attempt-answer',
+    'phase-state rejects an unknown resume policy before mutating state or printing a stack');
     const rejected = spawnSync(process.execPath, [phaseScript, 'complete', '2', 'wiki/irrelevant.md', '--host', 'codex'], {
       cwd: phaseFixture, encoding: 'utf8', env: { ...process.env, FORGE_RUN_ATTEMPT_ID: 'fixture-attempt-reject' },
     });

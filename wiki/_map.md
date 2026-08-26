@@ -49,8 +49,11 @@
 
 ## Current Status
 
-### Version: v4.68.52 (latest released)
+### Version: v4.68.54 (latest released)
 
+- 2026-08-26: **v4.68.54** — Codex phase sessions now receive an explicit project-only writable sandbox, never a full-host or hook-trust bypass; resumed STOP turns inherit the original policy, and invalid resume policies fail before durable state mutation.
+- 2026-08-26: **v4.68.53 candidate rejected** — the complete immutable ZIP is preserved but was not published or installed because final review found a stale current-release link in the Russian README.
+- 2026-08-26: **Q3-009 pilot, Run 01** — Godot Circuit Courier entered canonical Phase 1 and correctly stopped before evidence writes when the Codex pipeline inherited a read-only sandbox. The durable block is `PHASE1_WRITE_SCOPE_BLOCKED`; v4.68.54 selects `workspace-write`, rejects invalid resume policies cleanly and then repeats the same pilot from Phase 1.
 - 2026-08-26: **v4.68.52** — Engine-neutral native capability routing completes Godot GDScript Phases 5/7/8: real-window tech proof, two-process save/reload playtest and atomic immutable Windows release directories bound to engine-owned signed build receipts and safe no-extract ZIP verification.
 - 2026-08-25: **v4.68.51** — user-approved Phase 2 inventory → reference-conditioned GPT Image blueprints (provider-backed batch or trusted native attestation) → runtime-adapter capture → independent tamper-evident review; CSS, clean console output, self-selected states and builder self-approval cannot complete Phase 4.
 - 2026-08-23: **v4.68.50** — Marker-managed projects stop at the first missing phase marker; later visual, SDK, listing and QA artifacts remain visible as evidence ahead of gate but cannot bypass executable phase contracts.
@@ -492,8 +495,9 @@
 
 ### Next
 
-1. `Q3-008`
-2. `Q3-009`
+1. Ship, install and synchronize the v4.68.54 launcher and resume-policy repair.
+2. Reopen Q3-009 Phase 1 and finish the end-to-end native Godot pilot.
+3. Start Q3-008 only if the real pilot exposes an asset/runtime need.
 
 ### Existing v4.8 backlog — priority order
 

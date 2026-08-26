@@ -4813,6 +4813,12 @@ line-level external facts. Internal Retention headings and Cyrillic research sec
 false rejection, while inflected factual claims still require line-local evidence. The real CardGame
 Phase 1 documents pass without English workaround labels.
 
+## v4.68.50 changelog (marker-authoritative status progression)
+
+`$status` now uses artifact inference only for projects with zero valid phase markers. In a modern
+marker-managed project, the first missing marker remains the current gate; later visual/SDK/listing/QA
+artifacts are reported as evidence ahead of gate without silently completing or skipping phases.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".
