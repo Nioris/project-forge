@@ -103,8 +103,17 @@ try {
       };
     }
     evidence.verification = {
-      capture: { command: capture.command, exitCode: capture.runtimeErrors?.length || capture.missingStates?.length ? 1 : 0 },
-      proof: { command: proof.command, exitCode: proof.verdict === 'pass' && !proof.runtimeErrors?.length ? 0 : 1 },
+      // The producer manifests intentionally retain the exact low-level Godot invocations.
+      // Phase evidence records the public Forge entry points that created those manifests;
+      // otherwise the binder and checker disagree even though both producers succeeded.
+      capture: {
+        command: 'node ../project-forge/scripts/godot-screens-shoot.mjs . --json',
+        exitCode: capture.runtimeErrors?.length || capture.missingStates?.length ? 1 : 0,
+      },
+      proof: {
+        command: 'node ../project-forge/scripts/godot-proof-video.mjs . --json',
+        exitCode: proof.verdict === 'pass' && !proof.runtimeErrors?.length ? 0 : 1,
+      },
     };
   } else {
     delete evidence.nativeProof;

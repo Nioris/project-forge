@@ -21,7 +21,10 @@ import {
   observeExecTelemetry,
   savePhaseCostReport,
 } from './lib/codex-cost-report.mjs';
-import { atomicWriteJson, ensurePhaseTaskRun, latestPhaseRunResult } from '../.claude/skills/status/references/execution-contract.mjs';
+import {
+  atomicWriteJson, ensurePhaseTaskRun, latestPhaseRunResult, makeRunResult, makeTask,
+  recordTaskResult, startTaskRun,
+} from '../.claude/skills/status/references/execution-contract.mjs';
 import { refreshProductTelemetry } from '../.claude/skills/status/references/product-telemetry.mjs';
 import {
   checkpointProjectGit, readGitCheckpointLedger, runPhaseGitCheckpoint, sanitizeGitCheckpointMessage,
@@ -33,6 +36,11 @@ const ROOT = path.resolve(SCRIPT_DIR, '..');
 const POLICY_PATH = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'model-policy.json');
 const STATUS_SCRIPT = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'project-status.mjs');
 const PHASE_STATE_SCRIPT = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
+const PHASE4_BIND_SCRIPT = path.join(ROOT, 'scripts', 'bind-phase4-visual-evidence.mjs');
+const PHASE4_RECORD_SCRIPT = path.join(ROOT, 'scripts', 'record-phase4-visual-review.mjs');
+const PHASE4_CHECK_SCRIPT = path.join(ROOT, 'scripts', 'check-phase4-visual-evidence.mjs');
+const PHASE4_EVIDENCE_REL = 'wiki/qa/phase-4-visual-evidence.json';
+const PHASE4_REPORT_REL = 'wiki/qa/phase-4-visual-review.md';
 const PHASE_NAMES = {
   1: 'Analyze', 2: 'Design', 3: 'Construct', 4: 'Visual', 5: 'Tech',
   6: 'Listing', 7: 'Test', 8: 'Release', 9: 'Live',
@@ -46,6 +54,54 @@ function option(args, name) {
 }
 
 function boolOption(args, name) { return args.includes(`--${name}`); }
+
+function readJson(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+}
+
+function sameSnapshot(left, right) {
+  return Boolean(left && right && left.algorithm === right.algorithm && left.sha256 === right.sha256
+    && Number(left.fileCount) === Number(right.fileCount) && Number(left.bytes) === Number(right.bytes));
+}
+
+/**
+ * Detect the machine-produced hand-off from a Phase 4 builder to a host-owned reviewer.
+ * A missing receipt is intentional here; every producer id/snapshot must already be current.
+ */
+export function phase4IndependentReviewCandidate(projectRoot) {
+  const root = path.resolve(projectRoot);
+  const evidence = readJson(path.join(root, ...PHASE4_EVIDENCE_REL.split('/')));
+  const capture = readJson(path.join(root, 'screens', 'review', 'capture-manifest.json'));
+  if (!evidence || !capture) return { ready: false, reason: 'missing evidence or capture manifest' };
+  if (evidence.reviewReceiptId) return { ready: false, reason: 'review already has a receipt' };
+  if (evidence.captureId !== capture.captureId || evidence.captureReceiptId !== capture.captureReceiptId) {
+    return { ready: false, reason: 'evidence is not bound to the current capture' };
+  }
+  if (!Array.isArray(capture.captures) || capture.captures.length < 2
+    || !Array.isArray(evidence.reviews) || evidence.reviews.length !== capture.captures.length
+    || capture.runtimeErrors?.length || capture.missingStates?.length || capture.statePixelCollisions?.length) {
+    return { ready: false, reason: 'capture is incomplete or review rows are not initialized' };
+  }
+  const godot = capture.generatedBy === 'godot-screens-shoot.mjs';
+  if (godot) {
+    const proof = readJson(path.join(root, 'screens', 'review', 'proof-video-manifest.json'));
+    if (!proof || proof.generatedBy !== 'godot-proof-video.mjs' || proof.verdict !== 'pass'
+      || evidence.nativeProof?.proofId !== proof.proofId
+      || evidence.nativeProof?.proofReceiptId !== proof.proofReceiptId
+      || !sameSnapshot(capture.implementationSnapshot, proof.implementationSnapshot)) {
+      return { ready: false, reason: 'native proof is missing or does not match the capture' };
+    }
+  } else if (capture.generatedBy !== 'screens-shoot.mjs') {
+    return { ready: false, reason: 'capture producer is not trusted' };
+  }
+  return { ready: true, engine: godot ? 'godot' : 'web', captureId: capture.captureId };
+}
+
+/** Legacy v4.68.61 builders could misclassify this internal hand-off as a user decision. */
+export function hostReviewMayReopenPhase4(marker) {
+  return marker?.state === 'blocked'
+    && marker?.block?.code === 'PHASE4_INDEPENDENT_REVIEW_REQUIRED';
+}
 
 function configOverrideArgs(overrides = []) {
   return overrides.flatMap(value => ['-c', value]);
@@ -384,6 +440,121 @@ export async function runCodexTurn(launcher, args, cwd, env) {
   });
 }
 
+function phase4ReviewerPrompt(candidate) {
+  const proofInstruction = candidate.engine === 'godot'
+    ? 'Также проверь полный AVI и все lossless PNG samples из screens/review/proof-video-manifest.json строго в timeline order.'
+    : 'Проверь обе viewport-версии каждого состояния из capture manifest.';
+  return `Ты — отдельная host-сессия независимого Phase 4 visual reviewer, не builder.
+
+Работай только как read-heavy reviewer. Не делегируй задачу, не меняй WorkProgress, assets, targets, manifests, phase markers или Forge engine. Разрешены ровно два выходных файла: ${PHASE4_REPORT_REL} и ${PHASE4_EVIDENCE_REL}. Родительский Forge host сам выполнит bind, подпись receipt и checker после твоего выхода; не запускай эти три команды и не меняй identity/env.
+
+Прочитай полностью .agents/skills/visual-qa/SKILL.md и, для Godot, .agents/skills/godot-engine/references/godot-visual-qa.md. Открой каждый live PNG из screens/review/capture-manifest.json рядом с его точным mobile/desktop target из assets/target/screens/manifest.json, а не оценивай имена файлов или старый отчёт. ${proofInstruction}
+
+Существующие QA-файлы — только черновик: независимо перепроверь их и перепиши при любом расхождении. JSON обязан сохранять точные типы схемы: matches/differences — массивы строк, defects — массивы объектов {severity, summary}; никакого PowerShell object-to-string вида "@{...}". Для каждого кадра нужны пять целых scores, distanceScore, минимум 2 конкретных совпадения, минимум 3 конкретных различия и содержательная critique. PASS допустим только при каждом score и distanceScore >= 6 и без Critical/Major. Для Godot proofReview обязан содержать videoWatched, все states, все sample hashes по порядку, motionScore, конкретную critique и defects. При реальном дефекте честно запиши REJECT — builder получит его автоматически.
+
+Не перечитывай прочие фазы и не исследуй проект заново. Заверши кратким фактом: PASS/REJECT и минимальный балл.`;
+}
+
+function runPhase4HostScript(script, projectRoot, env, extra = []) {
+  return spawnSync(process.execPath, [script, projectRoot, ...extra], {
+    cwd: projectRoot, env, encoding: 'utf8', timeout: 120_000,
+    maxBuffer: 8 * 1024 * 1024, windowsHide: true,
+  });
+}
+
+function shortProcessFailure(result) {
+  return String(result?.stderr || result?.stdout || result?.error?.message || 'unknown failure').trim().slice(0, 1800);
+}
+
+/** Launch the reviewer from the authenticated parent process, never from the builder sandbox. */
+export async function runHostPhase4Reviewer({
+  projectRoot, launcher, policy, phaseEnv = {}, configOverrides = [], candidate = null,
+} = {}) {
+  const root = path.resolve(projectRoot);
+  const reviewCandidate = candidate || phase4IndependentReviewCandidate(root);
+  if (!reviewCandidate.ready) return { ran: false, passed: false, reason: reviewCandidate.reason };
+  const reviewTask = makeTask({
+    mode: 'review', phase: 4, goal: 'Independently review current Phase 4 visual evidence',
+    scope: { read: ['**'], write: [PHASE4_REPORT_REL, PHASE4_EVIDENCE_REL] },
+    acceptance: [{ id: 'visual-evidence', text: 'Every current frame and native proof sample is independently reviewed.' }],
+    verificationTarget: '.', status: 'running',
+  });
+  const reviewRun = startTaskRun({ projectRoot: root, task: reviewTask });
+  const reviewAttemptId = `codex-review-4-${randomUUID()}`;
+  const { selected } = phaseSelection(policy, 4);
+  const args = [
+    'exec', '--json', '-C', root,
+    '-s', 'workspace-write', '-c', 'approval_policy="never"',
+    '-m', selected.model,
+    '-c', `model_reasoning_effort=${JSON.stringify(selected.reasoning)}`,
+    '-c', `service_tier=${JSON.stringify(policy.serviceTier)}`,
+    ...configOverrideArgs(configOverrides),
+    phase4ReviewerPrompt(reviewCandidate),
+  ];
+  const reviewEnv = {
+    ...process.env, ...phaseEnv,
+    FORGE_AI_HOST: 'codex', FORGE_MODEL: selected.model,
+    FORGE_REASONING_EFFORT: selected.reasoning, FORGE_SERVICE_TIER: policy.serviceTier,
+    FORGE_MODEL_ROUTE: 'phase4-independent-review', FORGE_MODEL_ENFORCED: '1',
+    FORGE_MAX_PHASE_SUBAGENTS: '0', FORGE_RUN_ATTEMPT_ID: reviewAttemptId,
+    FORGE_AGENT_ID: 'visual-qa', FORGE_TASK_ID: reviewRun.task.id,
+    FORGE_TASK_SCOPE_ENFORCE: '1', FORGE_TASK_CONTRACT_HASH: '',
+    FORGE_HOST_OWNS_GIT_CHECKPOINT: '1',
+  };
+  console.log('\n[Forge] Phase 4 — NEW authenticated independent visual review session');
+  console.log(`[Forge] ${selected.model}/${selected.reasoning}, write scope=2 QA files`);
+  const turn = await runCodexTurn(launcher, args, root, reviewEnv);
+  if (turn.exitCode !== 0) {
+    recordTaskResult({ projectRoot: root, taskId: reviewRun.task.id, result: makeRunResult({
+      taskId: reviewRun.task.id, node: reviewRun.state.currentNode, attemptId: reviewAttemptId,
+      status: 'provider_failure', code: 'PHASE4_REVIEW_PROVIDER_FAILURE', host: 'codex', phase: 4,
+      message: `Independent reviewer process failed: ${shortProcessFailure(turn)}`,
+      failure: { type: 'PROVIDER_ERROR', retryable: true, message: shortProcessFailure(turn) },
+    }) });
+    return { ran: true, completed: false, passed: false, reason: shortProcessFailure(turn), turn };
+  }
+
+  const bind = runPhase4HostScript(PHASE4_BIND_SCRIPT, root, reviewEnv);
+  if (bind.status !== 0) {
+    const reason = `Phase 4 evidence bind failed: ${shortProcessFailure(bind)}`;
+    recordTaskResult({ projectRoot: root, taskId: reviewRun.task.id, result: makeRunResult({
+      taskId: reviewRun.task.id, node: reviewRun.state.currentNode, attemptId: reviewAttemptId,
+      status: 'environment_failure', code: 'PHASE4_REVIEW_BIND_FAILED', host: 'codex', phase: 4,
+      message: reason, failure: { type: 'FORGE_RUNTIME_BUG', retryable: false, message: reason },
+    }) });
+    return { ran: true, completed: false, passed: false, reason, turn };
+  }
+  const recorded = runPhase4HostScript(PHASE4_RECORD_SCRIPT, root, reviewEnv);
+  const checked = runPhase4HostScript(PHASE4_CHECK_SCRIPT, root, reviewEnv, ['--json']);
+  const evidence = readJson(path.join(root, ...PHASE4_EVIDENCE_REL.split('/')));
+  const identityRecorded = evidence?.reviewer?.id === 'visual-qa'
+    && evidence?.reviewer?.sessionId === reviewAttemptId && Boolean(evidence?.reviewReceiptId);
+  if (!identityRecorded) {
+    const reason = `Independent review receipt was not recorded: ${shortProcessFailure(recorded)}`;
+    recordTaskResult({ projectRoot: root, taskId: reviewRun.task.id, result: makeRunResult({
+      taskId: reviewRun.task.id, node: reviewRun.state.currentNode, attemptId: reviewAttemptId,
+      status: 'environment_failure', code: 'PHASE4_REVIEW_RECEIPT_FAILED', host: 'codex', phase: 4,
+      message: reason, failure: { type: 'FORGE_RUNTIME_BUG', retryable: false, message: reason },
+    }) });
+    return { ran: true, completed: false, passed: false, reason, turn, bind, recorded, checked };
+  }
+  const passed = checked.status === 0;
+  const checkText = String(checked.stdout || checked.stderr || '').trim().slice(0, 4000);
+  const boundedCheck = checkText.slice(0, 500) || `checker exit ${checked.status}`;
+  recordTaskResult({ projectRoot: root, taskId: reviewRun.task.id, result: makeRunResult({
+    taskId: reviewRun.task.id, node: reviewRun.state.currentNode, attemptId: reviewAttemptId,
+    status: 'completed', code: passed ? 'PHASE4_REVIEW_PASS' : 'PHASE4_REVIEW_REJECT', host: 'codex', phase: 4,
+    message: passed ? 'Independent Phase 4 visual evidence passed the canonical checker.'
+      : 'Independent Phase 4 visual evidence was recorded and rejected by the canonical checker.',
+    evidence: [PHASE4_REPORT_REL, PHASE4_EVIDENCE_REL], checks: [boundedCheck],
+  }) });
+  console.log(passed
+    ? `[Forge] Independent Phase 4 visual gate PASS; receipt=${evidence.reviewReceiptId}`
+    : '[Forge] Independent Phase 4 visual gate REJECT; returning evidence to the builder.');
+  if (!passed && checkText) console.log(checkText);
+  return { ran: true, completed: true, passed, reason: passed ? null : checkText, turn, bind, recorded, checked };
+}
+
 function createPrompter() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return {
@@ -451,6 +622,18 @@ function reportHostGitCheckpointFailure(projectRoot, phase, stage, error) {
   console.error(`[Forge Git] host ${stage} checkpoint blocked: ${message}${suffix}`);
 }
 
+function reopenPhaseAfterHostReview(projectRoot, phase) {
+  const attemptId = `codex-host-review-resume-${phase}-${randomUUID()}`;
+  const result = spawnSync(process.execPath, [PHASE_STATE_SCRIPT, 'reopen', String(phase), '--host', 'codex'], {
+    cwd: projectRoot, env: {
+      ...process.env, FORGE_AI_HOST: 'codex', FORGE_RUN_ATTEMPT_ID: attemptId,
+      FORGE_HOST_OWNS_GIT_CHECKPOINT: '1',
+    }, encoding: 'utf8', timeout: 60_000, windowsHide: true,
+  });
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout || `Could not reopen Phase ${phase} after host review`);
+  console.log(`[Forge] Phase ${phase} reopened automatically after host-owned independent review.`);
+}
+
 export async function runPipeline({
   projectRoot, fromPhase = null, autoAdvance = false, dryRun = false,
   keepLocalMcp = false,
@@ -494,7 +677,8 @@ export async function runPipeline({
   const ownsPrompter = !prompter;
   const prompt = prompter || createPrompter();
   try {
-    while (phase <= 9) {
+    phaseLoop: while (phase <= 9) {
+      let reviewBeforeBuilder = null;
       try {
         hostGitCheckpoint({
           projectRoot: root, phase, phaseName: PHASE_NAMES[phase], stage: 'preflight', checkpoint: gitCheckpoint,
@@ -502,6 +686,25 @@ export async function runPipeline({
       } catch (error) {
         reportHostGitCheckpointFailure(root, phase, 'preflight', error);
         return 2;
+      }
+      const preflightReviewCandidate = phase === 4 ? phase4IndependentReviewCandidate(root) : { ready: false };
+      if (preflightReviewCandidate.ready) {
+        reviewBeforeBuilder = await runHostPhase4Reviewer({
+          projectRoot: root, launcher, policy, configOverrides: mcpOverrides,
+          candidate: preflightReviewCandidate,
+        });
+        if (!reviewBeforeBuilder.completed) {
+          console.error(`[Forge] Independent Phase 4 reviewer could not complete: ${reviewBeforeBuilder.reason || 'unknown host failure'}`);
+          return 2;
+        }
+        const markerAfterReview = readPhaseMarker(root, phase);
+        if (hostReviewMayReopenPhase4(markerAfterReview)) {
+          try { reopenPhaseAfterHostReview(root, phase); }
+          catch (error) {
+            console.error(`[Forge] Could not resume Phase ${phase} after independent review: ${error.message}`);
+            return 2;
+          }
+        }
       }
       const initial = firstExecArgs(policy, phase, root, null, mcpOverrides);
       // Bind the durable phase Task before model tool access. Native Codex file hooks
@@ -530,8 +733,10 @@ export async function runPipeline({
 
       const phaseStartedAtMs = Date.now();
       const phaseTelemetry = createExecTelemetry();
+      if (reviewBeforeBuilder?.turn?.telemetry) mergeExecTelemetry(phaseTelemetry, reviewBeforeBuilder.turn.telemetry);
       let sessionId = null;
       let nextArgs = initial.args;
+      let restartPhaseSession = false;
       let automaticContinues = 0;
       let unexpectedStops = 0;
       let failedExecs = 0;
@@ -558,7 +763,38 @@ export async function runPipeline({
         const turn = await runCodexTurn(launcher, nextArgs, root, { ...phaseEnv, FORGE_RUN_ATTEMPT_ID: turnAttemptId });
         mergeExecTelemetry(phaseTelemetry, turn.telemetry);
         if (turn.sessionId) sessionId = turn.sessionId;
-        const marker = readPhaseMarker(root, phase);
+        let marker = readPhaseMarker(root, phase);
+        const reviewCandidate = phase === 4 ? phase4IndependentReviewCandidate(root) : { ready: false };
+        if (reviewCandidate.ready) {
+          const review = await runHostPhase4Reviewer({
+            projectRoot: root, launcher, policy, phaseEnv, configOverrides: mcpOverrides,
+            candidate: reviewCandidate,
+          });
+          if (review.turn?.telemetry) mergeExecTelemetry(phaseTelemetry, review.turn.telemetry);
+          if (!review.completed) {
+            console.error(`[Forge] Independent Phase 4 reviewer could not complete: ${review.reason || 'unknown host failure'}`);
+            return 2;
+          }
+          marker = readPhaseMarker(root, phase);
+          if (hostReviewMayReopenPhase4(marker)) {
+            try { reopenPhaseAfterHostReview(root, phase); }
+            catch (error) {
+              console.error(`[Forge] Could not resume Phase ${phase} after independent review: ${error.message}`);
+              return 2;
+            }
+            restartPhaseSession = true;
+            break;
+          }
+          if (marker?.state !== 'blocked') {
+            if (!sessionId) throw new Error('Builder ended before the host reviewer could return its result.');
+            nextArgs = resumeExecArgs(policy, phase, sessionId, review.passed
+              ? 'Host-owned independent Phase 4 review and canonical checker passed. Inspect the receipt, update project memory, run the completion contract and finish Phase 4 without repeating capture or review.'
+              : `Host-owned independent Phase 4 review recorded a REJECT. Repair only its concrete findings, then create fresh capture/proof evidence and end the builder turn for another host review.\n\nChecker result:\n${String(review.reason || '').slice(0, 1800)}`,
+            null, mcpOverrides).args;
+            automaticContinues = 0;
+            continue;
+          }
+        }
         const structured = latestPhaseRunResult(root, marker, phase);
         const outcome = classifyTurnResult(marker, turn.finalText, turn.exitCode, {
           structuredResult: structured?.result || null,
@@ -626,6 +862,8 @@ export async function runPipeline({
           'Пользователь подтвердил продолжение. Доведи текущую фазу до настоящего STOP-point или phase complete.', null, mcpOverrides).args;
         automaticContinues = 0;
       }
+
+      if (restartPhaseSession) continue phaseLoop;
 
       const phaseCompletedAtMs = Date.now();
       let rolloutAudit = null;

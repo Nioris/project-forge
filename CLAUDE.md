@@ -1,4 +1,4 @@
-# Project Forge v4.68.61 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.62 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,11 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.62 changelog (host-owned independent Phase 4 review)
+
+Codex now hands producer-complete Phase 4 evidence to a clean parent-owned reviewer and returns its
+receipted PASS/REJECT automatically, without nested Codex, identity collisions or false user STOPs.
+
 ## v4.68.61 changelog (measurable release delivery)
 
 Phases refresh local `.forge/metrics`; Phase 8 archives time, AI cost, repairs, defects, moderation and
@@ -510,8 +515,3 @@ Project-specific Godot smoke scenes/scripts now run through `run-godot-smoke.mjs
 copy and `user://`, headless mode, explicit marker and process-tree timeout. Raw working-project
 `godot_console` smokes are forbidden: orphaned processes can lock caches and mimic later crashes.
 Regressions cover success, missing markers, traversal, source immutability and hung-process cleanup.
-
-## v4.68.59 changelog (trusted Godot certificate-noise recovery)
-
-The exact Windows root-certificate diagnostic is nonblocking only after trusted native markers/reports and
-valid artifacts. Terminal phase block replay is idempotent; conflicting transitions require explicit reopen.

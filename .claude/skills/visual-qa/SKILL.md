@@ -43,6 +43,12 @@ flows (меню → gameplay → пауза → магазин/результа�
 недоступен, открой чистый review-сеанс и передай ему target frame, style bible, contact sheet и
 все исходные PNG. Не выдавай смену роли внутри того же сеанса за независимую проверку.
 
+В управляемом Codex pipeline чистую авторизованную review-сессию создаёт parent host после
+producer hand-off. Builder не должен порождать subagent/вложенный `codex exec`, а reviewer не
+запускает binder, receipt или checker и пишет только два канонических QA-файла. Parent выполняет
+машинную привязку и подпись после выхода reviewer-а и автоматически возвращает PASS/REJECT
+builder-у. Для этого hand-off не нужен и запрещён user-owned STOP.
+
 ## Отчёт
 
 `wiki/qa/visual-qa-YYYY-MM-DD.md`:
@@ -61,7 +67,8 @@ Minor: косметика без влияния на понимание/упра
 `wiki/qa/phase-4-visual-evidence.json`. Начни с созданного `screens/review/phase-4-visual-evidence.template.json`,
 оцени **каждый** кадр по пяти полям `composition`, `hierarchy`, `readability`, `styleMatch`,
 `responsiveness`, а в `targetComparison` — точный target SHA, минимум 2 совпадения, 3 конкретных
-расхождения и `distanceScore`. Добавь конкретную критику и дефекты. Затем обнови SHA-256 отчёта и выполни:
+расхождения и `distanceScore`. Добавь конкретную критику и дефекты. Затем в ручном host route
+обнови SHA-256 отчёта и выполни:
 
 ```bash
 node <движок>/scripts/bind-phase4-visual-evidence.mjs .
@@ -69,7 +76,8 @@ node <движок>/scripts/record-phase4-visual-review.mjs .
 node <движок>/scripts/check-phase4-visual-evidence.mjs .
 ```
 
-Последняя команда записи review запускается именно из независимого host task/session; она
+В Codex pipeline эти три команды запускает parent host с identity независимой review-сессии.
+В ручном route команда записи review запускается именно из независимого host task/session; она
 сверяет tamper-evident capture receipt, фиксирует reviewer identity вне проекта и не подпишет
 приёмку в builder-сеансе. Receipt выявляет последующую правку project evidence; процесс с полным
 shell-доступом остаётся доверенной host-границей.

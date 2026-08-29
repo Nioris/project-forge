@@ -6,8 +6,10 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
-  bindPhaseTaskMarker, classifyAfterTurn, classifyTurnResult, firstExecArgs, loadPolicy, looksLikeQuestion, parseExecEvent,
-  reconcileCompletedGitCheckpoints, resolveCodexLauncher, resumeExecArgs, runPipeline, unavailableLocalMcpOverrides,
+  bindPhaseTaskMarker, classifyAfterTurn, classifyTurnResult, firstExecArgs, hostReviewMayReopenPhase4,
+  loadPolicy, looksLikeQuestion, parseExecEvent,
+  phase4IndependentReviewCandidate, reconcileCompletedGitCheckpoints, resolveCodexLauncher, resumeExecArgs,
+  runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
 import { ensurePhaseTaskRun, readTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
 import {
@@ -104,6 +106,11 @@ check(classifyTurnResult({ state: 'blocked', updatedAt: now }, '', 0).source ===
   'old blocked markers remain a named compatibility path');
 check(classifyTurnResult({ state: 'blocked', updatedAt: '2020-01-01T00:00:00.000Z' }, '', 0, { turnStartedAtMs: Date.now() }).action === 'continue',
   'a stale blocked/STOP marker cannot control a new turn');
+check(hostReviewMayReopenPhase4({
+  state: 'blocked', block: { owner: 'user', code: 'PHASE4_INDEPENDENT_REVIEW_REQUIRED' },
+}) && !hostReviewMayReopenPhase4({
+  state: 'blocked', block: { owner: 'user', code: 'PHASE4_ART_APPROVAL' },
+}), 'host review reopens only its legacy technical hand-off and preserves real user decisions');
 check(classifyTurnResult({
   schemaVersion: 3, state: 'blocked', block: { owner: 'user' }, updatedAt: now,
   execution: { attemptId: 'codex-old-stop-attempt' },
@@ -175,6 +182,26 @@ try {
   check(dry.status === 0 && /Phase 2 Design/.test(dry.stdout) && /Phase 9 Live/.test(dry.stdout)
     && (dry.stdout.match(/fresh-session=yes/g) || []).length === 8,
   'dry run shows one fresh session for every remaining phase without calling a model');
+
+  const reviewCandidateProject = path.join(tmp, 'phase4-review-candidate');
+  fs.mkdirSync(path.join(reviewCandidateProject, 'wiki', 'qa'), { recursive: true });
+  fs.mkdirSync(path.join(reviewCandidateProject, 'screens', 'review'), { recursive: true });
+  fs.writeFileSync(path.join(reviewCandidateProject, 'screens', 'review', 'capture-manifest.json'), JSON.stringify({
+    generatedBy: 'screens-shoot.mjs', captureId: 'capture-fixture', captureReceiptId: 'receipt-fixture',
+    captures: [{ state: 'home', viewport: 'mobile' }, { state: 'home', viewport: 'desktop' }],
+    runtimeErrors: [], missingStates: [], statePixelCollisions: [],
+  }));
+  fs.writeFileSync(path.join(reviewCandidateProject, 'wiki', 'qa', 'phase-4-visual-evidence.json'), JSON.stringify({
+    captureId: 'capture-fixture', captureReceiptId: 'receipt-fixture',
+    reviews: [{ verdict: 'reject' }, { verdict: 'reject' }], reviewReceiptId: null,
+  }));
+  check(phase4IndependentReviewCandidate(reviewCandidateProject).ready,
+    'Phase 4 producer hand-off is detected before a reviewer receipt exists');
+  const receiptedEvidence = JSON.parse(fs.readFileSync(path.join(reviewCandidateProject, 'wiki', 'qa', 'phase-4-visual-evidence.json'), 'utf8'));
+  receiptedEvidence.reviewReceiptId = 'review-receipt-fixture';
+  fs.writeFileSync(path.join(reviewCandidateProject, 'wiki', 'qa', 'phase-4-visual-evidence.json'), JSON.stringify(receiptedEvidence));
+  check(!phase4IndependentReviewCandidate(reviewCandidateProject).ready,
+    'Phase 4 host does not relaunch a reviewer after a receipt was recorded');
 
   const prebound = ensurePhaseTaskRun({ projectRoot: tmp, phase: 2, phaseName: 'Design' });
   const boundMarker = bindPhaseTaskMarker(tmp, 2, prebound);

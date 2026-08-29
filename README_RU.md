@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая версия исходников:** `v4.68.61`
+**Текущая версия исходников:** `v4.68.62`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -190,6 +190,10 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 Рекомендуемый запуск — один раз `node ../project-forge/scripts/codex-pipeline.mjs --cwd .`. Окно остаётся открытым на весь проект: ответы на STOP продолжают текущую фазовую сессию, а после `complete` Forge спрашивает о следующей фазе и запускает её в новой чистой сессии без старого контекста. Все фазы и подагенты используют GPT-5.6 Sol на Standard; reasoning зависит от работы. Ручной `codex-phase.mjs <1..9>` остаётся для точечного контроля. Полная таблица: `.claude/skills/status/references/MODEL-ROUTING.md`.
 
+У фазы 4 есть ещё одна чистая граница: когда builder подготовил финальные native/browser-доказательства,
+авторизованный parent сам запускает узкого независимого визуального reviewer-а, подписывает вердикт и
+возвращает PASS/REJECT. Пользователю не нужно открывать второй терминал или подтверждать технический STOP.
+
 После каждой завершённой фазы родительский оркестратор печатает и сохраняет локальный cost/context-отчёт в `wiki/diagnostics/codex-cost/phase-N-latest.json`. Когда доступен rollout Codex, отчёт считает модельные ответы, input/cache/output tokens, compaction, подагентов, объём tool output, фактическую модель и неожиданные остановки. Промпты, сообщения, содержимое файлов, состояние лимита и секреты не сохраняются. Несколько отчётов можно открыть в панели **Codex Cost / Context** в Dashboard.
 
 Дополнительно Forge автоматически ведёт локальную карточку релиза в `.forge/metrics/`: календарный и tracked-active time-to-release, exact/estimated/unknown AI cost, продуктовые и инфраструктурные repair cycles, структурированные дефекты до релиза, first-pass/eventual moderation rate и долю автоматизированных переходов workflow. Смена фазы обновляет snapshot, Phase 8 создаёт запись релиза. Один проект: `node ../project-forge/scripts/forge-metrics.mjs snapshot --cwd .`; портфель: `portfolio --root .. --split-at <ISO-дата>`. Каждый KPI содержит `n` и coverage, неизвестная стоимость/модерация не считается нулём. Формулы: [Forge Product Telemetry](wiki/architecture/forge-product-telemetry.md).
@@ -208,7 +212,7 @@ node ../project-forge/scripts/codex-phase.mjs 5 --route payment-security --cwd .
 
 ## Терминальный launcher
 
-В `v4.68.61` обычная авторизация и API-профили остаются разделены.
+В `v4.68.62` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка

@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current source version:** `v4.68.61`
+**Current source version:** `v4.68.62`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -191,6 +191,11 @@ node ../project-forge/scripts/codex-pipeline.mjs --cwd .
 
 The terminal remains open for the entire project. Within a phase, Forge resumes the same Codex session after your STOP answer. After a durable `complete`, it asks whether to start the next phase, discards the old session context, and launches a clean one in the same window. Every phase uses GPT-5.6 Sol on Standard; reasoning is high for creative/technical work and medium for deterministic listing, packaging, and routine metrics.
 
+Phase 4 has one additional clean-session boundary: after the builder produces the final native/browser
+evidence, the authenticated parent launches a narrow independent visual reviewer, signs its verdict and
+returns PASS/REJECT automatically. This internal hand-off does not ask the user to open another terminal
+or approve a technical STOP.
+
 After every completed phase, the parent orchestrator prints and stores a privacy-bounded cost/context report under `wiki/diagnostics/codex-cost/phase-N-latest.json`. When the local Codex rollout is available, it measures model responses, input/cache/output tokens, compactions, subagents, tool-output volume, actual model policy, and unexpected stops. Reports never store prompts, messages, file contents, rate-limit state, or secrets. Open one or more reports in the Dashboard's **Codex Cost / Context** panel to compare phases.
 
 Forge also derives a local release scorecard under `.forge/metrics/`: calendar and tracked-active time-to-release, exact/estimated/unknown AI cost, product vs infrastructure repair cycles, structured pre-release defects, moderation first-pass/eventual pass, and tracked workflow automation. Phase changes refresh it automatically; Phase 8 creates the release record. Use `node ../project-forge/scripts/forge-metrics.mjs snapshot --cwd .` for one project or `portfolio --root .. --split-at <ISO date>` for median before/after cohorts. Every metric carries its sample size and coverage; unknown cost/moderation is never treated as zero. See [the measurement contract](wiki/architecture/forge-product-telemetry.md).
@@ -211,7 +216,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.61` keeps separate normal-account and API profiles.
+`v4.68.62` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription

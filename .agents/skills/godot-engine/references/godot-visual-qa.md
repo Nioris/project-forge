@@ -54,13 +54,20 @@ node ../project-forge/scripts/bind-phase4-visual-evidence.mjs . --init screens/r
 Then a different host task/session opens every live mobile/desktop screenshot beside its exact target,
 watches the complete AVI, opens every one-second PNG sample, writes the Markdown report and fills the
 reject-by-default JSON. It must list each configured state exactly once and every sample hash in
-timeline order. After that reviewer session runs:
+timeline order. In the managed Codex pipeline the builder ends its turn here with Phase 4 still
+`in_progress`: it must not spawn a subagent, start nested `codex exec`, or create a user STOP. The
+authenticated parent creates the clean reviewer session and, after that session exits, runs:
 
 ```bash
 node ../project-forge/scripts/bind-phase4-visual-evidence.mjs .
 node ../project-forge/scripts/record-phase4-visual-review.mjs .
 node ../project-forge/scripts/check-phase4-visual-evidence.mjs . --json
 ```
+
+The reviewer itself writes only `wiki/qa/phase-4-visual-review.md` and
+`wiki/qa/phase-4-visual-evidence.json`; the parent owns bind/receipt/check so the reviewer identity
+cannot collide with the builder and a missing CLI login inside a sandbox cannot block the phase.
+Outside the managed pipeline, run the same commands from the independent reviewer host session.
 
 Binding changed capture, targets, style bible or proof resets the affected review to `reject`; it never
 reuses prose/scores against new pixels. Receipts detect later project-local replacement. They are a

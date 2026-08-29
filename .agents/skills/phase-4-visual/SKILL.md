@@ -169,7 +169,9 @@ self-review одинаковы для всех движков; меняется 
 - Каждый под-скил сохраняет свои гейты (game-design жёстко стоит без metrics.md и т.д.) — фаза их НЕ обходит.
 - Между шагами: короткая сверка «что сделано» фактом (файл/греп), не заявлением.
 - В конце фазы: сводка (что создано, что требует твоего решения) + команда СЛЕДУЮЩЕЙ фазы.
-- Финал: wiki/_map.md + запись в sessions + node scripts/check-drift.mjs (для движковых правок).
+- Финал: wiki/_map.md + запись в sessions. `node scripts/check-drift.mjs` запускай только
+  когда работаешь в самом репозитории Project Forge и действительно менял движок; из папки
+  создаваемой игры этот engine-maintenance checker не запускать.
 
 ## Креативы стора — по $store-creatives
 Иконка и обложка делаются как РЕКЛАМА (за секунду понятен жанр, есть эмоция, читаются в 100px,
@@ -222,10 +224,13 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
 2. Для Godot после двух producer-команд запусти
    `node <движок>/scripts/prepare-godot-phase4-review.mjs .`, затем инициализируй канонический
    evidence через `bind-phase4-visual-evidence.mjs . --init screens/review/phase-4-visual-evidence.template.json`.
-   Передай `assets/target/screens/manifest.json`, style bible, **каждый** mobile/desktop кадр,
-   полный AVI и все lossless samples другому reviewer-сеансу или отдельному visual-qa агенту.
-   Builder session не может принять сам себя; reviewer обязан действительно открыть pixels/video,
-   а не оценивать JSON и имена файлов.
+   На этом builder hand-off готов. В управляемом Codex pipeline **не** запускай subagent или
+   вложенный `codex exec`, не ставь user-owned STOP и не проси пользователя открыть терминал:
+   оставь Phase 4 `in_progress` и заверши ход. Авторизованный parent host сам обнаружит producer
+   evidence и откроет новую узкую review-сессию. В ручном/другом host route передай
+   `assets/target/screens/manifest.json`, style bible, **каждый** mobile/desktop кадр, полный AVI
+   и все lossless samples другому reviewer-сеансу. Builder session не может принять сам себя;
+   reviewer обязан действительно открыть pixels/video, а не оценивать JSON и имена файлов.
 3. Reviewer открывает live screenshot рядом с его state-specific mobile/desktop target, а не только
    общий target и не JSON, и пишет `wiki/qa/phase-4-visual-review.md`: по каждому
    кадру — композиция, иерархия, читаемость, совпадение со стилем/target frame, адаптивность,
@@ -239,11 +244,13 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
    После заполнения reviewer-полей выполни
    `node <движок>/scripts/bind-phase4-visual-evidence.mjs .` — он обновит только машинные
    пути/хеши и **не** превращает незаполненный/слабый review в PASS.
-5. Независимый reviewer в другой host task/session запускает
-   `node <движок>/scripts/record-phase4-visual-review.mjs .`, получая внешнюю по отношению к проекту
-   tamper-evident receipt. Она обнаруживает последующую подмену evidence, но при полном shell-доступе
-   сам host остаётся доверенной границей.
-6. Запусти `node <движок>/scripts/check-phase4-visual-evidence.mjs .`. Только `PASS` разрешает
+5. В Codex pipeline reviewer пишет только два QA-файла, а parent host после его выхода сам
+   последовательно запускает binder, `record-phase4-visual-review.mjs` и checker с новой host
+   identity. В ручном route эти команды запускаются из независимого reviewer task/session.
+   Tamper-evident receipt обнаруживает последующую подмену evidence, но при полном shell-доступе
+   сам host остаётся доверенной границей. Этот технический hand-off никогда не является решением
+   пользователя и не должен создавать STOP.
+6. Только `PASS` от `node <движок>/scripts/check-phase4-visual-evidence.mjs .` разрешает
    команду `phase-state.mjs complete 4 ...`.
 
 Gate отклоняет фазу, если: пропущено состояние из утверждённого screen-flow; нет пары 412px + desktop для каждого;

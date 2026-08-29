@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.61 (current source line)
+### Version: v4.68.62 (current source line)
 
+- 2026-08-29: **v4.68.62** — Codex Phase 4 producer evidence now hands off automatically to a clean authenticated parent-owned reviewer task; the host binds and receipts the independent verdict, reopens technical blocks without a user STOP, and records canonical Godot producer provenance.
 - 2026-08-27: **v4.68.61** — local release telemetry derives time/cost/repairs/defects/moderation/automation from durable evidence, records bounded external facts, compares median cohorts with per-KPI sample/coverage gates and renders claim readiness in Dashboard.
 - 2026-08-26: **v4.68.60** — project-specific Godot scene/script smokes now run only through an isolated headless process-tree-bounded runner with explicit success markers; raw working-tree `godot_console` smoke commands are forbidden.
 - 2026-08-26: **v4.68.59** — an exact Windows root-certificate diagnostic is nonblocking only after trusted Godot protocol/artifact success; terminal phase block replay is idempotent and only `reopen` may create a fresh Task.

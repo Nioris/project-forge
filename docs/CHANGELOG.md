@@ -3,6 +3,13 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.59 changelog (trusted Godot certificate-noise recovery)
+
+The exact Windows root-certificate diagnostic is nonblocking only after trusted native markers/reports and
+valid artifacts. Terminal phase block replay is idempotent; conflicting transitions require explicit reopen.
+
+---
+
 ## v4.68.58 changelog (crash-safe isolated Godot runtime)
 
 Godot runtimes use temporary user profiles and class caches. GDScript construct checks bounded native
