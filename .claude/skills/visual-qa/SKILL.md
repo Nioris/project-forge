@@ -48,6 +48,9 @@ producer hand-off. Builder не должен порождать subagent/вло�
 запускает binder, receipt или checker и пишет только два канонических QA-файла. Parent выполняет
 машинную привязку и подпись после выхода reviewer-а и автоматически возвращает PASS/REJECT
 builder-у. Для этого hand-off не нужен и запрещён user-owned STOP.
+После signed REJECT builder не имеет права запускать «контр-review» или искать второе мнение:
+он ремонтирует все Major/low-score пункты, переснимает evidence и отдаёт его следующей
+parent-owned review-сессии. Phase 4 builder работает с `maxSubagents=0`.
 
 ## Отчёт
 

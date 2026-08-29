@@ -250,6 +250,11 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
    Tamper-evident receipt обнаруживает последующую подмену evidence, но при полном shell-доступе
    сам host остаётся доверенной границей. Этот технический hand-off никогда не является решением
    пользователя и не должен создавать STOP.
+   Подписанный REJECT обязателен для текущего repair-cycle: builder не оспаривает его через
+   второй review, не вызывает reviewer-subagent и не переписывает QA. Даже если одна формулировка
+   кажется спорной, исправь все Major и все критерии ниже 6, создай новые pixels/proof и снова
+   передай их parent host. Для Phase 4 policy устанавливает builder `maxSubagents=0`; независимый
+   reviewer является отдельной parent-owned host-сессией, а не фазовым subagent.
 6. Только `PASS` от `node <движок>/scripts/check-phase4-visual-evidence.mjs .` разрешает
    команду `phase-state.mjs complete 4 ...`.
 

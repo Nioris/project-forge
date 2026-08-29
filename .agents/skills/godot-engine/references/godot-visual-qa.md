@@ -68,6 +68,9 @@ The reviewer itself writes only `wiki/qa/phase-4-visual-review.md` and
 `wiki/qa/phase-4-visual-evidence.json`; the parent owns bind/receipt/check so the reviewer identity
 cannot collide with the builder and a missing CLI login inside a sandbox cannot block the phase.
 Outside the managed pipeline, run the same commands from the independent reviewer host session.
+Once the parent records REJECT, that verdict is binding for the current repair cycle. The builder must
+not spawn a counter-reviewer or rewrite QA; it repairs all Major/low-score findings, produces new
+capture/proof identities and hands those new pixels back to the parent.
 
 Binding changed capture, targets, style bible or proof resets the affected review to `reject`; it never
 reuses prose/scores against new pixels. Receipts detect later project-local replacement. They are a

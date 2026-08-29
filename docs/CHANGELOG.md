@@ -3,6 +3,15 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.60 changelog (bounded isolated supplemental Godot smoke)
+
+Project-specific Godot smoke scenes/scripts now run through `run-godot-smoke.mjs`: an isolated
+copy and `user://`, headless mode, explicit marker and process-tree timeout. Raw working-project
+`godot_console` smokes are forbidden: orphaned processes can lock caches and mimic later crashes.
+Regressions cover success, missing markers, traversal, source immutability and hung-process cleanup.
+
+---
+
 ## v4.68.59 changelog (trusted Godot certificate-noise recovery)
 
 The exact Windows root-certificate diagnostic is nonblocking only after trusted native markers/reports and

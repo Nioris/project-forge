@@ -12,7 +12,9 @@ every generated Codex subagent uses GPT-5.6 Sol. Claude aliases in skills remain
 4. `xhigh` is a named deep-reasoning route only after a normal Sol/high attempt produced conflicting
    evidence or a reproducible unexplained failure. Changing effort never changes the Sol model family.
 5. A phase may use no more than `maxSubagents`, and never more than the global limit. Generated Codex
-   agents default to Sol/medium; review, security and architecture roles use Sol/high.
+   agents default to Sol/medium; review, security and architecture roles use Sol/high. Phase 4 builder
+   is explicitly zero-subagent: its independent visual reviewer is launched by the authenticated parent
+   as a separate host task after producer hand-off.
 6. Preferred UX: start `node ../project-forge/scripts/codex-pipeline.mjs --cwd .` once. It resumes
    the same session for answers inside a phase, but replaces the session after `complete` while keeping
    one terminal window. `codex-phase.mjs <phase>` remains the manual single-phase launcher.

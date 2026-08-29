@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 import {
   bindPhaseTaskMarker, classifyAfterTurn, classifyTurnResult, firstExecArgs, hostReviewMayReopenPhase4,
   loadPolicy, looksLikeQuestion, parseExecEvent,
-  phase4IndependentReviewCandidate, reconcileCompletedGitCheckpoints, resolveCodexLauncher, resumeExecArgs,
+  phase4IndependentReviewCandidate, phase4PostReviewBuilderPrompt, reconcileCompletedGitCheckpoints,
+  resolveCodexLauncher, resumeExecArgs,
   runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
 import { ensurePhaseTaskRun, readTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
@@ -111,6 +112,10 @@ check(hostReviewMayReopenPhase4({
 }) && !hostReviewMayReopenPhase4({
   state: 'blocked', block: { owner: 'user', code: 'PHASE4_ART_APPROVAL' },
 }), 'host review reopens only its legacy technical hand-off and preserves real user decisions');
+const phase4RepairPrompt = phase4PostReviewBuilderPrompt({ passed: false, reason: 'fixture reject' });
+check(/repair builder/i.test(phase4RepairPrompt) && /Do not spawn any agent\/subagent/i.test(phase4RepairPrompt)
+  && /parent alone will launch the next reviewer/i.test(phase4RepairPrompt),
+  'a rejected host review returns an explicit no-counter-review repair contract to the builder');
 check(classifyTurnResult({
   schemaVersion: 3, state: 'blocked', block: { owner: 'user' }, updatedAt: now,
   execution: { attemptId: 'codex-old-stop-attempt' },

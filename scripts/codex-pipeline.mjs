@@ -455,6 +455,13 @@ function phase4ReviewerPrompt(candidate) {
 Не перечитывай прочие фазы и не исследуй проект заново. Заверши кратким фактом: PASS/REJECT и минимальный балл.`;
 }
 
+export function phase4PostReviewBuilderPrompt(review) {
+  if (review?.passed) {
+    return `HOST-OWNED PHASE 4 REVIEW: PASS. The independent authenticated parent reviewer and canonical checker already passed. You are the builder, not a reviewer. Do not spawn agents, run another review, or regenerate unchanged capture/proof. Inspect the signed receipt, update durable project memory, run the Phase 4 completion contract and complete the phase.`;
+  }
+  return `HOST-OWNED PHASE 4 REVIEW: REJECT. The signed independent verdict is authoritative for this repair cycle. You are the repair builder, not a reviewer. Do not spawn any agent/subagent, start nested Codex, seek a second opinion, rewrite the QA verdict, or rerun bind/receipt/check against unchanged pixels. Repair every concrete Major and below-threshold criterion in wiki/qa/phase-4-visual-review.md, even if one sentence seems debatable. Then generate a fresh capture and native proof, prepare/init reject-by-default evidence, leave Phase 4 in_progress and end the turn. The authenticated parent alone will launch the next reviewer.\n\nCanonical checker summary:\n${String(review?.reason || 'See the signed QA files.').slice(0, 1800)}`;
+}
+
 function runPhase4HostScript(script, projectRoot, env, extra = []) {
   return spawnSync(process.execPath, [script, projectRoot, ...extra], {
     cwd: projectRoot, env, encoding: 'utf8', timeout: 120_000,
@@ -707,6 +714,9 @@ export async function runPipeline({
         }
       }
       const initial = firstExecArgs(policy, phase, root, null, mcpOverrides);
+      if (reviewBeforeBuilder?.completed) {
+        initial.args[initial.args.length - 1] += `\n\n${phase4PostReviewBuilderPrompt(reviewBeforeBuilder)}`;
+      }
       // Bind the durable phase Task before model tool access. Native Codex file hooks
       // inherit this immutable identity and reject writes outside its declared scope.
       const existingMarker = readPhaseMarker(root, phase);
@@ -787,10 +797,8 @@ export async function runPipeline({
           }
           if (marker?.state !== 'blocked') {
             if (!sessionId) throw new Error('Builder ended before the host reviewer could return its result.');
-            nextArgs = resumeExecArgs(policy, phase, sessionId, review.passed
-              ? 'Host-owned independent Phase 4 review and canonical checker passed. Inspect the receipt, update project memory, run the completion contract and finish Phase 4 without repeating capture or review.'
-              : `Host-owned independent Phase 4 review recorded a REJECT. Repair only its concrete findings, then create fresh capture/proof evidence and end the builder turn for another host review.\n\nChecker result:\n${String(review.reason || '').slice(0, 1800)}`,
-            null, mcpOverrides).args;
+            nextArgs = resumeExecArgs(policy, phase, sessionId,
+              phase4PostReviewBuilderPrompt(review), null, mcpOverrides).args;
             automaticContinues = 0;
             continue;
           }

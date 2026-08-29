@@ -35,6 +35,8 @@ try {
     ? ok('quality policy pins Standard tier, fresh phase tasks and at most two subagents') : bad('quality policy global limits invalid');
   Object.values(policy.phases).every(p => p.base.model==='gpt-5.6-sol' && Object.values(p.routes||{}).every(r => r.model==='gpt-5.6-sol'))
     ? ok('all primary phases and named routes stay on GPT-5.6 Sol') : bad('non-Sol phase route found');
+  policy.phases['4'].maxSubagents===0
+    ? ok('Phase 4 builder cannot create reviewer subagents; the parent host owns independent review') : bad('Phase 4 subagent limit drift');
   (policy.phases['6'].base.reasoning==='medium' && policy.phases['8'].base.reasoning==='medium' && policy.phases['7'].routes['unexplained-failure'].reasoning==='xhigh')
     ? ok('reasoning effort is reduced for deterministic work and escalated only for hard failures') : bad('reasoning-effort routing drift');
 
@@ -230,7 +232,7 @@ try {
   phase(p6,'start','4');
   let marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));
   marker.state==='in_progress' ? ok('phase-state start writes machine marker') : bad('phase-state start failed');
-  (marker.schemaVersion===3 && marker.execution?.workflow==='phase' && marker.execution?.resultStatus==='in_progress' && marker.modelRuntime?.recommendedCodex?.model==='gpt-5.6-sol' && marker.modelRuntime?.recommendedCodex?.reasoning==='high' && marker.modelRuntime?.selection?.model===null && marker.modelRuntime?.selection?.source==='unreported' && marker.modelRuntime?.subagents?.limit===2)
+  (marker.schemaVersion===3 && marker.execution?.workflow==='phase' && marker.execution?.resultStatus==='in_progress' && marker.modelRuntime?.recommendedCodex?.model==='gpt-5.6-sol' && marker.modelRuntime?.recommendedCodex?.reasoning==='high' && marker.modelRuntime?.selection?.model===null && marker.modelRuntime?.selection?.source==='unreported' && marker.modelRuntime?.subagents?.limit===0)
     ? ok('phase marker separates the Codex recommendation from an unreported actual model') : bad('phase marker model runtime missing or wrong');
   phase(p6,'block','4','Awaiting target frame');
   marker=JSON.parse(fs.readFileSync(path.join(p6,'wiki/phases/phase-4.json'),'utf8'));
