@@ -68,6 +68,8 @@ Minor: косметика без влияния на понимание/упра
 
 Для Phase 4 канонический отчёт — `wiki/qa/phase-4-visual-review.md`, а машинная приёмка —
 `wiki/qa/phase-4-visual-evidence.json`. Начни с созданного `screens/review/phase-4-visual-evidence.template.json`,
+не читая канонические output-файлы до завершения собственной оценки: builder init обязан сбросить их
+в нейтральное состояние, а прежние verdict/баллы/формулировки создают недопустимый review bias.
 оцени **каждый** кадр по пяти полям `composition`, `hierarchy`, `readability`, `styleMatch`,
 `responsiveness`, а в `targetComparison` — точный target SHA, минимум 2 совпадения, 3 конкретных
 расхождения и `distanceScore`. Добавь конкретную критику и дефекты. Затем в ручном host route
@@ -87,3 +89,5 @@ shell-доступом остаётся доверенной host-границе
 
 Любой балл ниже 6, Critical/Major, отсутствующий state/viewport или несовпавший хеш означает
 `REJECT`: вернуть builder-у замечания, после исправлений обязательно сделать новый capture run.
+Для Godot `proofReview.samplesReviewed` — массив SHA-256 **строк** в точном порядке `proof.samples`,
+не массив объектов с `frame/state/sha256`.

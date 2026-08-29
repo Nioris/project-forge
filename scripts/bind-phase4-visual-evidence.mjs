@@ -13,6 +13,26 @@ const option = name => {
 };
 const canonicalRel = 'wiki/qa/phase-4-visual-evidence.json';
 const canonical = path.join(projectRoot, ...canonicalRel.split('/'));
+const reportRel = 'wiki/qa/phase-4-visual-review.md';
+const report = path.join(projectRoot, ...reportRel.split('/'));
+
+function atomicWrite(target, content) {
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const temp = `${target}.tmp-${process.pid}`;
+  fs.writeFileSync(temp, content);
+  fs.renameSync(temp, target);
+}
+
+function pendingReport(evidence) {
+  const captureId = String(evidence?.captureId || 'unknown');
+  const proofId = String(evidence?.nativeProof?.proofId || 'not-applicable');
+  return `# Phase 4 visual review — pending\n\n`
+    + `Status: **PENDING INDEPENDENT REVIEW**\n\n`
+    + `This neutral hand-off belongs to capture \`${captureId}\` and proof \`${proofId}\`. `
+    + 'It intentionally contains no prior verdict, scores, critique, or defects. The independent reviewer must inspect '
+    + 'the current live pixels, exact targets, and native proof before replacing this file and the canonical evidence JSON. '
+    + 'Earlier review prose must not be reconstructed or reused.\n';
+}
 
 function safeFile(rel) {
   const normalized = String(rel || '').replaceAll('\\', '/').replace(/^\.\//u, '');
@@ -32,11 +52,13 @@ function binding(rel) {
 try {
   const engine = readTrustedProjectEngine(projectRoot);
   const init = option('init');
-  if (init && !fs.existsSync(canonical)) {
+  if (init) {
     const source = safeFile(init);
-    fs.mkdirSync(path.dirname(canonical), { recursive: true });
-    fs.copyFileSync(source.absolute, canonical);
-    console.log(`[OK] Initialized ${canonicalRel} from ${source.path}`);
+    const freshEvidence = JSON.parse(fs.readFileSync(source.absolute, 'utf8'));
+    atomicWrite(canonical, `${JSON.stringify(freshEvidence, null, 2)}\n`);
+    atomicWrite(report, pendingReport(freshEvidence));
+    console.log(`[OK] Reset ${canonicalRel} from ${source.path}`);
+    console.log(`[OK] Reset ${reportRel} to a neutral pending-review hand-off`);
   }
   if (!fs.existsSync(canonical)) throw new Error(`Missing ${canonicalRel}; pass --init <screens/review/...template.json> or create the reviewed evidence first`);
   const evidence = JSON.parse(fs.readFileSync(canonical, 'utf8'));
@@ -70,7 +92,7 @@ try {
   evidence.targetFrame = currentTargetFrame;
   evidence.screenTargets = currentScreenTargets;
   evidence.styleBible = currentStyleBible;
-  evidence.report = binding('wiki/qa/phase-4-visual-review.md');
+  evidence.report = binding(reportRel);
   if (engine.engine === 'godot') {
     const proofFile = safeFile('screens/review/proof-video-manifest.json');
     const proof = JSON.parse(fs.readFileSync(proofFile.absolute, 'utf8'));
@@ -147,9 +169,7 @@ try {
     evidence.reviewer = { id: '', sessionId: '', mode: 'independent' };
     evidence.reviewedAt = '';
   }
-  const temp = `${canonical}.tmp-${process.pid}`;
-  fs.writeFileSync(temp, `${JSON.stringify(evidence, null, 2)}\n`);
-  fs.renameSync(temp, canonical);
+  atomicWrite(canonical, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`[OK] Bound Phase 4 visual evidence to current capture/targets/report hashes`);
   console.log(`     ${canonicalRel}`);
   console.log('     Next: run check-phase4-visual-evidence.mjs; binding does not grant a PASS verdict.');

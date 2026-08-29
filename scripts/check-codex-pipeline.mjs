@@ -9,6 +9,7 @@ import {
   bindPhaseTaskMarker, classifyAfterTurn, classifyTurnResult, firstExecArgs, hostReviewMayReopenPhase4,
   loadPolicy, looksLikeQuestion, parseExecEvent,
   phase4IndependentReviewCandidate, phase4PostReviewBuilderPrompt, phase4RecordedReviewState,
+  phase4ReviewerPrompt,
   reconcileCompletedGitCheckpoints, resolveCodexLauncher, resumeExecArgs,
   runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
@@ -116,6 +117,10 @@ const phase4RepairPrompt = phase4PostReviewBuilderPrompt({ passed: false, reason
 check(/repair builder/i.test(phase4RepairPrompt) && /Do not spawn any agent\/subagent/i.test(phase4RepairPrompt)
   && /parent alone will launch the next reviewer/i.test(phase4RepairPrompt),
   'a rejected host review returns an explicit no-counter-review repair contract to the builder');
+const phase4ReviewPrompt = phase4ReviewerPrompt({ engine: 'godot' });
+check(/write-only outputs/i.test(phase4ReviewPrompt) && /не открывай и не читай/i.test(phase4ReviewPrompt)
+  && /массив SHA-256 строк/i.test(phase4ReviewPrompt) && /не объекты/i.test(phase4ReviewPrompt),
+  'independent reviewer is isolated from prior QA prose and receives the exact proof-sample schema');
 check(classifyTurnResult({
   schemaVersion: 3, state: 'blocked', block: { owner: 'user' }, updatedAt: now,
   execution: { attemptId: 'codex-old-stop-attempt' },

@@ -1,6 +1,6 @@
-# Project Forge v4.68.64 — Codex engine instructions
+# Project Forge v4.68.65 — Codex engine instructions
 
-<!-- GENERATED from Forge canonical sources; claude-hash:17167ee6946c0ccc; target:engine; do not edit by hand. -->
+<!-- GENERATED from Forge canonical sources; claude-hash:f76ba253ff38f595; target:engine; do not edit by hand. -->
 
 This is the Project Forge engine repository. Claude Code support in `.claude/` remains canonical. Codex is a generated/native adapter over that source; `FORGE.md` + `adapters/agents.json` provide a host-neutral contract for additional terminal agents such as GigaCode.
 

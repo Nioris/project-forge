@@ -3,6 +3,16 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.65 changelog (fresh-pixel Phase 4 review isolation)
+
+Every Phase 4 `--init` now destructively resets canonical evidence and replaces the prior Markdown verdict
+with a neutral capture/proof-bound pending hand-off. The authenticated reviewer treats both QA outputs as
+write-only until it independently inspects current pixels; its prompt and skills specify the exact ordered
+SHA-string proof schema. Regressions prove stale verdicts, scores, defects and prose cannot leak into a new
+capture review.
+
+---
+
 ## v4.68.61 changelog (measurable release delivery)
 
 Phases refresh local `.forge/metrics`; Phase 8 archives time, AI cost, repairs, defects, moderation and

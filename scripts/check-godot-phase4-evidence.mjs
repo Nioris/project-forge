@@ -110,9 +110,20 @@ try {
   check(capture.status===0 && proof.status===0,'fixture native producers create capture and proof evidence');
   hostAttestSyntheticPolicyFixture(project);
   const prepared=run(SCRIPTS['prepare-godot-phase4-review.mjs'],project); check(prepared.status===0,'reject-by-default Godot review template is prepared');
+  json(project,'wiki/qa/phase-4-visual-evidence.json',{verdict:'pass',summary:'STALE_REVIEW_SENTINEL'});
+  const initialized=run(SCRIPTS['bind-phase4-visual-evidence.mjs'],project,'builder-run',['--init','screens/review/phase-4-visual-evidence.template.json']);
+  const initializedEvidence=read(project,'wiki/qa/phase-4-visual-evidence.json');
+  const initializedReport=fs.readFileSync(file(project,'wiki/qa/phase-4-visual-review.md'),'utf8');
+  check(initialized.status===0 && initializedEvidence.verdict==='reject'
+    && initializedEvidence.summary==='' && initializedEvidence.reviewer?.id===''
+    && initializedEvidence.reviews.every(review=>review.verdict==='reject' && review.scores.composition===0)
+    && /PENDING INDEPENDENT REVIEW/u.test(initializedReport)
+    && !/The independent reviewer inspected every captured native state/u.test(initializedReport),
+  'review init always erases stale verdict, scores, defects, and prior report prose');
   const template=read(project,'screens/review/phase-4-visual-evidence.template.json'); template.verdict='pass'; template.summary='Independent reviewer inspected all six native screenshots against approved state-specific targets and the complete proof sequence; hierarchy, readability, responsive composition, feedback and contrast meet the required acceptance floor.';
   for (const review of template.reviews) { review.verdict='pass'; review.scores={composition:7,hierarchy:7,readability:8,styleMatch:7,responsiveness:7}; review.targetComparison.distanceScore=7; review.targetComparison.matches=['Primary interactive region aligns with the intended focal hierarchy.','Navigation and feedback grouping match the approved visual rhythm.']; review.targetComparison.differences=['Live capture has slightly flatter decorative material than the target reference.','Secondary accent contrast is lower than the target lighting treatment.','The current panel spacing is more compact than the approved target composition.']; review.critique=`This ${review.state} ${review.viewport} frame was independently examined at native scale and has readable controls, clear hierarchy, responsive composition and coherent visual feedback.`; review.defects=[]; }
   template.proofReview={verdict:'pass',videoWatched:true,statesObserved:['home','gameplay','result'],samplesReviewed:template.nativeProof.samples.map(x=>x.sha256),motionScore:8,critique:'The reviewer watched the full native proof sequence and inspected every lossless sample; state transitions, movement feedback, visual updates and camera readability are clearly demonstrated throughout.',defects:[]}; json(project,'wiki/qa/phase-4-visual-evidence.json',template);
+  write(project,'wiki/qa/phase-4-visual-review.md','# Independent visual review\n\n'+ 'The independent reviewer inspected every current native state and proof sample against its approved screen target; hierarchy, readability, responsive layout, live feedback and visual contrast are acceptable. '.repeat(4));
   const bound=run(SCRIPTS['bind-phase4-visual-evidence.mjs'],project); check(bound.status===0,'evidence bindings refreshed after independent review');
   { const e=read(project,'wiki/qa/phase-4-visual-evidence.json'); check(/godot-screens-shoot\.mjs/u.test(e.verification?.capture?.command || '') && /godot-proof-video\.mjs/u.test(e.verification?.proof?.command || ''), 'binder records canonical Godot producer command provenance'); }
   const recorded=run(SCRIPTS['record-phase4-visual-review.mjs'],project,'review-session-2'); check(recorded.status===0,'independent reviewer receipt recorded from another host identity',recorded.stderr);

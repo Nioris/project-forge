@@ -51,10 +51,14 @@ node ../project-forge/scripts/prepare-godot-phase4-review.mjs .
 node ../project-forge/scripts/bind-phase4-visual-evidence.mjs . --init screens/review/phase-4-visual-evidence.template.json
 ```
 
+`--init` always replaces any previous canonical evidence and report with a neutral pending hand-off.
+This is intentional: a reviewer must not inherit scores, defects or prose written for older pixels.
+
 Then a different host task/session opens every live mobile/desktop screenshot beside its exact target,
 watches the complete AVI, opens every one-second PNG sample, writes the Markdown report and fills the
 reject-by-default JSON. It must list each configured state exactly once and every sample hash in
-timeline order. In the managed Codex pipeline the builder ends its turn here with Phase 4 still
+timeline order as a SHA-256 string array, not objects. The two canonical QA outputs are write-only
+until that independent inspection is complete. In the managed Codex pipeline the builder ends its turn here with Phase 4 still
 `in_progress`: it must not spawn a subagent, start nested `codex exec`, or create a user STOP. The
 authenticated parent creates the clean reviewer session and, after that session exits, runs:
 

@@ -451,7 +451,7 @@ export async function runCodexTurn(launcher, args, cwd, env) {
   });
 }
 
-function phase4ReviewerPrompt(candidate) {
+export function phase4ReviewerPrompt(candidate) {
   const proofInstruction = candidate.engine === 'godot'
     ? 'Также проверь полный AVI и все lossless PNG samples из screens/review/proof-video-manifest.json строго в timeline order.'
     : 'Проверь обе viewport-версии каждого состояния из capture manifest.';
@@ -459,9 +459,11 @@ function phase4ReviewerPrompt(candidate) {
 
 Работай только как read-heavy reviewer. Не делегируй задачу, не меняй WorkProgress, assets, targets, manifests, phase markers или Forge engine. Разрешены ровно два выходных файла: ${PHASE4_REPORT_REL} и ${PHASE4_EVIDENCE_REL}. Родительский Forge host сам выполнит bind, подпись receipt и checker после твоего выхода; не запускай эти три команды и не меняй identity/env.
 
-Прочитай полностью .agents/skills/visual-qa/SKILL.md и, для Godot, .agents/skills/godot-engine/references/godot-visual-qa.md. Открой каждый live PNG из screens/review/capture-manifest.json рядом с его точным mobile/desktop target из assets/target/screens/manifest.json, а не оценивай имена файлов или старый отчёт. ${proofInstruction}
+Прочитай полностью .agents/skills/visual-qa/SKILL.md и, для Godot, .agents/skills/godot-engine/references/godot-visual-qa.md. Открой каждый live PNG из screens/review/capture-manifest.json рядом с его точным mobile/desktop target из assets/target/screens/manifest.json, а не оценивай имена файлов или прежние QA-формулировки. ${proofInstruction}
 
-Существующие QA-файлы — только черновик: независимо перепроверь их и перепиши при любом расхождении. JSON обязан сохранять точные типы схемы: matches/differences — массивы строк, defects — массивы объектов {severity, summary}; никакого PowerShell object-to-string вида "@{...}". Для каждого кадра нужны пять целых scores, distanceScore, минимум 2 конкретных совпадения, минимум 3 конкретных различия и содержательная critique. PASS допустим только при каждом score и distanceScore >= 6 и без Critical/Major. Для Godot proofReview обязан содержать videoWatched, все states, все sample hashes по порядку, motionScore, конкретную critique и defects. При реальном дефекте честно запиши REJECT — builder получит его автоматически.
+${PHASE4_REPORT_REL} и ${PHASE4_EVIDENCE_REL} — write-only outputs этой сессии. До завершения собственной пиксельной оценки не открывай и не читай их: parent уже сбросил оба файла в нейтральное состояние без прошлого verdict. Схему бери только из screens/review/phase-4-visual-evidence.template.json и validator contract. Не копируй оценки, дефекты или фразы из прежнего review.
+
+JSON обязан сохранять точные типы схемы: matches/differences — массивы строк, defects — массивы объектов {severity, summary}; никакого PowerShell object-to-string вида "@{...}". Для каждого кадра нужны пять целых scores, distanceScore, минимум 2 конкретных совпадения, минимум 3 конкретных различия и содержательная critique. PASS допустим только при каждом score и distanceScore >= 6 и без Critical/Major. Для Godot proofReview.samplesReviewed — ровно массив SHA-256 строк из proof.samples.map(item => item.sha256) в timeline order, не объекты; также обязательны videoWatched, все states, motionScore, конкретная critique и defects. При реальном дефекте честно запиши REJECT — builder получит его автоматически.
 
 Не перечитывай прочие фазы и не исследуй проект заново. Заверши кратким фактом: PASS/REJECT и минимальный балл.`;
 }

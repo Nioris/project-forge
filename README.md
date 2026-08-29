@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current source version:** `v4.68.64`
+**Current source version:** `v4.68.65`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -194,7 +194,9 @@ The terminal remains open for the entire project. Within a phase, Forge resumes 
 Phase 4 has one additional clean-session boundary: after the builder produces the final native/browser
 evidence, the authenticated parent launches a narrow independent visual reviewer, signs its verdict and
 returns PASS/REJECT automatically. This internal hand-off does not ask the user to open another terminal
-or approve a technical STOP.
+or approve a technical STOP. Every new capture resets both canonical QA outputs to a neutral pending state;
+the reviewer treats them as write-only until it has inspected the current pixels, preventing an older verdict
+from biasing or being copied into a new review.
 
 After every completed phase, the parent orchestrator prints and stores a privacy-bounded cost/context report under `wiki/diagnostics/codex-cost/phase-N-latest.json`. When the local Codex rollout is available, it measures model responses, input/cache/output tokens, compactions, subagents, tool-output volume, actual model policy, and unexpected stops. Reports never store prompts, messages, file contents, rate-limit state, or secrets. Open one or more reports in the Dashboard's **Codex Cost / Context** panel to compare phases.
 
@@ -216,7 +218,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.64` keeps separate normal-account and API profiles.
+`v4.68.65` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription

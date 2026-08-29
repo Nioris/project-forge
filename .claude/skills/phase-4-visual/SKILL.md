@@ -224,6 +224,9 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
 2. Для Godot после двух producer-команд запусти
    `node <движок>/scripts/prepare-godot-phase4-review.mjs .`, затем инициализируй канонический
    evidence через `bind-phase4-visual-evidence.mjs . --init screens/review/phase-4-visual-evidence.template.json`.
+   `--init` является обязательным destructive reset текущего review hand-off: он стирает прежние
+   verdict/баллы/дефекты и заменяет Markdown-отчёт нейтральным pending-файлом, чтобы новый reviewer
+   не наследовал критику старых пикселей.
    На этом builder hand-off готов. В управляемом Codex pipeline **не** запускай subagent или
    вложенный `codex exec`, не ставь user-owned STOP и не проси пользователя открыть терминал:
    оставь Phase 4 `in_progress` и заверши ход. Авторизованный parent host сам обнаружит producer
@@ -239,7 +242,7 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
 4. На основе `screens/review/phase-4-visual-evidence.template.json` сформируй
    `wiki/qa/phase-4-visual-evidence.json`; привяжи отчёт, target frame и style bible их SHA-256.
    Для Godot дополнительно заполни `proofReview`: `videoWatched=true`, все configured states,
-   **все sample hashes в timeline order**, motionScore, конкретную критику motion/camera/feedback
+   **все sample hashes строками в timeline order (не объекты)**, motionScore, конкретную критику motion/camera/feedback
    и defects. Дубли не заменяют пропущенный state/sample.
    После заполнения reviewer-полей выполни
    `node <движок>/scripts/bind-phase4-visual-evidence.mjs .` — он обновит только машинные
