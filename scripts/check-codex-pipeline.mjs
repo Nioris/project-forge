@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 import {
   bindPhaseTaskMarker, classifyAfterTurn, classifyTurnResult, firstExecArgs, hostReviewMayReopenPhase4,
   loadPolicy, looksLikeQuestion, parseExecEvent,
-  phase4IndependentReviewCandidate, phase4PostReviewBuilderPrompt, reconcileCompletedGitCheckpoints,
-  resolveCodexLauncher, resumeExecArgs,
+  phase4IndependentReviewCandidate, phase4PostReviewBuilderPrompt, phase4RecordedReviewState,
+  reconcileCompletedGitCheckpoints, resolveCodexLauncher, resumeExecArgs,
   runPipeline, unavailableLocalMcpOverrides,
 } from './codex-pipeline.mjs';
 import { ensurePhaseTaskRun, readTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
@@ -204,9 +204,13 @@ try {
     'Phase 4 producer hand-off is detected before a reviewer receipt exists');
   const receiptedEvidence = JSON.parse(fs.readFileSync(path.join(reviewCandidateProject, 'wiki', 'qa', 'phase-4-visual-evidence.json'), 'utf8'));
   receiptedEvidence.reviewReceiptId = 'review-receipt-fixture';
+  receiptedEvidence.verdict = 'reject';
   fs.writeFileSync(path.join(reviewCandidateProject, 'wiki', 'qa', 'phase-4-visual-evidence.json'), JSON.stringify(receiptedEvidence));
   check(!phase4IndependentReviewCandidate(reviewCandidateProject).ready,
     'Phase 4 host does not relaunch a reviewer after a receipt was recorded');
+  const restoredReview = phase4RecordedReviewState(reviewCandidateProject);
+  check(restoredReview?.restored === true && restoredReview.completed && !restoredReview.passed,
+    'a restarted pipeline restores the signed Phase 4 REJECT as a builder repair contract');
 
   const prebound = ensurePhaseTaskRun({ projectRoot: tmp, phase: 2, phaseName: 'Design' });
   const boundMarker = bindPhaseTaskMarker(tmp, 2, prebound);

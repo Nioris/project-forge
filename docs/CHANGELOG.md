@@ -3,6 +3,13 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.61 changelog (measurable release delivery)
+
+Phases refresh local `.forge/metrics`; Phase 8 archives time, AI cost, repairs, defects, moderation and
+automation. Portfolio medians require per-KPI coverage and 30+30 samples; unknown never becomes zero.
+
+---
+
 ## v4.68.60 changelog (bounded isolated supplemental Godot smoke)
 
 Project-specific Godot smoke scenes/scripts now run through `run-godot-smoke.mjs`: an isolated

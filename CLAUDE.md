@@ -1,4 +1,4 @@
-# Project Forge v4.68.63 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.64 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,11 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.64 changelog (restart-safe signed visual repair)
+
+A restarted pipeline restores an existing signed Phase 4 PASS/REJECT and injects the corresponding
+finalize/repair contract instead of losing the parent verdict and re-entering the generic phase prompt.
+
 ## v4.68.63 changelog (binding visual repair hand-off)
 
 Phase 4 builders have zero subagents. A signed parent-owned REJECT is injected as an authoritative
@@ -508,8 +513,3 @@ repair contract: fix every Major/low score, recapture, and let only the parent l
 
 Codex now hands producer-complete Phase 4 evidence to a clean parent-owned reviewer and returns its
 receipted PASS/REJECT automatically, without nested Codex, identity collisions or false user STOPs.
-
-## v4.68.61 changelog (measurable release delivery)
-
-Phases refresh local `.forge/metrics`; Phase 8 archives time, AI cost, repairs, defects, moderation and
-automation. Portfolio medians require per-KPI coverage and 30+30 samples; unknown never becomes zero.

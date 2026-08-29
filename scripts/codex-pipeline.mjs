@@ -97,6 +97,17 @@ export function phase4IndependentReviewCandidate(projectRoot) {
   return { ready: true, engine: godot ? 'godot' : 'web', captureId: capture.captureId };
 }
 
+/** Restore a previously signed parent verdict after terminal/process restart. */
+export function phase4RecordedReviewState(projectRoot) {
+  const evidence = readJson(path.join(path.resolve(projectRoot), ...PHASE4_EVIDENCE_REL.split('/')));
+  if (!evidence?.reviewReceiptId || !['pass', 'reject'].includes(evidence.verdict)) return null;
+  return {
+    ran: false, completed: true, restored: true, passed: evidence.verdict === 'pass',
+    reason: evidence.verdict === 'pass' ? null : 'See the signed Phase 4 QA report for every Major and below-threshold criterion.',
+    reviewReceiptId: evidence.reviewReceiptId,
+  };
+}
+
 /** Legacy v4.68.61 builders could misclassify this internal hand-off as a user decision. */
 export function hostReviewMayReopenPhase4(marker) {
   return marker?.state === 'blocked'
@@ -685,7 +696,7 @@ export async function runPipeline({
   const prompt = prompter || createPrompter();
   try {
     phaseLoop: while (phase <= 9) {
-      let reviewBeforeBuilder = null;
+      let reviewBeforeBuilder = phase === 4 ? phase4RecordedReviewState(root) : null;
       try {
         hostGitCheckpoint({
           projectRoot: root, phase, phaseName: PHASE_NAMES[phase], stage: 'preflight', checkpoint: gitCheckpoint,
