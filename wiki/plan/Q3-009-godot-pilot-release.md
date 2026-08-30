@@ -183,3 +183,22 @@ full operation lease.
 - Preserve fail-closed project, protocol, renderer and artifact validation across Phases 3–8.
 - Make terminal phase block replay idempotent; require explicit `reopen` for any different transition.
 - Repeat the installed Phase 3 gate before advancing to Phase 4.
+
+## Pilot run 05 — Phase 8 export timeout exposed
+
+- Circuit Courier completed Phases 3–7 and entered Phase 8 with 16/16 pre-release checks passing.
+- Fresh native visual evidence binds eight frames, four states and 16 proof-video samples; an independent
+  Codex session accepted the current pixels with no Critical or Major defects.
+- Exact official Godot 4.7 Windows export templates were installed and SHA-512 verified.
+- The first production export stayed alive beyond the hardcoded 180-second Forge limit while Godot was
+  generating its editor theme. Forge killed it, classified the run generically and surfaced only the engine
+  banner instead of the actual timeout.
+
+## v4.68.70 corrective scope
+
+- Route Godot release export through the shared process-tree-bounded runner.
+- Give native Windows export a validated 10-minute default while keeping the operation strictly bounded.
+- Classify timeout separately as infrastructure-owned and preserve bounded stdout plus stderr diagnostics.
+- Prove hung-process cleanup, configuration validation and non-publication with deterministic regressions.
+- Install v4.68.70, repeat the real release build, verify the signed immutable trio and only then complete
+  Phase 8 and push the private pilot repository.

@@ -3,6 +3,15 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.70 changelog (bounded slow Godot export)
+
+Godot Windows release export now uses the shared process-tree-bounded runner with a validated 10-minute
+ceiling. Real Windows/Godot 4.7 cold starts no longer fail at the old fixed three-minute limit, while actual
+hangs terminate the whole child tree and report bounded stdout plus stderr context under a dedicated
+infrastructure timeout code.
+
+---
+
 ## v4.68.69 changelog (native Godot Phase 6)
 
 Godot Phase 6 now validates native localization, signed capture/proof/review media, and byte-identical desktop store frames. Web requirements remain unchanged.

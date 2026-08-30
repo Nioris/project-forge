@@ -17,11 +17,11 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [x] Q3-006: native Phase 4 binds capture/proof receipts, current implementation and independent review; 25 isolated adversarial scenarios pass.
 - [x] Q3-007: real-window Phase 5 tech, two-process Phase 7 save/reload and signed immutable Windows Phase 8 release pass adversarial plus real Godot 4.7.2 checks.
 - [ ] Q3-008: add the optional cost-aware native asset lane after the base pilot proves it is needed.
-- [ ] Q3-009: end-to-end Godot pilot is in progress. v4.68.58 is installed across all 34 siblings. Phase 3
-  built and smoke-tested Circuit Courier, produced eight distinct native state captures and repaired real
-  tutorial/layout/audio defects. The remaining STOP is a Forge false blocker: restricted Windows emits the
-  exact root-certificate warning after the trusted marker. v4.68.59 fixes that classification and terminal
-  block replay; the installed gate must still repeat before Phase 4.
+- [ ] Q3-009: end-to-end Godot pilot reached Phase 8. Circuit Courier passed native construction, visual,
+  technical, localization/listing and playtest gates; fresh Phase 4 evidence includes eight accepted frames
+  and independent motion review. The first real Windows release attempt exposed Forge's fixed 180-second
+  export timeout during a slow Godot 4.7 cold start. v4.68.70 replaces it with a bounded process-tree runner;
+  the installed build must now produce and verify the immutable production/debug/marketing trio.
 
 ### Previous v4.68.51 release
 
@@ -155,9 +155,9 @@ nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Blockers
 
-Q3-009 Phases 1–2 are complete and checkpointed locally; GitHub correctly remains unchanged through
-Phase 7. Phase 3 implementation is preserved behind an infrastructure block. Install v4.68.59, explicitly
-`reopen` Phase 3 and require the fresh restricted-session construct gate to PASS before Phase 4.
+Q3-009 Phases 1–7 are complete and checkpointed locally. Phase 8 has 16 truthful pre-release checks PASS,
+including fresh signed visual evidence and independent review. Publication remains blocked until v4.68.70 is
+installed and the real Godot 4.7 Windows exporter produces the immutable three-archive release.
 
 Godot GDScript native Phases 3–5, 7 and Windows 8 now have trusted adapters. The real-window Q3-007
 forward test passes on official Godot 4.7.2. A project still needs matching official Windows export
@@ -200,5 +200,6 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 - 2026-08-25: Game engine selection is orthogonal to terminal AI hosts; missing profile means stable web, and an unavailable adapter never falls back to a browser verifier.
 - 2026-08-26: Common phases route by engine capability; Godot is the first complete native adapter, not a Godot-only workflow.
 - 2026-08-26: A native release needs an engine-owned signed build receipt; project-local manifests and self-consistent ZIPs cannot authorize their own PASS.
+- 2026-08-30: Native export timeouts must be engine-aware but bounded; timeout evidence includes both output streams and kills the complete process tree before any immutable publication.
 
-<!-- last updated 2026-08-26 for v4.68.59 Godot certificate-noise and terminal-block repair -->
+<!-- last updated 2026-08-30 for v4.68.70 bounded slow Godot export -->

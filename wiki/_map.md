@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.69 (current source line)
+### Version: v4.68.70 (current source line)
 
+- 2026-08-30: **v4.68.70** — Godot Windows export uses a process-tree-bounded 10-minute ceiling and reports dedicated actionable timeout diagnostics instead of hiding a killed cold start behind the engine banner.
 - 2026-08-30: **v4.68.69** — Phase 6 is engine-aware: Godot accepts native i18n and signed capture/proof/review media; web keeps promo-video rules.
 - 2026-08-30: **v4.68.68** — `/status` projects superseded review and phase attempts truthfully: immutable historical runs remain auditable, while only strictly proven replacements disappear from `activeTask` and appear under `execution.supersededTasks`.
 - 2026-08-30: **v4.68.67** — successful native Godot verifier reports now produce truthful `passed` summaries in durable phase markers; `invalid output` is reserved for genuinely unparseable output, with regressions for success and failure paths.

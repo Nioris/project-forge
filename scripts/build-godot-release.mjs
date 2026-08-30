@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { validatePhase4VisualEvidence } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 import { createGodotReleaseReceiptPayload, recordGodotReleaseReceipt } from '../.claude/skills/status/references/godot-release-receipts.mjs';
 import { readGodotExportContract, safeSlug, sha256File, snapshotTree } from './godot-export-contract.mjs';
+import { combinedOutput, runBounded } from './godot-visual-runtime.mjs';
 import { isGodotRootCertificateWarning } from './lib/godot-output.mjs';
 
 const SCRIPT_ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,10 @@ const result = {
 };
 let environmentFailure = false;
 let temp = null;
+const DEFAULT_EXPORT_TIMEOUT_MS = 600_000;
+const MAX_EXPORT_TIMEOUT_MS = 600_000;
+const MIN_EXPORT_TIMEOUT_MS = 120_000;
+const MIN_TEST_EXPORT_TIMEOUT_MS = 250;
 
 function issue(code, message, environment = false) {
   result.issues.push({ code, message: String(message).slice(0, 1000) });
@@ -162,6 +167,32 @@ function execute(command, commandArgs, cwd, timeout = 180_000) {
   });
 }
 
+function resolveExportTimeoutMs(testHarness) {
+  const raw = String(process.env.FORGE_GODOT_EXPORT_TIMEOUT_MS || '').trim();
+  if (!raw) return DEFAULT_EXPORT_TIMEOUT_MS;
+  const timeoutMs = Number(raw);
+  const minimum = testHarness ? MIN_TEST_EXPORT_TIMEOUT_MS : MIN_EXPORT_TIMEOUT_MS;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < minimum || timeoutMs > MAX_EXPORT_TIMEOUT_MS) {
+    fail('GODOT_RELEASE_TIMEOUT_CONFIG',
+      `FORGE_GODOT_EXPORT_TIMEOUT_MS must be an integer from ${minimum} to ${MAX_EXPORT_TIMEOUT_MS}`, true);
+  }
+  return timeoutMs;
+}
+
+function outputTail(value, limit = 8) {
+  return String(value || '').split(/\r?\n/u).map(line => line.trim()).filter(Boolean).slice(-limit);
+}
+
+function actionableExportOutput(run) {
+  const parts = [];
+  const stdout = outputTail(run.stdout);
+  const stderr = outputTail(run.stderr);
+  if (stdout.length) parts.push(`stdout: ${stdout.join(' | ')}`);
+  if (stderr.length) parts.push(`stderr: ${stderr.join(' | ')}`);
+  if (run.error?.message) parts.push(`runner: ${run.error.message}`);
+  return (parts.join(' ; ') || 'no diagnostic output').slice(0, 850);
+}
+
 function zip(stage, output) {
   const command = process.platform === 'win32' ? 'tar.exe' : 'zip';
   const zipArgs = process.platform === 'win32' ? ['-a', '-cf', output, '.'] : ['-rq', output, '.'];
@@ -248,6 +279,7 @@ try {
   const canonicalProjectRoot = contract.root;
   result.projectRoot = canonicalProjectRoot;
   const godot = detectGodot();
+  const exportTimeoutMs = resolveExportTimeoutMs(godot.testHarness);
   const output = godot.testHarness
     ? path.join(canonicalProjectRoot, 'qa', 'godot-release-test-output', slug, 'godot', 'windows')
     : path.join(canonicalProjectRoot, 'Release', slug, 'godot', 'windows');
@@ -274,13 +306,13 @@ try {
     const directory = path.join(stage, variant);
     fs.mkdirSync(directory, { recursive: true });
     const exe = path.join(directory, exeName);
-    const run = execute(godot.command, [
+    const run = runBounded(godot.command, [
       ...godot.prefix,
       '--headless',
       '--path', isolated,
       flag, contract.contract.preset, exe,
-    ], isolated);
-    const outputText = `${run.stdout || ''}\n${run.stderr || ''}`;
+    ], { cwd: isolated, timeoutMs: exportTimeoutMs });
+    const outputText = combinedOutput(run);
     const templatesMissing = /export templates?.*(?:missing|not found|unavailable)|no export template/iu.test(outputText);
     const pck = path.join(directory, `${slug}.pck`);
     const artifactsReady = fs.existsSync(exe) && fs.existsSync(pck)
@@ -289,9 +321,13 @@ try {
     const exportErrors = String(outputText).split(/\r?\n/u).map(line => line.trim()).filter(line =>
       /^(?:ERROR|SCRIPT ERROR):/iu.test(line)
       && !(trustedExportSuccess && isGodotRootCertificateWarning(line)));
+    if (run.timedOut || run.error?.code === 'ETIMEDOUT') {
+      fail('GODOT_RELEASE_EXPORT_TIMEOUT',
+        `${variant} export timed out after ${exportTimeoutMs} ms; verify Godot startup/import locks and retry. ${actionableExportOutput(run)}`, true);
+    }
     if (run.status !== 0 || run.error || exportErrors.length) {
       fail(templatesMissing ? 'GODOT_RELEASE_TEMPLATES' : 'GODOT_RELEASE_EXPORT',
-        `${variant} export failed: ${exportErrors[0] || run.stderr || run.stdout || run.error?.message}`, templatesMissing);
+        `${variant} export failed: ${exportErrors.length ? `${exportErrors[0]}; ` : ''}${actionableExportOutput(run)}`, templatesMissing);
     }
     if (!artifactsReady) {
       fail('GODOT_RELEASE_ARTIFACT', `${variant} export must contain non-empty EXE and PCK`);

@@ -8,6 +8,11 @@ const behaviorMode = certificateNoise
   : mode;
 if (certificateNoise) console.error('ERROR: Failed to read the root certificate store.');
 if (args.includes('--version')) { console.log('4.7.test.export.fixture'); process.exit(0); }
+if (behaviorMode === 'timeout') {
+  fs.writeSync(1, 'Godot is importing project resources...\n');
+  fs.writeSync(2, 'Still waiting for editor lock...\n');
+  for (;;) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_000);
+}
 if (behaviorMode === 'missing-templates') { console.error('Export templates are missing'); process.exit(1); }
 if (behaviorMode === 'export-fail') { console.error('Export failed'); process.exit(1); }
 if (!target) process.exit(2);

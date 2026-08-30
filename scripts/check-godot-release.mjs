@@ -39,10 +39,10 @@ function seed(root = good, { architecture = 'x86_64' } = {}) {
   write(path.join(review, 'capture.png'), 'png');
   write(path.join(review, 'proof.png'), 'png');
 }
-function run(root = good, mode = 'pass', version = null) {
+function run(root = good, mode = 'pass', version = null, extraEnv = {}) {
   const result = spawnSync(process.execPath, [builder, 'test-game', ...(version ? [version] : []), '--root', root, '--json'], {
     cwd: ROOT, encoding: 'utf8', timeout: 30_000, windowsHide: true,
-    env: { ...process.env, FORGE_ALLOW_TEST_HARNESS: '1', FORGE_GODOT_EXPORT_TEST_SHIM: shim, FORGE_GODOT_EXPORT_MODE: mode },
+    env: { ...process.env, FORGE_ALLOW_TEST_HARNESS: '1', FORGE_GODOT_EXPORT_TEST_SHIM: shim, FORGE_GODOT_EXPORT_MODE: mode, ...extraEnv },
   });
   let value; try { value = JSON.parse(result.stdout); } catch {}
   return { result, value };
@@ -161,6 +161,31 @@ try {
     ok(!fs.existsSync(path.join(fixture, 'Release')), `${mode} cannot publish production output`);
     fs.rmSync(fixture, { recursive: true, force: true });
   }
+
+  const timeoutRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-timeout-')); seed(timeoutRoot);
+  const timeoutTrial = run(timeoutRoot, 'timeout', null, { FORGE_GODOT_EXPORT_TIMEOUT_MS: '250' });
+  const timeoutIssue = timeoutTrial.value?.issues?.find(item => item.code === 'GODOT_RELEASE_EXPORT_TIMEOUT');
+  ok(timeoutTrial.result.status === 2 && timeoutTrial.value?.status === 'environment_failure' && timeoutIssue,
+    'hung exporter is killed and classified as an environment timeout');
+  ok(timeoutIssue?.message.includes('250 ms')
+    && timeoutIssue.message.includes('Godot is importing project resources')
+    && timeoutIssue.message.includes('Still waiting for editor lock'),
+  'timeout diagnostic preserves bounded stdout and stderr context');
+  ok(!fs.existsSync(path.join(timeoutRoot, 'qa', 'godot-release-test-output', 'test-game', 'godot', 'windows', 'v1.0.0')),
+    'timed-out export cannot publish a test release directory');
+  fs.rmSync(timeoutRoot, { recursive: true, force: true });
+
+  const invalidTimeoutRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-timeout-config-')); seed(invalidTimeoutRoot);
+  const invalidTimeout = run(invalidTimeoutRoot, 'pass', null, { FORGE_GODOT_EXPORT_TIMEOUT_MS: '249' });
+  ok(invalidTimeout.result.status === 2 && invalidTimeout.value?.issues?.some(item => item.code === 'GODOT_RELEASE_TIMEOUT_CONFIG'),
+    'invalid export timeout configuration fails before export');
+  fs.rmSync(invalidTimeoutRoot, { recursive: true, force: true });
+
+  const configuredTimeoutRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-timeout-valid-')); seed(configuredTimeoutRoot);
+  const configuredTimeout = run(configuredTimeoutRoot, 'pass', null, { FORGE_GODOT_EXPORT_TIMEOUT_MS: '2000' });
+  ok(configuredTimeout.result.status === 1 && configuredTimeout.value?.status === 'test_harness',
+    'valid bounded export timeout override is accepted');
+  fs.rmSync(configuredTimeoutRoot, { recursive: true, force: true });
 
   const noPreset = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-preset-')); seed(noPreset);
   write(path.join(noPreset, 'export_presets.cfg'), '[preset.0]\nname="Linux"\nplatform="Linux/X11"\n');

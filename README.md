@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current source version:** `v4.68.69`
+**Current source version:** `v4.68.70`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -218,7 +218,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.69` keeps separate normal-account and API profiles.
+`v4.68.70` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -410,7 +410,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.59.md](RELEASE_NOTES_v4.68.59.md) — current release notes
+- [RELEASE_NOTES_v4.68.70.md](RELEASE_NOTES_v4.68.70.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

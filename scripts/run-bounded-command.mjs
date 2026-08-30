@@ -11,7 +11,7 @@ const maxBytes = maxIndex >= 0 ? Number(argv[maxIndex + 1]) : 4 * 1024 * 1024;
 const command = separator >= 0 ? argv[separator + 1] : null;
 const commandArgs = separator >= 0 ? argv.slice(separator + 2) : [];
 
-if (!command || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300_000
+if (!command || !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600_000
   || !Number.isInteger(maxBytes) || maxBytes < 1024 || maxBytes > 32 * 1024 * 1024) {
   console.error('Usage: run-bounded-command.mjs --timeout MS --max-bytes N -- COMMAND [ARGS...]');
   process.exit(2);
