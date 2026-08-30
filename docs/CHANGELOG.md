@@ -3,6 +3,14 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.71 changelog (exact Godot debug bundle)
+
+Godot's standard debug-only `<slug>.console.exe` wrapper is now a required, hash-bound member of the debug
+ZIP and signed build receipt. Builder and verifier agree on exact production/debug file sets, reject extras
+or missing wrappers, and fail incompatible console-wrapper preset modes before the expensive export.
+
+---
+
 ## v4.68.70 changelog (bounded slow Godot export)
 
 Godot Windows release export now uses the shared process-tree-bounded runner with a validated 10-minute

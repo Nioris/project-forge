@@ -24,14 +24,14 @@ let receiptFile = null;
 
 function ok(value, message, details = '') { (value ? passed : failed).push(`${message}${details ? `: ${details}` : ''}`); }
 function write(file, text) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); }
-function seed(root = good, { architecture = 'x86_64' } = {}) {
+function seed(root = good, { architecture = 'x86_64', consoleWrapper = null } = {}) {
   fs.mkdirSync(root, { recursive: true });
   write(path.join(root, 'forge.engine.json'), '{"schemaVersion":1,"kind":"forge.engine-profile","engine":"godot"}\n');
   write(path.join(root, 'forge.godot.json'), '{"schemaVersion":1,"kind":"forge.godot-project","projectPath":".","scripting":"gdscript","entryScene":"res://main.tscn","smoke":{"successMarker":"DONE","quitAfterFrames":2},"sceneContract":{"minimumNodeCount":1,"requiredNodes":["Main"],"requiredNodeTypes":{"Main":"Node"},"requiredScripts":[],"requiredScriptAttachments":{}}}\n');
   write(path.join(root, 'forge.godot.export.json'), '{"schemaVersion":1,"kind":"forge.godot-export","preset":"Windows Desktop","target":"windows-x86_64"}\n');
   write(path.join(root, 'project.godot'), 'config_version=5\n[application]\nrun/main_scene="res://main.tscn"\n');
   write(path.join(root, 'main.tscn'), '[gd_scene format=3]\n[node name="Main" type="Node"]\n');
-  write(path.join(root, 'export_presets.cfg'), `[preset.0]\nname="Windows Desktop"\nplatform="Windows Desktop"\nrunnable=true\n${architecture ? `binary_format/architecture="${architecture}"\n` : ''}`);
+  write(path.join(root, 'export_presets.cfg'), `[preset.0]\nname="Windows Desktop"\nplatform="Windows Desktop"\nrunnable=true\n${architecture ? `binary_format/architecture="${architecture}"\n` : ''}${consoleWrapper !== null ? `debug/export_console_wrapper=${consoleWrapper}\n` : ''}`);
   const review = path.join(root, 'screens', 'review', 'godot', 'r1');
   const rel = 'screens/review/godot/r1';
   write(path.join(review, 'capture-manifest.json'), `{"captures":[{"file":"${rel}/capture.png"}]}`);
@@ -114,9 +114,15 @@ try {
   ok(first.value?.manifest && fs.existsSync(first.value.manifest) && first.value.artifacts?.length === 3, 'test harness still exercises immutable trio construction');
   const manifest = JSON.parse(fs.readFileSync(first.value.manifest, 'utf8'));
   ok(manifest.exports.production.flag === '--export-release' && manifest.exports.debug.flag === '--export-debug', 'manifest binds distinct release/debug export provenance');
-  ok(manifest.artifacts.production.exe && manifest.artifacts.debug.pck && !manifest.artifacts.marketing.exe, 'manifest binds binaries and marketing-only media');
+  ok(manifest.artifacts.production.exe && manifest.artifacts.debug.pck && manifest.artifacts.debug.consoleExe
+    && !manifest.artifacts.production.consoleExe && !manifest.artifacts.marketing.exe,
+  'manifest binds production binaries, the debug console wrapper and marketing-only media');
   ok(fs.readFileSync(path.join(good, 'project.godot'), 'utf8') === before, 'isolated export leaves source project unchanged');
   ok(openSafeZip(first.value.artifacts[0].file).entries.length === 2, 'safe ZIP reader accepts the generated binary bundle');
+  const debugArtifact = first.value.artifacts.find(item => item.variant === 'debug');
+  ok(JSON.stringify(openSafeZip(debugArtifact.file).entries.map(item => item.name).sort())
+    === JSON.stringify(['test-game.console.exe', 'test-game.exe', 'test-game.pck']),
+  'debug ZIP contains the exact hash-bound Godot console wrapper set');
 
   const certificateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-certificate-')); seed(certificateRoot);
   const certificateBuild = run(certificateRoot, 'certificate-noise');
@@ -154,7 +160,7 @@ try {
   const concurrentOutput = path.dirname(concurrentVersion);
   ok(!fs.readdirSync(concurrentOutput).some(name => name.startsWith('.forge-publish-')), 'concurrent publication leaves no staging directories');
 
-  for (const [mode, code, status] of [['missing-templates', 'GODOT_RELEASE_TEMPLATES', 2], ['export-fail', 'GODOT_RELEASE_EXPORT', 1], ['missing-pck', 'GODOT_RELEASE_ARTIFACT', 1], ['bad-artifact', 'GODOT_RELEASE_ARTIFACT', 1]]) {
+  for (const [mode, code, status] of [['missing-templates', 'GODOT_RELEASE_TEMPLATES', 2], ['export-fail', 'GODOT_RELEASE_EXPORT', 1], ['missing-pck', 'GODOT_RELEASE_ARTIFACT', 1], ['missing-console', 'GODOT_RELEASE_ARTIFACT_SET', 1], ['bad-artifact', 'GODOT_RELEASE_ARTIFACT', 1], ['unexpected-production-file', 'GODOT_RELEASE_ARTIFACT_SET', 1], ['unexpected-debug-file', 'GODOT_RELEASE_ARTIFACT_SET', 1]]) {
     const fixture = fs.mkdtempSync(path.join(os.tmpdir(), `forge-godot-release-${mode}-`)); seed(fixture);
     const trial = run(fixture, mode);
     ok(trial.result.status === status && trial.value?.issues?.some(item => item.code === code), `${mode} is rejected with classified failure`);
@@ -198,6 +204,14 @@ try {
   const arm = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-arm-')); seed(arm, { architecture: 'arm64' });
   const armRun = run(arm); ok(armRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_ARCHITECTURE'), 'non-x86_64 architecture is rejected');
   fs.rmSync(arm, { recursive: true, force: true });
+
+  for (const wrapper of [0, 2, 'false']) {
+    const wrapperRoot = fs.mkdtempSync(path.join(os.tmpdir(), `forge-godot-release-console-${wrapper}-`)); seed(wrapperRoot, { consoleWrapper: wrapper });
+    const wrapperRun = run(wrapperRoot);
+    ok(wrapperRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_CONSOLE_WRAPPER'),
+      `console-wrapper mode ${wrapper} is rejected before export`);
+    fs.rmSync(wrapperRoot, { recursive: true, force: true });
+  }
 
   const secret = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-secret-')); seed(secret);
   fs.appendFileSync(path.join(secret, 'export_presets.cfg'), 'api_key="nope"\n');

@@ -42,8 +42,9 @@ Root `forge.godot.export.json` must match `schemas/godot-export.schema.json` and
 - target: `windows-x86_64`.
 
 `export_presets.cfg` must expose that exact preset, explicitly set
-`binary_format/architecture="x86_64"`, keep a separate PCK, contain no credential values and use no
-custom template. Install export templates matching the detected Godot editor.
+`binary_format/architecture="x86_64"`, keep a separate PCK, keep the Godot debug console wrapper at
+its default debug-only mode (or explicitly `debug/export_console_wrapper=1`), contain no credential
+values and use no custom template. Install export templates matching the detected Godot editor.
 Keep `.godot/export_credentials.cfg` outside source control and release artifacts.
 
 ```bash
@@ -56,7 +57,7 @@ isolated copy, then atomically publishes a new patch version. One whole version 
 with a single rename: `Release/<slug>/godot/windows/<vN.N.N>/`:
 
 - production ZIP: `<slug>.exe` + `<slug>.pck`;
-- debug ZIP: debug `<slug>.exe` + `<slug>.pck`;
+- debug ZIP: debug `<slug>.exe` + `<slug>.console.exe` + `<slug>.pck`;
 - marketing ZIP: current Phase 4 evidence/media only;
 - external release manifest binding source, preset, engine, export-mode provenance and artifact hashes.
 

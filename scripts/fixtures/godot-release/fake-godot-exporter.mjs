@@ -31,4 +31,7 @@ if (barrier && args.includes('--export-release')) {
 fs.mkdirSync(path.dirname(target), { recursive: true });
 fs.writeFileSync(target, behaviorMode === 'bad-artifact' ? '' : `fake exe ${args.includes('--export-debug') ? 'debug' : 'release'}`);
 if (behaviorMode !== 'missing-pck') fs.writeFileSync(path.join(path.dirname(target), `${path.basename(target, path.extname(target))}.pck`), behaviorMode === 'bad-artifact' ? '' : 'fake pck');
+if (args.includes('--export-debug') && behaviorMode !== 'missing-console') fs.writeFileSync(path.join(path.dirname(target), `${path.basename(target, path.extname(target))}.console.exe`), behaviorMode === 'bad-artifact' ? '' : 'fake console wrapper');
+if (behaviorMode === 'unexpected-production-file' && args.includes('--export-release')) fs.writeFileSync(path.join(path.dirname(target), 'unexpected.dll'), 'unexpected');
+if (behaviorMode === 'unexpected-debug-file' && args.includes('--export-debug')) fs.writeFileSync(path.join(path.dirname(target), 'unexpected.dll'), 'unexpected');
 console.log('Export completed');

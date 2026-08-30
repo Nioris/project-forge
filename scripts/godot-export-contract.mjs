@@ -85,6 +85,10 @@ export function readGodotExportContract(projectRoot = process.cwd()) {
   if (hasCredentialValue(presets)) fail('GODOT_EXPORT_SECRETS', 'export_presets.cfg must not contain credential values or secrets');
   const architecture = preset.match(/^binary_format\/architecture\s*=\s*"([^"]+)"/mu)?.[1];
   if (architecture !== 'x86_64') fail('GODOT_EXPORT_ARCHITECTURE', 'Windows Desktop preset must explicitly target x86_64');
+  const consoleWrapper = preset.match(/^debug\/export_console_wrapper\s*=\s*([^\r\n]+?)\s*$/mu)?.[1] || null;
+  if (consoleWrapper !== null && consoleWrapper !== '1') {
+    fail('GODOT_EXPORT_CONSOLE_WRAPPER', 'Windows Desktop preset must keep the Godot debug console wrapper enabled only for debug (default or 1)');
+  }
   if (/^binary_format\/embed_pck\s*=\s*true\s*$/mu.test(preset)) fail('GODOT_EXPORT_PCK', 'Windows Desktop preset must keep PCK separate for verifiable release artifacts');
   if (/^custom_template\/(?:debug|release)\s*=\s*"[^"\r\n]+"\s*$/mu.test(preset)) fail('GODOT_EXPORT_CUSTOM_TEMPLATE', 'custom export templates are not accepted; install the matching official Godot templates');
   return { root, engine, project, implementationRoot, contractFile, presetsFile, preset, contract: value, hashes: { contract: sha256File(contractFile), presets: sha256File(presetsFile), project: sha256File(path.join(implementationRoot, 'project.godot')), source: snapshotTree(implementationRoot) } };

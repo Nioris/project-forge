@@ -1,4 +1,4 @@
-# Project Forge v4.68.70 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.71 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,11 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.71 changelog (exact Godot debug bundle)
+
+Godot's debug-only `<slug>.console.exe` wrapper is now required, hashed and receipt-bound. Builder and
+verifier enforce identical exact production/debug sets and reject incompatible wrapper preset modes.
+
 ## v4.68.70 changelog (bounded slow Godot export)
 
 Godot Windows release export now uses a process-tree-bounded 10-minute ceiling. A timeout terminates the
@@ -507,7 +512,3 @@ complete child tree and reports bounded stdout plus stderr context under a dedic
 ## v4.68.69 changelog (native Godot Phase 6)
 
 Godot Phase 6 now validates native localization, signed capture/proof/review media, and byte-identical desktop store frames. Web requirements remain unchanged.
-
-## v4.68.68 changelog (truthful supplemental Task status)
-
-Project status no longer presents abandoned review or phase attempts as current work after a newer signed review PASS or canonical phase completion supersedes them. Historical run JSON remains immutable and visible through `execution.supersededTasks`; strict signatures, successful-result codes and phase markers prevent distinct, rejected or still-actionable Tasks from being hidden.

@@ -19,9 +19,10 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [ ] Q3-008: add the optional cost-aware native asset lane after the base pilot proves it is needed.
 - [ ] Q3-009: end-to-end Godot pilot reached Phase 8. Circuit Courier passed native construction, visual,
   technical, localization/listing and playtest gates; fresh Phase 4 evidence includes eight accepted frames
-  and independent motion review. The first real Windows release attempt exposed Forge's fixed 180-second
-  export timeout during a slow Godot 4.7 cold start. v4.68.70 replaces it with a bounded process-tree runner;
-  the installed build must now produce and verify the immutable production/debug/marketing trio.
+  and independent motion review. Forge 4.68.70 completed the first real Windows trio after both slow Godot
+  cold starts, but the independent verifier rejected v1.0.0 because Godot's standard debug `.console.exe`
+  was packaged without a manifest hash. v4.68.71 makes the exact three-file debug set receipt-bound; the
+  installed build must produce and verify a new immutable version.
 
 ### Previous v4.68.51 release
 
@@ -156,8 +157,8 @@ nine canonical phases, verifier authority or independent visual acceptance.
 ## Blockers
 
 Q3-009 Phases 1–7 are complete and checkpointed locally. Phase 8 has 16 truthful pre-release checks PASS,
-including fresh signed visual evidence and independent review. Publication remains blocked until v4.68.70 is
-installed and the real Godot 4.7 Windows exporter produces the immutable three-archive release.
+including fresh signed visual evidence and independent review. v1.0.0 remains immutable but rejected by the
+trusted verifier. Publication remains blocked until v4.68.71 builds and verifies a higher release version.
 
 Godot GDScript native Phases 3–5, 7 and Windows 8 now have trusted adapters. The real-window Q3-007
 forward test passes on official Godot 4.7.2. A project still needs matching official Windows export
@@ -201,5 +202,6 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 - 2026-08-26: Common phases route by engine capability; Godot is the first complete native adapter, not a Godot-only workflow.
 - 2026-08-26: A native release needs an engine-owned signed build receipt; project-local manifests and self-consistent ZIPs cannot authorize their own PASS.
 - 2026-08-30: Native export timeouts must be engine-aware but bounded; timeout evidence includes both output streams and kills the complete process tree before any immutable publication.
+- 2026-08-30: Native builders may issue a receipt only for the same exact file set the independent verifier accepts; Godot's debug console wrapper is a first-class hash-bound artifact.
 
-<!-- last updated 2026-08-30 for v4.68.70 bounded slow Godot export -->
+<!-- last updated 2026-08-30 for v4.68.71 exact Godot debug bundle -->

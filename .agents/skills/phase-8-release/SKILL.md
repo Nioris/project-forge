@@ -87,7 +87,8 @@ machine-readable progression state, а сами артефакты остают�
 
 1. Добавь корневой `forge.godot.export.json` ровно для preset `Windows Desktop` и target
    `windows-x86_64`; в `export_presets.cfg` должен существовать preset с тем же именем, явным
-   `binary_format/architecture="x86_64"`, отдельным PCK и без credential values. Matching export
+   `binary_format/architecture="x86_64"`, отдельным PCK, debug-only console wrapper (default или
+   `debug/export_console_wrapper=1`) и без credential values. Matching export
    templates обязательны.
 2. Сначала получи `TOTAL: N pass, 0 fail` и запиши его в `wiki/deploy-log.md`. Текущая Фаза 4
    должна по-прежнему проходить trusted capture/proof/review gate.
@@ -95,8 +96,8 @@ machine-readable progression state, а сами артефакты остают�
    только из изолированной копии через Godot `--headless --export-release/--export-debug`; gameplay
    проверки headless не используют.
 4. Каждый успешный запуск автоматически создаёт новую patch-версию в
-   `Release/<slug>/godot/windows/<vN.N.N>/`: production ZIP (EXE+PCK), debug ZIP (debug EXE+PCK),
-   marketing ZIP (только текущее Phase 4 evidence/media) и внешний release manifest. Вся папка версии
+   `Release/<slug>/godot/windows/<vN.N.N>/`: production ZIP (EXE+PCK), debug ZIP
+   (debug EXE+console.exe+PCK), marketing ZIP (только текущее Phase 4 evidence/media) и внешний release manifest. Вся папка версии
    публикуется одним rename; старые версии не перезаписываются.
 5. Реальный builder создаёт подписанную engine-owned build receipt вне проекта. Запусти
    `node <Forge>/scripts/godot-release-verify.mjs . --json`: verifier читает ZIP без распаковки на диск,

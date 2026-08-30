@@ -193,6 +193,29 @@ function actionableExportOutput(run) {
   return (parts.join(' ; ') || 'no diagnostic output').slice(0, 850);
 }
 
+function stagedBinaryFacts(directory, slugValue, variant) {
+  const exeName = `${slugValue}.exe`;
+  const pckName = `${slugValue}.pck`;
+  const consoleName = `${slugValue}.console.exe`;
+  const expected = new Set([exeName, pckName, ...(variant === 'debug' ? [consoleName] : [])]);
+  const actual = fs.readdirSync(directory).sort();
+  if (JSON.stringify(actual) !== JSON.stringify([...expected].sort())) {
+    fail('GODOT_RELEASE_ARTIFACT_SET',
+      `${variant} export contains an unexpected binary set: ${actual.join(', ') || '(empty)'}`);
+  }
+  const facts = {};
+  for (const [key, name] of [['exe', exeName], ['pck', pckName], ['consoleExe', consoleName]]) {
+    if (!expected.has(name)) continue;
+    const file = path.join(directory, name);
+    const stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1) {
+      fail('GODOT_RELEASE_ARTIFACT', `${variant} export contains an invalid ${name}`);
+    }
+    facts[key] = sha256File(file);
+  }
+  return facts;
+}
+
 function zip(stage, output) {
   const command = process.platform === 'win32' ? 'tar.exe' : 'zip';
   const zipArgs = process.platform === 'win32' ? ['-a', '-cf', output, '.'] : ['-rq', output, '.'];
@@ -332,7 +355,7 @@ try {
     if (!artifactsReady) {
       fail('GODOT_RELEASE_ARTIFACT', `${variant} export must contain non-empty EXE and PCK`);
     }
-    binaryHashes[variant] = { exe: sha256File(exe), pck: sha256File(pck) };
+    binaryHashes[variant] = stagedBinaryFacts(directory, slug, variant);
   }
   if (binaryHashes.production.exe === binaryHashes.debug.exe && binaryHashes.production.pck === binaryHashes.debug.pck) {
     fail('GODOT_RELEASE_VARIANTS', 'production and debug exports are byte-identical; variant provenance is not credible');

@@ -86,16 +86,30 @@ function entryMap(zipFile) {
 }
 function exactBinaryBundle(zipFile, slug, facts, variant) {
   const { zip, entries } = entryMap(zipFile);
-  const expected = [`${slug}.exe`, `${slug}.pck`].sort();
+  const consoleName = `${slug}.console.exe`;
+  const consoleHash = facts?.consoleExe;
+  if ((variant === 'debug' && !/^[a-f0-9]{64}$/u.test(String(consoleHash || '')))
+    || (variant === 'production' && consoleHash !== undefined)) {
+    fail('GODOT_RELEASE_VERIFY_BINARY_HASH', `${variant} console-wrapper hash is invalid`);
+  }
+  const expected = [`${slug}.exe`, `${slug}.pck`, ...(variant === 'debug' ? [consoleName] : [])].sort();
   if (JSON.stringify([...entries.keys()].sort()) !== JSON.stringify(expected)) {
-    fail('GODOT_RELEASE_VERIFY_BINARY_SET', `${variant} ZIP must contain only ${expected.join(' and ')}`);
+    fail('GODOT_RELEASE_VERIFY_BINARY_SET', `${variant} ZIP must contain exactly ${expected.join(', ')}`);
   }
   const exe = readSafeZipEntry(zip, entries.get(`${slug}.exe`));
   const pck = readSafeZipEntry(zip, entries.get(`${slug}.pck`));
   if (!exe.length || !pck.length || digest(exe) !== facts?.exe || digest(pck) !== facts?.pck) {
     fail('GODOT_RELEASE_VERIFY_BINARY_HASH', `${variant} EXE/PCK hashes do not match the release manifest`);
   }
-  return { exe: digest(exe), pck: digest(pck) };
+  const result = { exe: digest(exe), pck: digest(pck) };
+  if (variant === 'debug') {
+    const consoleExe = readSafeZipEntry(zip, entries.get(consoleName));
+    if (!consoleExe.length || digest(consoleExe) !== consoleHash) {
+      fail('GODOT_RELEASE_VERIFY_BINARY_HASH', 'debug console-wrapper hash does not match the release manifest');
+    }
+    result.consoleExe = digest(consoleExe);
+  }
+  return result;
 }
 function verifyMarketing(zipFile, manifest) {
   const { zip, entries } = entryMap(zipFile);

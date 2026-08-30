@@ -202,3 +202,21 @@ full operation lease.
 - Prove hung-process cleanup, configuration validation and non-publication with deterministic regressions.
 - Install v4.68.70, repeat the real release build, verify the signed immutable trio and only then complete
   Phase 8 and push the private pilot repository.
+
+## Pilot run 06 — builder/verifier debug-set contradiction
+
+- Forge 4.68.70 was published, installed and synchronized across all 34 sibling projects without drift.
+- The real production export completed after about five minutes; the separate debug export completed after
+  its own slow cold start. Builder atomically published v1.0.0 and issued an engine-owned receipt.
+- Independent verification rejected `GODOT_RELEASE_VERIFY_BINARY_SET`: Godot 4.7 correctly added
+  `circuit-courier.console.exe` to the debug ZIP, while the manifest contained hashes only for EXE/PCK.
+- v1.0.0 remains immutable evidence of the rejected attempt and must never be overwritten or promoted.
+
+## v4.68.71 corrective scope
+
+- Require exact production `{exe,pck}` and debug `{exe,console.exe,pck}` sets in the builder.
+- Bind the console wrapper SHA-256 through the manifest and engine-owned receipt.
+- Make the independent verifier require the same exact set and reject every extra or missing entry.
+- Reject explicit console-wrapper preset modes `0`, `2` or malformed values; absent/default or debug-only
+  `1` remains valid.
+- Install v4.68.71 and build the automatically incremented v1.0.1 before Phase 8 completion.
