@@ -9,6 +9,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validatePhase4VisualEvidence } from './phase-4-visual-evidence.mjs';
@@ -106,6 +107,24 @@ function safeProjectFile(root, rel) {
   }
 }
 
+function sha256File(file) {
+  return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+function safeProjectDirectory(root, rel) {
+  const normalized = normalizeRelative(rel);
+  if (!normalized || path.isAbsolute(normalized) || normalized.split('/').includes('..')) return null;
+  try {
+    const realRoot = fs.realpathSync(path.resolve(root));
+    const absolute = fs.realpathSync(path.resolve(realRoot, normalized));
+    const relative = path.relative(realRoot, absolute);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+    return fs.statSync(absolute).isDirectory() ? { normalized, absolute } : null;
+  } catch {
+    return null;
+  }
+}
+
 function walkFiles(dir, predicate, out = []) {
   if (!fs.existsSync(dir)) return out;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -142,9 +161,78 @@ function projectFiles(root, predicate) {
   return walkFiles(root, file => predicate(file, normalizeRelative(path.relative(root, file))));
 }
 
-function projectSourceText(root) {
+function godotImplementation(root) {
+  const configFile = safeProjectFile(root, 'forge.godot.json');
+  const config = configFile ? parseJson(configFile.absolute) : null;
+  const directory = safeProjectDirectory(root, config?.projectPath);
+  return directory ? { directory, config } : null;
+}
+
+function isGodotProductionFile(projectRoot, file) {
+  const rel = normalizeRelative(path.relative(projectRoot, file));
+  const segments = rel.split('/').map(part => part.toLowerCase());
+  return !segments.some(part => ['test', 'tests', 'qa', 'fixtures', 'testdata', 'addons'].includes(part));
+}
+
+function stripGdNonCode(source) {
+  let output = '';
+  let quote = null;
+  let triple = false;
+  let escaped = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote) {
+      if (char === '\n') {
+        output += '\n';
+        if (!triple) { quote = null; escaped = false; }
+        continue;
+      }
+      if (triple && source.slice(index, index + 3) === quote.repeat(3)) {
+        output += '   ';
+        index += 2;
+        quote = null;
+        triple = false;
+        escaped = false;
+        continue;
+      }
+      output += ' ';
+      if (!triple && !escaped && char === quote) quote = null;
+      escaped = !triple && !escaped && char === '\\';
+      if (char !== '\\') escaped = false;
+      continue;
+    }
+    if (char === '#') {
+      while (index < source.length && source[index] !== '\n') { output += ' '; index += 1; }
+      if (index < source.length) output += '\n';
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      triple = source.slice(index, index + 3) === char.repeat(3);
+      output += triple ? '   ' : ' ';
+      if (triple) index += 2;
+      continue;
+    }
+    output += char;
+  }
+  return output;
+}
+
+function projectSourceText(root, engineProfile = null) {
+  if (engineProfile?.engine === 'godot') {
+    const implementation = godotImplementation(root);
+    if (!implementation) return '';
+    return walkFiles(implementation.directory.absolute, file => path.extname(file).toLowerCase() === '.gd' && isGodotProductionFile(implementation.directory.absolute, file))
+      .slice(0, 250)
+      .map(file => stripGdNonCode(readLimited(file, 1024 * 1024)))
+      .join('\n');
+  }
   return projectFiles(root, file => IMPLEMENTATION_EXTENSIONS.has(path.extname(file).toLowerCase()))
-    .filter(file => !normalizeRelative(path.relative(root, file)).startsWith('GameIntegration/'))
+    .filter(file => {
+      const rel = normalizeRelative(path.relative(root, file));
+      return !rel.startsWith('GameIntegration/')
+        && !/(?:^|\/)(?:debugcheck|cheats(?:-base)?)(?:\.min)?\.(?:m?js|cjs)$/iu.test(rel);
+    })
     .slice(0, 250)
     .map(file => readLimited(file, 1024 * 1024))
     .join('\n');
@@ -431,19 +519,62 @@ function checkTechRuntime(root, failures) {
   }
 }
 
-function checkListingOutput(root, failures) {
+function checkGodotListingI18n(root, source, failures) {
+  const implementation = godotImplementation(root);
+  if (!implementation) {
+    failures.push('Phase 6 Godot listing requires a valid forge.godot.json projectPath');
+    return;
+  }
+  const projectFile = path.join(implementation.directory.absolute, 'project.godot');
+  const projectText = readLimited(projectFile);
+  const catalogRefs = [...projectText.matchAll(/res:\/\/([^"\r\n,)]+\.(?:po|translation|csv))/giu)]
+    .map(match => match[1].replaceAll('/', path.sep));
+  const catalogs = catalogRefs.map(rel => path.join(implementation.directory.absolute, rel)).filter(file => {
+    try {
+      const relative = path.relative(implementation.directory.absolute, fs.realpathSync(file));
+      return !relative.startsWith('..') && !path.isAbsolute(relative) && fs.statSync(file).isFile() && fs.statSync(file).size >= 32;
+    } catch { return false; }
+  });
+  if (!/\binternationalization\b/iu.test(projectText) || !catalogRefs.length || !catalogs.length) {
+    failures.push('Phase 6 Godot listing requires project.godot internationalization with at least one real translation catalog');
+  }
+  if (!/\btr(?:_n)?\s*\(/u.test(source)) {
+    failures.push('Phase 6 Godot listing requires production GDScript to resolve player-visible text through tr()/tr_n()');
+  }
+}
+
+function checkListingOutput(root, failures, engineProfile) {
   const listings = projectFiles(root, (file, rel) => /store[-_]listing[-_].+\.json$/iu.test(rel))
     .filter(file => { try { return fs.statSync(file).size >= 80 && parseJson(file); } catch { return false; } });
   if (!listings.length) failures.push('Phase 6 requires at least one valid store-listing-*.json artifact');
 
-  const screenshots = projectFiles(root, (file, rel) => /(?:^|\/)screens\/.+\.(?:png|jpe?g|webp)$/iu.test(rel)).filter(validImage);
-  if (!screenshots.length) failures.push('Phase 6 requires at least one valid promo screenshot under screens/');
+  const screenshotPattern = engineProfile?.engine === 'godot'
+    ? /(?:^|\/)screens\/store\/.+\.(?:png|jpe?g|webp)$/iu
+    : /(?:^|\/)screens\/.+\.(?:png|jpe?g|webp)$/iu;
+  const screenshots = projectFiles(root, (file, rel) => screenshotPattern.test(rel)).filter(validImage);
+  if (!screenshots.length) failures.push(engineProfile?.engine === 'godot'
+    ? 'Phase 6 Godot listing requires at least one valid promo screenshot under screens/store/'
+    : 'Phase 6 requires at least one valid promo screenshot under screens/');
 
-  const videos = projectFiles(root, (file, rel) => /(?:^|\/)screens\/video\/promo\.mp4$/iu.test(rel)).filter(validMp4);
-  if (!videos.length) failures.push('Phase 6 requires a valid screens/video/promo.mp4 artifact');
-
-  if (!/(?:\bI18N\b|\bt\s*\(|data-i18n)/u.test(projectSourceText(root))) {
-    failures.push('Phase 6 requires an i18n dictionary/runtime in implementation source');
+  const source = projectSourceText(root, engineProfile);
+  if (engineProfile?.engine === 'godot') {
+    const visual = validatePhase4VisualEvidence({ root });
+    if (!visual.ok) failures.push(...visual.failures.map(item => `Phase 6 Godot promo media: ${item}`));
+    const captureFile = visual.captureManifest ? safeProjectFile(root, visual.captureManifest) : null;
+    const capture = captureFile ? parseJson(captureFile.absolute) : null;
+    const currentDesktopHashes = new Set((Array.isArray(capture?.captures) ? capture.captures : [])
+      .filter(item => item?.viewport === 'desktop' && /^[a-f0-9]{64}$/u.test(String(item.sha256 || '')))
+      .map(item => item.sha256));
+    if (!screenshots.some(file => currentDesktopHashes.has(sha256File(file)))) {
+      failures.push('Phase 6 Godot store screenshot must be copied byte-for-byte from the current signed desktop capture');
+    }
+    checkGodotListingI18n(root, source, failures);
+  } else {
+    const videos = projectFiles(root, (file, rel) => /(?:^|\/)screens\/video\/promo\.mp4$/iu.test(rel)).filter(validMp4);
+    if (!videos.length) failures.push('Phase 6 requires a valid screens/video/promo.mp4 artifact');
+    if (!/(?:\bI18N\b|\bt\s*\(|data-i18n)/u.test(source)) {
+      failures.push('Phase 6 requires an i18n dictionary/runtime in implementation source');
+    }
   }
 }
 
@@ -620,7 +751,7 @@ function runProjectCheck(id, root, contract, evidence, failures, engineSupport, 
   else if (id === 'godot-native-tech' && engineProfile?.engine === 'godot' && engineVerification?.id !== 'native-tech') failures.push('Phase 5 requires the installed native Godot tech verifier');
   else if (id === 'godot-native-playtest' && engineProfile?.engine === 'godot' && engineVerification?.id !== 'native-playtest') failures.push('Phase 7 requires the installed two-process native Godot playtest');
   else if (id === 'godot-native-release' && engineProfile?.engine === 'godot' && engineVerification?.id !== 'native-release') failures.push('Phase 8 requires independent verification of the current immutable Godot release');
-  else if (id === 'listing-output') checkListingOutput(root, failures);
+  else if (id === 'listing-output') checkListingOutput(root, failures, engineProfile);
   else if (id === 'clean-local-stage-report') checkCleanLocalStageReport(root, failures);
   else if (id === 'release-green-report') checkReleaseGreenReport(root, failures);
   else if (id === 'release-artifacts') checkReleaseArtifacts(root, failures);

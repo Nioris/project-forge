@@ -19,6 +19,8 @@ const args = process.argv.slice(2);
 const jsonMode = args.includes('--json');
 const rootArg = args.find(a => a !== '--json') || '.';
 const root = path.resolve(rootArg);
+let rootReal = root;
+try { rootReal = fs.realpathSync(root); } catch {}
 const slash = p => p.replace(/\\/g, '/');
 const rel = p => slash(path.relative(root, p));
 const normRel = p => p ? (path.isAbsolute(p) ? rel(p) : slash(p)) : p;
@@ -44,6 +46,52 @@ const globWalk = (baseRel, predicate = () => true, maxDepth = 6) => {
   walk(start, 0);
   return out;
 };
+const safeProjectDirectory = baseRel => {
+  if (!baseRel || path.isAbsolute(baseRel) || slash(baseRel).split('/').includes('..')) return null;
+  try {
+    const absolute = fs.realpathSync(path.resolve(rootReal, baseRel));
+    const relative = path.relative(rootReal, absolute);
+    return !relative.startsWith('..') && !path.isAbsolute(relative) && fs.statSync(absolute).isDirectory()
+      ? { absolute, relative: slash(relative) }
+      : null;
+  } catch { return null; }
+};
+const isGodotProductionFile = (projectRoot, file) => {
+  const parts = slash(path.relative(projectRoot, file)).split('/').map(part => part.toLowerCase());
+  return !parts.some(part => ['test', 'tests', 'qa', 'fixtures', 'testdata', 'addons'].includes(part));
+};
+const stripGdNonCode = source => {
+  let output = '', quote = null, triple = false, escaped = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote) {
+      if (char === '\n') {
+        output += '\n';
+        if (!triple) { quote = null; escaped = false; }
+        continue;
+      }
+      if (triple && source.slice(index, index + 3) === quote.repeat(3)) {
+        output += '   '; index += 2; quote = null; triple = false; escaped = false; continue;
+      }
+      output += ' ';
+      if (!triple && !escaped && char === quote) quote = null;
+      escaped = !triple && !escaped && char === '\\';
+      if (char !== '\\') escaped = false;
+      continue;
+    }
+    if (char === '#') {
+      while (index < source.length && source[index] !== '\n') { output += ' '; index += 1; }
+      if (index < source.length) output += '\n';
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char; triple = source.slice(index, index + 3) === char.repeat(3);
+      output += triple ? '   ' : ' '; if (triple) index += 2; continue;
+    }
+    output += char;
+  }
+  return output;
+};
 const firstExisting = list => list.find(exists) || null;
 const anyMatch = (files, re) => files.some(f => re.test(safeReadLimited(f)));
 const safeReadLimited = (p, max = 1024 * 1024) => {
@@ -66,12 +114,48 @@ let forgeVersion = null;
 try { forgeVersion = JSON.parse(read('.forge-managed.json')).forgeVersion || null; } catch {}
 const projectName = path.basename(root);
 
-const sourceFiles = [
+let declaredEngine = 'web';
+try { declaredEngine = JSON.parse(read('forge.engine.json')).engine || 'web'; } catch {}
+let godotProjectPath = null;
+let godotProjectRoot = null;
+if (declaredEngine === 'godot') {
+  try {
+    const candidate = slash(JSON.parse(read('forge.godot.json')).projectPath || '');
+    const directory = safeProjectDirectory(candidate);
+    if (directory) { godotProjectPath = directory.relative; godotProjectRoot = directory.absolute; }
+  } catch {}
+}
+
+const sourceFiles = (declaredEngine === 'godot' && godotProjectPath ? [
+  ...globWalk(godotProjectPath, f => /\.(?:gd|godot|po|csv)$/i.test(f)),
+] : [
   ...globWalk('GameIntegration', f => /\.(html?|m?js|cjs|ts|tsx|jsx|css)$/i.test(f)),
   ...globWalk('WorkProgress', f => /\.(html?|m?js|cjs|ts|tsx|jsx|css)$/i.test(f)),
   ...globWalk('.', f => /\.(html?|m?js|cjs|ts|tsx|jsx|css)$/i.test(f), 2),
-].filter((f, i, a) => a.indexOf(f) === i && !slash(f).includes('/Release/'));
-const sourceText = sourceFiles.slice(0, 80).map(f => safeReadLimited(f, 512 * 1024)).join('\n');
+]).filter((f, i, a) => {
+  const file = slash(f);
+  return a.indexOf(f) === i
+    && !file.includes('/Release/')
+    && (declaredEngine !== 'godot' || !godotProjectRoot || isGodotProductionFile(godotProjectRoot, f))
+    && !/(?:^|\/)(?:debugcheck|cheats(?:-base)?)(?:\.min)?\.(?:m?js|cjs)$/iu.test(file);
+});
+const sourceText = sourceFiles.slice(0, 80).map(f => {
+  const text = safeReadLimited(f, 512 * 1024);
+  return declaredEngine === 'godot' && path.extname(f).toLowerCase() === '.gd' ? stripGdNonCode(text) : text;
+}).join('\n');
+let godotCatalogValid = false;
+if (declaredEngine === 'godot' && godotProjectPath && godotProjectRoot) {
+  const projectText = read(`${godotProjectPath}/project.godot`);
+  const refs = [...projectText.matchAll(/res:\/\/([^"\r\n,)]+\.(?:po|translation|csv))/giu)].map(match => match[1].replaceAll('/', path.sep));
+  godotCatalogValid = /\binternationalization\b/iu.test(projectText) && refs.some(ref => {
+    try {
+      const file = fs.realpathSync(path.resolve(godotProjectRoot, ref));
+      const relative = path.relative(godotProjectRoot, file);
+      return !relative.startsWith('..') && !path.isAbsolute(relative) && fs.statSync(file).isFile() && fs.statSync(file).size >= 32;
+    } catch { return false; }
+  });
+}
+const godotTrRuntime = declaredEngine === 'godot' && /\btr(?:_n)?\s*\(/u.test(sourceText);
 const sourceMtime = newest(sourceFiles);
 const wikiFiles = globWalk('wiki', f => /\.(md|json)$/i.test(f));
 const wikiMtime = newest(wikiFiles);
@@ -92,7 +176,7 @@ const designDocs = globWalk('wiki/design', f => /\.md$/i.test(f));
 const artDirection = designDocs.find(f => /art-direction-|art-bible\.md$/i.test(path.basename(f))) || null;
 const targetFrame = firstExisting(['wiki/design/target-frame.md']);
 const setupGuide = globWalk('Release', f => /SETUP_GUIDE\.md$/i.test(f))[0] || firstExisting(['SETUP_GUIDE.md']);
-const listingFiles = globWalk('Release', f => /store-listing-(ru|en)\.json$/i.test(f));
+const listingFiles = globWalk('.', f => /(?:^|[\\/])store[-_]listing[-_](ru|en)\.json$/i.test(f), 8);
 const builds = globWalk('Release', f => /\.zip$/i.test(f));
 const qaReports = globWalk('wiki/qa', f => /\.(md|json)$/i.test(f));
 const playtestReports = [
@@ -130,8 +214,12 @@ const health = {
   touchAction: /touch-action\s*:/i.test(sourceText),
   yandexInit: /YaGames\.init\s*\(/.test(sourceText),
   loadingReady: /LoadingAPI[^\n]{0,100}ready\s*\(|LoadingAPI\.ready\s*\(/.test(sourceText),
-  i18nRuntime: /environment\.i18n|detectLang|resolveGameLanguage/.test(sourceText),
-  localizationArchitecture: /\bI18N\b|\bt\s*\(|data-i18n/.test(sourceText),
+  i18nRuntime: declaredEngine === 'godot'
+    ? godotCatalogValid && godotTrRuntime
+    : /environment\.i18n|detectLang|resolveGameLanguage/.test(sourceText),
+  localizationArchitecture: declaredEngine === 'godot'
+    ? godotCatalogValid && godotTrRuntime
+    : /\bI18N\b|\bt\s*\(|data-i18n/.test(sourceText),
   debugcheckVersion,
   builds: builds.length,
   setupGuide: Boolean(setupGuide),

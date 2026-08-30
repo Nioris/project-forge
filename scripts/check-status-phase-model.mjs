@@ -270,6 +270,34 @@ try {
   s.currentPhase===1 ? ok('downstream SDK evidence cannot skip missing Phase 1 gate') : bad(`gate hole skipped to Phase ${s.currentPhase}`);
   s.warnings.length>0 ? ok('downstream evidence ahead of gate is surfaced as warning') : bad('downstream evidence warning missing');
 
+  const pGodotI18n=mk('godot-i18n-health');
+  w(pGodotI18n,'forge.engine.json',JSON.stringify({schemaVersion:1,kind:'forge.engine-profile',engine:'godot'}));
+  w(pGodotI18n,'forge.godot.json',JSON.stringify({schemaVersion:1,kind:'forge.godot-project',projectPath:'WorkProgress/demo'}));
+  w(pGodotI18n,'debugcheck.js','const I18N={ru:{play:"Играть"}}; function t(key){ return I18N.ru[key]; }');
+  w(pGodotI18n,'WorkProgress/demo/project.godot','[application]\nconfig/name="Fixture"\n');
+  w(pGodotI18n,'WorkProgress/demo/main.gd','extends Node\nfunc _ready():\n\tprint("ready")\n');
+  s=snap(pGodotI18n);
+  (!s.health.i18nRuntime && !s.health.localizationArchitecture)
+    ? ok('Godot status ignores Forge debug tooling when reporting product i18n')
+    : bad('Godot status accepted debugcheck.js as product localization');
+  w(pGodotI18n,'WorkProgress/demo/project.godot','[application]\nconfig/name="Fixture"\n[internationalization]\nlocale/translations=PackedStringArray("res://translations/ru.po")\n');
+  w(pGodotI18n,'WorkProgress/demo/main.gd','extends Node\n# tr(&"ui.comment")\nconst EXAMPLE="tr(&\\\"ui.string\\\")"\nfunc _ready():\n\tprint("ready")\n');
+  w(pGodotI18n,'WorkProgress/demo/tests/i18n_smoke.gd','extends Node\nfunc _ready():\n\tprint(tr(&"ui.test"))\n');
+  s=snap(pGodotI18n);
+  (!s.health.i18nRuntime && !s.health.localizationArchitecture)
+    ? ok('Godot status ignores test-only and comment/string-only tr() tokens')
+    : bad('Godot status accepted non-production tr() tokens');
+  w(pGodotI18n,'WorkProgress/demo/main.gd','extends Node\nfunc _ready():\n\tprint(tr(&"ui.ready"))\n');
+  s=snap(pGodotI18n);
+  (!s.health.i18nRuntime && !s.health.localizationArchitecture)
+    ? ok('Godot status requires the registered translation catalog to exist')
+    : bad('Godot status accepted a missing translation catalog');
+  w(pGodotI18n,'WorkProgress/demo/translations/ru.po','msgid ""\nmsgstr ""\n"Language: ru\\n"\n\nmsgid "ui.ready"\nmsgstr "Готово"\n');
+  s=snap(pGodotI18n);
+  (s.health.i18nRuntime && s.health.localizationArchitecture)
+    ? ok('Godot status recognizes registered native translation catalogs plus production tr() calls')
+    : bad('Godot native localization was not recognized');
+
   // A project can have valid completed markers up to Phase 3 while files for later
   // phases already exist (for example, from an imported prototype).  In that mixed
   // state the first missing marker is the authoritative gate: fallback must only

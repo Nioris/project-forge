@@ -1,4 +1,4 @@
-# Project Forge v4.68.68 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.69 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -498,6 +498,10 @@ Each lesson gets a tier classification at logging time:
 Audit cycle: every 5 new lessons (or per release), walk last 5 — promote misclassified, retroactively reference patterns, upgrade incidents that did recur.
 
 ---
+
+## v4.68.69 changelog (native Godot Phase 6)
+
+Godot Phase 6 now validates native localization, signed capture/proof/review media, and byte-identical desktop store frames. Web requirements remain unchanged.
 
 ## v4.68.68 changelog (truthful supplemental Task status)
 

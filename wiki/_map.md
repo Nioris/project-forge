@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.68 (current source line)
+### Version: v4.68.69 (current source line)
 
+- 2026-08-30: **v4.68.69** — Phase 6 is engine-aware: Godot accepts native i18n and signed capture/proof/review media; web keeps promo-video rules.
 - 2026-08-30: **v4.68.68** — `/status` projects superseded review and phase attempts truthfully: immutable historical runs remain auditable, while only strictly proven replacements disappear from `activeTask` and appear under `execution.supersededTasks`.
 - 2026-08-30: **v4.68.67** — successful native Godot verifier reports now produce truthful `passed` summaries in durable phase markers; `invalid output` is reserved for genuinely unparseable output, with regressions for success and failure paths.
 - 2026-08-30: **v4.68.66** — bounded independent Phase 4 visual review avoids repeated context amplification and distinguishes generated blueprint copy from runtime truth; Godot projects may satisfy visual integration with substantial state-driven production drawing, while strict thresholds reject placeholders and test-only art.

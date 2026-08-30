@@ -3,6 +3,12 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.69 changelog (native Godot Phase 6)
+
+Godot Phase 6 now validates native localization, signed capture/proof/review media, and byte-identical desktop store frames. Web requirements remain unchanged.
+
+---
+
 ## v4.68.68 changelog (truthful supplemental Task status)
 
 Project status no longer presents abandoned review or phase attempts as current work after a newer signed review PASS or canonical phase completion supersedes them. Historical run JSON remains immutable and visible through `execution.supersededTasks`; strict signatures, successful-result codes and phase markers prevent distinct, rejected, progressed or still-actionable Tasks from being hidden.

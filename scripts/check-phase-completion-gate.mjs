@@ -890,6 +890,25 @@ func _draw():
   result = validatePhaseCompletion({ root: p6, phase: 6, evidence: ['SETUP_GUIDE.md', 'wiki/qa/phase-6-listing.md'] });
   check(result.ok, 'Phase 6 requires listing JSON, real promo media and i18n implementation');
 
+  const p6GodotFake = path.join(tmp, 'phase-6-godot-fake-i18n');
+  write(p6GodotFake, 'forge.engine.json', JSON.stringify({ schemaVersion: 1, kind: 'forge.engine-profile', engine: 'godot' }));
+  write(p6GodotFake, 'forge.godot.json', JSON.stringify({ schemaVersion: 1, kind: 'forge.godot-project', projectPath: 'WorkProgress/demo' }));
+  write(p6GodotFake, 'SETUP_GUIDE.md', prose('SETUP GUIDE', 'Windows desktop pilot installation controls and verification.'));
+  write(p6GodotFake, 'wiki/qa/phase-6-listing.md', prose('Phase 6 listing gate', 'Godot desktop listing evidence is incomplete.'));
+  write(p6GodotFake, 'store-listing-ru.json', JSON.stringify({ lang: 'ru', title: 'Игра', subtitle: 'Короткое описание игры', description: 'Описание '.repeat(20), keywords: ['игра'] }));
+  writeBuffer(p6GodotFake, 'screens/store/screen-1.png', png());
+  write(p6GodotFake, 'debugcheck.js', `const I18N={ru:{start:'Старт'}}; function t(k){return I18N.ru[k]}`);
+  write(p6GodotFake, 'WorkProgress/demo/project.godot', '[application]\nconfig/name="Fixture"\n');
+  write(p6GodotFake, 'WorkProgress/demo/main.gd', 'extends Node\n# tr(&"ui.fake.comment")\nconst EXAMPLE = "tr(&\\\"ui.fake.string\\\")"\nfunc _ready():\n\tprint("ready")\n');
+  write(p6GodotFake, 'WorkProgress/demo/tests/i18n_smoke.gd', 'extends Node\nfunc _ready():\n\tprint(tr(&"ui.fake.test"))\n');
+  result = validatePhaseCompletion({ root: p6GodotFake, phase: 6, evidence: ['SETUP_GUIDE.md', 'wiki/qa/phase-6-listing.md'] });
+  check(!result.ok
+    && result.failures.some(item => /translation catalog/.test(item))
+    && result.failures.some(item => /tr\(\)\/tr_n\(\)/.test(item))
+    && result.failures.some(item => /current signed desktop capture/.test(item))
+    && !result.failures.some(item => /promo\.mp4/.test(item)),
+  'Godot Phase 6 ignores debug tooling, requires native i18n, and does not require web promo.mp4');
+
   const p7 = path.join(tmp, 'phase-7-valid');
   write(p7, 'wiki/testing.md', prose('Testing', 'PASS functional mobile runtime balance and persistence verification.'));
   write(p7, 'wiki/qa/phase-7-report.md', prose('Phase 7 QA', 'PASS visual QA playtest local stage and state diversity.'));

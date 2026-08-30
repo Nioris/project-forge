@@ -42,8 +42,9 @@ node .claude/skills/status/references/phase-state.mjs complete 6 SETUP_GUIDE.md 
 Marker не заменяет evidence и не разрешает перескочить STOP-point. `/status` использует его как
 machine-readable progression state, а сами артефакты остаются доказательством результата.
 `complete` проверяет не только отчёт: нужны валидный `store-listing-*.json`,
-промо-скриншот, `screens/video/promo.mp4` и i18n runtime в коде. Результаты
-запиши в `wiki/qa/phase-6-listing.md`.
+промо-скриншот и i18n runtime в коде. Для web также обязателен
+`screens/video/promo.mp4`; для Godot вместо него обязательна текущая подписанная
+native capture/proof/review цепочка. Результаты запиши в `wiki/qa/phase-6-listing.md`.
 
 
 **Модели:** Claude `sonnet`. Codex base `gpt-5.6-sol/medium`; route
@@ -52,18 +53,32 @@ machine-readable progression state, а сами артефакты остают�
 Канон: `status/references/model-policy.json`.
 
 
+Сначала прочитай доверенный `forge.engine.json`.
+
+### Web route
+
 1. `/localize` (режим АРХИТЕКТУРА): словарь I18N.ru + t() везде, хардкод = дефект; черновик заявляет ТОЛЬКО русский. Другие языки — НЕ добавлять (только явная команда пользователя).
 2. `/promo-screens` — промо-скриншоты.
-3. `/fill-yandex` — описания/SEO/how-to-play: без дублей (5.11), без капса.
+3. `/fill-yandex` — только когда текущий release scope действительно включает Yandex/web: описания/SEO/how-to-play без дублей (5.11), без капса.
+4. `node scripts/record-promo.mjs <игра>` — только web/browser implementation.
+
+### Godot route
+
+1. Используй native Godot localization: реальный каталог `.po`/`.translation`, зарегистрированный в `project.godot`, и `tr()`/`tr_n()` во всех player-visible production строках. По умолчанию всё ещё RU-only.
+2. Не вызывай `/fill-yandex` и не заявляй browser/mobile/Yandex, если engine profile и release scope остаются Windows Desktop-only. Создай честный `store-listing-ru.json` и самодостаточный `SETUP_GUIDE.md` для фактической desktop-поставки.
+3. Сними свежие native кадры через `godot-screens-shoot.mjs` и motion proof через `godot-proof-video.mjs`. Подписанная текущая capture/proof/review цепочка является promo-media evidence; web `screens/video/promo.mp4` для Godot не требуется.
+4. Store icon/cover всё равно проходят `/art-prompts` → `/prompt-compiler` → `/image-studio` и фактическую проверку размеров.
+
+Нельзя удовлетворять Godot i18n словом `I18N` в `debugcheck.js`, а Godot media — поддельным MP4 header. Completion gate читает только активный Godot project path и проверяет текущую подписанную native visual evidence chain.
 
 ## Выход фазы — ФАЙЛЫ, проверь фактом (ls, не «сделано»)
 | Артефакт | Кто создаёт | Проверка |
 |---|---|---|
 | `SETUP_GUIDE.md` (ручные шаги Консоли) | fill-yandex | ls + непустой |
-| Тексты листинга (описание/SEO/how-to) | fill-yandex | файл(ы) есть, поля не дублируются |
-| Промо-скриншоты | promo-screens | файлы есть, размеры верны (см. asset-generation) |
-| i18n-словарь RU + t() | localize | хардкода нет; черновик = только русский |
-| Промо-видео ≤28с (геймплей ≥70%) | `node scripts/record-promo.mjs <игра>` (канонический рекордер, свои писать ЗАПРЕЩЕНО) | screens/video/promo.mp4, первые 3с = действие |
+| Тексты листинга (описание/SEO/how-to) | web/Yandex: fill-yandex; Godot: текущий desktop route | файл(ы) есть, поля не дублируются и не обещают отсутствующие платформы |
+| Промо-скриншоты | web: promo-screens; Godot: native signed capture | файлы есть, размеры верны и текущий Godot store-кадр совпадает с подписанным capture |
+| i18n RU | web: localize + t(); Godot: catalog + tr()/tr_n() | хардкода нет; черновик = только русский |
+| Промо-видео / native motion proof | web: `record-promo.mjs`; Godot: `godot-proof-video.mjs` | web: `screens/video/promo.mp4`; Godot: текущая подписанная proof manifest + AVI, `testHarness=false` |
 
 Нет любого артефакта → фаза НЕ завершена, вернись к соответствующему шагу. «Скил отработал» ≠
 «файл существует» (полевой кейс: SETUP_GUIDE не был создан, пользователь запускал fill-yandex
