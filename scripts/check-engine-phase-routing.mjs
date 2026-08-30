@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { enginePhaseSupport, readTrustedProjectEngine } from '../.claude/skills/status/references/project-engine.mjs';
-import { validatePhaseCompletion } from '../.claude/skills/status/references/phase-completion-gate.mjs';
+import {
+  summarizeGodotInstalledVerifier,
+  validatePhaseCompletion,
+} from '../.claude/skills/status/references/phase-completion-gate.mjs';
 import { validatePhase4VisualEvidence } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 
 const ROOT = resolve(process.cwd());
@@ -28,6 +31,27 @@ function profile(engine) {
 function hasAdapterFailure(result, phase) {
   return result.failures.some(item => item.includes(`cannot complete Phase ${phase}`) && item.includes('adapter is unavailable'));
 }
+
+const successfulNativeSummary = summarizeGodotInstalledVerifier({
+  scriptName: 'godot-tech-check.mjs',
+  report: {
+    status: 'passed',
+    renderer: 'real-window',
+    proof: { renderer: { displayServer: 'Windows' } },
+    issues: [],
+  },
+});
+check(/godot-tech-check\.mjs passed/u.test(successfulNativeSummary)
+  && /Windows/u.test(successfulNativeSummary)
+  && !/invalid output/u.test(successfulNativeSummary),
+'successful installed Godot verifier records an affirmative parsed-report summary');
+
+const failedNativeSummary = summarizeGodotInstalledVerifier({
+  scriptName: 'godot-tech-check.mjs',
+  report: { status: 'failed', issues: [{ message: 'renderer unavailable' }] },
+});
+check(failedNativeSummary === 'renderer unavailable',
+  'failed installed Godot verifier preserves its bounded issue summary');
 
 const fixture = mkdtempSync(join(tmpdir(), 'forge-engine-phase-routing-'));
 try {

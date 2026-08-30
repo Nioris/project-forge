@@ -515,7 +515,12 @@ function runGodotConstructVerifier(root, engineProfile, failures) {
   let report = null;
   try { report = JSON.parse(child.stdout || ''); } catch {}
   const status = report?.status || (child.status === 1 ? 'failed' : 'environment_failure');
-  const summary = report?.summary || child.error?.message || child.stderr?.trim() || 'Godot construct verifier returned invalid output';
+  const summary = report?.summary || summarizeGodotInstalledVerifier({
+    report,
+    scriptName: 'check-godot-project.mjs',
+    childError: child.error?.message || '',
+    stderr: child.stderr || '',
+  });
   const normalized = {
     id: 'godot-project',
     status,
@@ -537,6 +542,22 @@ function runGodotConstructVerifier(root, engineProfile, failures) {
   return normalized;
 }
 
+export function summarizeGodotInstalledVerifier({ report = null, scriptName = '', childError = '', stderr = '' } = {}) {
+  const issueSummary = Array.isArray(report?.issues)
+    ? report.issues.slice(0, 3).map(item => item?.message).filter(Boolean).join('; ')
+    : '';
+  if (issueSummary) return issueSummary;
+  const reportSummary = String(report?.summary || '').trim();
+  if (reportSummary) return reportSummary;
+  if (report?.status === 'passed') {
+    const displayServer = String(report?.proof?.renderer?.displayServer || '').trim();
+    const renderer = String(report?.renderer || '').trim();
+    const facts = [...new Set([displayServer, renderer].filter(Boolean))];
+    return `${scriptName} passed${facts.length ? ` (${facts.join(', ')})` : ''}`;
+  }
+  return String(childError || '').trim() || String(stderr || '').trim() || `${scriptName} returned invalid output`;
+}
+
 function runGodotInstalledVerifier(root, engineProfile, failures, { id, scriptName, timeoutMs }) {
   const script = path.join(engineProfile.engineRoot || '', 'scripts', scriptName);
   if (!engineProfile.engineRoot || !fs.existsSync(script)) {
@@ -555,10 +576,12 @@ function runGodotInstalledVerifier(root, engineProfile, failures, { id, scriptNa
   let report = null;
   try { report = JSON.parse(child.stdout || ''); } catch {}
   const status = report?.status || (child.status === 1 ? 'failed' : 'environment_failure');
-  const issueSummary = Array.isArray(report?.issues)
-    ? report.issues.slice(0, 3).map(item => item?.message).filter(Boolean).join('; ')
-    : '';
-  const summary = issueSummary || child.error?.message || child.stderr?.trim() || `${scriptName} returned invalid output`;
+  const summary = summarizeGodotInstalledVerifier({
+    report,
+    scriptName,
+    childError: child.error?.message || '',
+    stderr: child.stderr || '',
+  });
   const normalized = {
     id,
     status,

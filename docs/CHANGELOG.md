@@ -3,6 +3,15 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.67 changelog (truthful native verifier summaries)
+
+Successful installed Godot phase verifiers no longer fall through to an `invalid output` message merely
+because their valid JSON report has no optional `summary` field. Phase markers now derive an affirmative,
+bounded `passed` summary from parsed native reports; actual parse failures and runtime issues retain their
+fail-closed messages. Regressions cover both successful and failed normalization paths.
+
+---
+
 ## v4.68.66 changelog (bounded visual review + native procedural art)
 
 The authenticated Phase 4 reviewer now receives an explicit visual-context budget: no mega contact sheet,
@@ -4913,6 +4922,11 @@ publication/install: `--help` unexpectedly built it, and manual checkpoints stil
 
 Codex now hands producer-complete Phase 4 evidence to a clean parent-owned reviewer and returns its
 receipted PASS/REJECT automatically, without nested Codex, identity collisions or false user STOPs.
+
+## v4.68.63 changelog (binding visual repair hand-off)
+
+Phase 4 builders have zero subagents. A signed parent-owned REJECT is injected as an authoritative
+repair contract: fix every Major/low score, recapture, and let only the parent launch the next review.
 
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
