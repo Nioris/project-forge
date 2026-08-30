@@ -461,9 +461,13 @@ export function phase4ReviewerPrompt(candidate) {
 
 Прочитай полностью .agents/skills/visual-qa/SKILL.md и, для Godot, .agents/skills/godot-engine/references/godot-visual-qa.md. Открой каждый live PNG из screens/review/capture-manifest.json рядом с его точным mobile/desktop target из assets/target/screens/manifest.json, а не оценивай имена файлов или прежние QA-формулировки. ${proofInstruction}
 
+Соблюдай жёсткую context-дисциплину: не создавай и не открывай один mega contact sheet, не перечитывай уже оценённые pixels и не печатай целиком manifests/validator. Для видео допустимы не более четырёх storyboard-листов до 1920×1080 и 16 кадров на лист; после однократного просмотра всех still-пар, storyboards и обязательных samples сразу запиши оба результата за один проход. Цель — не более 12 model/tool round-trips на всю review-сессию.
+
 ${PHASE4_REPORT_REL} и ${PHASE4_EVIDENCE_REL} — write-only outputs этой сессии. До завершения собственной пиксельной оценки не открывай и не читай их: parent уже сбросил оба файла в нейтральное состояние без прошлого verdict. Схему бери только из screens/review/phase-4-visual-evidence.template.json и validator contract. Не копируй оценки, дефекты или фразы из прежнего review.
 
 JSON обязан сохранять точные типы схемы: matches/differences — массивы строк, defects — массивы объектов {severity, summary}; никакого PowerShell object-to-string вида "@{...}". Для каждого кадра нужны пять целых scores, distanceScore, минимум 2 конкретных совпадения, минимум 3 конкретных различия и содержательная critique. PASS допустим только при каждом score и distanceScore >= 6 и без Critical/Major. Для Godot proofReview.samplesReviewed — ровно массив SHA-256 строк из proof.samples.map(item => item.sha256) в timeline order, не объекты; также обязательны videoWatched, все states, motionScore, конкретная critique и defects. При реальном дефекте честно запиши REJECT — builder получит его автоматически.
+
+Target PNG — visual blueprint композиции, плотности, материала, иерархии и major block placement, а не источник истинных runtime-данных. Не снижай score только из-за локализованного native copy или потому, что честное динамическое значение (moves/best/progress) отличается от декоративного числа, запечённого генератором в target. Семантические значения сверяй с текущим live/proof и GDD; дефект существует только при противоречии внутри runtime evidence. Это следует production boundary из wiki/design/target-frame.md: generated text и micro-detail не копируются pixel-for-pixel.
 
 Не перечитывай прочие фазы и не исследуй проект заново. Заверши кратким фактом: PASS/REJECT и минимальный балл.`;
 }
@@ -488,7 +492,7 @@ function shortProcessFailure(result) {
 
 /** Launch the reviewer from the authenticated parent process, never from the builder sandbox. */
 export async function runHostPhase4Reviewer({
-  projectRoot, launcher, policy, phaseEnv = {}, configOverrides = [], candidate = null,
+  projectRoot, launcher, policy, phaseEnv = {}, configOverrides = [], candidate = null, promptOverride = '',
 } = {}) {
   const root = path.resolve(projectRoot);
   const reviewCandidate = candidate || phase4IndependentReviewCandidate(root);
@@ -502,6 +506,9 @@ export async function runHostPhase4Reviewer({
   const reviewRun = startTaskRun({ projectRoot: root, task: reviewTask });
   const reviewAttemptId = `codex-review-4-${randomUUID()}`;
   const { selected } = phaseSelection(policy, 4);
+  const reviewPrompt = typeof promptOverride === 'string' && promptOverride.trim()
+    ? promptOverride.trim()
+    : phase4ReviewerPrompt(reviewCandidate);
   const args = [
     'exec', '--json', '-C', root,
     '-s', 'workspace-write', '-c', 'approval_policy="never"',
@@ -509,7 +516,7 @@ export async function runHostPhase4Reviewer({
     '-c', `model_reasoning_effort=${JSON.stringify(selected.reasoning)}`,
     '-c', `service_tier=${JSON.stringify(policy.serviceTier)}`,
     ...configOverrideArgs(configOverrides),
-    phase4ReviewerPrompt(reviewCandidate),
+    reviewPrompt,
   ];
   const reviewEnv = {
     ...process.env, ...phaseEnv,

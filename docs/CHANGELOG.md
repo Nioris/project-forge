@@ -3,6 +3,21 @@
 > Rotated from CLAUDE.md to keep main file under 30KB soft limit.
 > Order: newest first.
 
+## v4.68.66 changelog (bounded visual review + native procedural art)
+
+The authenticated Phase 4 reviewer now receives an explicit visual-context budget: no mega contact sheet,
+no repeated pixel reads, at most four bounded video storyboards, and a one-pass report/evidence write. Target
+frames remain binding for composition and hierarchy, while generated copy and decorative numbers cannot be
+mistaken for authoritative runtime data. The Circuit Courier pilot reduced reviewer input traffic by about 80%
+while still independently passing all 8 native Godot frames and the full motion proof.
+
+Godot Phase 4 now recognizes a substantial state-driven production `CanvasItem` drawing system as real visual
+integration. Strict source, complexity and state-signal thresholds reject tiny placeholders and test-only drawing;
+the signed pixel review remains the quality authority. This prevents builders from adding an unrelated image or
+font merely to satisfy an asset-shaped completion gate.
+
+---
+
 ## v4.68.65 changelog (fresh-pixel Phase 4 review isolation)
 
 Every Phase 4 `--init` now destructively resets canonical evidence and replaces the prior Markdown verdict
@@ -4893,6 +4908,11 @@ An ignored atomic ledger makes completed-phase Git state restart-safe. Before th
 reconciles missing/failed checkpoints; failures also hold status and direct phase commands. Phases 1–7
 remain local-only; Phase 8+ requires a confirmed private push. The immutable ZIP was rejected before
 publication/install: `--help` unexpectedly built it, and manual checkpoints still bypassed the full lease.
+
+## v4.68.62 changelog (host-owned independent Phase 4 review)
+
+Codex now hands producer-complete Phase 4 evidence to a clean parent-owned reviewer and returns its
+receipted PASS/REJECT automatically, without nested Codex, identity collisions or false user STOPs.
 
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 

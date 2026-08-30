@@ -121,6 +121,12 @@ const phase4ReviewPrompt = phase4ReviewerPrompt({ engine: 'godot' });
 check(/write-only outputs/i.test(phase4ReviewPrompt) && /не открывай и не читай/i.test(phase4ReviewPrompt)
   && /массив SHA-256 строк/i.test(phase4ReviewPrompt) && /не объекты/i.test(phase4ReviewPrompt),
   'independent reviewer is isolated from prior QA prose and receives the exact proof-sample schema');
+check(/mega contact sheet/i.test(phase4ReviewPrompt) && /1920×1080/i.test(phase4ReviewPrompt)
+  && /12 model\/tool round-trips/i.test(phase4ReviewPrompt),
+  'independent reviewer receives a bounded visual-context budget');
+check(/visual blueprint/i.test(phase4ReviewPrompt) && /динамическое значение/i.test(phase4ReviewPrompt)
+  && /не копируются pixel-for-pixel/i.test(phase4ReviewPrompt),
+  'independent reviewer does not literalize generated target copy or dynamic values');
 check(classifyTurnResult({
   schemaVersion: 3, state: 'blocked', block: { owner: 'user' }, updatedAt: now,
   execution: { attemptId: 'codex-old-stop-attempt' },

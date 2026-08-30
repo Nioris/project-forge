@@ -1,4 +1,4 @@
-# Project Forge v4.68.65 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.66 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,6 +499,10 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.66 changelog (bounded visual review + native procedural art)
+
+Phase 4 independent review now has a bounded one-pass visual-context budget and treats generated target copy/numbers as non-authoritative. Godot completion accepts substantial state-driven production drawing under strict source/complexity thresholds; tiny placeholders and test-only art still fail. Signed pixel evidence remains the quality authority.
+
 ## v4.68.64 changelog (restart-safe signed visual repair)
 
 A restarted pipeline restores an existing signed Phase 4 PASS/REJECT and injects the corresponding
@@ -508,8 +512,3 @@ finalize/repair contract instead of losing the parent verdict and re-entering th
 
 Phase 4 builders have zero subagents. A signed parent-owned REJECT is injected as an authoritative
 repair contract: fix every Major/low score, recapture, and let only the parent launch the next review.
-
-## v4.68.62 changelog (host-owned independent Phase 4 review)
-
-Codex now hands producer-complete Phase 4 evidence to a clean parent-owned reviewer and returns its
-receipted PASS/REJECT automatically, without nested Codex, identity collisions or false user STOPs.

@@ -313,14 +313,27 @@ function checkVisualIntegration(root, failures) {
   if (!integrated) failures.push('Phase 4 requires source-referenced production image assets; CSS, target frames, and review screenshots do not count as integration');
 }
 
-function checkGodotVisualIntegration(root, failures) {
+const GODOT_PROCEDURAL_DRAW_PRIMITIVE = /\b(draw_(?:arc|circle|colored_polygon|dashed_line|line|multiline|polygon|polyline|rect|string|style_box|texture|texture_rect|texture_rect_region))\s*\(/gu;
+
+function stripProceduralSourceComments(value) {
+  return String(value)
+    .replace(/\/\*[\s\S]*?\*\//gu, '')
+    .replace(/#.*$/gmu, '')
+    .replace(/^[ \t]*\/\/.*$/gmu, '');
+}
+
+/**
+ * Inspect production Godot visuals without confusing review media or test-only drawing with
+ * integration. A substantial native CanvasItem drawing system is a valid production visual
+ * asset: the signed pixel review remains responsible for judging its actual quality.
+ */
+export function inspectGodotProductionVisualIntegration(root) {
   const contractFile = safeProjectFile(root, 'forge.godot.json');
   const contract = contractFile ? parseJson(contractFile.absolute) : null;
   const projectPath = normalizeRelative(contract?.projectPath || '');
   if (!projectPath || path.isAbsolute(projectPath)
     || (projectPath !== '.' && projectPath.split('/').some(part => !part || part === '.' || part === '..'))) {
-    failures.push('Godot Phase 4 requires a safe forge.godot.json projectPath for visual integration');
-    return;
+    return { integrated: false, reason: 'Godot Phase 4 requires a safe forge.godot.json projectPath for visual integration' };
   }
   const implementationRoot = path.resolve(root, projectPath);
   let realImplementation;
@@ -329,20 +342,24 @@ function checkGodotVisualIntegration(root, failures) {
     const relative = path.relative(fs.realpathSync(root), realImplementation);
     if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.statSync(realImplementation).isDirectory()) throw new Error('outside project');
   } catch {
-    failures.push('Godot Phase 4 implementation root is missing or outside the project');
-    return;
+    return { integrated: false, reason: 'Godot Phase 4 implementation root is missing or outside the project' };
   }
   const sourceExtensions = new Set(['.godot', '.tscn', '.tres', '.res', '.gd', '.cs', '.gdshader']);
   const assetExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ttf', '.otf']);
-  const source = walkFiles(realImplementation, file => sourceExtensions.has(path.extname(file).toLowerCase()))
-    .filter(file => !normalizeRelative(path.relative(realImplementation, file)).startsWith('qa/'))
+  const excludedVisualPath = /(?:^|\/)(?:qa|tests?|screens\/review|refs|candidates|target|playtest-out|stage-out)(?:\/|$)/iu;
+  const sourceFiles = walkFiles(realImplementation, file => sourceExtensions.has(path.extname(file).toLowerCase()))
+    .filter(file => !excludedVisualPath.test(normalizeRelative(path.relative(realImplementation, file))))
     .slice(0, 500)
-    .map(file => readLimited(file, 2 * 1024 * 1024))
-    .join('\n');
+    .map(file => ({
+      file,
+      rel: normalizeRelative(path.relative(realImplementation, file)),
+      text: readLimited(file, 2 * 1024 * 1024),
+    }));
+  const source = sourceFiles.map(item => item.text).join('\n');
   const assets = walkFiles(realImplementation, file => assetExtensions.has(path.extname(file).toLowerCase()))
     .filter(file => {
       const rel = normalizeRelative(path.relative(realImplementation, file));
-      if (/^(?:screens\/review|refs|candidates|target|playtest-out|stage-out)(?:\/|$)/iu.test(rel)) return false;
+      if (excludedVisualPath.test(rel)) return false;
       try { return fs.statSync(file).size >= 32 && (!/\.(?:png|jpe?g|webp)$/iu.test(file) || validImage(file)); }
       catch { return false; }
     });
@@ -350,7 +367,43 @@ function checkGodotVisualIntegration(root, failures) {
     const rel = normalizeRelative(path.relative(realImplementation, file));
     return source.includes(`res://${rel}`) || source.includes(rel) || source.includes(path.basename(file));
   });
-  if (!integrated) failures.push('Godot Phase 4 requires a source-referenced production image/font asset; targets and review media do not count as integration');
+  const proceduralFiles = sourceFiles.filter(item => path.extname(item.file).toLowerCase() === '.gd')
+    .map(item => ({ ...item, text: stripProceduralSourceComments(item.text) }))
+    .filter(item => /\bfunc\s+_draw\s*\(/u.test(item.text));
+  const proceduralSource = proceduralFiles.map(item => item.text).join('\n');
+  const primitiveCalls = [...proceduralSource.matchAll(GODOT_PROCEDURAL_DRAW_PRIMITIVE)].map(match => match[1]);
+  const primitiveKinds = new Set(primitiveCalls);
+  const helperCount = [...proceduralSource.matchAll(/\bfunc\s+_draw_[A-Za-z0-9_]+\s*\(/gu)].length;
+  const stateSignalPatterns = [
+    /\b(?:for|if|match)\b/u,
+    /\b(?:model|level|state|progress)\b/u,
+    /\bqueue_redraw\s*\(/u,
+    /\b(?:frame|selected|locked|active|outcome)\b/u,
+  ];
+  const stateSignals = stateSignalPatterns.filter(pattern => pattern.test(proceduralSource)).length;
+  const procedural = proceduralFiles.length >= 2 && primitiveCalls.length >= 24
+    && primitiveKinds.size >= 5 && helperCount >= 4 && stateSignals >= 2;
+  return {
+    integrated: integrated || procedural,
+    mode: integrated ? 'asset' : (procedural ? 'procedural' : null),
+    assetCount: assets.length,
+    procedural: {
+      controls: proceduralFiles.length,
+      primitiveCalls: primitiveCalls.length,
+      primitiveKinds: primitiveKinds.size,
+      helpers: helperCount,
+      stateSignals,
+    },
+  };
+}
+
+function checkGodotVisualIntegration(root, failures) {
+  const inspection = inspectGodotProductionVisualIntegration(root);
+  if (inspection.reason) {
+    failures.push(inspection.reason);
+    return;
+  }
+  if (!inspection.integrated) failures.push('Godot Phase 4 requires either a source-referenced production image/font asset or substantive procedural production drawing (>=2 draw controls, >=24 primitive calls, >=5 primitive kinds, >=4 draw helpers, >=2 state/data signals); targets, QA/tests and review media do not count');
 }
 
 function checkPhase4VisualEvidence(root, failures) {

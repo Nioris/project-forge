@@ -49,8 +49,9 @@
 
 ## Current Status
 
-### Version: v4.68.65 (current source line)
+### Version: v4.68.66 (current source line)
 
+- 2026-08-30: **v4.68.66** — bounded independent Phase 4 visual review avoids repeated context amplification and distinguishes generated blueprint copy from runtime truth; Godot projects may satisfy visual integration with substantial state-driven production drawing, while strict thresholds reject placeholders and test-only art.
 - 2026-08-30: **v4.68.65** — every fresh Phase 4 capture now resets canonical QA JSON and Markdown to a neutral pending hand-off; independent reviewers cannot read/reuse previous scores or prose, and Godot proof samples use an explicit ordered SHA-string schema.
 - 2026-08-30: **v4.68.64** — restart-safe Phase 4 restores an existing signed PASS/REJECT from durable evidence and re-injects the finalize/repair contract instead of losing the parent verdict and re-entering the generic phase prompt.
 - 2026-08-30: **v4.68.63** — Phase 4 builders run with zero subagents; a signed parent-review REJECT is injected as a binding repair contract so the builder cannot launch a counter-review, rewrite QA or spend another context disputing unchanged pixels.

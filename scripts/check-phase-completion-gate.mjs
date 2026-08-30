@@ -5,7 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import zlib from 'node:zlib';
-import { loadPhaseContract, validatePhaseCompletion } from '../.claude/skills/status/references/phase-completion-gate.mjs';
+import {
+  inspectGodotProductionVisualIntegration,
+  loadPhaseContract,
+  validatePhaseCompletion,
+} from '../.claude/skills/status/references/phase-completion-gate.mjs';
 import {
   captureReceiptPayload,
   computeVisualCaptureId,
@@ -488,6 +492,107 @@ try {
   result = validatePhaseCompletion({ root: p4CssOnly, phase: 4, evidence: p4Evidence });
   check(!result.ok && result.failures.some(item => /CSS.*do not count|captureManifest/u.test(item)),
     'Phase 4 rejects the former CSS-only false acceptance path');
+
+  const proceduralGodot = path.join(tmp, 'phase-4-godot-procedural-visual');
+  write(proceduralGodot, 'forge.godot.json', JSON.stringify({ projectPath: 'WorkProgress/demo' }));
+  write(proceduralGodot, 'WorkProgress/demo/project.godot', '[application]\nconfig/name="Procedural fixture"\n');
+  write(proceduralGodot, 'WorkProgress/demo/src/board.gd', `extends Control
+var model = {"state": 1}
+func _draw():
+  for index in range(4):
+    draw_line(Vector2(index, 0), Vector2(index, 4), Color.WHITE)
+    draw_circle(Vector2(index, index), 2.0, Color.WHITE)
+    draw_rect(Rect2(index, index, 2, 2), Color.WHITE)
+  _draw_grid()
+  _draw_route()
+  _draw_nodes()
+func _draw_grid():
+  draw_line(Vector2.ZERO, Vector2.ONE, Color.WHITE)
+  draw_line(Vector2.ONE, Vector2(2, 2), Color.WHITE)
+  draw_line(Vector2(2, 2), Vector2(3, 3), Color.WHITE)
+  draw_rect(Rect2(0, 0, 4, 4), Color.WHITE, false)
+func _draw_route():
+  draw_polyline(PackedVector2Array([Vector2.ZERO, Vector2.ONE]), Color.WHITE)
+  draw_polyline(PackedVector2Array([Vector2.ONE, Vector2(2, 2)]), Color.WHITE)
+  draw_arc(Vector2.ONE, 2.0, 0.0, PI, 8, Color.WHITE)
+func _draw_nodes():
+  if model.state > 0:
+    draw_circle(Vector2.ONE, 3.0, Color.WHITE)
+    draw_circle(Vector2(2, 2), 3.0, Color.WHITE)
+    queue_redraw()
+`);
+  write(proceduralGodot, 'WorkProgress/demo/src/hud.gd', `extends Control
+var selected = true
+func _draw():
+  draw_string(ThemeDB.fallback_font, Vector2(1, 12), "LEVEL")
+  draw_string(ThemeDB.fallback_font, Vector2(1, 24), "DATA")
+  draw_style_box(StyleBoxFlat.new(), Rect2(0, 0, 20, 20))
+  draw_style_box(StyleBoxFlat.new(), Rect2(22, 0, 20, 20))
+  draw_rect(Rect2(0, 0, 42, 20), Color.WHITE, false)
+  draw_line(Vector2.ZERO, Vector2(42, 0), Color.WHITE)
+  draw_line(Vector2(0, 20), Vector2(42, 20), Color.WHITE)
+  draw_circle(Vector2(21, 10), 2.0, Color.WHITE)
+  _draw_status()
+func _draw_status():
+  if selected:
+    draw_circle(Vector2(4, 4), 2.0, Color.WHITE)
+    draw_arc(Vector2(4, 4), 3.0, 0.0, PI, 8, Color.WHITE)
+    draw_polyline(PackedVector2Array([Vector2.ZERO, Vector2.ONE]), Color.WHITE)
+    draw_rect(Rect2(1, 1, 4, 4), Color.WHITE)
+`);
+  const proceduralInspection = inspectGodotProductionVisualIntegration(proceduralGodot);
+  check(proceduralInspection.integrated && proceduralInspection.mode === 'procedural',
+    'Godot Phase 4 accepts a substantial state-driven production CanvasItem drawing system');
+
+  const placeholderGodot = path.join(tmp, 'phase-4-godot-procedural-placeholder');
+  write(placeholderGodot, 'forge.godot.json', JSON.stringify({ projectPath: 'WorkProgress/demo' }));
+  write(placeholderGodot, 'WorkProgress/demo/project.godot', '[application]\nconfig/name="Placeholder fixture"\n');
+  write(placeholderGodot, 'WorkProgress/demo/src/background.gd', 'extends Control\nvar fake = preload("res://tests/fake.png")\nfunc _draw():\n  draw_rect(Rect2(0, 0, 10, 10), Color.WHITE)\n  draw_line(Vector2.ZERO, Vector2.ONE, Color.BLACK)\n');
+  writeBuffer(placeholderGodot, 'WorkProgress/demo/tests/fake.png', png(64, 64, 256));
+  write(placeholderGodot, 'WorkProgress/demo/src/tests/fake_art.gd', `extends Control
+var model = {"state": 1}
+func _draw():
+  for index in range(30):
+    draw_circle(Vector2(index, index), 1.0, Color.WHITE)
+    draw_line(Vector2.ZERO, Vector2.ONE, Color.WHITE)
+    draw_rect(Rect2(0, 0, 2, 2), Color.WHITE)
+    draw_arc(Vector2.ONE, 2.0, 0.0, PI, 8, Color.WHITE)
+    draw_polyline(PackedVector2Array([Vector2.ZERO, Vector2.ONE]), Color.WHITE)
+  _draw_one()
+  _draw_two()
+  _draw_three()
+  _draw_four()
+func _draw_one():
+  queue_redraw()
+func _draw_two():
+  pass
+func _draw_three():
+  pass
+func _draw_four():
+  pass
+`);
+  const placeholderInspection = inspectGodotProductionVisualIntegration(placeholderGodot);
+  check(!placeholderInspection.integrated,
+    'Godot Phase 4 rejects a tiny procedural placeholder and ignores nested test drawing/assets');
+
+  const commentGodot = path.join(tmp, 'phase-4-godot-procedural-comments');
+  write(commentGodot, 'forge.godot.json', JSON.stringify({ projectPath: 'WorkProgress/demo' }));
+  write(commentGodot, 'WorkProgress/demo/project.godot', '[application]\nconfig/name="Comment fixture"\n');
+  const commentScam = `extends Control
+var model = {"state": 1}
+func _draw():
+  var one = 1 # draw_circle(Vector2.ZERO, 1.0, Color.WHITE) draw_line(Vector2.ZERO, Vector2.ONE, Color.WHITE) draw_rect(Rect2(0,0,1,1), Color.WHITE) draw_arc(Vector2.ZERO, 1.0, 0.0, PI, 8, Color.WHITE) draw_polyline(PackedVector2Array(), Color.WHITE)
+  var two = 2 # draw_circle(Vector2.ZERO, 1.0, Color.WHITE) draw_line(Vector2.ZERO, Vector2.ONE, Color.WHITE) draw_rect(Rect2(0,0,1,1), Color.WHITE) draw_arc(Vector2.ZERO, 1.0, 0.0, PI, 8, Color.WHITE) draw_polyline(PackedVector2Array(), Color.WHITE)
+  var three = 3 # draw_circle(Vector2.ZERO, 1.0, Color.WHITE) draw_line(Vector2.ZERO, Vector2.ONE, Color.WHITE) draw_rect(Rect2(0,0,1,1), Color.WHITE) draw_arc(Vector2.ZERO, 1.0, 0.0, PI, 8, Color.WHITE) draw_polyline(PackedVector2Array(), Color.WHITE)
+  var four = 4 # draw_circle(Vector2.ZERO, 1.0, Color.WHITE) draw_line(Vector2.ZERO, Vector2.ONE, Color.WHITE) draw_rect(Rect2(0,0,1,1), Color.WHITE) draw_arc(Vector2.ZERO, 1.0, 0.0, PI, 8, Color.WHITE) draw_polyline(PackedVector2Array(), Color.WHITE)
+  var five = 5 # draw_circle(Vector2.ZERO, 1.0, Color.WHITE) draw_line(Vector2.ZERO, Vector2.ONE, Color.WHITE) draw_rect(Rect2(0,0,1,1), Color.WHITE) draw_arc(Vector2.ZERO, 1.0, 0.0, PI, 8, Color.WHITE) draw_polyline(PackedVector2Array(), Color.WHITE)
+  var helpers = 4 # func _draw_one(): func _draw_two(): func _draw_three(): func _draw_four(): queue_redraw()
+`;
+  write(commentGodot, 'WorkProgress/demo/src/comment_one.gd', commentScam);
+  write(commentGodot, 'WorkProgress/demo/src/comment_two.gd', commentScam.replace('var model', 'var selected'));
+  const commentInspection = inspectGodotProductionVisualIntegration(commentGodot);
+  check(!commentInspection.integrated,
+    'Godot Phase 4 ignores procedural draw/helper tokens inside inline GDScript comments');
 
   const p4 = path.join(tmp, 'phase-4-valid');
   writePhase4Fixture(p4);
