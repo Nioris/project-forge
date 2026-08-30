@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { makeTask, startTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
+import { makeTask, recordTaskResult, startTaskRun } from '../.claude/skills/status/references/execution-contract.mjs';
 import { screenInventorySha256 } from '../.claude/skills/status/references/screen-flow-contract.mjs';
 
 const ROOT = process.cwd();
@@ -82,6 +82,101 @@ try {
     && /never phase progression/.test(taskStatus.execution?.source || ''))
     ? ok('active Task is visible but cannot become a competing phase state')
     : bad('Task runtime changed or disappeared from canonical phase status');
+
+  const completedMarker = phaseNumber => JSON.stringify({
+    schemaVersion: 3, phase: phaseNumber, state: 'complete', reason: null, evidence: [],
+  });
+  const reviewTask = (id, goal = 'Independently review current Phase 4 visual evidence', write = ['wiki/qa/phase-4-visual-review.md']) => makeTask({
+    id, mode: 'review', phase: 4, goal,
+    scope: { read: ['**'], write },
+    acceptance: [{ id: 'visual-evidence', text: 'Every current frame is independently reviewed.' }],
+  });
+  const ageUntouchedRun = (project, id) => {
+    const runFile = path.join(project, '.forge', 'runs', `${id}.json`);
+    const run = JSON.parse(fs.readFileSync(runFile, 'utf8'));
+    const oldTime = '2026-08-29T22:51:26.362Z';
+    run.task.updatedAt = oldTime;
+    run.state.updatedAt = oldTime;
+    run.events[0].at = oldTime;
+    fs.writeFileSync(runFile, JSON.stringify(run, null, 2));
+  };
+  const completeReview = (project, id, code) => recordTaskResult({
+    projectRoot: project,
+    taskId: id,
+    result: { status: 'completed', code, message: 'Independent review completed.', host: 'codex', phase: 4 },
+  });
+
+  const pSupersededReview = mk('superseded-review-status');
+  for (let n = 1; n <= 5; n++) w(pSupersededReview, `wiki/phases/phase-${n}.json`, completedMarker(n));
+  const staleReview = reviewTask('review-stale-pass-fixture');
+  startTaskRun({ projectRoot: pSupersededReview, task: staleReview });
+  ageUntouchedRun(pSupersededReview, staleReview.id);
+  const passingReview = reviewTask('review-newer-pass-fixture');
+  startTaskRun({ projectRoot: pSupersededReview, task: passingReview });
+  completeReview(pSupersededReview, passingReview.id, 'PHASE4_REVIEW_PASS');
+  s = snap(pSupersededReview);
+  (s.currentPhase === 6 && s.execution?.activeTask === null
+    && s.execution?.supersededTasks?.some(item => item.id === staleReview.id && item.supersededBy === passingReview.id))
+    ? ok('an untouched stale review is hidden only after a newer identical signed PASS')
+    : bad('a newer identical signed PASS did not supersede the untouched stale review');
+
+  const distinctReview = reviewTask('review-distinct-fixture', 'Review a different accessibility concern', ['wiki/qa/accessibility-review.md']);
+  startTaskRun({ projectRoot: pSupersededReview, task: distinctReview });
+  s = snap(pSupersededReview);
+  s.execution?.activeTask?.id === distinctReview.id
+    ? ok('a distinct concurrent review remains active beside a superseded review')
+    : bad('status hid a distinct concurrent review');
+
+  const progressedReview = reviewTask('review-progressed-fixture');
+  startTaskRun({ projectRoot: pSupersededReview, task: progressedReview });
+  const progressedFile = path.join(pSupersededReview, '.forge', 'runs', `${progressedReview.id}.json`);
+  const progressedRun = JSON.parse(fs.readFileSync(progressedFile, 'utf8'));
+  progressedRun.events.push({ event: 'review_progress_observed', node: 'review', at: new Date().toISOString() });
+  fs.writeFileSync(progressedFile, JSON.stringify(progressedRun, null, 2));
+  s = snap(pSupersededReview);
+  s.execution?.activeTask?.id === progressedReview.id
+    ? ok('a review with recorded progress cannot be auto-superseded')
+    : bad('status hid a review that already recorded progress');
+
+  const pRejectedReview = mk('rejected-review-status');
+  for (let n = 1; n <= 5; n++) w(pRejectedReview, `wiki/phases/phase-${n}.json`, completedMarker(n));
+  const staleRejected = reviewTask('review-stale-reject-fixture');
+  startTaskRun({ projectRoot: pRejectedReview, task: staleRejected });
+  ageUntouchedRun(pRejectedReview, staleRejected.id);
+  const rejectingReview = reviewTask('review-newer-reject-fixture');
+  startTaskRun({ projectRoot: pRejectedReview, task: rejectingReview });
+  completeReview(pRejectedReview, rejectingReview.id, 'PHASE4_REVIEW_REJECT');
+  s = snap(pRejectedReview);
+  s.execution?.activeTask?.id === staleRejected.id
+    ? ok('a completed REJECT cannot supersede an untouched review')
+    : bad('status treated a rejected review as a successful superseder');
+
+  const pSupersededPhase = mk('superseded-phase-status');
+  for (let n = 1; n <= 5; n++) w(pSupersededPhase, `wiki/phases/phase-${n}.json`, completedMarker(n));
+  const stalePhaseTask = makeTask({
+    id: 'phase-4-stale-fixture', mode: 'phase', phase: 4, goal: 'Complete canonical Phase 4 Visual',
+    acceptance: [{ id: 'PHASE-4-CONTRACT', text: 'Pass the executable Phase 4 completion contract' }],
+  });
+  startTaskRun({ projectRoot: pSupersededPhase, task: stalePhaseTask });
+  const completedPhaseTask = makeTask({
+    id: 'phase-4-completed-fixture', mode: 'phase', phase: 4, goal: 'Complete canonical Phase 4 Visual',
+    acceptance: [{ id: 'PHASE-4-CONTRACT', text: 'Pass the executable Phase 4 completion contract' }],
+  });
+  startTaskRun({ projectRoot: pSupersededPhase, task: completedPhaseTask });
+  completeReview(pSupersededPhase, completedPhaseTask.id, 'PHASE_CONTRACT_PASSED');
+  w(pSupersededPhase, 'wiki/phases/phase-4.json', JSON.stringify({
+    schemaVersion: 3, phase: 4, state: 'complete', reason: null, evidence: [],
+    execution: {
+      taskId: completedPhaseTask.id, workflow: 'phase', currentNode: 'done', status: 'completed',
+      resultStatus: 'completed', resultCode: 'PHASE_CONTRACT_PASSED', resultAt: new Date().toISOString(), attemptId: null,
+    },
+    completionGate: { status: 'passed', failures: [] },
+  }));
+  s = snap(pSupersededPhase);
+  (s.execution?.activeTask === null
+    && s.execution?.supersededTasks?.some(item => item.id === stalePhaseTask.id && item.supersededBy === completedPhaseTask.id))
+    ? ok('a canonical completed phase marker hides an older nonterminal Task for that phase')
+    : bad('an older phase Task remained active after canonical phase completion');
 
   const pCheckpoint=mk('release-checkpoint-block');
   for (let n=1; n<=8; n++) {

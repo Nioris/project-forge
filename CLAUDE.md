@@ -1,4 +1,4 @@
-# Project Forge v4.68.67 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.68 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -499,15 +499,10 @@ Audit cycle: every 5 new lessons (or per release), walk last 5 — promote miscl
 
 ---
 
+## v4.68.68 changelog (truthful supplemental Task status)
+
+Project status no longer presents abandoned review or phase attempts as current work after a newer signed review PASS or canonical phase completion supersedes them. Historical run JSON remains immutable and visible through `execution.supersededTasks`; strict signatures, successful-result codes and phase markers prevent distinct, rejected or still-actionable Tasks from being hidden.
+
 ## v4.68.67 changelog (truthful native verifier summaries)
 
 Valid successful Godot verifier JSON now produces an affirmative `passed` summary in durable phase markers. `invalid output` is reserved for genuinely unparseable output; runtime failures retain their bounded issue text.
-
-## v4.68.66 changelog (bounded visual review + native procedural art)
-
-Phase 4 independent review now has a bounded one-pass visual-context budget and treats generated target copy/numbers as non-authoritative. Godot completion accepts substantial state-driven production drawing under strict source/complexity thresholds; tiny placeholders and test-only art still fail. Signed pixel evidence remains the quality authority.
-
-## v4.68.64 changelog (restart-safe signed visual repair)
-
-A restarted pipeline restores an existing signed Phase 4 PASS/REJECT and injects the corresponding
-finalize/repair contract instead of losing the parent verdict and re-entering the generic phase prompt.

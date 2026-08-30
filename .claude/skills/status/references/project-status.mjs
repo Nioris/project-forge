@@ -229,7 +229,79 @@ for (const row of phaseRows) {
 const currentRow = phaseRows.find(x => x.phase === currentPhase);
 const diagnostics = summarizeForgeDiagnostics(root);
 const taskRuns = listTaskRuns(root);
-const activeTaskRun = taskRuns.find(run => ['running', 'waiting', 'blocked'].includes(run.task.status)) || null;
+const taskSemanticSignature = task => JSON.stringify({
+  mode: task.mode,
+  phase: task.phase,
+  goal: String(task.goal || '').replace(/\s+/g, ' ').trim(),
+  skill: task.skill || null,
+  contract: task.contract ? {
+    kind: task.contract.kind,
+    id: task.contract.id,
+    version: task.contract.version,
+    hash: task.contract.hash,
+  } : null,
+  scope: {
+    read: [...(task.scope?.read || [])].sort(),
+    write: [...(task.scope?.write || [])].sort(),
+  },
+  acceptance: (task.acceptance || [])
+    .map(item => ({ id: item.id, text: item.text }))
+    .sort((a, b) => `${a.id}\0${a.text}`.localeCompare(`${b.id}\0${b.text}`)),
+  verifiers: [...(task.verifiers || [])].sort(),
+  verificationTarget: task.verificationTarget || '.',
+});
+const untouchedRunningReview = run => run.task.mode === 'review'
+  && run.task.status === 'running'
+  && run.state.status === 'running'
+  && run.lastResult === null
+  && run.events?.length === 1
+  && run.events[0]?.event === 'task_created';
+const successfulReviewSuperseder = (candidate, stale) => candidate.task.mode === 'review'
+  && candidate.task.status === 'completed'
+  && candidate.state.status === 'completed'
+  && candidate.lastResult?.status === 'completed'
+  && candidate.lastResult?.code === `PHASE${stale.task.phase}_REVIEW_PASS`
+  && Date.parse(candidate.state.updatedAt) > Date.parse(stale.state.updatedAt)
+  && taskSemanticSignature(candidate.task) === taskSemanticSignature(stale.task);
+const supersededReviewTasks = taskRuns.flatMap(run => {
+  const phase = Number(run.task.phase);
+  const phaseComplete = Number.isInteger(phase)
+    && currentPhase > phase
+    && phaseRows.find(row => row.phase === phase)?.state === 'complete';
+  if (!phaseComplete || !untouchedRunningReview(run)) return [];
+  const successor = taskRuns.find(candidate => successfulReviewSuperseder(candidate, run));
+  return successor ? [{ run, supersededBy: successor.task.id, reason: successor.lastResult.code }] : [];
+});
+const supersededPhaseTasks = taskRuns.flatMap(run => {
+  const phase = Number(run.task.phase);
+  const marker = explicit.get(phase);
+  const markerTaskId = marker?.execution?.taskId;
+  const successor = markerTaskId ? taskRuns.find(candidate => candidate.task.id === markerTaskId) : null;
+  const active = run.task.mode === 'phase'
+    && ['running', 'waiting', 'blocked'].includes(run.task.status)
+    && run.state.status === run.task.status;
+  const canonicalCompletion = Number.isInteger(phase)
+    && currentPhase > phase
+    && phaseRows.find(row => row.phase === phase)?.state === 'complete'
+    && marker?.state === 'complete'
+    && marker?.completionGate?.status === 'passed'
+    && marker?.execution?.status === 'completed'
+    && marker?.execution?.resultStatus === 'completed'
+    && marker?.execution?.resultCode === 'PHASE_CONTRACT_PASSED'
+    && successor?.task?.mode === 'phase'
+    && successor?.task?.phase === phase
+    && successor?.task?.status === 'completed'
+    && successor?.state?.status === 'completed'
+    && successor?.lastResult?.status === 'completed'
+    && successor?.lastResult?.code === 'PHASE_CONTRACT_PASSED';
+  return active && canonicalCompletion && run.task.id !== markerTaskId
+    ? [{ run, supersededBy: markerTaskId, reason: 'PHASE_CONTRACT_PASSED' }]
+    : [];
+});
+const supersededTaskRuns = [...supersededReviewTasks, ...supersededPhaseTasks];
+const supersededTaskIds = new Set(supersededTaskRuns.map(item => item.run.task.id));
+const activeTaskRun = taskRuns.find(run => ['running', 'waiting', 'blocked'].includes(run.task.status)
+  && !supersededTaskIds.has(run.task.id)) || null;
 const latestTaskRun = taskRuns[0] || null;
 let productMetrics = null;
 try {
@@ -308,6 +380,11 @@ const result = {
       verifierCount: latestTaskRun.lastResult.verification?.items?.length || 0,
       createdAt: latestTaskRun.lastResult.createdAt,
     } : null,
+    supersededTasks: supersededTaskRuns.map(({ run, supersededBy, reason }) => ({
+      id: run.task.id,
+      supersededBy,
+      reason,
+    })),
     source: '.forge/runs (supplemental; never phase progression)',
   },
   sources: {
@@ -334,6 +411,7 @@ console.log(`Health: viewport=${health.viewport} touch=${health.touchAction} sdk
 console.log(`Forge diagnostics: open=${diagnostics.open.length} critical=${diagnostics.counts.critical} error=${diagnostics.counts.error} warn=${diagnostics.counts.warn} parseErrors=${diagnostics.parseErrors.length}`);
 if (productMetrics) console.log(`Product metrics: release=${productMetrics.release.id} status=${productMetrics.release.status} repairs=${productMetrics.repairs.total} defects=${productMetrics.defects.preRelease} aiCost=${productMetrics.ai.costUsd == null ? 'unknown' : `$${productMetrics.ai.costUsd}`} automation=${productMetrics.automation.percent == null ? 'unknown' : `${productMetrics.automation.percent}%`}`);
 if (activeTaskRun) console.log(`Task: ${activeTaskRun.task.id} mode=${activeTaskRun.task.mode} node=${activeTaskRun.state.currentNode} status=${activeTaskRun.task.status} verifiers=${activeTaskRun.task.verifiers.join(',') || 'none'}`);
+for (const task of supersededTaskRuns) console.log(`Task superseded: ${task.run.task.id} -> ${task.supersededBy} (${task.reason})`);
 if (latestTaskRun?.lastResult?.verification) console.log(`Task verification: ${latestTaskRun.lastResult.verification.status} checks=${latestTaskRun.lastResult.verification.items.length}`);
 if (stopPoint) console.log(`STOP: ${stopPoint}`);
 for (const w of warnings) console.log(`WARN: ${w}`);
