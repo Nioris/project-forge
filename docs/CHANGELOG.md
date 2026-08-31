@@ -4966,6 +4966,20 @@ finalize/repair contract instead of losing the parent verdict and re-entering th
 
 Phase 4 independent review now has a bounded one-pass visual-context budget and treats generated target copy/numbers as non-authoritative. Godot completion accepts substantial state-driven production drawing under strict source/complexity thresholds; tiny placeholders and test-only art still fail. Signed pixel evidence remains the quality authority.
 
+## v4.68.69 changelog (native Godot Phase 6)
+
+Godot Phase 6 now validates native localization, signed capture/proof/review media, and byte-identical desktop store frames. Web requirements remain unchanged.
+
+## v4.68.71 changelog (exact Godot debug bundle)
+
+Godot's debug-only `<slug>.console.exe` wrapper is now required, hashed and receipt-bound. Builder and
+verifier enforce identical exact production/debug sets and reject incompatible wrapper preset modes.
+
+## v4.68.70 changelog (bounded slow Godot export)
+
+Godot Windows release export now uses a process-tree-bounded 10-minute ceiling. A timeout terminates the
+complete child tree and reports bounded stdout plus stderr context under a dedicated infrastructure code.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

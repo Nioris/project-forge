@@ -39,6 +39,7 @@ const PROJECT_CHECK_IDS = new Set([
   'clean-local-stage-report',
   'release-green-report',
   'release-artifacts',
+  'target-release-contract',
   'live-metrics',
 ]);
 
@@ -735,7 +736,56 @@ function runGodotInstalledVerifier(root, engineProfile, failures, { id, scriptNa
   return normalized;
 }
 
-function runProjectCheck(id, root, contract, evidence, failures, engineSupport, engineProfile, engineVerification) {
+function runPlatformReleaseVerifier(root, engineProfile, failures) {
+  const scriptName = 'platform-release-verify.mjs';
+  const script = path.join(engineProfile?.engineRoot || '', 'scripts', scriptName);
+  if (!engineProfile?.engineRoot || !fs.existsSync(script)) {
+    const summary = `Installed storefront release verifier is missing: ${scriptName}`;
+    failures.push(summary);
+    return { id: 'target-release', status: 'environment_failure', summary, version: null, targets: [], failures: [] };
+  }
+  const child = spawnSync(process.execPath, [script, root, '--level', 'submit', '--json'], {
+    cwd: engineProfile.engineRoot,
+    env: process.env,
+    encoding: 'utf8',
+    timeout: 180_000,
+    maxBuffer: 4 * 1024 * 1024,
+    windowsHide: true,
+  });
+  let report = null;
+  try { report = JSON.parse(child.stdout || ''); } catch {}
+  const status = child.error || !report || child.status === 2
+    ? 'environment_failure'
+    : child.status === 0 && report.ok === true ? 'passed' : 'failed';
+  const reportFailures = Array.isArray(report?.failures) ? report.failures.slice(0, 20).map(item => ({
+    code: String(item?.code || 'PLATFORM_RELEASE').slice(0, 120),
+    message: String(item?.message || '').slice(0, 500),
+    target: item?.target ? String(item.target).slice(0, 80) : null,
+  })) : [];
+  const summary = status === 'passed'
+    ? `all ${report.targets.length} selected storefronts are submit-ready at ${report.version}`
+    : reportFailures.slice(0, 3).map(item => `${item.target ? `${item.target}: ` : ''}${item.message}`).filter(Boolean).join('; ')
+      || String(child.error?.message || child.stderr || 'storefront verifier returned invalid output').trim();
+  const normalized = {
+    id: 'target-release',
+    status,
+    summary: String(summary).slice(0, 1000),
+    version: report?.version || null,
+    level: report?.level || 'submit',
+    targets: Array.isArray(report?.targets) ? report.targets.slice(0, 32).map(item => ({
+      target: item.target,
+      version: item.version,
+      artifactFamily: item.artifactFamily,
+      readiness: item.readiness,
+      candidate: item.candidate,
+    })) : [],
+    failures: reportFailures,
+  };
+  if (status !== 'passed') failures.push(`Storefront release verifier ${status}: ${normalized.summary}`);
+  return normalized;
+}
+
+function runProjectCheck(id, root, contract, evidence, failures, engineSupport, engineProfile, engineVerification, platformVerification) {
   if (id === 'phase-1-integrity') validatePhase1(root, evidence, failures);
   else if (id.startsWith('engine-') && engineSupport && !engineSupport.supported) failures.push(engineSupport.message);
   else if (id === 'non-placeholder-evidence') checkNonPlaceholderEvidence(root, contract, failures);
@@ -755,6 +805,9 @@ function runProjectCheck(id, root, contract, evidence, failures, engineSupport, 
   else if (id === 'clean-local-stage-report') checkCleanLocalStageReport(root, failures);
   else if (id === 'release-green-report') checkReleaseGreenReport(root, failures);
   else if (id === 'release-artifacts') checkReleaseArtifacts(root, failures);
+  else if (id === 'target-release-contract' && platformVerification?.status !== 'passed') {
+    failures.push('Phase 8 requires every explicitly selected storefront to pass the installed submit-level release verifier');
+  }
   else if (id === 'live-metrics') checkLiveMetrics(root, failures);
 }
 
@@ -764,6 +817,7 @@ export function validatePhaseCompletion({ root = process.cwd(), phase, evidence 
   let engineProfile = null;
   let engineSupport = null;
   let engineVerification = null;
+  let platformVerification = null;
   try {
     engineProfile = readTrustedProjectEngine(projectRoot);
     engineSupport = enginePhaseSupport(engineProfile, phase);
@@ -814,12 +868,15 @@ export function validatePhaseCompletion({ root = process.cwd(), phase, evidence 
         engineVerification = runGodotInstalledVerifier(projectRoot, engineProfile, failures, {
           id: 'native-release', scriptName: 'godot-release-verify.mjs', timeoutMs: 180_000,
         });
+        platformVerification = runPlatformReleaseVerifier(projectRoot, engineProfile, failures);
       }
+    } else if (requiredEvidenceReady && Number(contract.phase) === 8 && engineProfile) {
+      platformVerification = runPlatformReleaseVerifier(projectRoot, engineProfile, failures);
     }
     const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'tech-runtime', 'clean-local-stage-report']);
     for (const id of contract.projectChecks) {
       if (engineProfile?.implementation !== 'browser' && browserOnlyChecks.has(id)) continue;
-      runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport, engineProfile, engineVerification);
+      runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport, engineProfile, engineVerification, platformVerification);
     }
   }
   return {
@@ -836,6 +893,7 @@ export function validatePhaseCompletion({ root = process.cwd(), phase, evidence 
       supported: engineSupport?.supported ?? false,
     } : null,
     engineVerification,
+    platformVerification,
     contract: contract ? { schemaVersion: contract.schemaVersion, phase: contract.phase, name: contract.name, projectChecks: contract.projectChecks } : null,
   };
 }

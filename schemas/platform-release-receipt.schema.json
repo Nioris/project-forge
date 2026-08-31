@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/platform-release-receipt.schema.json",
+  "title": "Project Forge platform release receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "target", "version", "engine", "generatedAt", "sourceSnapshotSha256", "candidate", "integrations", "delivery", "readiness", "blockers"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.platform-release-receipt" },
+    "target": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "version": { "type": "string", "pattern": "^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$" },
+    "engine": { "enum": ["web", "godot"] },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "sourceSnapshotSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "artifactFamily", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "artifactFamily": { "enum": ["web", "android", "windows"] },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "integrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "evidence"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "status": { "enum": ["passed", "blocked"] },
+          "evidence": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reference", "evidence"],
+      "properties": {
+        "status": { "enum": ["blocked", "verified"] },
+        "reference": { "type": ["string", "null"] },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "readiness": { "enum": ["local-verified", "external-blocked", "submit-ready", "published"] },
+    "blockers": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

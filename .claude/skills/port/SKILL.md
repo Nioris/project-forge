@@ -1,62 +1,70 @@
 ---
 name: port
 kind: architectural
-description: "Портировать ГОТОВУЮ для Яндекса игру на другую платформу (rustore, vk, google-play, huawei, telegram, ok, vkplay, steam, web). Доктрина: Яндекс-first — порт начинается ТОЛЬКО после release-ready GREEN на Яндексе; порт меняет SDK-слой и обёртку, НИКОГДА не геймплей. Triggers on: порт, портировать, port, rustore, вк мини апс, vk mini apps, google play, huawei, собери под платформу, адаптация под платформу, выпустить на другой платформе."
+description: "Адаптировать игру к явно выбранному storefront target через platform registry: target-specific SDK/обёртка/доставка без ложных обещаний общей упаковки. Триггеры: порт, портировать, port, rustore, вк мини апс, google play, huawei, telegram, ok, vkplay, steam, web."
 ---
 
-# /port <platform> — адаптация и сборка Яндекс-готовой игры
+# /port <target> — target-specific адаптация
 
-**Аргумент:** `$1 = платформа (rustore|vk)` — Claude Code подставляет $1 из команды (с июля 2026 плейсхолдеры не съедаются); аргумента нет → спроси пользователя.
+Порт — не «пересобрать тот же ZIP». Target выбирается явно и должен быть зарегистрирован в
+`adapters/platform-profiles.json`; проект обязан перечислять его в `forge.targets.json`.
+Перед работой прочитай [storefront contract](../../../docs/PLATFORM-RELEASE-CONTRACTS.md) и проверь:
 
-## Доктрина (зафиксировано 2026-07-17)
-1. **Яндекс-first.** Вход в порт = игра с `release-ready yandex` GREEN. Порт до этого — запрещён
-   (иначе чинишь одно и то же на N платформах).
-2. **Порт = SDK-слой + обёртка + листинг.** Геймплей/баланс/контент НЕ трогаются. Если платформа
-   требует изменения геймплея — это НЕ порт, это решение для обсуждения с пользователем.
-3. **Ответственность у билдера платформы.** Адаптацию и сборку ведёт агент `{platform}-builder`
-   (read инструкции платформы в `platforms/{platform}/`); оркестратор проверяет результат
-   верификаторами платформы, не на слово.
+```bash
+node scripts/platform-profile.mjs check <project-root>
+```
 
-## ⚠️ ИСКЛЮЧЕНИЕ: маршрут RuStore-first (игры с платежами)
-Доктрина «Яндекс-first» верна для ads-only казуалок. Но для **IAP-игр с длинным прогрессом**
-(стратегии, клановые, градостроители) порядок ОБРАТНЫЙ: основная платформа — RuStore (Pay SDK,
-аудитория с привычкой платить в приложении), Яндекс.Игры — витрина/демо или вообще позже.
-Признак маршрута: доход проектируется на платежах, реклама — вспомогательный слой
-(см. 💰 ГИБРИДНАЯ МОДЕЛЬ в monetization-design).
-Требование: **платежи в RuStore только для ИП/юрлица** (с 01.02.2026) — проверить статус ДО
-старта разработки, это не правится в конце.
-Решение о маршруте принимается на фазе 2 🔴-блоком вместе с моделью монетизации.
+Аргумента нет — спроси target. Не угадывай default/Yandex-first маршрут. Если target ещё не
+выбран в manifest, это изменение release scope: запроси/зафиксируй решение пользователя, затем
+валидируй manifest. Unknown или duplicate ID — blocker.
 
-## Порядок портов (по ценности для RU-рынка)
-RuStore (курс «стать более игровым», обязательная предустановка по закону) → VK Mini Apps
-(45M MAU платформы) → Google Play / Huawei AppGallery (эскизы — обёртка та же, детали при
-первом реальном порте) → Telegram / OK / VK Play / Steam — по запросу.
+## Контракт порта
 
-## Агенты платформ
-`rustore-builder` (RuStore, Pay SDK, IAP-слой) · `vk-builder` (VK Mini Apps) ·
-`vkplay-builder` (VK Play) · `steam-builder` (Steam) · `telegram-builder` · `ok-builder` ·
-`max-builder`. Ведёт адаптацию и сборку агент платформы, оркестратор проверяет результат
-верификаторами, не на слово.
+1. Profile — единственный источник требований: `compatibleEngines`, `artifactFamily`,
+   `artifactFormat`, `delivery`, required integrations, external prerequisites, official docs и
+   `adapterStatus`. Перед портом сверяй актуальные platform facts с linked primary docs.
+2. Engine и storefront независимы. Godot/HTML/следующий adapter может быть совместим с target,
+   но должен произвести его формат и engine-owned evidence; Windows export сам не делает Steam
+   или VK Play submit-ready, а Web ZIP сам не делает Android/native release.
+3. Меняй только target adapter, delivery setup, listing и нужный SDK boundary. Игровая логика,
+   баланс и контент не меняются. Если требование магазина требует gameplay change, остановись:
+   это пользовательское product decision, не «обычный порт».
+4. Создай candidate в `Release/{Project}/{releasePathSegment}/` и валидный
+   `forge.platform-release-receipt`, связанный с тем же release version, engine и source snapshot,
+   что у остальных targets. Не копируй Yandex production/debug/marketing trio в другие targets:
+   это специфичный Yandex route.
 
-## Процедура
-1. Проверить вход: Release/{game}/yandex/*.zip существует + release-ready GREEN в wiki. Нет → стоп.
-2. Прочитать `platforms/{platform}/README.md` + skills платформы — там текущая механика.
-3. SDK-адаптация: заменить Yandex-вызовы платформенным слоем (реклама/платежи/сейвы/язык)
-   через adapter, не правя игровую логику. Чего на платформе нет (например, rewarded) —
-   деградировать честно (фича выключается, не ломается).
-4. Сборка: делегировать `{platform}-builder`. RuStore/Google/Huawei = Capacitor APK/AAB;
-   VK/OK/Telegram = веб-бандл + bridge.
-5. Листинг: адаптировать тексты из fill-yandex под требования платформы (не копипаст — у платформ
-   свои поля/лимиты/правила).
-6. Тест: локальный прогон (playtest + платформенные validators если есть) → чек-лист подачи.
-7. wiki: `wiki/ports/{platform}.md` — что адаптировано, версии SDK, деградации, дата.
+## Проверка и внешняя граница
 
-## Ключевые факты платформ (обновлено 2026-07-17 — проверяй свежесть при каждом порте!)
-- **RuStore:** платежи теперь через единый **Pay SDK** (поддержка неавторизованных покупателей,
-  тестовые платежи в Консоли). ⚠️ С 01.02.2026 платежи ТОЛЬКО для ИП/юрлиц — ads-only игры не
-  задеты. **SDK Update** — доставка обновлений (закрывает ~40% неудаляющих). Фичеринг = подборки
-  редакции (метрики отбора: установки, ARPPU, рейтинг).
-- **VK Mini Apps:** vk-bridge; платежи VK Pay через `VKWebAppOpenPayForm`; ⚠️ модерация ЗАНОВО
-  после каждого обновления SDK; аудитория платформы ~45M MAU; работает в VK/OK/Почте Mail.
-- **Google Play / Huawei:** Capacitor-обёртка + Play Billing / HMS IAP — слой-эскиз, детализировать
-  при первом реальном порте (не выдумывать из памяти — сверить доки).
+После сборки запусти полный matrix check, а не проверку одной папки:
+
+```bash
+node scripts/check-platform-release.mjs <project-root> --level local --json
+```
+
+`local` подтверждает candidate/receipt/source/profile consistency. Внешние элементы — developer
+account, app/bot/project ID, signing enrollment/key, HTTPS deployment, uploader credentials/receipt
+и console state — не фабрикуются. Пока их нет, receipt остаётся `external-blocked` с точными
+blockers и владельцем действия в `wiki/ports/<target>.md`.
+
+Только после реальной delivery, passed required integrations и снятых blockers разрешён:
+
+```bash
+node scripts/check-platform-release.mjs <project-root> --level submit --json
+```
+
+Submit PASS возможен только через установленный target-specific external verifier/uploader adapter.
+До его появления canonical verifier возвращает `PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE`;
+это Phase 8 STOP, даже если локальный candidate идеален. Generic HMAC, локальная квитанция,
+ручная правка receipt, свободная строка evidence или URL не имеют authority. Реальный verifier
+проверяет target-appropriate proof: HTTPS deployment для hosted Web, production signing + console/
+upload и совпадающий фактический SHA-256 сертификата для Android, uploader/store receipt для Windows.
+Submit PASS — готовность к передаче в выбранный storefront, не доказательство публикации или
+одобрения модерацией. `adapterStatus: partial`/`planned` означает, что автоматизация может не
+существовать: не имитируй builder, а оформи ограничение как infrastructure/external blocker.
+
+## Запись результата
+
+В `wiki/ports/<target>.md` укажи: profile/version, engine, изменённые adapter boundaries,
+деградации, candidate и receipt paths, local verifier output, внешние blockers/owners и submit
+result. Переход к следующему target не меняет уже выбранные артефакты и не отменяет их проверки.

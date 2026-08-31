@@ -1,117 +1,76 @@
 ---
 name: release-all
 kind: tactical
-description: "Release pipeline for ALL platforms. Supports TWO execution modes — Agent Teams (parallel, requires Opus 4.6+ and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1) OR sequential (fallback).…"
+description: "Release pipeline for every explicitly selected storefront target. Uses the installed platform registry and per-project target manifest; local build and submission evidence are…"
 ---
 
-# /release all
+# $release-all — выпуск матрицы targets
 
-Выпустить проект на все целевые платформы.
+«Все платформы» не означает предустановленный список и не означает одинаковые ZIP-файлы. Сначала
+получи от пользователя список storefront targets, затем зафиксируй его в обязательном
+`forge.targets.json`. Допустимые IDs и их требования читает установленный registry:
 
-## Этап 0 — опросить пользователя
+```bash
+node scripts/platform-profile.mjs list
+node scripts/platform-profile.mjs check <project-root>
+```
 
-Спроси через `ask_user_input_v0`:
+Не добавляй target по аналогии и не угадывай его из старых `Release/` каталогов. Изменение targets
+после начала выпуска — изменение release scope: обнови manifest, журнал и проверяй всю новую матрицу.
 
-> **На какие платформы собирать?** (multi-select)
-> - ☐ Yandex Games
-> - ☐ VK Mini Apps
-> - ☐ Telegram Mini App
-> - ☐ Одноклассники (OK)
-> - ☐ MAX мессенджер
-> - ☐ RuStore Android APK/AAB
-> - ☐ Свой HTTPS-хостинг (VPS/PaaS)
+## Порядок работы
 
-> **Режим выполнения?** (single-select)
-> - ☐ Agent Teams (параллельно, требует Opus 4.6+ и `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`)
-> - ☐ Sequential (по одной платформе, старый v4.2 workflow)
+1. Прочитай profile каждого выбранного target: engine compatibility, artifact family/format, delivery,
+   integrations, prerequisites, documentation и adapter status.
+2. Выполни общий polish один раз в исходном `WorkProgress/{Project}/`; не копируй и не меняй
+   gameplay для обхода target checks. Нужная platform-specific обёртка/SDK — отдельный адаптер.
+3. Создай одну неизменяемую базовую версию для всех требуемых профилями artifact families. Один
+   version и source snapshot должны связывать Web/Android/Windows manifests.
+4. Создай отсутствующие target candidates/receipts и проверь всю матрицу локально:
 
-Если пользователь не выбрал режим явно — default **Sequential** (безопаснее).
+   ```bash
+   node scripts/build-all-platforms.mjs <project-root> --level local --json
+   ```
 
-## Этап 1 — Shared polish (один раз для всех)
+   Координатор читает только `forge.targets.json`, не угадывает slug и не перезаписывает уже
+   существующую storefront-версию. Yandex production/debug/marketing trio создаётся только если
+   выбран Yandex; он не является артефактом VK/Telegram/Android/Steam/VK Play.
 
-Phase 1 из `/release yandex` — общая шлифовка ассетов/кода.
-Результат остаётся в `WorkProgress/{Project}/` и копируется в платформо-специфичные копии.
+5. Составь отчёт по каждому target. `local-verified` означает только корректный актуальный кандидат;
+   external account, signing, hosting, IDs и uploader receipt могут честно оставаться
+   `external-blocked` с конкретными blockers.
+6. Для target, который действительно готовят к подаче, выполни его delivery/external prerequisites
+   и затем проверь всю выбранную матрицу:
 
-Mandatory stop → отчёт → ждать "продолжи".
+   ```bash
+   node scripts/build-all-platforms.mjs <project-root> --level submit --json
+   ```
 
-## Этап 2 — Split into per-platform copies
+   Команда submit ничего не упаковывает и не загружает. Пока для target не установлен
+   target-specific external verifier/uploader adapter, она возвращает
+   `PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE`: это честный STOP, а не повод заполнять
+   `submit-ready` вручную. Generic HMAC, локальный receipt и URL не доказывают delivery.
+   После установки verifier PASS требует verified delivery, passed required integrations, no blockers
+   и фактически проверенные target-specific доказательства: HTTPS deployment для hosted Web,
+   production signing + console/upload для Android, uploader/store receipt для Windows. Не называй
+   external-blocked выпуск «готовым к подаче».
 
-Для каждой выбранной платформы:
-- Копируй `WorkProgress/{Project}/` → `WorkProgress/{Project}-<platform>/`
-- Это обязательно: Telegram и MAX оба используют `window.WebApp`, без разделения — конфликт
+## Роли и движки
 
-## Этап 3A — Execution (Agent Teams режим)
+Platform builders могут работать параллельно только в непересекающихся workspaces/release paths.
+Они не меняют manifest и не утверждают PASS; финальный matrix verifier делает оркестратор.
+`web` и `godot` — engine choices, а не storefront targets: используй только profile-compatible engine
+и его нативные доказательства. Отсутствующая capability/adapter или внешняя учётная запись — blocker,
+не разрешение подменить формат или заявить публикацию.
 
-Если пользователь выбрал Agent Teams:
+## Сводка
 
-1. **Создай команду** в явной форме. Пример запроса который ты должен проговорить:
+Создай `Release/{Project}/RELEASE-SUMMARY.md` с одной строкой на выбранный target:
 
-   > "Create an agent team to release ProjectX for yandex, vk, telegram, max, ok, rustore, web, steam, vkplay platforms in parallel. Spawn teammates using subagent definitions: `yandex-builder`, `vk-builder`, `telegram-builder`, `max-builder`, `ok-builder`. Each teammate owns its `WorkProgress/ProjectX-{platform}/` directory. Coordinate through the shared task list. When a teammate finishes, they mark their task complete; when blocked, they post to mailbox.
+| Target | Engine | Candidate / receipt | Local | External blockers | Submit |
+|---|---|---|---|---|---|
+| registry target id | actual engine | paths | PASS/FAIL | exact facts or none | PASS/blocked |
 
-   **Note:** Steam (Electron-based) и VK Play (iframe) добавлены в v4.7. Steam требует **отдельный workflow** (Electron wrap → SteamPipe upload), не parallel-friendly с web-bundle платформами; используй sequential mode для steam OR обработай его в отдельном Agent Team цикле. VK Play может выполняться parallel с другими iframe platforms (vk, ok)."
-
-2. **Каждый teammate** — отдельная Claude Code сессия с собственным контекстом. Они читают `CLAUDE.md` + свой платформенный subagent-файл из `.claude/agents/`.
-
-3. **Ты (lead) координируешь:**
-   - Следишь за task list (`Ctrl+T` для просмотра)
-   - Переключаешься между teammates через `Shift+Up`/`Shift+Down`
-   - Разрешаешь конфликты если teammate'ы пишут в общий файл (чего не должно быть при правильной разбивке)
-   - Синтезируешь финальный отчёт когда все задачи `done`
-
-4. **Cleanup (обязательно):**
-   - Скажи lead'у: "Ask all teammates to shut down, then clean up the team."
-   - Делай это ПЕРЕД закрытием сессии — иначе останутся висящие teammate конфиги в `~/.claude/teams/`
-
-### Известные ограничения Agent Teams (из официальной документации)
-
-- `/resume` и `/rewind` **не восстанавливают** in-process teammate'ов — после resume может потребоваться пересоздать команду
-- Task status иногда лагает — если задача «застряла», проверь реальный статус работы и обнови вручную
-- Shutdown медленный — teammates завершают текущий tool call перед выходом
-- One team per session — нельзя параллельно управлять двумя командами
-- No nested teams — teammates не могут спавнить своих teammates
-- **Delegate mode ломает права:** teammates наследуют permission-ограничения lead'а и перестают читать файлы. Не включай delegate mode без явной проверки на твоих permission-настройках.
-
-## Этап 3B — Execution (Sequential режим, fallback)
-
-Если Agent Teams не включены или пользователь выбрал Sequential:
-
-Для каждой платформы по очереди:
-1. Прочитай `.claude/skills/release-<platform>/SKILL.md`
-2. Phase 2+3 для этой копии
-3. Gate (pre-submit) → 0 blockers
-4. Build → `Release/{Project}/<platform>/`
-5. **Отчёт → mandatory stop → ждать "продолжи" → следующая**
-
-## Этап 4 — Release summary
-
-После всех сборок (в любом режиме) — сводная таблица в `Release/{Project}/RELEASE-SUMMARY.md`:
-
-| Platform | Status | Artifacts | Next step |
-|---|---|---|---|
-| yandex | ✓ | 3 ZIPs + 13 store-listings | Upload to Yandex Games Console |
-| vk | ✓ | bundle + manifest | Deploy via @vkontakte/vk-miniapps-deploy |
-| telegram | ✓ | HTTPS bundle + bot-manifest | Deploy to Vercel + /setmenubutton |
-| max | ✓ | HTTPS bundle | Register on business.max.ru/self |
-| ok | skipped by user | | |
-| rustore | ✓ | app-release.aab | Upload to RuStore console |
-| web | ✓ | Dockerfile + nginx.conf | Deploy to VPS |
-| steam | ✓ | Electron .exe + SteamPipe build | Upload via steamcmd, Set Live в Partner panel |
-| vkplay | ✓ | HTTPS bundle + auth-server | Deploy to VPS, register URL в Game card |
-
-## Non-Negotiable
-
-- [ ] Phase 1 (polish) выполнен ОДИН раз, не повторяется для каждой платформы
-- [ ] Каждая платформа — в своей копии `WorkProgress/{Project}-<platform>/`
-- [ ] Gate каждой платформы чист (0 blockers)
-- [ ] **Agent Teams:** cleanup выполнен (все teammates shut down, команда удалена)
-- [ ] **Sequential:** отчёт + stop после каждой платформы (не вслепую)
-- [ ] `RELEASE-SUMMARY.md` составлен
-- [ ] Все задачи в `wiki/plan/` закрыты со `status: done`
-- [ ] `wiki/changelog.md` + `wiki/deploy-log.md` обновлены
-
-## Когда Agent Teams **не стоит** использовать
-
-- Проект меньше 3 платформ — overhead от координации больше выгоды
-- На платформе всего один validator / очень маленький pipeline — sequential быстрее
-- У пользователя permissions заблокированы (teammates не смогут читать файлы)
-- Нет Opus 4.6 или выше — Agent Teams требуют современный model tier
+Отдельно укажи version и exact output обоих verifier levels. При unavailable external verifier
+зафиксируй Phase 8 STOP и владельца внешней delivery. `published` только подтверждается immutable
+platform receipt; moderation approval никогда не выводится из локального или submit PASS.

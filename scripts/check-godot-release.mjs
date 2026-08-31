@@ -24,12 +24,13 @@ let receiptFile = null;
 
 function ok(value, message, details = '') { (value ? passed : failed).push(`${message}${details ? `: ${details}` : ''}`); }
 function write(file, text) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); }
-function seed(root = good, { architecture = 'x86_64', consoleWrapper = null } = {}) {
+function seed(root = good, { architecture = 'x86_64', consoleWrapper = 1 } = {}) {
   fs.mkdirSync(root, { recursive: true });
   write(path.join(root, 'forge.engine.json'), '{"schemaVersion":1,"kind":"forge.engine-profile","engine":"godot"}\n');
   write(path.join(root, 'forge.godot.json'), '{"schemaVersion":1,"kind":"forge.godot-project","projectPath":".","scripting":"gdscript","entryScene":"res://main.tscn","smoke":{"successMarker":"DONE","quitAfterFrames":2},"sceneContract":{"minimumNodeCount":1,"requiredNodes":["Main"],"requiredNodeTypes":{"Main":"Node"},"requiredScripts":[],"requiredScriptAttachments":{}}}\n');
   write(path.join(root, 'forge.godot.export.json'), '{"schemaVersion":1,"kind":"forge.godot-export","preset":"Windows Desktop","target":"windows-x86_64"}\n');
-  write(path.join(root, 'project.godot'), 'config_version=5\n[application]\nrun/main_scene="res://main.tscn"\n');
+  write(path.join(root, 'icon.svg'), '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#59bdd8"/></svg>\n');
+  write(path.join(root, 'project.godot'), 'config_version=5\n[application]\nrun/main_scene="res://main.tscn"\nconfig/icon="res://icon.svg"\n');
   write(path.join(root, 'main.tscn'), '[gd_scene format=3]\n[node name="Main" type="Node"]\n');
   write(path.join(root, 'export_presets.cfg'), `[preset.0]\nname="Windows Desktop"\nplatform="Windows Desktop"\nrunnable=true\n${architecture ? `binary_format/architecture="${architecture}"\n` : ''}${consoleWrapper !== null ? `debug/export_console_wrapper=${consoleWrapper}\n` : ''}`);
   const review = path.join(root, 'screens', 'review', 'godot', 'r1');
@@ -160,7 +161,7 @@ try {
   const concurrentOutput = path.dirname(concurrentVersion);
   ok(!fs.readdirSync(concurrentOutput).some(name => name.startsWith('.forge-publish-')), 'concurrent publication leaves no staging directories');
 
-  for (const [mode, code, status] of [['missing-templates', 'GODOT_RELEASE_TEMPLATES', 2], ['export-fail', 'GODOT_RELEASE_EXPORT', 1], ['missing-pck', 'GODOT_RELEASE_ARTIFACT', 1], ['missing-console', 'GODOT_RELEASE_ARTIFACT_SET', 1], ['bad-artifact', 'GODOT_RELEASE_ARTIFACT', 1], ['unexpected-production-file', 'GODOT_RELEASE_ARTIFACT_SET', 1], ['unexpected-debug-file', 'GODOT_RELEASE_ARTIFACT_SET', 1]]) {
+  for (const [mode, code, status] of [['missing-templates', 'GODOT_RELEASE_TEMPLATES', 2], ['export-fail', 'GODOT_RELEASE_EXPORT', 1], ['missing-pck', 'GODOT_RELEASE_ARTIFACT', 1], ['missing-console', 'GODOT_RELEASE_TEMPLATES', 2], ['bad-artifact', 'GODOT_RELEASE_ARTIFACT', 1], ['unexpected-production-file', 'GODOT_RELEASE_ARTIFACT_SET', 1], ['unexpected-debug-file', 'GODOT_RELEASE_ARTIFACT_SET', 1]]) {
     const fixture = fs.mkdtempSync(path.join(os.tmpdir(), `forge-godot-release-${mode}-`)); seed(fixture);
     const trial = run(fixture, mode);
     ok(trial.result.status === status && trial.value?.issues?.some(item => item.code === code), `${mode} is rejected with classified failure`);
@@ -198,6 +199,11 @@ try {
   const noPresetRun = run(noPreset); ok(noPresetRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_PRESET'), 'missing exact Windows preset is rejected');
   fs.rmSync(noPreset, { recursive: true, force: true });
 
+  const noIcon = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-no-icon-')); seed(noIcon);
+  write(path.join(noIcon, 'project.godot'), 'config_version=5\n[application]\nrun/main_scene="res://main.tscn"\n');
+  const noIconRun = run(noIcon); ok(noIconRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_ICON'), 'missing project-owned application icon is rejected before export');
+  fs.rmSync(noIcon, { recursive: true, force: true });
+
   const missingArch = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-release-no-arch-')); seed(missingArch, { architecture: '' });
   const missingArchRun = run(missingArch); ok(missingArchRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_ARCHITECTURE'), 'missing explicit x86_64 architecture is rejected');
   fs.rmSync(missingArch, { recursive: true, force: true });
@@ -205,7 +211,7 @@ try {
   const armRun = run(arm); ok(armRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_ARCHITECTURE'), 'non-x86_64 architecture is rejected');
   fs.rmSync(arm, { recursive: true, force: true });
 
-  for (const wrapper of [0, 2, 'false']) {
+  for (const wrapper of [null, 0, 2, 'false']) {
     const wrapperRoot = fs.mkdtempSync(path.join(os.tmpdir(), `forge-godot-release-console-${wrapper}-`)); seed(wrapperRoot, { consoleWrapper: wrapper });
     const wrapperRun = run(wrapperRoot);
     ok(wrapperRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_CONSOLE_WRAPPER'),
@@ -232,7 +238,7 @@ try {
   try {
     seed(linkedRoot);
     fs.writeFileSync(path.join(linkedRoot, 'forge.godot.json'), '{"schemaVersion":1,"kind":"forge.godot-project","projectPath":"Game","scripting":"gdscript","entryScene":"res://main.tscn","smoke":{"successMarker":"DONE","quitAfterFrames":2},"sceneContract":{"minimumNodeCount":1,"requiredNodes":["Main"],"requiredNodeTypes":{"Main":"Node"},"requiredScripts":[],"requiredScriptAttachments":{}}}\n');
-    for (const name of ['project.godot', 'main.tscn', 'export_presets.cfg']) fs.renameSync(path.join(linkedRoot, name), path.join(linkedOutside, name));
+    for (const name of ['project.godot', 'main.tscn', 'icon.svg', 'export_presets.cfg']) fs.renameSync(path.join(linkedRoot, name), path.join(linkedOutside, name));
     fs.symlinkSync(linkedOutside, path.join(linkedRoot, 'Game'), process.platform === 'win32' ? 'junction' : 'dir');
     const linkedRun = run(linkedRoot);
     ok(linkedRun.value?.issues?.some(item => item.code === 'GODOT_EXPORT_PROJECT_LINK'), 'implementation root junction cannot escape the release source tree');

@@ -6,5 +6,5 @@
     { "path": "wiki/deploy-log.md", "minBytes": 120 },
     { "path": "SETUP_GUIDE.md", "minBytes": 160 }
   ],
-  "projectChecks": ["engine-release-capability", "non-placeholder-evidence", "release-green-report", "release-artifacts", "godot-native-release"]
+  "projectChecks": ["engine-release-capability", "godot-native-release", "non-placeholder-evidence", "release-green-report", "target-release-contract"]
 }

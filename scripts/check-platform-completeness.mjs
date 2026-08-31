@@ -1,203 +1,135 @@
 #!/usr/bin/env node
 /**
  * @file check-platform-completeness.mjs
- * @description Audit which "completeness checks" each Forge platform passes.
+ * @description Audits the installed storefront registry separately from old
+ *              OK/MAX/Web compatibility adapters.
  *
- *              Adding a platform means touching ~18 files: validators, scripts,
- *              templates, skills (release-, fill-, sdk-integration), agent, and
- *              cross-references in release-all/ready/gate/advisor + dashboard +
- *              setup.sh/.ps1 + README + GUIDE + workflow.
- *
- *              Without this check, drift is guaranteed. Lesson 17 from v4.7.0
- *              changelog: "Это 15 точек обновления для одной платформы."
- *
- *   Usage:
- *     node scripts/check-platform-completeness.mjs           # all platforms
- *     node scripts/check-platform-completeness.mjs steam     # one
- *     node scripts/check-platform-completeness.mjs --json    # machine-readable
- *
- *   Exit:
- *     0 — all platforms pass all checks
- *     1 — drift found (warnings only — pre-existing gaps in rustore/web are not blockers)
- *     2 — invocation error
+ * A storefront is complete only to the level declared by its registry profile:
+ * planned and partial adapters are reported honestly, not converted into a
+ * false pass. Use --strict when an implemented adapter is required.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { listPlatformProfiles, loadPlatformRegistry, PlatformProfileError } from './platform-profile.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(HERE, '..');
+const LEGACY_ADAPTERS = ['ok', 'max', 'web'];
 
-const ALL_PLATFORMS = ['yandex', 'vk', 'telegram', 'ok', 'max', 'rustore', 'web', 'steam', 'vkplay'];
+function exists(relative) { return fs.existsSync(path.join(ROOT, relative)); }
+function hasFiles(relative) {
+  const full = path.join(ROOT, relative);
+  return exists(relative) && fs.readdirSync(full, { withFileTypes: true }).some(entry => !entry.name.startsWith('.'));
+}
+function contains(relative, needle) {
+  try { return fs.readFileSync(path.join(ROOT, relative), 'utf8').includes(needle); }
+  catch { return false; }
+}
+function schemaTargets() {
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas', 'forge-targets.schema.json'), 'utf8')).properties.targets.items.enum; }
+  catch { return null; }
+}
 
-// Pre-existing gaps that we know about and accept (rustore/web don't have validators
-// because their release flow is structurally different). Listing here means
-// audit doesn't flag them as red.
-const KNOWN_EXEMPTIONS = {
-  rustore: [
-    'platforms/{p}/scripts/pre-submit.mjs',
-    'platforms/{p}/validators/',
-    'platforms/{p}/templates/',
-    '.claude/skills/{p}-sdk-integration/',
-    '.claude/agents/{p}-builder.md',
-  ],
-  web: [
-    'platforms/{p}/scripts/pre-submit.mjs',
-    'platforms/{p}/validators/',
-    'platforms/{p}/templates/',
-    '.claude/skills/fill-{p}/',
-    '.claude/skills/{p}-sdk-integration/',
-    '.claude/agents/{p}-builder.md',
-  ],
-  // Some new platforms genuinely don't need fill-/sdk- skills until later
-  telegram: [
-    '.claude/skills/fill-{p}/',
-    '.claude/skills/{p}-sdk-integration/',
-  ],
-  ok: [
-    '.claude/skills/fill-{p}/',
-    '.claude/skills/{p}-sdk-integration/',
-  ],
-  max: [
-    '.claude/skills/fill-{p}/',
-    '.claude/skills/{p}-sdk-integration/',
-  ],
-  vk: [
-    'platforms/{p}/templates/',  // VK has empty templates dir, validators only
-  ],
+function targetChecks(profile, targetIds) {
+  const id = profile.id;
+  const hasReleaseVerifier = exists('scripts/platform-release-verify.mjs');
+  return [
+    { id: 'registry-profile', status: 'passed', message: `${profile.displayName}: ${profile.artifactFamily}/${profile.artifactFormat}` },
+    { id: 'target-schema-enum', status: schemaTargets()?.includes(id) ? 'passed' : 'failed', message: 'forge-targets schema must include the registered id' },
+    { id: 'dashboard-target-option', status: contains('dashboard.html', `id:'${id}'`) ? 'passed' : 'failed', message: 'dashboard must expose the registered target' },
+    { id: 'dashboard-target-selection', status: contains('dashboard.html', 'FORGE_TARGET_PLATFORMS') && contains('dashboard.html', `'${id}'`) ? 'passed' : 'failed', message: 'dashboard must preserve target selection into forge.targets.json' },
+    { id: 'release-contract-verifier', status: hasReleaseVerifier ? 'passed' : 'failed', message: 'all target profiles use the same receipt verifier' },
+    {
+      id: 'adapter-maturity',
+      status: profile.adapterStatus === 'implemented' ? 'passed' : profile.adapterStatus,
+      message: profile.adapterStatus === 'implemented'
+        ? 'adapter declared implemented'
+        : `adapter intentionally declared ${profile.adapterStatus}; local/submit evidence remains required`,
+    },
+    { id: 'registry-order', status: targetIds.includes(id) ? 'passed' : 'failed', message: 'profile must be enumerated by the authoritative registry' },
+  ];
+}
+
+const LEGACY_CHECKS = [
+  { id: 'platform README', fn: p => exists(`platforms/${p}/README.md`) },
+  { id: 'historical pre-submit gate', fn: p => exists(`platforms/${p}/scripts/pre-submit.mjs`) },
+  { id: 'validators', fn: p => hasFiles(`platforms/${p}/validators`) },
+  { id: 'release skill', fn: p => exists(`.claude/skills/release-${p}/SKILL.md`) },
+];
+const LEGACY_EXEMPTIONS = {
+  // The generic Web adapter is intentionally a light compatibility surface;
+  // it has no standalone pre-submit/validator pair. A storefront Web export
+  // is now checked through its selected target profile instead.
+  web: new Set(['historical pre-submit gate', 'validators']),
 };
 
-function exists(rel) {
-  return fs.existsSync(path.join(ROOT, rel));
+function legacyChecks(id) {
+  return LEGACY_CHECKS.map(check => ({
+    id: check.id,
+    status: check.fn(id) ? 'passed' : LEGACY_EXEMPTIONS[id]?.has(check.id) ? 'exempt' : 'failed',
+    message: LEGACY_EXEMPTIONS[id]?.has(check.id)
+      ? 'accepted legacy gap; selected Web storefronts use the target release contract'
+      : 'legacy compatibility surface; not a selectable storefront target',
+  }));
 }
 
-function dirHasFiles(rel) {
-  const full = path.join(ROOT, rel);
-  if (!fs.existsSync(full)) return false;
+function parseArgs(argv) {
+  const options = { json: false, strict: false, targets: [] };
+  for (const arg of argv) {
+    if (arg === '--json') options.json = true;
+    else if (arg === '--strict') options.strict = true;
+    else if (arg.startsWith('-')) throw new Error(`Unknown option: ${arg}`);
+    else options.targets.push(arg);
+  }
+  return options;
+}
+
+function audit(options) {
+  const registry = loadPlatformRegistry();
+  const profiles = listPlatformProfiles({ registry }).profiles;
+  const supported = new Set([...profiles.map(profile => profile.id), ...LEGACY_ADAPTERS]);
+  const selected = options.targets.length ? options.targets : [...profiles.map(profile => profile.id), ...LEGACY_ADAPTERS];
+  const unknown = selected.filter(id => !supported.has(id));
+  if (unknown.length) throw new Error(`Unknown platform: ${unknown.join(', ')}. Storefront targets: ${profiles.map(p => p.id).join(', ')}. Legacy adapters: ${LEGACY_ADAPTERS.join(', ')}.`);
+  const targetIds = profiles.map(profile => profile.id);
+  const entries = selected.map(id => {
+    const profile = profiles.find(item => item.id === id);
+    return profile
+      ? { id, kind: 'storefront-target', tier: profile.tier, adapterStatus: profile.adapterStatus, checks: targetChecks(profile, targetIds) }
+      : { id, kind: 'legacy-adapter', adapterStatus: 'legacy', checks: legacyChecks(id) };
+  });
+  const failures = entries.flatMap(entry => entry.checks
+    .filter(check => check.status === 'failed' || (options.strict && ['partial', 'planned'].includes(check.status)))
+    .map(check => ({ platform: entry.id, check: check.id, status: check.status, message: check.message })));
+  return { ok: failures.length === 0, strict: options.strict, entries, failures, registryTargets: targetIds, legacyAdapters: LEGACY_ADAPTERS };
+}
+
+function print(result) {
+  console.log('Storefront registry audit');
+  for (const entry of result.entries) {
+    const label = entry.kind === 'legacy-adapter' ? 'legacy adapter' : `${entry.tier} storefront`;
+    console.log(`\n${entry.id} (${label}; ${entry.adapterStatus})`);
+    for (const check of entry.checks) console.log(`  [${check.status.toUpperCase()}] ${check.id} — ${check.message}`);
+  }
+  console.log(`\n${result.ok ? 'PASS' : 'DRIFT'}: ${result.failures.length} blocking issue(s). ${result.strict ? 'Strict mode treats planned/partial adapters as blockers.' : 'Planned/partial adapters are reported, not passed.'}`);
+}
+
+function main() {
+  let options;
+  try { options = parseArgs(process.argv.slice(2)); }
+  catch (error) { console.error(error.message); process.exitCode = 2; return; }
   try {
-    return fs.readdirSync(full).filter(n => !n.startsWith('.')).length > 0;
-  } catch { return false; }
-}
-
-function fileContains(rel, needle) {
-  const full = path.join(ROOT, rel);
-  if (!fs.existsSync(full)) return false;
-  try {
-    return fs.readFileSync(full, 'utf8').includes(needle);
-  } catch { return false; }
-}
-
-const CHECKS = [
-  { id: 'platforms/{p}/README.md',                 fn: p => exists(`platforms/${p}/README.md`) },
-  { id: 'platforms/{p}/scripts/pre-submit.mjs',    fn: p => exists(`platforms/${p}/scripts/pre-submit.mjs`) },
-  { id: 'platforms/{p}/validators/',               fn: p => dirHasFiles(`platforms/${p}/validators`) },
-  { id: 'platforms/{p}/templates/',                fn: p => dirHasFiles(`platforms/${p}/templates`) },
-  { id: '.claude/skills/release-{p}/',             fn: p => exists(`.claude/skills/release-${p}/SKILL.md`) },
-  { id: '.claude/skills/fill-{p}/',                fn: p => exists(`.claude/skills/fill-${p}/SKILL.md`) },
-  { id: '.claude/skills/{p}-sdk-integration/',     fn: p => exists(`.claude/skills/${p}-sdk-integration/SKILL.md`) },
-  { id: '.claude/agents/{p}-builder.md',           fn: p => exists(`.claude/agents/${p}-builder.md`) },
-  { id: 'release-all skill mentions {p}',          fn: p => fileContains('.claude/skills/release-all/SKILL.md', p) },
-  { id: 'release-ready skill mentions {p}',        fn: p => fileContains('.claude/skills/release-ready/SKILL.md', p) },
-  { id: 'gate skill mentions {p}',                 fn: p => fileContains('.claude/skills/gate/SKILL.md', p) },
-  { id: 'advisor skill mentions {p}',              fn: p => fileContains('.claude/skills/advisor/SKILL.md', p) },
-  { id: "dashboard.html PLATFORMS list",            fn: p => fileContains('dashboard.html', `id:'${p}'`) },
-  { id: 'dashboard.html getBuildPrompt branch',    fn: p => fileContains('dashboard.html', `indexOf('${p}')>=0`) },
-  { id: 'setup.sh platform matrix',                fn: p => fileContains('setup.sh', `${p}    `) || fileContains('setup.sh', `${p}     `) || fileContains('setup.sh', `${p}   `) || fileContains('setup.sh', `${p}     `) || fileContains('setup.sh', `${p}  `) },
-  { id: 'setup.sh validation loop',                fn: p => fileContains('setup.sh', `'${p}'`) || fileContains('setup.sh', `${p} ${p === 'web' ? 'steam' : ''}`) || new RegExp(`for plat in [^;]*\\b${p}\\b`).test(fs.readFileSync(path.join(ROOT, 'setup.sh'), 'utf8')) },
-  { id: 'README.md mentions {p}',                  fn: p => fileContains('README.md', p) },
-  { id: 'GUIDE.md mentions {p}',                   fn: p => fileContains('GUIDE.md', p) },
-  // release.yml existed in an earlier era (GitHub Actions). The repo no longer ships CI workflows
-  // by design — releases run locally via skills. If .github/workflows/ is absent entirely, this
-  // row is N/A (pass), NOT a failure: a check against a file that no longer exists by design is
-  // perpetual noise (Lesson #95). It still verifies the matrix if the workflow file returns.
-  { id: 'release.yml workflow matrix',             fn: p => !fs.existsSync(path.join(ROOT, '.github', 'workflows', 'release.yml'))
-      || fileContains('.github/workflows/release.yml', `*-${p})`) || fileContains('.github/workflows/release.yml', `plat=${p}`) },
-];
-
-function isExempt(platform, checkId) {
-  const platExemptions = KNOWN_EXEMPTIONS[platform] || [];
-  return platExemptions.includes(checkId);
-}
-
-function audit(platforms = ALL_PLATFORMS) {
-  const results = {};
-  for (const p of platforms) {
-    results[p] = {};
-    for (const check of CHECKS) {
-      const passed = check.fn(p);
-      const exempt = isExempt(p, check.id);
-      results[p][check.id] = { passed, exempt };
-    }
-  }
-  return results;
-}
-
-function printMatrix(results, platforms) {
-  const PASS = '✓', FAIL = '✗', EXEMPT = '~';
-
-  // header
-  process.stdout.write('Check'.padEnd(50) + ' | ');
-  process.stdout.write(platforms.map(p => p.padEnd(8).slice(0, 8)).join('| '));
-  process.stdout.write('\n');
-  process.stdout.write('-'.repeat(50) + '-+-' + platforms.map(() => '-'.repeat(8)).join('+-') + '\n');
-
-  for (const check of CHECKS) {
-    process.stdout.write(check.id.padEnd(50) + ' | ');
-    for (const p of platforms) {
-      const r = results[p][check.id];
-      const symbol = r.passed ? PASS : (r.exempt ? EXEMPT : FAIL);
-      process.stdout.write((`  ${symbol}`).padEnd(8).slice(0, 8) + '| ');
-    }
-    process.stdout.write('\n');
-  }
-
-  // Summary
-  console.log('\nLegend:  ✓ pass   ✗ fail   ~ exempt (known/accepted gap)');
-  console.log('');
-
-  let totalFails = 0;
-  for (const p of platforms) {
-    const fails = Object.entries(results[p])
-      .filter(([_, r]) => !r.passed && !r.exempt);
-    if (fails.length === 0) {
-      console.log(`  ${p.toUpperCase()}: ✓ all checks pass`);
-    } else {
-      console.log(`  ${p.toUpperCase()}: ✗ ${fails.length} drift`);
-      for (const [id] of fails) {
-        console.log(`    ✗ ${id}`);
-      }
-      totalFails += fails.length;
-    }
-  }
-  console.log('');
-  if (totalFails === 0) {
-    console.log('PERFECT: all platforms pass all non-exempt checks.');
-  } else {
-    console.log(`DRIFT: ${totalFails} non-exempt failures across platforms.`);
-  }
-  return totalFails;
-}
-
-// CLI
-const args = process.argv.slice(2);
-const wantJson = args.includes('--json');
-const platforms = args.filter(a => !a.startsWith('-'));
-
-const targets = platforms.length > 0 ? platforms : ALL_PLATFORMS;
-for (const p of targets) {
-  if (!ALL_PLATFORMS.includes(p)) {
-    console.error(`Unknown platform: ${p}. Valid: ${ALL_PLATFORMS.join(', ')}`);
-    process.exit(2);
+    const result = audit(options);
+    if (options.json) console.log(JSON.stringify(result, null, 2)); else print(result);
+    if (!result.ok) process.exitCode = 1;
+  } catch (error) {
+    const code = error instanceof PlatformProfileError ? error.code : 'PLATFORM_COMPLETENESS_USAGE';
+    if (options.json) console.log(JSON.stringify({ ok: false, code, message: error.message }, null, 2));
+    else console.error(`[${code}] ${error.message}`);
+    process.exitCode = 2;
   }
 }
 
-const results = audit(targets);
-
-if (wantJson) {
-  console.log(JSON.stringify(results, null, 2));
-  process.exit(0);
-}
-
-const drift = printMatrix(results, targets);
-process.exit(drift > 0 ? 1 : 0);
+main();

@@ -4,8 +4,8 @@
 
 ## Session goal
 
-Add engine profiles to Project Forge and prove a Godot path without weakening the existing web pipeline,
-nine canonical phases, verifier authority or independent visual acceptance.
+Make storefront release scope an explicit, measurable contract and prove one Godot project can produce
+honest Web, Android and Windows candidates without confusing a local artifact with store submission.
 
 ## Active task
 
@@ -17,12 +17,13 @@ nine canonical phases, verifier authority or independent visual acceptance.
 - [x] Q3-006: native Phase 4 binds capture/proof receipts, current implementation and independent review; 25 isolated adversarial scenarios pass.
 - [x] Q3-007: real-window Phase 5 tech, two-process Phase 7 save/reload and signed immutable Windows Phase 8 release pass adversarial plus real Godot 4.7.2 checks.
 - [ ] Q3-008: add the optional cost-aware native asset lane after the base pilot proves it is needed.
-- [ ] Q3-009: end-to-end Godot pilot reached Phase 8. Circuit Courier passed native construction, visual,
-  technical, localization/listing and playtest gates; fresh Phase 4 evidence includes eight accepted frames
-  and independent motion review. Forge 4.68.70 completed the first real Windows trio after both slow Godot
-  cold starts, but the independent verifier rejected v1.0.0 because Godot's standard debug `.console.exe`
-  was packaged without a manifest hash. v4.68.71 makes the exact three-file debug set receipt-bound; the
-  installed build must produce and verify a new immutable version.
+- [x] Q3-009: Circuit Courier completed the Godot pilot through independently verified immutable Windows
+  v1.0.2; the duplicate failure CTA hotfix, fresh visual evidence and trusted release receipt all pass.
+- [ ] Q3-010: the exact ten-target registry, `forge.targets.json`, target receipts, local/submit split,
+  Godot Web/Android lane and immutable storefront packager are implemented and under real v1.1.0 validation.
+  Circuit Courier now has touch controls and fresh independent Phase 4 PASS evidence; Web/Android/Windows
+  base exports and all ten target candidates must still finish, pass local verification and report external
+  signing/account/hosting/uploader blockers without claiming publication.
 
 ### Previous v4.68.51 release
 
@@ -156,14 +157,14 @@ nine canonical phases, verifier authority or independent visual acceptance.
 
 ## Blockers
 
-Q3-009 Phases 1–7 are complete and checkpointed locally. Phase 8 has 16 truthful pre-release checks PASS,
-including fresh signed visual evidence and independent review. v1.0.0 remains immutable but rejected by the
-trusted verifier. Publication remains blocked until v4.68.71 builds and verifies a higher release version.
+Circuit Courier v1.0.2 remains the verified Windows baseline. Official Godot 4.7 Web/Android/Windows
+templates, Android SDK 36 and JBR 21 are installed, but no production Android keystore or store-console
+credentials are present. Therefore v1.1.0 may become `local-verified` across all selected targets while
+remaining `external-blocked` for signing, IDs, HTTPS delivery, uploader receipts and moderation.
 
-Godot GDScript native Phases 3–5, 7 and Windows 8 now have trusted adapters. The real-window Q3-007
-forward test passes on official Godot 4.7.2. A project still needs matching official Windows export
-templates for a real EXE/PCK release; Godot C#, Android and Windows signing remain explicit follow-up
-lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
+Phase 8 cannot be considered storefront-complete from the old Windows trio. The new submit-level target
+gate must remain blocked until every selected target has real external evidence. Godot C# remains outside
+this GDScript pilot. Ox Alpha remains restricted to intentionally public, synthetic benchmark material.
 
 ## Last 3 decisions
 
@@ -203,5 +204,9 @@ lanes. Ox Alpha remains restricted to intentionally public, synthetic benchmark 
 - 2026-08-26: A native release needs an engine-owned signed build receipt; project-local manifests and self-consistent ZIPs cannot authorize their own PASS.
 - 2026-08-30: Native export timeouts must be engine-aware but bounded; timeout evidence includes both output streams and kills the complete process tree before any immutable publication.
 - 2026-08-30: Native builders may issue a receipt only for the same exact file set the independent verifier accepts; Godot's debug console wrapper is a first-class hash-bound artifact.
+- 2026-08-30: Engine export and storefront certification are separate authorities; `forge.targets.json`
+  selects exact stores and every store needs its own current-version receipt.
+- 2026-08-30: `local-verified` proves candidate integrity only. Production signing, platform IDs, HTTPS
+  hosting, console/uploader delivery and moderation remain external blockers until evidenced.
 
-<!-- last updated 2026-08-30 for v4.68.71 exact Godot debug bundle -->
+<!-- last updated 2026-08-30 for Q3-010 storefront release validation -->

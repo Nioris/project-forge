@@ -355,6 +355,9 @@ try {
     if (!artifactsReady) {
       fail('GODOT_RELEASE_ARTIFACT', `${variant} export must contain non-empty EXE and PCK`);
     }
+    if (variant === 'debug' && !fs.existsSync(path.join(directory, `${slug}.console.exe`))) {
+      fail('GODOT_RELEASE_TEMPLATES', 'debug console wrapper is missing after a successful export; install the matching official windows_debug_x86_64_console.exe template', true);
+    }
     binaryHashes[variant] = stagedBinaryFacts(directory, slug, variant);
   }
   if (binaryHashes.production.exe === binaryHashes.debug.exe && binaryHashes.production.pck === binaryHashes.debug.pck) {

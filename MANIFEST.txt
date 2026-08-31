@@ -109,6 +109,7 @@
 .agents/skills/phase-6-listing/SKILL.md
 .agents/skills/phase-7-test/SKILL.md
 .agents/skills/phase-8-release/SKILL.md
+.agents/skills/phase-8-release/references/platform-release-contracts.md
 .agents/skills/phase-9-live/SKILL.md
 .agents/skills/pipeline/SKILL.md
 .agents/skills/pixel-art-pipeline/SKILL.md
@@ -189,6 +190,7 @@
 .agents/skills/status/references/project-engine.mjs
 .agents/skills/status/references/project-git.mjs
 .agents/skills/status/references/project-status.mjs
+.agents/skills/status/references/project-targets.mjs
 .agents/skills/status/references/screen-flow-contract.mjs
 .agents/skills/status/references/skill-contract.mjs
 .agents/skills/status/references/task-scope-guard.mjs
@@ -369,6 +371,7 @@
 .claude/skills/phase-6-listing/SKILL.md
 .claude/skills/phase-7-test/SKILL.md
 .claude/skills/phase-8-release/SKILL.md
+.claude/skills/phase-8-release/references/platform-release-contracts.md
 .claude/skills/phase-9-live/SKILL.md
 .claude/skills/pipeline/SKILL.md
 .claude/skills/pixel-art-pipeline/SKILL.md
@@ -449,6 +452,7 @@
 .claude/skills/status/references/project-engine.mjs
 .claude/skills/status/references/project-git.mjs
 .claude/skills/status/references/project-status.mjs
+.claude/skills/status/references/project-targets.mjs
 .claude/skills/status/references/screen-flow-contract.mjs
 .claude/skills/status/references/skill-contract.mjs
 .claude/skills/status/references/task-scope-guard.mjs
@@ -586,6 +590,7 @@ RELEASE_NOTES_v4.68.6.md
 RELEASE_NOTES_v4.68.7.md
 RELEASE_NOTES_v4.68.70.md
 RELEASE_NOTES_v4.68.71.md
+RELEASE_NOTES_v4.68.72.md
 RELEASE_NOTES_v4.68.8.md
 RELEASE_NOTES_v4.68.9.md
 ROADMAP.md
@@ -597,6 +602,7 @@ adapters/agent-contracts.json
 adapters/agents.json
 adapters/engine-profiles.json
 adapters/opencode/tools/list.ts
+adapters/platform-profiles.json
 asset-library.html
 asset-library.seed.json
 dashboard.html
@@ -619,6 +625,7 @@ docs/MAINTENANCE-4.66.7.md
 docs/MAINTENANCE-4.66.8.md
 docs/MAINTENANCE-4.66.9.md
 docs/MAINTENANCE-4.67.1.md
+docs/PLATFORM-RELEASE-CONTRACTS.md
 docs/StagingEnvironment.md
 docs/UI_CHECKLIST.md
 docs/UNIVERSAL-AGENT-RUNTIME-4.68.0.md
@@ -761,10 +768,13 @@ schemas/agent-profile.schema.json
 schemas/agent-result.schema.json
 schemas/ai-prompt.schema.json
 schemas/engine-profile.schema.json
+schemas/forge-targets.schema.json
 schemas/godot-export.schema.json
 schemas/godot-playtest.schema.json
 schemas/godot-project.schema.json
 schemas/godot-visual.schema.json
+schemas/platform-profile.schema.json
+schemas/platform-release-receipt.schema.json
 schemas/release-metrics.schema.json
 schemas/run-result.schema.json
 schemas/skill-contract.schema.json
@@ -787,6 +797,7 @@ scripts/backup-data.mjs
 scripts/bind-phase4-visual-evidence.mjs
 scripts/build-all-platforms.mjs
 scripts/build-godot-release.mjs
+scripts/build-godot-web-android.mjs
 scripts/build-release.sh
 scripts/build-yandex-3zips.mjs
 scripts/bump-version.mjs
@@ -798,6 +809,7 @@ scripts/check-api-terminal-profiles.mjs
 scripts/check-appmetrica.mjs
 scripts/check-bat-comments.mjs
 scripts/check-bat-encoding.mjs
+scripts/check-build-all-platforms.mjs
 scripts/check-bump-version.mjs
 scripts/check-claude-md-size.mjs
 scripts/check-codex-compat.mjs
@@ -824,18 +836,24 @@ scripts/check-godot-project.mjs
 scripts/check-godot-release.mjs
 scripts/check-godot-tech.mjs
 scripts/check-godot-visual-capture.mjs
+scripts/check-godot-web-android.mjs
 scripts/check-inline-strings.mjs
 scripts/check-modularize-existing-project.mjs
 scripts/check-nested-dirs.mjs
 scripts/check-no-float-money.mjs
 scripts/check-package-forge.mjs
+scripts/check-package-platform-release-matrix.mjs
 scripts/check-phase-completion-gate.mjs
 scripts/check-phase4-visual-evidence.mjs
 scripts/check-pipeline-state.mjs
 scripts/check-platform-completeness.mjs
+scripts/check-platform-profile.mjs
+scripts/check-platform-release-verify.mjs
+scripts/check-platform-release.mjs
 scripts/check-project-git.mjs
 scripts/check-ps1-encoding.mjs
 scripts/check-runtime-release-selection.mjs
+scripts/check-serve-web-candidate.mjs
 scripts/check-setup-guide.mjs
 scripts/check-skill-contracts.mjs
 scripts/check-skill-descriptions.mjs
@@ -870,6 +888,14 @@ scripts/fixtures/godot-projects/pass-gdscript/main.tscn
 scripts/fixtures/godot-projects/pass-gdscript/project.godot
 scripts/fixtures/godot-release/fake-godot-exporter.mjs
 scripts/fixtures/godot-tools/fake-godot.mjs
+scripts/fixtures/godot-web-android/android-source/build.gradle
+scripts/fixtures/godot-web-android/android-source/gradle/wrapper/gradle-wrapper.properties
+scripts/fixtures/godot-web-android/android-source/gradlew
+scripts/fixtures/godot-web-android/android-source/gradlew.bat
+scripts/fixtures/godot-web-android/android-source/settings.gradle
+scripts/fixtures/godot-web-android/export_templates/4.7.fixture.web-android/android_debug.apk
+scripts/fixtures/godot-web-android/export_templates/4.7.fixture.web-android/android_release.apk
+scripts/fixtures/godot-web-android/fake-godot-exporter.mjs
 scripts/forge-agent.mjs
 scripts/forge-metrics.mjs
 scripts/forge-search-doctor.mjs
@@ -902,7 +928,11 @@ scripts/lib/codex-cost-report.mjs
 scripts/lib/forge-search.mjs
 scripts/lib/forge-secrets.mjs
 scripts/lib/gigachat-api.mjs
+scripts/lib/godot-android-project.mjs
+scripts/lib/godot-gradle.mjs
 scripts/lib/godot-output.mjs
+scripts/lib/godot-version.mjs
+scripts/lib/local-static-server.mjs
 scripts/lib/release-zip-selection.mjs
 scripts/lib/runtime-version.mjs
 scripts/lib/safe-zip.mjs
@@ -919,7 +949,11 @@ scripts/open-all.ps1
 scripts/openai-image.mjs
 scripts/pack-handoff.mjs
 scripts/package-forge.mjs
+scripts/package-platform-release-matrix.mjs
 scripts/platform-detect.js
+scripts/platform-profile.mjs
+scripts/platform-release-receipt.mjs
+scripts/platform-release-verify.mjs
 scripts/playtest.mjs
 scripts/prepare-godot-phase4-review.mjs
 scripts/project-git.mjs
@@ -933,6 +967,7 @@ scripts/runtime-test.mjs
 scripts/screen-targets.mjs
 scripts/screens-shoot.mjs
 scripts/search-skills.mjs
+scripts/serve-web-candidate.mjs
 scripts/smoke-test.mjs
 scripts/sync-codex-adapter.mjs
 scripts/sync-dashboard-meta.mjs
@@ -1118,6 +1153,7 @@ wiki/plan/Q3-006-godot-visual-evidence.md
 wiki/plan/Q3-007-godot-test-and-release.md
 wiki/plan/Q3-008-cost-aware-assets.md
 wiki/plan/Q3-009-godot-pilot-release.md
+wiki/plan/Q3-010-storefront-release-contract.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md

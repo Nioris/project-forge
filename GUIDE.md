@@ -1,4 +1,4 @@
-# Project Forge v4.68.71 — Полная инструкция по работе
+# Project Forge v4.68.72 — Полная инструкция по работе
 
 ## Оглавление
 
@@ -9,14 +9,7 @@
 - [Сценарий Г: Доработка готового приложения](#г-доработка-готового-приложения)
 - [Исправление багов](#исправление-багов)
 - [Полный аудит перед релизом](#полный-аудит-перед-релизом)
-- [Сборка для RuStore (APK)](#сборка-для-rustore)
-- [Сборка для Яндекс Игр](#сборка-для-яндекс-игр)
-- [Деплой на сервер (Web)](#деплой-на-сервер)
-- [Сборка для VK Mini Apps](#сборка-для-vk-mini-apps)
-- [Сборка для Telegram Mini App](#сборка-для-telegram-mini-app)
-- [Сборка для Одноклассников (OK.ru)](#сборка-для-одноклассников-okru)
-- [Сборка для MAX мессенджер](#сборка-для-max-мессенджер)
-- [Сборка на ВСЕ платформы сразу (`/release all`)](#сборка-на-все-платформы-сразу-новое-в-v43)
+- [Сборка и выпуск для storefront-платформ](#сборка-и-выпуск-для-storefront-платформ)
 - [Правки от модераторов](#правки-от-модераторов)
 - [Параллельная работа](#параллельная-работа)
 - [Шпаргалка команд](#шпаргалка-команд)
@@ -710,7 +703,74 @@ cf
 
 ---
 
-## Сборка для RuStore
+## Сборка и выпуск для storefront-платформ
+
+> Эта секция — актуальный маршрут Ф8. Следующие старые подразделы о конкретных командах и
+> «универсальной» сборке сохранены только как историческая справка для legacy-проектов; они не
+> заменяют `forge.targets.json`, target receipts или внешний кабинет магазина.
+
+Сначала проект **явно** выбирает витрины. Движок и витрина независимы: Godot/веб-движок создаёт
+базовый Web, Android или Windows артефакт, а затем упаковщик создаёт отдельный кандидат для каждой
+витрины. Нельзя собрать один ZIP и считать его релизом для Яндекса, Android-магазинов и desktop stores.
+
+| Статус | Canonical IDs |
+|---|---|
+| Основные | `yandex`, `vk`, `telegram`, `rustore`, `google-play`, `appgallery`, `vkplay`, `steam` |
+| Рассматриваемые | `crazygames`, `taptap` |
+
+`ok`, `max` и `web` остаются совместимыми legacy-настройками старых проектов. Их нельзя указывать в
+`forge.targets.json` как современные storefront IDs.
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "forge.target-selection",
+  "targets": ["yandex", "vk", "telegram", "rustore", "google-play", "appgallery", "vkplay", "steam", "crazygames", "taptap"]
+}
+```
+
+### Практический маршрут для Godot
+
+```powershell
+# Проверить выбранные витрины
+node ..\project-forge\scripts\platform-profile.mjs check .
+
+# Одна новая версия: базовые артефакты для нужных семейств
+node ..\project-forge\scripts\build-godot-web-android.mjs circuit-courier v1.1.0 --root .
+node ..\project-forge\scripts\build-godot-release.mjs circuit-courier v1.1.0 --root .
+
+# Создать отсутствующие отдельные кандидаты/receipts и честно проверить всю матрицу
+node ..\project-forge\scripts\build-all-platforms.mjs . --level local
+
+# Только после реальной внешней подготовки; команда ничего не загружает и не перепаковывает
+node ..\project-forge\scripts\build-all-platforms.mjs . --level submit
+```
+
+Local-координатор берёт только targets из `forge.targets.json` и один последний согласованный набор
+базовых Web/Android/Windows manifests. Если матрицы этой версии ещё нет, он создаёт её каноническим
+упаковщиком; существующую версию никогда не перезаписывает. Неоднозначный slug или разные source
+snapshot блокируют сборку.
+
+Для браузерного прогона распакуйте нужный Web ZIP и используйте сервер с корректными Godot MIME:
+
+```powershell
+node ..\project-forge\scripts\serve-web-candidate.mjs .\qa\web-candidate --port 4173
+```
+
+Команды не публикуют игру и не подменяют подпись или аккаунт. `local-verified` означает, что
+кандидат, хэши, версия, source snapshot и детерминированные требования проверены. Установленные
+адаптеры на этом этапе локальные: `submit` намеренно блокируется
+`PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE`, пока не установлен target-specific external
+verifier/uploader, который действительно сверяет ключ, App/Bot ID, HTTPS-деплой или
+console/uploader receipt. Generic HMAC, локальный receipt или URL не дают submit authority. До этого
+результат обязан быть `external-blocked`, а Phase 8 остаётся на STOP; `published` допускается лишь
+по неизменяемому подтверждению витрины, проверенному target adapter.
+
+Контракты и ссылки на официальные требования: `docs/PLATFORM-RELEASE-CONTRACTS.md`.
+
+## Исторические инструкции legacy-платформ (не маршрут storefront Phase 8)
+
+### Сборка для RuStore
 
 ### Шаг 0 — Подготовить ключи
 
@@ -1116,7 +1176,11 @@ cf
 
 ---
 
-## Сборка на ВСЕ платформы сразу (новое в v4.3)
+## Исторический `/release all` (не использовать для storefront Phase 8)
+
+Этот старый сценарий не понимает `forge.targets.json`, Android AAB/APK, SteamPipe, VK Play
+дистрибутивы или обязательные внешние receipts. Для актуального выпуска используй маршрут
+«Сборка и выпуск для storefront-платформ» выше.
 
 ```
 cf
@@ -1474,10 +1538,10 @@ ls .claude/skills/              # Linux/Mac
 | Открыть проект | `cd ..\name && cf` |
 | Удалить проект | `.\scripts\forge.ps1 remove name` |
 
-`web` — стабильный движок по умолчанию для игр и приложений. `godot` пока экспериментальный и
-доступен только для игр, но GDScript уже имеет native-проверки Ф3–5, Ф7 и Windows release Ф8.
-Godot C#, Android и подпись Windows — следующие отдельные lanes. Общие фазы не завязаны на Godot:
-другому движку нужны свои adapters тех же capabilities, а браузерные доказательства не подменяют native.
+`web` — стабильный движок по умолчанию для игр и приложений. `godot` — отдельный engine profile.
+Фазы не завязаны на Godot: каждому движку нужны свои adapters тех же capabilities, а браузерные
+доказательства не подменяют native. Витрина выбирается отдельно через `forge.targets.json`: базовый
+Web/Android/Windows артефакт затем упаковывается и проверяется для каждой цели.
 
 ### Внутри Claude Code — Общие
 
@@ -1560,9 +1624,12 @@ Godot C#, Android и подпись Windows — следующие отдель�
   │
   ├─ Полный аудит (см. выше) ─── Всё по чеклисту
   │
-  ├── ПЛАТФОРМА? ──┬── RuStore ──── /convert → /build-apk → /rustore-publish
-  │                ├── Яндекс ──── /yandex-release (SDK + 13 языков)
-  │                └── Web ──────── /deploy
+  ├── ВИТРИНЫ ───────── forge.targets.json (точный список целей)
+  │                       │
+  │                       ├── base Web / Android / Windows от выбранного движка
+  │                       ├── отдельный packager + receipt на каждую витрину
+  │                       ├── build-all-platforms --level local
+  │                       └── build-all-platforms --level submit
   │
   ├─ Правки модераторов ──────── Исправить → пересобрать → перезалить
   │

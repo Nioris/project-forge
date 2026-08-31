@@ -15,6 +15,32 @@ function exact(value, keys, label) {
 }
 export function sha256File(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
 export function safeSlug(value) { return /^[a-z0-9][a-z0-9-]{1,63}$/u.test(String(value || '')); }
+export function readGodotApplicationIcon(implementationRoot) {
+  const root = fs.realpathSync(path.resolve(implementationRoot));
+  const projectFile = path.join(root, 'project.godot');
+  let text;
+  try { text = fs.readFileSync(projectFile, 'utf8'); }
+  catch (error) { fail('GODOT_EXPORT_ICON', `project.godot is unavailable while checking the application icon: ${error.message}`); }
+  const resource = text.match(/^config\/icon\s*=\s*"(res:\/\/[^"\r\n]+)"\s*$/mu)?.[1] || '';
+  const relative = resource.slice('res://'.length).replaceAll('\\', '/');
+  if (!resource || !relative || relative.startsWith('/') || relative.split('/').includes('..') || !/\.(?:png|svg|webp)$/iu.test(relative)) {
+    fail('GODOT_EXPORT_ICON', 'project.godot must explicitly set config/icon to a project-local PNG, SVG or WebP asset');
+  }
+  let cursor = root;
+  for (const segment of relative.split('/').filter(Boolean)) {
+    cursor = path.join(cursor, segment);
+    let stat; try { stat = fs.lstatSync(cursor); } catch { fail('GODOT_EXPORT_ICON', `application icon is missing: ${resource}`); }
+    if (stat.isSymbolicLink()) fail('GODOT_EXPORT_ICON', `application icon cannot traverse a symlink/junction: ${resource}`);
+  }
+  let file;
+  try { file = fs.realpathSync(path.resolve(root, relative)); }
+  catch { fail('GODOT_EXPORT_ICON', `application icon is missing: ${resource}`); }
+  const outside = path.relative(root, file);
+  if (outside.startsWith('..') || path.isAbsolute(outside) || !fs.statSync(file).isFile() || fs.statSync(file).size < 1) {
+    fail('GODOT_EXPORT_ICON', `application icon must be a non-empty file inside the Godot project: ${resource}`);
+  }
+  return { resource, file, sha256: sha256File(file) };
+}
 export function snapshotTree(root) {
   const entries = [];
   const skip = new Set(['.git', '.godot', '.mono', '.claude', '.agents', '.codex', 'bin', 'obj', 'build', 'dist', 'release', 'node_modules', 'qa', 'wiki', 'test-results', 'playtest-out', 'stage-out']);
@@ -74,6 +100,7 @@ export function readGodotExportContract(projectRoot = process.cwd()) {
   const canonicalRelative = path.relative(root, implementationRoot);
   if (canonicalRelative.startsWith('..') || path.isAbsolute(canonicalRelative)
     || !fs.existsSync(path.join(implementationRoot, 'project.godot'))) fail('GODOT_EXPORT_PROJECT', 'Godot implementation root/project.godot is missing');
+  const icon = readGodotApplicationIcon(implementationRoot);
   const contractFile = path.join(root, GODOT_EXPORT_CONTRACT_FILE);
   let value; try { value = JSON.parse(fs.readFileSync(contractFile, 'utf8')); } catch (error) { fail('GODOT_EXPORT_CONTRACT', `forge.godot.export.json missing/invalid: ${error.message}`); }
   exact(value, ['schemaVersion', 'kind', 'preset', 'target'], GODOT_EXPORT_CONTRACT_FILE);
@@ -86,10 +113,10 @@ export function readGodotExportContract(projectRoot = process.cwd()) {
   const architecture = preset.match(/^binary_format\/architecture\s*=\s*"([^"]+)"/mu)?.[1];
   if (architecture !== 'x86_64') fail('GODOT_EXPORT_ARCHITECTURE', 'Windows Desktop preset must explicitly target x86_64');
   const consoleWrapper = preset.match(/^debug\/export_console_wrapper\s*=\s*([^\r\n]+?)\s*$/mu)?.[1] || null;
-  if (consoleWrapper !== null && consoleWrapper !== '1') {
-    fail('GODOT_EXPORT_CONSOLE_WRAPPER', 'Windows Desktop preset must keep the Godot debug console wrapper enabled only for debug (default or 1)');
+  if (consoleWrapper !== '1') {
+    fail('GODOT_EXPORT_CONSOLE_WRAPPER', 'Windows Desktop preset must explicitly set debug/export_console_wrapper=1');
   }
   if (/^binary_format\/embed_pck\s*=\s*true\s*$/mu.test(preset)) fail('GODOT_EXPORT_PCK', 'Windows Desktop preset must keep PCK separate for verifiable release artifacts');
   if (/^custom_template\/(?:debug|release)\s*=\s*"[^"\r\n]+"\s*$/mu.test(preset)) fail('GODOT_EXPORT_CUSTOM_TEMPLATE', 'custom export templates are not accepted; install the matching official Godot templates');
-  return { root, engine, project, implementationRoot, contractFile, presetsFile, preset, contract: value, hashes: { contract: sha256File(contractFile), presets: sha256File(presetsFile), project: sha256File(path.join(implementationRoot, 'project.godot')), source: snapshotTree(implementationRoot) } };
+  return { root, engine, project, implementationRoot, contractFile, presetsFile, preset, contract: value, icon, hashes: { contract: sha256File(contractFile), presets: sha256File(presetsFile), project: sha256File(path.join(implementationRoot, 'project.godot')), icon: icon.sha256, source: snapshotTree(implementationRoot) } };
 }

@@ -31,6 +31,40 @@ native profile; that implementation fact does not make Forge Godot-only.
 Native release evidence must be bound to an engine-owned receipt. Project-local manifests and archives
 cannot authorize their own PASS.
 
+## Storefront targeting and release evidence
+
+The engine produces a base artifact; it does not choose or certify a storefront. Each project declares
+the exact release scope in a non-empty `forge.targets.json`, validated through the installed
+`scripts/platform-profile.mjs`. The only canonical storefront IDs are:
+
+- primary: `yandex`, `vk`, `telegram`, `rustore`, `google-play`, `appgallery`, `vkplay`, `steam`;
+- considering: `crazygames`, `taptap`.
+
+The historical `ok`, `max` and `web` values remain compatibility settings only. They are not valid
+storefront IDs in `forge.targets.json`, nor can old generic ZIP evidence stand in for a target receipt.
+
+Release work is a matrix: make the base Web/Android/Windows artifact with the engine adapter, then use
+the coordinator to create any missing per-target candidates and record a
+`forge.platform-release-receipt` for every selected target. Verify the full latest-version matrix with:
+
+```text
+node scripts/platform-profile.mjs check <project-root>
+node scripts/build-godot-web-android.mjs <slug> <version> --root <project-root>  # Godot Web/Android
+node scripts/build-godot-release.mjs <slug> <version> --root <project-root>      # Godot Windows
+node scripts/build-all-platforms.mjs <project-root> --level local
+node scripts/build-all-platforms.mjs <project-root> --level submit
+```
+
+`local` packages only a missing immutable matrix from one latest coherent base set, then verifies the
+candidate, hashes, current source snapshot and deterministic target requirements. An existing version
+is never overwritten. The installed adapters are local adapters: `submit` remains read-only and fails
+closed with `PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE` until an installed target-specific
+external verifier can validate real signing, IDs, hosted URL or console/uploader delivery facts.
+Generic HMAC, a local receipt or URL has no submit authority. A locally valid artifact with an absent
+external prerequisite is `external-blocked`, not publishable; this is a Phase 8 STOP. `published` may
+be asserted only from an immutable platform or console receipt verified by that target adapter. The
+authoritative per-target contracts are in `docs/PLATFORM-RELEASE-CONTRACTS.md`.
+
 ## Authoritative project state
 
 Use these sources in this order:

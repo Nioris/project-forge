@@ -22,6 +22,7 @@ import { resolveActiveTaskScope, assertTaskWrite } from '../.claude/skills/statu
 import { validatePhase4VisualEvidence } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 import { screenInventoryPayload, screenInventorySha256 } from '../.claude/skills/status/references/screen-flow-contract.mjs';
 import { readTrustedProjectEngine } from '../.claude/skills/status/references/project-engine.mjs';
+import { verifyPlatformReleases } from './platform-release-verify.mjs';
 
 applyDefaultSearchEnvironment();
 
@@ -30,8 +31,8 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.71';
-const CONTRACT_VERSION = '6.3.11-godot-native-test-release-2026-08-26';
+const AUDITED_FORGE_VERSION = '4.68.72';
+const CONTRACT_VERSION = '6.3.12-storefront-release-2026-08-30';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');
 const DRY_RUN = argv.includes('--dry-run');
@@ -238,9 +239,10 @@ function taskScopedForgeScriptBlock(scriptPath, args=[]) {
     const denied = taskScopedAssertTargets([output], operation);
     return denied ? taskScopeDeny(operation,output,`Forge Task scope blocks native Godot verifier output: ${denied}`) : null;
   }
-  if (base === 'build-godot-release.mjs') {
-    const denied = taskScopedAssertTargets(['Release/.forge-scope-probe'], 'forge_script:build-godot-release');
-    return denied ? taskScopeDeny('forge_script:build-godot-release','Release',`Forge Task scope blocks Godot release publication: ${denied}`) : null;
+  if (base === 'build-godot-release.mjs' || base === 'build-godot-web-android.mjs' || base === 'package-platform-release-matrix.mjs') {
+    const operation = `forge_script:${base.replace(/\.mjs$/i, '')}`;
+    const denied = taskScopedAssertTargets(['Release/.forge-scope-probe'], operation);
+    return denied ? taskScopeDeny(operation,'Release',`Forge Task scope blocks release artifact publication: ${denied}`) : null;
   }
   if (base === 'local-stage.mjs') {
     if (!args.some(arg => /^--ai$/i.test(String(arg)))) return null;
@@ -669,6 +671,31 @@ function changedSinceBaseline(filterFn=()=>true) {
   }
   return out;
 }
+function releaseArtifactNameLooksVersioned(candidate='') {
+  const normalized=String(candidate||'').replaceAll('\\','/');
+  // The candidate name is part of the immutable release identity.  A target
+  // receipt alone must not let an old, generically named archive pass Phase 8.
+  return /^Release\/.+\/[a-z0-9][a-z0-9._-]*-v\d+\.\d+\.\d+(?:-[a-z0-9][a-z0-9._-]*)?\.(?:zip|apk|aab)$/i.test(normalized);
+}
+function phase8FreshArtifactBlockers(platformRelease) {
+  const blockers=[];
+  for(const target of Array.isArray(platformRelease?.targets)?platformRelease.targets:[]){
+    const candidate=String(target?.candidate||'').replaceAll('\\','/');
+    if(!candidate) continue; // The canonical storefront verifier reports the missing candidate/receipt.
+    const extension=extOf(candidate);
+    const label=extension==='.zip'?'ZIP':extension==='.apk'?'APK':'AAB';
+    if(!releaseArtifactNameLooksVersioned(candidate)) {
+      blockers.push(`Phase 8 ${target.target||'storefront'} candidate must be a version-named ${label} under Release/: ${candidate}`);
+      continue;
+    }
+    let currentHash=null;
+    try { currentHash=hashFileAbs(safePath(candidate)); } catch {}
+    if(!currentHash || phaseBaseline.get(candidate)===currentHash) {
+      blockers.push(`Phase 8 requires a newly created ${label} artifact after phase start for ${target.target||'storefront'}: ${candidate}`);
+    }
+  }
+  return blockers;
+}
 function pathLooksProductionAsset(path) {
   const p=String(path).replace(/\\/g,'/').toLowerCase();
   if(!VISUAL_EXTS.has(extOf(p))) return false;
@@ -872,7 +899,7 @@ function commandLooksMutating(command=''){
   if(/^(git\s+(status|diff|log)|dir\b|ls\b|find\b|du\b|grep\b|type\b|cat\b)/i.test(c)) return false;
   if(/phase-state\.mjs.*\b(?:start|reopen|block|complete)\b/i.test(c)) return true;
   if(/ai-studio-init\.mjs/i.test(c) && !/--check/i.test(c)) return true;
-  if(/integrate-gacha|screen-targets|screens-shoot|godot-proof-video|godot-tech-check|godot-playtest|godot-release-verify|build-godot-release|prepare-godot-phase4-review|bind-phase4-visual-evidence|record-phase4-visual-review|record-image-provenance|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
+  if(/integrate-gacha|screen-targets|screens-shoot|godot-proof-video|godot-tech-check|godot-playtest|godot-release-verify|build-godot-release|build-godot-web-android|package-platform-release-matrix|prepare-godot-phase4-review|bind-phase4-visual-evidence|record-phase4-visual-review|record-image-provenance|release-yandex|build-yandex|use-template|record-promo|npm\s+(install|i\b)|mkdir|copy|cp\s|move|del\s|rm\s|powershell.*(?:set-content|remove-item|copy-item)/i.test(c)) return true;
   return false;
 }
 function verifierEntrySuccess(re,phaseOverride=activePhase){
@@ -1278,36 +1305,6 @@ function distinctValidImages(paths){
 }
 function commandSucceeded(re,phase=activePhase){ return Boolean(verifierEntrySuccess(re,phase)) || (Number(phase)===Number(activePhase)&&hasSuccessfulCommand(re)); }
 function commandSucceededWithOutput(commandRe,outputRe,phase=activePhase){ return Boolean(verifierEntryWithOutput(commandRe,outputRe,phase)); }
-function parsedReleaseZip(pathValue=''){
-  const p=String(pathValue||'').replace(/\\/g,'/');
-  const name=p.split('/').pop()||'';
-  const match=name.match(/^(.+)-(v\d+(?:\.\d+){0,2})(?:-(debug|marketing))?\.zip$/i);
-  if(!match) return null;
-  return {path:p,project:match[1],version:match[2].toLowerCase(),variant:(match[3]||'production').toLowerCase(),parts:match[2].slice(1).split('.').map(Number)};
-}
-function compareReleaseVersion(a,b){for(let i=0;i<3;i++){const d=(a.parts[i]||0)-(b.parts[i]||0);if(d)return d;}return a.parts.length-b.parts.length;}
-function releaseVersionEvidenceFromPaths(paths=[],baselinePaths=new Set()){
-  const all=paths.map(parsedReleaseZip).filter(Boolean);
-  const before=all.filter(x=>baselinePaths.has(x.path));
-  const created=all.filter(x=>!baselinePaths.has(x.path));
-  const groups=new Map();
-  for(const item of created){
-    const key=`${item.project}|${item.version}`;
-    if(!groups.has(key)) groups.set(key,{project:item.project,version:item.version,parts:item.parts,variants:new Set(),paths:[]});
-    const group=groups.get(key);group.variants.add(item.variant);group.paths.push(item.path);
-  }
-  const complete=[...groups.values()].filter(g=>['production','debug','marketing'].every(v=>g.variants.has(v))).sort(compareReleaseVersion);
-  const newest=complete.at(-1)||null;
-  const previous=before.sort(compareReleaseVersion).at(-1)||null;
-  const blockers=[];
-  if(!newest) blockers.push('Phase 8 requires three newly named ZIP artifacts of one version (production/debug/marketing); overwriting an existing version is not accepted');
-  else if(previous && compareReleaseVersion(newest,previous)<=0) blockers.push(`Phase 8 release version ${newest.version} must be newer than the pre-phase version ${previous.version}`);
-  return {ok:blockers.length===0,blockers,version:newest?.version||null,paths:newest?.paths||[],previousVersion:previous?.version||null};
-}
-function phase8ReleaseVersionEvidence(){
-  const paths=findFiles('Release',/\.zip$/i,32,300);
-  return releaseVersionEvidenceFromPaths(paths,new Set([...phaseBaseline.keys()].filter(x=>x.toLowerCase().startsWith('release/')&&x.toLowerCase().endsWith('.zip'))));
-}
 const PHASE_CONTRACTS=Object.freeze({
   1:{name:'Analyze',files:[['ANALYSIS.md',80],['wiki/design/brief.md',80],['wiki/architecture/metrics.md',80],['.forge-ai.json',20],['wiki/ai/asset-baseline.md',80]]},
   2:{name:'Design',files:[['wiki/design/gdd.md',200],['wiki/plan/02-development-plan.md',120],['wiki/design/cross-review.md',80],['wiki/architecture/modules.md',80],['wiki/design/layout-system.md',80],['wiki/ai/studio-plan.md',80]]},
@@ -1574,20 +1571,31 @@ function phaseGateReport(phase=activePhase) {
     if(!existsSync(safePath('wiki/qa'))) blockers.push('Phase 7 requires wiki/qa evidence');
   }
   if(p===8){
-    const fresh=changedSinceBaseline(x=>x.toLowerCase().startsWith('release/')); evidence.freshRelease=fresh; if(!fresh.length) blockers.push('Phase 8 requires fresh Release artifacts');
-    const versionEvidence=phase8ReleaseVersionEvidence(); evidence.releaseBuild=versionEvidence; blockers.push(...versionEvidence.blockers);
     const plan=optionalText('wiki/plan/02-development-plan.md',100000),deploy=optionalText('wiki/deploy-log.md',100000),setup=optionalText('SETUP_GUIDE.md',50000);
-    if(nativeGodot){
-      if(!commandSucceeded(/build-godot-release\.mjs/i,p)) blockers.push('Godot Phase 8 requires successful immutable build-godot-release.mjs');
-      if(!commandSucceeded(/godot-release-verify\.mjs/i,p)) blockers.push('Godot Phase 8 requires successful independent godot-release-verify.mjs');
-      if(!passedGodotReport('qa/godot-release/report.json','forge.godot-release-verification')) blockers.push('Godot Phase 8 requires a current native release verification PASS without test exporter');
-      if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(`${deploy}\n${plan}`)) blockers.push('Godot Phase 8 requires exact TOTAL: N pass, 0 fail in deploy evidence');
-    }else{
-      if(!commandSucceeded(/check-setup-guide/i,p)) blockers.push('Phase 8 requires check-setup-guide success');
-      if(!commandSucceededWithOutput(/release-ready/i,/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i,p)) blockers.push('Phase 8 requires exact release-ready GREEN output');
-      if(!commandSucceeded(/release-yandex|build-yandex-3zips/i,p)) blockers.push('Phase 8 requires release-yandex/build-yandex-3zips success');
-      if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(plan)) blockers.push('Phase 8 TOTAL line must be copied into wiki plan');
+    let platformRelease;
+    try { platformRelease=verifyPlatformReleases({projectRoot:PROJECT,level:'submit'}); }
+    catch(error){ platformRelease={ok:false,level:'submit',version:null,targets:[],failures:[{code:'PLATFORM_RELEASE_INTERNAL',message:String(error?.message||error)}]}; }
+    evidence.platformRelease=platformRelease;
+    if(!platformRelease.ok) blockers.push(...platformRelease.failures.map(item=>`Phase 8 storefront release: ${item.code}: ${item.message}`));
+    if(platformRelease.failures?.some(item=>item?.code==='PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE')) {
+      blockers.push('Phase 8 STOP: target-specific external delivery verifier is unavailable; local receipts, HMAC and URLs cannot authorize submission');
     }
+    // Storefront receipts are immutable only when they identify artifacts made
+    // during this Phase 8 run.  In particular, a previously built ZIP cannot
+    // be relabelled as today's Yandex/VK/Telegram/desktop release.
+    blockers.push(...phase8FreshArtifactBlockers(platformRelease));
+    if(nativeGodot){
+      const families=new Set((Array.isArray(platformRelease.targets)?platformRelease.targets:[]).map(item=>String(item?.artifactFamily||'').toLowerCase()));
+      if(families.has('windows')){
+        if(!commandSucceeded(/build-godot-release\.mjs/i,p)) blockers.push('Godot Phase 8 Windows targets require a successful build-godot-release.mjs in this phase');
+        if(!commandSucceeded(/godot-release-verify\.mjs/i,p)) blockers.push('Godot Phase 8 Windows targets require a successful godot-release-verify.mjs in this phase');
+        if(!passedGodotReport('qa/godot-release/report.json','forge.godot-release-report')) blockers.push('Godot Phase 8 Windows targets require a current qa/godot-release/report.json PASS without test harness');
+      }
+      if(families.has('web')||families.has('android')){
+        if(!commandSucceeded(/build-godot-web-android\.mjs/i,p)) blockers.push('Godot Phase 8 Web/Android targets require a successful build-godot-web-android.mjs in this phase');
+      }
+    }
+    if(!/TOTAL:\s*\d+\s+pass,\s*0\s+fail/i.test(`${deploy}\n${plan}`)) blockers.push('Phase 8 requires exact TOTAL: N pass, 0 fail in deploy evidence');
     if(!/(MANUAL|Проверь сам|ручн)/i.test(`${plan}\n${setup}`)) blockers.push('Phase 8 requires manual checklist evidence');
   }
   if(p===9){ evidence.expectedTerminalState='ongoing'; if(!HOST_CAPABILITIES.scheduler)evidence.schedulerWarning='No scheduler capability; recurring checks require external/manual scheduling.'; }
@@ -5249,7 +5257,8 @@ if (REQUEST_DOCTOR) {
   test('phase complete hard gate active',()=>/Phase 4 completion blocked/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4 wiki/design/target-frame.md assets/style/STYLE-BIBLE.md')||''));
   test('forge_script phase complete cannot bypass the hard gate',()=>/hard gate/i.test(forgeScriptPhaseCompletionBlocked('.claude/skills/status/references/phase-state.mjs',['complete','4'])||''));
   test('phase complete requires explicit evidence arguments',()=>/explicit evidence artifact arguments/.test(phaseCompletionBlocked('node .claude/skills/status/references/phase-state.mjs complete 4')||''));
-  test('phase hard gate has engine-specific Godot routes without browser substitution',()=>{const x=phaseGateReport.toString();return /nativeGodot/.test(x)&&/godot-screens-shoot/.test(x)&&/godot-proof-video/.test(x)&&/godot-tech-check/.test(x)&&/godot-playtest/.test(x)&&/build-godot-release/.test(x)&&/godot-release-verify/.test(x)&&/p===6&&path==='screens\/video\/promo\.mp4'/.test(x);});
+  test('phase hard gate has engine-specific native evidence plus target-specific Phase 8 receipts',()=>{const x=phaseGateReport.toString();return /nativeGodot/.test(x)&&/godot-screens-shoot/.test(x)&&/godot-proof-video/.test(x)&&/godot-tech-check/.test(x)&&/godot-playtest/.test(x)&&/build-godot-release/.test(x)&&/godot-release-verify/.test(x)&&/build-godot-web-android/.test(x)&&/verifyPlatformReleases/.test(x)&&/phase8FreshArtifactBlockers/.test(x)&&/PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE/.test(x)&&/target-specific external delivery verifier is unavailable/.test(x)&&/level:'submit'/.test(x)&&/p===6&&path==='screens\/video\/promo\.mp4'/.test(x);});
+  test('Phase 8 accepts only SemVer-named immutable release artifact names',()=>releaseArtifactNameLooksVersioned('Release/demo/yandex/v1.2.3/demo-v1.2.3.zip')&&releaseArtifactNameLooksVersioned('Release/demo/android/v1.2.3/demo-v1.2.3-debug.apk')&&releaseArtifactNameLooksVersioned('Release/demo/android/v1.2.3/demo-v1.2.3.aab')&&!releaseArtifactNameLooksVersioned('Release/demo/yandex/latest.zip')&&!releaseArtifactNameLooksVersioned('Release/demo/yandex/v1.2/demo-v1.2.zip')&&!releaseArtifactNameLooksVersioned('Release/demo/yandex/v1.2.3.4/demo-v1.2.3.4.zip')&&!releaseArtifactNameLooksVersioned('WorkProgress/demo-v1.2.3.zip'));
   test('phase 4 named decisions',()=>requiredDecisionKeysForPhase(4).has('phase4-target-frame')&&requiredDecisionKeysForPhase(4).has('phase4-style-bible'));
   test('phase 1 named STOP gates',()=>PHASE1_REQUIRED_DECISIONS.has('phase1-research-direction')&&PHASE1_REQUIRED_DECISIONS.has('phase1-brief')&&PHASE1_REQUIRED_DECISIONS.has('phase1-content-budget'));
   test('phase execution intent detector',()=>phaseExecutionRequestedByText('Прочитай FORGE.md и выполни Forge skill phase-1-analyze для текущего проекта ".".'));
@@ -5289,9 +5298,6 @@ if (REQUEST_DOCTOR) {
   test('direct completion rejects invented check strings',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['visual check passed'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
   test('direct completion accepts exact post-activation command',()=>{const old=verifierLedger;verifierLedger=new Map([['real',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T12:01:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===1;});
   test('direct completion rejects stale successful command',()=>{const old=verifierLedger;verifierLedger=new Map([['old',{status:0,command:'node scripts/playtest.mjs .',updatedAt:'2026-08-18T11:59:00Z'}]]);const matches=successfulDirectiveChecks(['node scripts/playtest.mjs .'],{activatedAt:'2026-08-18T12:00:00Z'});verifierLedger=old;return matches.length===0;});
-  test('Phase 8 rejects overwritten same-version ZIP names',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip','Release/demo/yandex/demo-v1.0.0-debug.zip','Release/demo/yandex/demo-v1.0.0-marketing.zip'];return !releaseVersionEvidenceFromPaths(old,new Set(old)).ok;});
-  test('Phase 8 accepts one complete newly named higher version',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip','Release/demo/yandex/demo-v1.0.0-debug.zip','Release/demo/yandex/demo-v1.0.0-marketing.zip'];const fresh=['Release/demo/yandex/demo-v1.0.1.zip','Release/demo/yandex/demo-v1.0.1-debug.zip','Release/demo/yandex/demo-v1.0.1-marketing.zip'];const result=releaseVersionEvidenceFromPaths([...old,...fresh],new Set(old));return result.ok&&result.version==='v1.0.1'&&result.paths.length===3;});
-  test('Phase 8 rejects incomplete new release trio',()=>{const old=['Release/demo/yandex/demo-v1.0.0.zip'];const fresh=['Release/demo/yandex/demo-v1.0.1.zip','Release/demo/yandex/demo-v1.0.1-debug.zip'];return !releaseVersionEvidenceFromPaths([...old,...fresh],new Set(old)).ok;});
   test('change request prompt keeps exact task and pauses release',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const x=directiveTaskPrompt('делай');activeDirective=old;return /добавь гачу/.test(x)&&/не запускай phase-state\/forge_gate\/release-\*/.test(x);});
   test('change request blocks release gate and phase-state',()=>{const old=activeDirective;activeDirective={request:'добавь гачу',pausedPhase:8};const a=directiveToolBlock('forge_gate',{phase:8});const b=directiveToolBlock('forge_script',{name:'phase-state.mjs',args:['start','8']});activeDirective=old;return Boolean(a)&&Boolean(b);});
   test('change request redirects canonical verifiers away from run_command',()=>{const old=activeDirective;activeDirective={request:'добавь гачу'};const blocked=directiveToolBlock('run_command',{command:'node WorkProgress/game/scripts/playtest.mjs .'});activeDirective=old;return /forge_script/.test(blocked||'');});

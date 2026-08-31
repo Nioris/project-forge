@@ -21,6 +21,7 @@ import { appendImageProvenance } from '../.claude/skills/status/references/image
 import { pngCrc32 } from '../.claude/skills/status/references/png-integrity.mjs';
 import { recordVisualReceipt } from '../.claude/skills/status/references/visual-receipts.mjs';
 import { screenInventorySha256 } from '../.claude/skills/status/references/screen-flow-contract.mjs';
+import { snapshotTree } from './godot-export-contract.mjs';
 
 const ROOT = process.cwd();
 const phaseState = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
@@ -924,12 +925,36 @@ func _draw():
   const p8 = path.join(tmp, 'phase-8-valid');
   write(p8, 'wiki/deploy-log.md', prose('Deploy log', 'release-ready TOTAL: 84 pass, 0 fail, 2 warn. Manual checklist recorded.'));
   write(p8, 'SETUP_GUIDE.md', prose('SETUP GUIDE', 'Upload archive and complete the manual Console checklist after GREEN.'));
-  for (const suffix of ['', '-debug', '-marketing']) writeBuffer(p8, `Release/demo/yandex/demo-v1.2.0${suffix}.zip`, zip());
+  write(p8, 'forge.targets.json', JSON.stringify({ schemaVersion: 1, kind: 'forge.target-selection', targets: ['yandex'] }));
+  const p8Candidate = 'Release/demo/yandex/v1.2.0/demo-v1.2.0.zip';
+  writeBuffer(p8, p8Candidate, zip());
+  const p8CandidateFile = path.join(p8, p8Candidate);
+  write(p8, 'Release/demo/yandex/v1.2.0/demo-v1.2.0.platform-release-receipt.json', JSON.stringify({
+    schemaVersion: 1,
+    kind: 'forge.platform-release-receipt',
+    target: 'yandex',
+    version: 'v1.2.0',
+    engine: 'web',
+    generatedAt: new Date().toISOString(),
+    sourceSnapshotSha256: snapshotTree(p8),
+    candidate: {
+      path: p8Candidate,
+      artifactFamily: 'web',
+      sha256: sha256File(p8CandidateFile),
+      bytes: fs.statSync(p8CandidateFile).size,
+    },
+    integrations: [{ id: 'yandex-games-sdk', status: 'passed', evidence: 'index.html init verifier PASS' }],
+    delivery: { status: 'verified', reference: p8Candidate, evidence: ['Yandex draft upload receipt fixture'] },
+    readiness: 'submit-ready',
+    blockers: [],
+  }));
   result = validatePhaseCompletion({ root: p8, phase: 8, evidence: ['wiki/deploy-log.md', 'SETUP_GUIDE.md'] });
-  check(result.ok, 'Phase 8 requires exact GREEN evidence and one complete release ZIP trio');
-  fs.rmSync(path.join(p8, 'Release', 'demo', 'yandex', 'demo-v1.2.0-marketing.zip'));
+  check(!result.ok
+    && result.platformVerification?.failures?.some(item => item.code === 'PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE'),
+  'Phase 8 fails closed when a hand-authored submit-ready receipt lacks an installed target-specific external verifier');
+  fs.rmSync(path.join(p8, 'Release', 'demo', 'yandex', 'v1.2.0', 'demo-v1.2.0.platform-release-receipt.json'));
   result = validatePhaseCompletion({ root: p8, phase: 8, evidence: ['wiki/deploy-log.md', 'SETUP_GUIDE.md'] });
-  check(!result.ok && result.failures.some(item => /ZIP trio/.test(item)), 'Phase 8 rejects an incomplete release variant set');
+  check(!result.ok && result.failures.some(item => /selected storefront|No platform release receipt/.test(item)), 'Phase 8 rejects a selected storefront without its matching receipt');
 
   const p9 = path.join(tmp, 'phase-9-valid');
   write(p9, 'wiki/metrics.md', prose('Live metrics', 'D7 plan 10% fact 9%. D30 plan 4% actual 3%. CTR and rating facts recorded.'));

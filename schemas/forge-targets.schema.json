@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/forge-targets.schema.json",
+  "title": "Project Forge target selection",
+  "description": "Explicit release storefront selection. A missing file means no targets are configured.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "targets"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.target-selection" },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["yandex", "vk", "telegram", "rustore", "google-play", "appgallery", "vkplay", "steam", "crazygames", "taptap"] }
+    }
+  }
+}

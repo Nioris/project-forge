@@ -1,4 +1,4 @@
-# Project Forge v4.68.71 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.72 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -285,6 +285,30 @@ New platforms touch: `platforms/{p}/` (4 files) + `.claude/skills/release-{p}/`,
 
 Without script-enforced check = drift guaranteed. Run before EVERY release.
 
+### 4a. Storefront release scope is explicit; engine and storefront are separate axes
+
+Before Phase 8, read the installed `adapters/platform-profiles.json` and require a valid, non-empty
+`forge.targets.json`. Canonical storefront IDs are exactly:
+
+| Scope | IDs |
+|---|---|
+| Primary | `yandex`, `vk`, `telegram`, `rustore`, `google-play`, `appgallery`, `vkplay`, `steam` |
+| Considering | `crazygames`, `taptap` |
+
+`ok`, `max`, and `web` are legacy compatibility settings only. They must never be written as target
+IDs or accepted as Phase 8 storefront evidence.
+
+Choose the engine and the storefront independently. The engine emits base Web, Android, and/or Windows
+artifacts; the target packager makes a separate candidate and receipt for every selected storefront.
+For Godot, use `build-godot-web-android.mjs` for Web/Android and `build-godot-release.mjs` for Windows,
+then `package-platform-release-matrix.mjs`. Use `build-all-platforms.mjs <project> --level local` to
+verify deterministic candidate evidence and `--level submit` to require actual external delivery.
+
+Never call a local build published. `local-verified` means only local candidate/source/hash checks;
+`external-blocked` records a missing account, ID, hosted URL, signing enrollment or uploader receipt;
+`submit-ready` requires every needed external receipt; `published` requires an immutable console/store
+receipt. Details live in `docs/PLATFORM-RELEASE-CONTRACTS.md`.
+
 ### 5. Encoding rules per file type
 
 Each shell parses encoding differently. Get this wrong и users get cryptic errors:
@@ -478,37 +502,14 @@ User approves the Phase 2 screen graph. Phase 4 generates GPT Image targets, cap
 and hash-binds pixels + reviewer evidence. <6/10 or Critical/Major blocks; CSS/DOM/console cannot substitute.
 See `wiki/decisions/035-evidence-bound-visual-acceptance.md`.
 
-### Adding new lessons — process
+### Adding lessons
 
-Each lesson gets a tier classification at logging time:
-
-```markdown
-### Lesson #N
-
-[lesson body]
-
-**Tier:** principle | pattern | incident
-**Action:** promote to Invariants | reference from {skill/ADR} | leave in changelog
-```
-
-- **Principle** — timeless rule, applies regardless of version. → promote к `🧭 ARCHITECTURAL INVARIANTS` section above. Stays forever.
-- **Pattern** — version-agnostic but specific enough для one skill/area. → reference from `.claude/skills/X/SKILL.md` или `wiki/decisions/`. Survives changelog rotation through that reference.
-- **Incident** — version-specific bug or workaround. → leave в changelog. May rotate to docs/CHANGELOG.md eventually. Cannot recur (technical fix exists).
-
-Audit cycle: every 5 new lessons (or per release), walk last 5 — promote misclassified, retroactively reference patterns, upgrade incidents that did recur.
+Classify lessons as `principle`, `pattern` or `incident`; promote, reference or retain them accordingly,
+then audit the last five each release.
 
 ---
 
-## v4.68.71 changelog (exact Godot debug bundle)
+## v4.68.72 changelog (storefront-aware release matrix)
 
-Godot's debug-only `<slug>.console.exe` wrapper is now required, hashed and receipt-bound. Builder and
-verifier enforce identical exact production/debug sets and reject incompatible wrapper preset modes.
-
-## v4.68.70 changelog (bounded slow Godot export)
-
-Godot Windows release export now uses a process-tree-bounded 10-minute ceiling. A timeout terminates the
-complete child tree and reports bounded stdout plus stderr context under a dedicated infrastructure code.
-
-## v4.68.69 changelog (native Godot Phase 6)
-
-Godot Phase 6 now validates native localization, signed capture/proof/review media, and byte-identical desktop store frames. Web requirements remain unchanged.
+`forge.targets.json` now drives immutable, hash-bound Web/Android/Windows candidates per storefront.
+Local packaging never overwrites; submit is read-only and requires real signing, runtime and delivery.

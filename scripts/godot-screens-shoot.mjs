@@ -106,22 +106,33 @@ try {
           `--forge-visual-height=${dimensions.height}`,
           `--forge-visual-settle-frames=${contract.capture.settleFrames}`,
         ];
-        commands.push(commandText(godot.command, args));
-        const run = runBounded(godot.command, args, {
-          cwd: isolated.isolatedProject,
-          timeoutMs: contract.capture.timeoutSeconds * 1000,
-          env: godotUserEnv,
-        });
-        const outputText = combinedOutput(run);
-        const protocol = parseMarkerLines(outputText, 'FORGE_VISUAL_PROTOCOL:');
-        const reported = parseMarkerLines(outputText, 'FORGE_VISUAL_STATE:');
-        const written = parseMarkerLines(outputText, 'FORGE_VISUAL_CAPTURED:');
-        const trustedProtocolSuccess = run.status === 0 && !run.timedOut && !run.error
-          && protocol.at(-1) === FORGE_GODOT_VISUAL_PROTOCOL
-          && reported.at(-1) === state.capture.adapterState
-          && normalizePath(written.at(-1)) === normalizePath(output);
-        const errors = godotErrorLines(outputText, { ignoreRootCertificateWarning: trustedProtocolSuccess });
-        const environment = isVisualEnvironmentFailure(run, outputText);
+        let run = null;
+        let outputText = '';
+        let protocol = [];
+        let reported = [];
+        let written = [];
+        let errors = [];
+        let environment = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          commands.push(commandText(godot.command, args));
+          run = runBounded(godot.command, args, {
+            cwd: isolated.isolatedProject,
+            timeoutMs: contract.capture.timeoutSeconds * 1000,
+            env: godotUserEnv,
+          });
+          outputText = combinedOutput(run);
+          protocol = parseMarkerLines(outputText, 'FORGE_VISUAL_PROTOCOL:');
+          reported = parseMarkerLines(outputText, 'FORGE_VISUAL_STATE:');
+          written = parseMarkerLines(outputText, 'FORGE_VISUAL_CAPTURED:');
+          const trustedProtocolSuccess = run.status === 0 && !run.timedOut && !run.error
+            && protocol.at(-1) === FORGE_GODOT_VISUAL_PROTOCOL
+            && reported.at(-1) === state.capture.adapterState
+            && normalizePath(written.at(-1)) === normalizePath(output);
+          errors = godotErrorLines(outputText, { ignoreRootCertificateWarning: trustedProtocolSuccess });
+          environment = isVisualEnvironmentFailure(run, outputText);
+          if (trustedProtocolSuccess && errors.length === 0) break;
+          if (environment) break;
+        }
         if (run.status !== 0 || errors.length || protocol.at(-1) !== FORGE_GODOT_VISUAL_PROTOCOL
           || reported.at(-1) !== state.capture.adapterState || normalizePath(written.at(-1)) !== normalizePath(output)) {
           const message = run.timedOut

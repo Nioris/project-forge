@@ -136,7 +136,8 @@ try {
     },
   });
   writeFileSync(join(godot, 'ForgePlaytestQA.gd'), readFileSync(join(ROOT, 'templates', 'godot', 'ForgePlaytestQA.gd')));
-  writeFileSync(join(godot, 'project.godot'), '[autoload]\nForgePlaytestQA="*res://ForgePlaytestQA.gd"\n\n[input]\nmove_left = {\n}\nmove_right = {\n}\n', 'utf8');
+  writeFileSync(join(godot, 'icon.svg'), '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>\n', 'utf8');
+  writeFileSync(join(godot, 'project.godot'), '[application]\nconfig/icon="res://icon.svg"\n\n[autoload]\nForgePlaytestQA="*res://ForgePlaytestQA.gd"\n\n[input]\nmove_left = {\n}\nmove_right = {\n}\n', 'utf8');
   writeJson(join(godot, '.forge-ai.json'), {});
   mkdirSync(join(godot, 'wiki', 'qa'), { recursive: true });
   writeFileSync(join(godot, 'wiki', 'qa', 'phase-5-tech.md'), `# Native tech\n${'verified native facts '.repeat(8)}\n`, 'utf8');
@@ -163,7 +164,7 @@ try {
   'Phase 7 executes the native two-process verifier and rejects a fixture without browser fallback');
 
   writeJson(join(godot, 'forge.godot.export.json'), { schemaVersion: 1, kind: 'forge.godot-export', preset: 'Windows Desktop', target: 'windows-x86_64' });
-  writeFileSync(join(godot, 'export_presets.cfg'), '[preset.0]\nname="Windows Desktop"\nplatform="Windows Desktop"\nrunnable=true\nbinary_format/architecture="x86_64"\n', 'utf8');
+  writeFileSync(join(godot, 'export_presets.cfg'), '[preset.0]\nname="Windows Desktop"\nplatform="Windows Desktop"\nrunnable=true\nbinary_format/architecture="x86_64"\ndebug/export_console_wrapper=1\n', 'utf8');
   writeFileSync(join(godot, 'wiki', 'deploy-log.md'), `# Deploy\nTOTAL: 1 pass, 0 fail\n${'native release evidence '.repeat(8)}\n`, 'utf8');
   writeFileSync(join(godot, 'SETUP_GUIDE.md'), `# Setup\n${'Windows desktop setup and manual verification. '.repeat(8)}\n`, 'utf8');
   const releaseDir = join(godot, 'Release', 'demo', 'godot', 'windows');

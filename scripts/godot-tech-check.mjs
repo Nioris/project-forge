@@ -49,6 +49,11 @@ function usableRenderer(proof) {
     && Number.isFinite(window?.width) && Number.isFinite(window?.height) && window.width > 0 && window.height > 0;
 }
 
+function diagnosticTail(output, limit = 12) {
+  const lines = String(output || '').split(/\r?\n/u).map(line => line.trim()).filter(Boolean);
+  return lines.slice(-limit).join(' | ').slice(0, 900) || 'no Godot output';
+}
+
 try {
   const contract = readGodotPlaytestContract(root);
   const tool = detectGodotVisualTool();
@@ -89,8 +94,8 @@ try {
   if (run.status !== 0 || run.timedOut || run.error || errors.length || !nativeReportExists) {
     const environment = isVisualEnvironmentFailure(run, output);
     fail('GODOT_TECH_RUNTIME', errors[0] || (environment
-      ? 'Godot visual environment is unavailable'
-      : 'native tech protocol did not complete'), environment);
+      ? `Godot visual environment is unavailable: ${diagnosticTail(output)}`
+      : `native tech protocol did not complete: ${diagnosticTail(output)}`), environment);
   }
 
   if (proofParseError || !proof) fail('GODOT_TECH_PROOF', 'native tech report is invalid JSON');

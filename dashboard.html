@@ -169,7 +169,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 <div class="header">
-  <h1>Project Forge <span>Dashboard · v4.68.71</span></h1>
+  <h1>Project Forge <span>Dashboard · v4.68.72</span></h1>
   <div class="header-actions">
     <select id="agentModeSelect" class="btn" onchange="setAgentMode(this.value)" title="Как показывать Forge-команды в подсказках: Claude slash skills или Codex $skills">
       <option value="claude">Claude Code</option>
@@ -228,7 +228,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="help-panel" id="helpPanel">
 
 <div class="help-section">
-  <button class="help-toggle" onclick="toggleSection(this)">⭐ Quick start (v4.68.71) — 3 команды на всё <span class="arrow">&#9654;</span></button>
+  <button class="help-toggle" onclick="toggleSection(this)">⭐ Quick start (v4.68.72) — 3 команды на всё <span class="arrow">&#9654;</span></button>
   <div class="help-content">
     <h4>Главные команды (используй их в 99% случаев)</h4>
     <div class="tip good">Переключатель в шапке меняет Forge-команды: Claude Code использует <code>/skill</code>, Codex — <code>$skill</code>. В Codex <code>/status</code>, <code>/plan</code>, <code>/review</code> — нативные команды Codex; Forge-варианты: <code>$status</code>, <code>$plan</code>, <code>$review</code>.</div>
@@ -288,17 +288,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="cmd-row"><span class="cmd-name">/convert</span><span class="cmd-desc">HTML5 → Android APK через Capacitor</span></div>
     <div class="cmd-row"><span class="cmd-name">/build-apk</span><span class="cmd-desc">Собрать APK (Capacitor уже настроен)</span></div>
     <div class="cmd-row"><span class="cmd-name">/twa-wrap</span><span class="cmd-desc">PWA → Android через Trusted Web Activity</span></div>
-    <h4>Сборка и релиз — все 7 платформ</h4>
-    <div class="cmd-row"><span class="cmd-name">/release-all</span><span class="cmd-desc">Сборка для всех 7 платформ через Agent Teams (parallel)</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-yandex</span><span class="cmd-desc">Яндекс Игры: SDK + 13 языков + vertical+horizontal+all ZIPs</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-vk</span><span class="cmd-desc">VK Mini Apps: Bridge integration + 3 validators</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-telegram</span><span class="cmd-desc">Telegram Mini App: WebApp + HTTPS + 5 validators + runtime test</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-ok</span><span class="cmd-desc">Одноклассники (OK.ru): API_callback + FAPI</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-max</span><span class="cmd-desc">MAX мессенджер: MaxSDK + 5 validators + URL ≤1024 chars</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-rustore</span><span class="cmd-desc">RuStore: AAB + Pay SDK + receipt validation + privacy</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-web</span><span class="cmd-desc">Self-hosted web: Dockerfile + nginx + Let's Encrypt</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-steam</span><span class="cmd-desc">Steam: Electron + steamworks.js → SteamPipe upload (Steam Direct fee $100)</span></div>
-    <div class="cmd-row"><span class="cmd-name">/release-vkplay</span><span class="cmd-desc">VK Play (vkplay.ru): iframe + signed auth + payment webhook (НЕ путать с /release-vk!)</span></div>
+    <h4>Сборка и релиз — выбранные storefront targets</h4>
+    <div class="cmd-row"><span class="cmd-name">/release-all</span><span class="cmd-desc">Собрать локальные кандидаты только для targets из forge.targets.json; production submit ждёт target-specific external verifier</span></div>
+    <div class="cmd-row"><span class="cmd-name">/phase-8-release</span><span class="cmd-desc">Проверить каждый выбранный target: local build не равен публикации; без external verifier Phase 8 остаётся на STOP внешней delivery</span></div>
+    <div class="cmd-row"><span class="cmd-name">/port</span><span class="cmd-desc">Подготовить один явно выбранный target без подмены движка или формата артефакта</span></div>
+    <div class="tip">Основные targets: Яндекс Игры, VK Mini Apps, Telegram Mini Apps, RuStore, Google Play, AppGallery, VK Play и Steam. CrazyGames и TapTap помечены как рассматриваемые. Точный список проекта хранится в <code>forge.targets.json</code>.</div>
+    <h4>Сборка и релиз — legacy adapters</h4>
+    <div class="cmd-row"><span class="cmd-name">/release-yandex</span><span class="cmd-desc">Исторический Yandex-specific маршрут с тремя ZIP; не заменяет общий target receipt</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-ok</span><span class="cmd-desc">Legacy compatibility: Одноклассники (OK.ru), не selectable storefront target</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-max</span><span class="cmd-desc">Legacy compatibility: MAX, не selectable storefront target</span></div>
+    <div class="cmd-row"><span class="cmd-name">/release-web</span><span class="cmd-desc">Legacy self-hosted Web route; не выбирает Яндекс/VK/Telegram/CrazyGames автоматически</span></div>
     <h4>Сборка и релиз — store-listing + метаданные</h4>
     <div class="cmd-row"><span class="cmd-name">/fill-yandex</span><span class="cmd-desc">Заполнить store listing для Яндекс Игр (description ≥120, screenshots, icon)</span></div>
     <div class="cmd-row"><span class="cmd-name">/fill-vk</span><span class="cmd-desc">Заполнить store listing для VK Mini Apps</span></div>
@@ -384,12 +383,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="tip good"><code>/release-ready &lt;platform&gt;</code> (v4.5+) - read-only checklist red/yellow/green per platform. Покажет конкретные blocker'ы и какие skills для фикса</div>
     <div class="tip">1. Аудит: "Сделай полный аудит на ошибки, фейковый функционал, утечки. Только отчёт."</div>
     <div class="tip">2. Исправления: "Исправь все критичные и важные из аудита"</div>
-    <div class="tip">3. <code>/release-ready</code> снова → когда GREEN → следующий шаг</div>
+    <div class="tip">3. <code>/release-ready</code> снова → когда GREEN → собрать локальный кандидат; Phase 8 всё равно ждёт target-specific external verifier</div>
 
     <h4>Сборка (статус "Сборка")</h4>
     <div class="tip">RuStore: <code>/convert</code> - спросит ключи, соберёт APK</div>
     <div class="tip">Яндекс Игры: <code>/release-yandex</code> - SDK + 13 языков + 3 билда</div>
-    <div class="tip"><code>/release-all</code> - все 7 платформ через Agent Teams parallel mode</div>
+    <div class="tip"><code>/release-all</code> — локальные кандидаты для явно выбранных targets из <code>forge.targets.json</code>; без target-specific external verifier публикация не подтверждается, а Phase 8 остаётся на STOP</div>
     <div class="tip">Web: <code>/deploy</code> - Docker + Nginx + SSL</div>
     <div class="tip warn">Без ключей можно собрать debug APK: "Собери debug APK без рекламы и аналитики"</div>
 
@@ -748,7 +747,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="modal-overlay hidden" id="modalOverlay"><div class="modal" id="modal"></div></div>
 <script>
 /* FORGE_META_START — generated by scripts/sync-dashboard-meta.mjs */
-var FORGE_META={"version":"4.68.71","canonicalSkills":145,"codexSkills":148,"routerSkills":3,"skillNames":["3d-perf","add-pipeline","advisor","analyze-game","analyze-project","anon-auth-sync","app","app-data-flow","app-data-model","app-notifications","app-onboarding-flow","app-permissions","app-search","app-settings","app-ux-polish","appmetrica-integration","art-direction","art-prompts","asset-generation","asset-library","asset-scan","audit-requirements","auto-release","autopilot","build-apk","bundle-libs","business-app-foundation","capacitor-wrap","choose-backend-stack","continue","convert","convert-all","credentials-check","debugcheck-enhance","deepen-game","deploy","design-pipeline","do","doc","education-foundation","fill-rustore","fill-steam","fill-vk","fill-vkplay","fill-yandex","finance-app-foundation","find-or-make-skill","find-skill","find-skills","fix-moderation","fix-ui","forge-diagnostics","forge-metrics","full-pipeline","gacha-meta","game","game-design","game-polish","game-tutorial","gameplay-balance","gate","godot-engine","grilling","handoff","health-app-foundation","i18n-foundation","image-studio","improve","info-hierarchy","layout-system","learn-sdk","level-design","localize","mcp-server","mobile-adapt","mobile-game-ui","mobile-ready","modularize-existing-project","monetization-design","monetization-strategy","multiplayer","mvp-to-yandex","mytracker","new-project","phase-1-analyze","phase-2-design","phase-3-construct","phase-4-visual","phase-5-tech","phase-6-listing","phase-7-test","phase-8-release","phase-9-live","pipeline","pixel-art","pixel-art-pipeline","plan","polish-app","port","procedural-geo","product-metrics","promo-screens","prompt-compiler","pwa-convert","rebuild","release-all","release-max","release-ok","release-ready","release-rustore","release-steam","release-telegram","release-vk","release-vkplay","release-web","release-yandex","reprocess","research-references","review","rustore-publish","saas-foundation","screen-flow","seasonal-event","server-detect","shader-fx","social-foundation","sound-design","start","status","steam-sdk-integration","store-creatives","store-listing","studio","subscription-design","team","test-game","three-setup","twa-wrap","ui-pipeline","ui-review","visual-qa","visual-style","visual-upgrade","vk-sdk-integration","vkplay-sdk-integration","write-skill","yandex-ads","yandex-sdk-integration"]};
+var FORGE_META={"version":"4.68.72","canonicalSkills":145,"codexSkills":148,"routerSkills":3,"skillNames":["3d-perf","add-pipeline","advisor","analyze-game","analyze-project","anon-auth-sync","app","app-data-flow","app-data-model","app-notifications","app-onboarding-flow","app-permissions","app-search","app-settings","app-ux-polish","appmetrica-integration","art-direction","art-prompts","asset-generation","asset-library","asset-scan","audit-requirements","auto-release","autopilot","build-apk","bundle-libs","business-app-foundation","capacitor-wrap","choose-backend-stack","continue","convert","convert-all","credentials-check","debugcheck-enhance","deepen-game","deploy","design-pipeline","do","doc","education-foundation","fill-rustore","fill-steam","fill-vk","fill-vkplay","fill-yandex","finance-app-foundation","find-or-make-skill","find-skill","find-skills","fix-moderation","fix-ui","forge-diagnostics","forge-metrics","full-pipeline","gacha-meta","game","game-design","game-polish","game-tutorial","gameplay-balance","gate","godot-engine","grilling","handoff","health-app-foundation","i18n-foundation","image-studio","improve","info-hierarchy","layout-system","learn-sdk","level-design","localize","mcp-server","mobile-adapt","mobile-game-ui","mobile-ready","modularize-existing-project","monetization-design","monetization-strategy","multiplayer","mvp-to-yandex","mytracker","new-project","phase-1-analyze","phase-2-design","phase-3-construct","phase-4-visual","phase-5-tech","phase-6-listing","phase-7-test","phase-8-release","phase-9-live","pipeline","pixel-art","pixel-art-pipeline","plan","polish-app","port","procedural-geo","product-metrics","promo-screens","prompt-compiler","pwa-convert","rebuild","release-all","release-max","release-ok","release-ready","release-rustore","release-steam","release-telegram","release-vk","release-vkplay","release-web","release-yandex","reprocess","research-references","review","rustore-publish","saas-foundation","screen-flow","seasonal-event","server-detect","shader-fx","social-foundation","sound-design","start","status","steam-sdk-integration","store-creatives","store-listing","studio","subscription-design","team","test-game","three-setup","twa-wrap","ui-pipeline","ui-review","visual-qa","visual-style","visual-upgrade","vk-sdk-integration","vkplay-sdk-integration","write-skill","yandex-ads","yandex-sdk-integration"]};
 /* FORGE_META_END */
 var FORGE_AGENT_MODE=localStorage.getItem('forge_agent_mode')||'claude';
 function setAgentMode(mode){
@@ -780,12 +779,16 @@ var STATUSES=[
 var PLATFORMS=[
   {id:'yandex',label:'Яндекс Игры',css:'badge-yandex'},
   {id:'rustore',label:'RuStore',css:'badge-rustore'},
+  {id:'google-play',label:'Google Play',css:'badge-rustore'},
+  {id:'appgallery',label:'AppGallery',css:'badge-rustore'},
   {id:'vk',label:'VK Mini Apps',css:'badge-vk'},
   {id:'telegram',label:'Telegram',css:'badge-telegram'},
   {id:'ok',label:'OK.ru',css:'badge-ok'},
   {id:'max',label:'MAX',css:'badge-max'},
   {id:'steam',label:'Steam',css:'badge-steam'},
   {id:'vkplay',label:'VK Play',css:'badge-vkplay'},
+  {id:'crazygames',label:'CrazyGames · тест',css:'badge-web'},
+  {id:'taptap',label:'TapTap · тест',css:'badge-rustore'},
   {id:'web',label:'Web',css:'badge-web'}
 ];
 var TYPES=[
@@ -821,9 +824,11 @@ var CONTROLS=[
 //   v4 (v4.7.x): + 'vkplay' platform ID (was missing)
 //   v5 (v4.9.5): + 'frozen' status; legacy normalizations point at real STATUSES enum
 //   v6 (v4.68.52): + engine; legacy/missing values default to stable web
+//   v7 (v4.68.72): + Google Play/AppGallery/CrazyGames/TapTap target IDs
 
-var SCHEMA_VERSION = 6;
-var KNOWN_PLATFORMS = ['yandex','vk','telegram','ok','max','rustore','web','steam','vkplay'];
+var SCHEMA_VERSION = 7;
+var KNOWN_PLATFORMS = ['yandex','vk','telegram','ok','max','rustore','google-play','appgallery','web','steam','vkplay','crazygames','taptap'];
+var FORGE_TARGET_PLATFORMS = ['yandex','vk','telegram','rustore','google-play','appgallery','vkplay','steam','crazygames','taptap'];
 var KNOWN_STATUSES = ['new','dev','polish','build','review','published','frozen'];
 var KNOWN_ENGINES = ['web','godot'];
 
@@ -1190,13 +1195,17 @@ function getInitPrompt(p){
   var specs=specsForPrompt(p);
   var platformContext='';
   if(p.platforms.indexOf('rustore')>=0)  platformContext+=' Целевая платформа: RuStore.';
+  if(p.platforms.indexOf('google-play')>=0) platformContext+=' Целевая платформа: Google Play.';
+  if(p.platforms.indexOf('appgallery')>=0) platformContext+=' Целевая платформа: Huawei AppGallery.';
   if(p.platforms.indexOf('yandex')>=0)   platformContext+=' Целевая платформа: Яндекс Игры.';
   if(p.platforms.indexOf('vk')>=0)       platformContext+=' Целевая платформа: VK Mini Apps.';
   if(p.platforms.indexOf('telegram')>=0) platformContext+=' Целевая платформа: Telegram Mini App.';
   if(p.platforms.indexOf('ok')>=0)       platformContext+=' Целевая платформа: OK.ru.';
   if(p.platforms.indexOf('max')>=0)      platformContext+=' Целевая платформа: MAX мессенджер.';
-  if(p.platforms.indexOf('steam')>=0)    platformContext+=' Целевая платформа: Steam (Electron + steamworks.js).';
-  if(p.platforms.indexOf('vkplay')>=0)   platformContext+=' Целевая платформа: VK Play (vkplay.ru).';
+  if(p.platforms.indexOf('steam')>=0)    platformContext+=' Целевая платформа: Steam desktop.';
+  if(p.platforms.indexOf('vkplay')>=0)   platformContext+=' Целевая платформа: VK Play desktop.';
+  if(p.platforms.indexOf('crazygames')>=0) platformContext+=' Рассматриваемая платформа: CrazyGames.';
+  if(p.platforms.indexOf('taptap')>=0) platformContext+=' Рассматриваемая платформа: TapTap mobile.';
   if(p.platforms.indexOf('web')>=0)      platformContext+=' Целевая платформа: Web деплой.';
 
   return orchestrator + '\n\nКонтекст: в папке src/ лежит ' + t + ' "' + p.name + '" — ' + desc + '.'
@@ -1232,7 +1241,7 @@ function getBuildPrompt(p){
   if(multi){
     return '/release-ready ' + platforms.join(' ')
       + '\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
-      + ' Когда все платформы зелёные — /release-all (Agent Teams parallel mode).';
+      + ' Когда все платформы зелёные — /release-all для локальных кандидатов; Phase 8 завершится только после target-specific external delivery verifier.';
   }
 
   if(platforms.indexOf('yandex')>=0){
@@ -1242,6 +1251,14 @@ function getBuildPrompt(p){
   if(platforms.indexOf('rustore')>=0){
     return '/release-ready rustore\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
       + ' Когда зелёное — /release-rustore (Pay SDK + receipt validation + privacy URL). Если ключей нет — /convert для debug APK.';
+  }
+  if(platforms.indexOf('google-play')>=0){
+    return '/release-ready google-play\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Нужен подписанный AAB, актуальный target API и Play App Signing; внешние данные кабинета не подменять локальным APK.';
+  }
+  if(platforms.indexOf('appgallery')>=0){
+    return '/release-ready appgallery\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Нужен подписанный APK/AAB и AppGallery Connect; отсутствие signing/account evidence оставить blocker-ом.';
   }
   if(platforms.indexOf('vk')>=0){
     return '/release-ready vk\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
@@ -1261,11 +1278,19 @@ function getBuildPrompt(p){
   }
   if(platforms.indexOf('steam')>=0){
     return '/release-ready steam\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
-      + ' Когда зелёное — /release-steam (Electron + steamworks.js → SteamPipe upload). Требуется Steam Direct fee $100 + Partner account.';
+      + ' Нужна desktop-сборка и SteamPipe depot receipt; App ID/Partner account остаются внешними prerequisites.';
   }
   if(platforms.indexOf('vkplay')>=0){
     return '/release-ready vkplay\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
-      + ' Когда зелёное — /release-vkplay (iframe + signed auth + payment webhook). НЕ путать с /release-vk (VK Mini Apps — другая платформа).';
+      + ' Нужна Windows-дистрибуция и проверка через test line/GameCenterUploader или bstool. НЕ путать с VK Mini Apps.';
+  }
+  if(platforms.indexOf('crazygames')>=0){
+    return '/release-ready crazygames\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Нужна HTML5-сборка, CrazyGames QA/SDK и touch для mobile placement; Basic и Full readiness показывать отдельно.';
+  }
+  if(platforms.indexOf('taptap')>=0){
+    return '/release-ready taptap\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
+      + ' Нужен подписанный APK (не AAB), неизменный package name и данные TapTap Developer Center.';
   }
   if(platforms.indexOf('web')>=0){
     return '/release-ready web\n\nКонтекст: ' + (p.description || p.name) + '.' + extra
@@ -1530,14 +1555,16 @@ function addProject(){
   var projectPathWin = d.path.replace(/\//g,'\\');
   var kind=d.type==='app'?'app':'game';
   var engine=d.engine||'web';
+  var selectedTargets=(d.platforms||[]).filter(function(id){return FORGE_TARGET_PLATFORMS.indexOf(id)>=0});
+  var targetArgs=selectedTargets.map(function(id){return ' --platform '+id}).join('');
   var claudeEntry=kind==='app'?'/app':'/phase-1-analyze .';
   var codexEntry=kind==='app'?'$app':'$phase-1-analyze .';
   var cmds='=== Создание проекта: '+d.name+' ('+kind+', engine: '+engine+') ===\n\n';
   cmds+='1. Создай проект и раздай единый Forge runtime:\n';
   cmds+='   cd '+forgePathWin+'\n';
-  cmds+='   ./new-project.bat '+slug+' --type '+kind+' --engine '+engine+'\n';
+  cmds+='   ./new-project.bat '+slug+' --type '+kind+' --engine '+engine+targetArgs+'\n';
   cmds+='   (каркас + skills + agents + hooks + AGENTS.md + FORGE.md + GitVerse rules + managed sync manifest)\n\n';
-  if(engine==='godot')cmds+='   Важно: Godot GDScript пока experimental, но native adapters Ф3–5, Ф7 и Windows Ф8 доступны. C#/Android остаются честными environment blockers; Web evidence не подменяет native.\n\n';
+  if(engine==='godot')cmds+='   Важно: Godot GDScript пока experimental. Фаза 8 обязана собрать формат каждой выбранной витрины; Windows/Web/Android не взаимозаменяемы.\n\n';
   cmds+='2. Положи исходники/прототип в GameIntegration:\n';
   cmds+='   '+projectPathWin+'\\GameIntegration\\\n\n';
   cmds+='3a. Claude Code:\n';
@@ -1566,10 +1593,10 @@ function addProject(){
   cmds+='   cd '+forgePathWin+'\n';
   cmds+='   ./sync.bat\n';
   cmds+='   (.forge-managed.json позволяет удалять устаревшие файлы Forge, не трогая пользовательские)';
-  showCommandsModal(d.name,cmds,slug,forgePath,kind,engine);
+  showCommandsModal(d.name,cmds,slug,forgePath,kind,engine,targetArgs);
 }
 
-function showCommandsModal(name,cmds,slug,forgePath,kind,engine){
+function showCommandsModal(name,cmds,slug,forgePath,kind,engine,targetArgs){
   var fp = forgePath || getForgePath() || 'F:/ProjectForgeUniversal/Project-forge';
   var fpWin = fp.replace(/\//g,'\\');
   document.getElementById('modal').innerHTML=''
@@ -1577,7 +1604,7 @@ function showCommandsModal(name,cmds,slug,forgePath,kind,engine){
     +'<p style="font-size:13px;color:var(--text2);margin-bottom:12px">Выполни эти команды чтобы создать проект на диске:</p>'
     +'<div style="background:var(--bg3);border-radius:8px;padding:14px;font-family:monospace;font-size:12px;color:var(--green);white-space:pre-wrap;line-height:1.6;margin-bottom:12px">'+cmds.replace(/</g,'&lt;')+'</div>'
     +'<div class="modal-actions">'
-    +'<button class="btn" onclick="copyCmd(\'cd '+fpWin+'; ./new-project.bat '+slug+' --type '+(kind||'game')+' --engine '+(engine||'web')+'\')">Копировать команду создания</button>'
+    +'<button class="btn" onclick="copyCmd(\'cd '+fpWin+'; ./new-project.bat '+slug+' --type '+(kind||'game')+' --engine '+(engine||'web')+(targetArgs||'')+'\')">Копировать команду создания</button>'
     +'<button class="btn btn-accent" onclick="closeModal()">Готово</button>'
     +'</div>';
   document.getElementById('modalOverlay').classList.remove('hidden');
@@ -1711,7 +1738,7 @@ render();
 /* ФАЗЫ КОНВЕЙЕРА — единый источник для кнопок копирования.
    ПРАВИЛО ДВИЖКА: при изменении фаз обновляй PH_DATA здесь же (drift-guard следит,
    что все phase-слаги из .claude/skills присутствуют в этом файле). */
-const PH_VER='v4.68.71';
+const PH_VER='v4.68.72';
 const PH_DATA=[
  {id:'phase-1-analyze',model:'Claude opus · Codex Sol H',hk:'1',name:'Ф1 Анализ+метрики',c:'/phase-1-analyze <папка>',x:'$phase-1-analyze <папка>',launch:'node ../project-forge/scripts/codex-phase.mjs 1 --cwd .'},
  {id:'phase-2-design',model:'Claude opus · Codex Sol H',hk:'2',name:'Ф2 Дизайн+монетизация',c:'/phase-2-design',x:'$phase-2-design',launch:'node ../project-forge/scripts/codex-phase.mjs 2 --cwd .'},

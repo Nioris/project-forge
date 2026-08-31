@@ -5,7 +5,9 @@
 
 ## Vision
 
-**Project Forge** — opinionated bootstrapper для multi-platform HTML5/PWA проектов с автоматическим release pipeline для 9 платформ (Yandex Games, VK Mini Apps, Telegram Mini App, OK.ru, MAX, RuStore, Web self-hosted, Steam, VK Play).
+**Project Forge** — opinionated bootstrapper для проектов с явной матрицей Web/Android/Windows-релизов.
+Канонические витрины: Yandex Games, VK Mini Apps, Telegram Mini Apps, RuStore, Google Play,
+AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как рассматриваемые цели.
 
 ### Кому нужно
 
@@ -32,11 +34,13 @@
 - **Hooks**: 9 .mjs файлов в `.claude/hooks/`
 - **Agents**: 21 canonical markdown roles в `.claude/agents/` + generated Codex TOML mirrors
 - **Knowledge base**: 61 SKILL.md в `./skills/` (referenced by command skills)
-- **Platforms**: 9 директорий в `platforms/` с validators + scripts + templates
+- **Storefront authority**: 10 профилей в `adapters/platform-profiles.json`; 9 старых директорий в
+  `platforms/` остаются compatibility-поверхностью и не определяют выбранную витрину проекта
 
 ## Features
 
-- **9 platforms** — yandex, vk, telegram, ok, max, rustore, web, steam, vkplay
+- **10 storefront targets** — yandex, vk, telegram, rustore, google-play, appgallery, vkplay, steam,
+  crazygames, taptap; `ok`, `max`, `web` остаются legacy adapters
 - **34 validators** — pre-submit gate per platform
 - **145 canonical skills + 3 Codex routers** — phase workflows, orchestrators and specialist sub-skills
 - **9 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous, phase-visual-claim-gate
@@ -45,12 +49,14 @@
 - **i18n foundation** — runtime ru+en architecture from day 1 (v4.7.6)
 - **Workspace discipline** — 3-folder enforcement (GameIntegration/WorkProgress/Release) (v4.7.7)
 - **Context-aware advisor** — reads wiki/ before formulating prompts (v4.7.5)
-- **Platform completeness audit** — 18 checks × 9 platforms = automated drift detection (v4.7.0)
+- **Storefront release contract** — engine artifact family + immutable per-target receipt + separate
+  `local`/`submit` verification; legacy completeness audit remains a compatibility check
 
 ## Current Status
 
-### Version: v4.68.71 (current source line)
+### Version: v4.68.72 (current source line)
 
+- 2026-08-30: **v4.68.72** — explicit storefront profiles, coherent Godot Web/Android/Windows bases, immutable per-target receipts and separate local/submit gates cover eight primary plus two evaluated platforms without claiming external publication.
 - 2026-08-30: **v4.68.71** — Godot debug ZIP now requires and hash-binds the standard `.console.exe` wrapper; builder and verifier enforce the same exact binary set before an engine-owned receipt may authorize release.
 - 2026-08-30: **v4.68.70** — Godot Windows export uses a process-tree-bounded 10-minute ceiling and reports dedicated actionable timeout diagnostics instead of hiding a killed cold start behind the engine banner.
 - 2026-08-30: **v4.68.69** — Phase 6 is engine-aware: Godot accepts native i18n and signed capture/proof/review media; web keeps promo-video rules.

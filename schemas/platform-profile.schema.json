@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/platform-profile.schema.json",
+  "title": "Project Forge platform profile registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "profiles"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.platform-profile-registry" },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["yandex", "vk", "telegram", "rustore", "google-play", "appgallery", "vkplay", "steam", "crazygames", "taptap"],
+      "properties": {
+        "yandex": { "$ref": "#/$defs/profile" },
+        "vk": { "$ref": "#/$defs/profile" },
+        "telegram": { "$ref": "#/$defs/profile" },
+        "rustore": { "$ref": "#/$defs/profile" },
+        "google-play": { "$ref": "#/$defs/profile" },
+        "appgallery": { "$ref": "#/$defs/profile" },
+        "vkplay": { "$ref": "#/$defs/profile" },
+        "steam": { "$ref": "#/$defs/profile" },
+        "crazygames": { "$ref": "#/$defs/profile" },
+        "taptap": { "$ref": "#/$defs/profile" }
+      }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "tier", "artifactFamily", "delivery", "artifactFormat", "compatibleEngines", "adapterStatus", "submitVerifier", "releasePathSegment", "requiredIntegrations", "externalPrerequisites", "officialDocs"],
+      "properties": {
+        "displayName": { "type": "string", "minLength": 1 },
+        "tier": { "enum": ["primary", "considering"] },
+        "artifactFamily": { "enum": ["web", "android", "windows"] },
+        "delivery": { "enum": ["upload", "hosted-url", "platform-uploader"] },
+        "artifactFormat": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "compatibleEngines": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["web", "godot"] } },
+        "adapterStatus": { "enum": ["implemented", "partial", "planned"] },
+        "submitVerifier": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "status"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]*$" },
+            "status": { "enum": ["unavailable", "implemented"] }
+          }
+        },
+        "releasePathSegment": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "requiredIntegrations": { "$ref": "#/$defs/stringList" },
+        "externalPrerequisites": { "$ref": "#/$defs/stringList" },
+        "officialDocs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "format": "uri", "pattern": "^https://" } }
+      }
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+    }
+  }
+}

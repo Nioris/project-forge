@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current source version:** `v4.68.71`
+**Current source version:** `v4.68.72`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -40,19 +40,39 @@ It provides:
 - platform integrations and release checks;
 - dashboard, fleet sync, upgrade and managed-file drift validation.
 
-## Release targets
+## Storefront release targets
 
-| Canonical ID | Platform |
+Storefront selection is explicit and is independent of the project engine. A Godot, HTML/JavaScript
+or future engine first makes a base Web, Android or Windows artifact; a target packager then creates
+and verifies the distinct storefront candidate. No single "universal ZIP" proves readiness for every
+store.
+
+The canonical storefront IDs are defined by `adapters/platform-profiles.json` and selected per project
+in `forge.targets.json`:
+
+| Release scope | Canonical IDs |
 |---|---|
-| `yandex` | Yandex Games |
-| `vk` | VK Mini Apps |
-| `telegram` | Telegram Mini App |
-| `ok` | OK.ru |
-| `max` | MAX messenger |
-| `rustore` | RuStore |
-| `web` | self-hosted HTTPS/PWA |
-| `steam` | Steam |
-| `vkplay` | VK Play |
+| Primary targets | `yandex`, `vk`, `telegram`, `rustore`, `google-play`, `appgallery`, `vkplay`, `steam` |
+| Considering / evaluated targets | `crazygames`, `taptap` |
+
+`ok`, `max` and `web` remain legacy compatibility choices for existing projects and dashboard state;
+they are **not** IDs permitted in `forge.targets.json` and must not be treated as storefront evidence.
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "forge.target-selection",
+  "targets": ["yandex", "steam"]
+}
+```
+
+For Godot projects, build one immutable version with `build-godot-web-android.mjs` (Web/Android) and
+`build-godot-release.mjs` (Windows), then run `build-all-platforms.mjs --level local`. The coordinator
+reads only `forge.targets.json`, creates a missing per-storefront matrix from one coherent base set and
+verifies every hash-bound receipt. It never overwrites an existing version. `--level submit` is
+read-only and passes only after actual signing, console/hosting/uploader evidence; a release is never
+called published without an immutable platform receipt. See
+[the storefront contract](docs/PLATFORM-RELEASE-CONTRACTS.md).
 
 ## The 9 phases
 
@@ -218,7 +238,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.71` keeps separate normal-account and API profiles.
+`v4.68.72` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -410,7 +430,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.71.md](RELEASE_NOTES_v4.68.71.md) — current release notes
+- [RELEASE_NOTES_v4.68.72.md](RELEASE_NOTES_v4.68.72.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

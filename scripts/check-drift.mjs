@@ -157,8 +157,8 @@ safe('release-versioning', () => {
   if(/unlinkSync\(zipPath\)/.test(source)) err('Yandex builder can still unlink/overwrite an existing ZIP path');
   else if(!/Refusing to overwrite existing release artifact/.test(source)) err('Yandex builder has no explicit immutable ZIP-path guard');
   else if(!/build-history\.json/.test(source)) err('Yandex builder does not persist build-history.json');
-  else if(!/newly named ZIP artifacts/.test(adapter)) err('GigaChat Phase 8 gate does not require newly named ZIP artifacts');
-  else ok.push('Yandex builds auto-increment versions, preserve old ZIPs, and Phase 8 requires a newly named trio');
+  else if(!/releaseArtifactNameLooksVersioned/.test(adapter) || !/phase8FreshArtifactBlockers/.test(adapter) || !/zip\|apk\|aab/.test(adapter)) err('GigaChat Phase 8 gate does not require fresh SemVer-named ZIP/APK/AAB artifacts');
+  else ok.push('Yandex builds preserve immutable history and Phase 8 requires fresh SemVer-named ZIP/APK/AAB candidates');
 });
 
 safe('forge-package-cli', () => {
@@ -371,6 +371,58 @@ safe('godot-immutable-release', () => {
     err('Godot immutable release regression failed — run scripts/check-godot-release.mjs');
   } else {
     ok.push('Godot release requires immutable versions, safe ZIPs and an engine-owned build receipt');
+  }
+});
+
+safe('godot-web-android-local-release', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-godot-web-android.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60_000,
+  });
+  if (r.status !== 0) {
+    err('Godot Web/Android local release regression failed — run scripts/check-godot-web-android.mjs');
+  } else {
+    ok.push('Godot Web/Android lane keeps isolated, immutable and explicitly local/debug artifacts');
+  }
+});
+
+safe('storefront-platform-profiles', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-platform-profile.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60_000,
+  });
+  if (r.status !== 0) {
+    err('Storefront profile regression failed — run scripts/check-platform-profile.mjs');
+  } else {
+    ok.push('ten exact storefront IDs share one validated engine-aware target registry');
+  }
+});
+
+safe('storefront-release-receipts', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-platform-release-verify.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60_000,
+  });
+  if (r.status !== 0) {
+    err('Storefront receipt verifier regression failed — run scripts/check-platform-release-verify.mjs');
+  } else {
+    ok.push('target receipts separate local candidates from submit-ready delivery evidence');
+  }
+});
+
+safe('storefront-release-packager', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-package-platform-release-matrix.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60_000,
+  });
+  if (r.status !== 0) {
+    err('Storefront matrix packager regression failed — run scripts/check-package-platform-release-matrix.mjs');
+  } else {
+    ok.push('base Web/Android/Windows artifacts become immutable target-specific candidates');
   }
 });
 

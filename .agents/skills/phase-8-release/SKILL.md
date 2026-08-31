@@ -1,7 +1,7 @@
 ---
 name: phase-8-release
 kind: architectural
-description: "Фаза 8 — релиз: проходит ВСЮ фазу конвейера одной командой, вызывая под-скилы по порядку с их гейтами и stop-points."
+description: "Фаза 8 — выпуск по явно выбранным storefront targets: проверяет target manifest, локальные кандидаты и external delivery boundary. До установленного target-specific verifier фаза…"
 contract_version: 1
 phases:
   - 8
@@ -14,6 +14,7 @@ reads:
   - "**"
 writes:
   - Release/**
+  - forge.targets.json
   - forge.godot.export.json
   - qa/**
   - StoreData/**
@@ -24,115 +25,127 @@ verifiers: []
 stop_points: []
 risk_shell: write
 risk_external: write
-references: []
+references:
+  - references/platform-release-contracts.md
 completion_contract: status/references/phase-contracts/phase-8.json
 ---
-# $phase-8-release — до GREEN и сборка
+# $phase-8-release — target release contract
 
-## 🧭 Phase state marker (v4.67.1+)
+Фаза 8 выпускает **явно выбранные storefront targets**, а не «универсальный билд». Движок
+и storefront — ортогональные оси: Web, Godot или будущий engine adapter производит кандидата;
+target profile задаёт семейство артефакта, SDK/integrations, доставку и внешние условия.
+Полный договор: [Platform release contracts](references/platform-release-contracts.md).
 
-На входе в фазу **обязательно** зафиксируй machine state:
+## Phase state marker
+
+На входе зафиксируй состояние:
 
 ```bash
 node .claude/skills/status/references/phase-state.mjs start 8
 ```
 
-Только после всех штатных gate/проверок и обязательных решений пользователя отметь выход фазы:
+Marker и legacy Phase-8 ZIP evidence — только дополнительная историческая совместимость. Они не
+угадывают target, не доказывают готовность другого магазина и не заменяют target verifier.
+Не вызывай `complete`, не имея submit-level доказательств по каждому выбранному target,
+проверенных установленным target-specific external verifier. Локальная квитанция, HMAC, URL или
+ручное поле `submit-ready` не являются такой проверкой.
+
+## 1. Обязательный выбор targets
+
+В корне проекта **обязателен** `forge.targets.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "forge.target-selection",
+  "targets": ["yandex", "steam"]
+}
+```
+
+IDs берутся только из установленного `adapters/platform-profiles.json`; не выводи targets из
+папок `Release/`, названия игры или привычного «Yandex-first» маршрута. До любой сборки проверь
+manifest через `node scripts/platform-profile.mjs check <project-root>`. Отсутствующий, пустой,
+неизвестный или дублированный target — blocker, а не повод выбрать default.
+
+Для каждого profile сначала сверяй `compatibleEngines`, `artifactFamily`, `artifactFormat`,
+`delivery`, `requiredIntegrations`, `externalPrerequisites`, `officialDocs` и `adapterStatus`.
+`partial`/`planned` не обещают автоматической сборки или подачи: выполни только существующий
+target adapter либо оставь конкретный blocker с владельцем/недостающим внешним условием.
+
+## 2. Локальный выпуск (local-verified)
+
+Сначала создай одну неизменяемую базовую версию для всех требуемых профилями семейств артефактов.
+Затем local-координатор создаст отсутствующий отдельный candidate и
+`forge.platform-release-receipt` для каждого target. Receipt привязывает target, версию, engine,
+source snapshot, SHA-256/размер кандидата, integrations, delivery, readiness и blockers. Все
+выбранные targets должны иметь одну актуальную версию; retained старые версии не являются
+доказательством текущего выпуска.
+
+После базовой сборки запусти:
+
+```bash
+node scripts/build-all-platforms.mjs <project-root> --level local --json
+```
+
+Если storefront-матрицы текущей версии ещё нет, команда выбирает один latest coherent base set и
+вызывает канонический упаковщик. Она не угадывает slug, не смешивает source snapshots и не
+перезаписывает существующую версию; stale/incomplete matrix требует новой версии. `local` доказывает
+целостность кандидата, актуальность исходников, совпадение engine/family/format с registry и по одному
+receipt для каждого target. Он **не** доказывает upload, HTTPS deployment,
+аккаунт, app/bot ID, signing enrollment, credentials или модерацию. В этом состоянии допустим
+`external-blocked`, но blockers должны быть непустыми, конкретными и отражёнными в receipt/wiki.
+
+Yandex может требовать свой production/debug/marketing ZIP trio и `release-yandex` verifier;
+это правило исключительно Yandex route. APK/AAB, hosted URL, SteamPipe depot, VK Play distribution
+и Windows archive не подменяются этим trio.
+
+## 3. Подача (submit-ready) и обязательный STOP
+
+Подача отделена от локальной сборки. После реальной target-specific delivery и всех требуемых
+external evidence обнови receipt честными фактами и проверь:
+
+```bash
+node scripts/build-all-platforms.mjs <project-root> --level submit --json
+```
+
+`submit` ничего не упаковывает и не загружает. Пока для target не установлен его
+**target-specific external verifier/uploader adapter**, submit-level verifier намеренно возвращает
+`PLATFORM_RELEASE_TRUST_ADAPTER_UNAVAILABLE`. Это обязательный STOP Phase 8: локальный
+адаптер реализован только для создания и проверки кандидата, не для подтверждения внешней delivery.
+
+Когда такой verifier установлен, он обязан сам подтвердить target-appropriate факты: hosted target —
+реальный HTTPS deployment, Android — production signature/certificate hash и console/upload,
+Windows — uploader/store receipt. Он также требует `readiness: submit-ready` (или `published`),
+verified delivery, пустой список blockers и `passed` для всех registry-required integrations.
+Generic HMAC, локальный receipt, URL или строка `delivery.evidence` не обладают authority и не могут
+снять STOP. Android Debug certificate — blocker. До реальной внешней подготовки и verifier PASS
+receipt остаётся `external-blocked`, а Phase 8 не завершается.
+
+`published` разрешено заявлять только по неизменяемому receipt платформы/консоли. `submit-ready`
+не означает approval модерации.
+
+## Engine lanes
+
+`phase-state.mjs start 8` reads the root `forge.engine.json` and records `engineRuntime`; continue
+only when its `releaseExport` capability is available. Engine capability определяет только способ получить и доказать кандидат. При Godot GDScript перед
+релизом прочитай [Godot native contract](../godot-engine/references/godot-test-release.md): его
+playtest/export receipt обязателен для native lane, но Windows export сам по себе не выбирает Steam,
+VK Play или любой другой storefront. Unsupported engine capability — infrastructure blocker; browser
+evidence нельзя выдавать за native evidence и наоборот.
+
+## Provenance, security and closeout
+
+- Generated assets: prompt/provenance + review либо явно sourced; secrets, debug dumps и private refs
+  не входят в кандидат.
+- Открытые Critical/Major из visual QA и реальные security findings блокируют **затронутый** submit.
+- `$forge-metrics`: неизвестная provider/store стоимость остаётся `unknown`, не `$0` и не FAIL.
+- В `wiki/deploy-log.md`/release task запиши exact verifier result, target, version, receipt path,
+  readiness и каждый внешний blocker/owner. Не заменяй вывод проверок заявлением агента.
+
+После `submit` PASS для полного manifest и выполнения phase completion contract заверши marker:
 
 ```bash
 node .claude/skills/status/references/phase-state.mjs complete 8 wiki/deploy-log.md SETUP_GUIDE.md
 ```
 
-Marker не заменяет evidence и не разрешает перескочить STOP-point. `$status` использует его как
-machine-readable progression state, а сами артефакты остаются доказательством результата.
-`complete` сам ищет в `Release/` непустую production/debug/marketing тройку одной версии и точную
-строку `TOTAL: N pass, 0 fail` в deploy/plan evidence. Для Godot дополнительно запускается независимая
-проверка ZIP, EXE/PCK, хешей, current source, export preset и Phase 4 receipts.
-
-
-**Модели:** Claude `sonnet`, отказ модерации — `opus`. Codex base
-`gpt-5.6-sol/medium`; routes `gate-failure` и `moderation-rejection` → Sol/high.
-Штатная упаковка остаётся на medium, потому что GREEN определяют verifier-скрипты.
-Канон: `status/references/model-policy.json`.
-
-
-## Engine release preflight
-
-`phase-state.mjs start 8` читает корневой `forge.engine.json`. Продолжай только при
-`engineRuntime.capabilities.releaseExport=true`. Web/Yandex ZIP нельзя выдать за Godot release,
-а Godot EXE/PCK не закрывают Web store route.
-
-**Web/Yandex route (без изменений):**
-
-0a. Гейт Яндекса (техгейт §1.14, автоматический с их стороны): игра ОБЯЗАНА быть запущена
-   в режиме черновика до отправки — заливка и прогон чекера на черновике закрывают это;
-   в MANUAL-чеклист добавляй строку «черновик запускался: дата».
-0. Гейт входа: `node scripts/check-setup-guide.mjs <игра>` — SETUP_GUIDE.md существует и полон
-   (верификатор есть в движке, теперь он ОБЯЗАТЕЛЕН перед релизом). Нет → сначала $fill-yandex.
-1. `$release-ready yandex` — и ФАЗА СДАЁТСЯ АРТЕФАКТОМ: строка `TOTAL: X pass, Y fail, Z warn`
-   из финального прогона копируется в wiki/plan/ (таск релиза) ДОСЛОВНО. Y fail ≠ 0 → фаза не
-   пройдена, слова «прошли проверку» без этой строки не принимаются (полевой кейс: билд с 16
-   статическими FAIL был залит после «пройденной» фазы 8 — GREEN был заявлением, не фактом). — гонять до GREEN (каждый пункт = вывод команды; «не запустилось» ≠
-   «пройдено»); фиксы между прогонами.
-2. GREEN → `$release-yandex` — 3 zip + чек-лист Консоли. Каждый build создаёт НОВУЮ
-   версию через `node scripts/build-yandex-3zips.mjs {Game} --root .`; повторное имя ZIP
-   и перезапись предыдущей версии запрещены. Гейт принимает только новый комплект
-   production/debug/marketing одной версии, которой не было на старте Фазы 8.
-3. Вывести MANUAL-чеклист «Проверь сам» — он на человеке.
-
-**Godot Windows desktop route (GDScript):**
-
-Перед сборкой прочитай общий native contract:
-[../godot-engine/references/godot-test-release.md](../godot-engine/references/godot-test-release.md).
-
-1. Добавь корневой `forge.godot.export.json` ровно для preset `Windows Desktop` и target
-   `windows-x86_64`; в `export_presets.cfg` должен существовать preset с тем же именем, явным
-   `binary_format/architecture="x86_64"`, отдельным PCK, debug-only console wrapper (default или
-   `debug/export_console_wrapper=1`) и без credential values. Matching export
-   templates обязательны.
-2. Сначала получи `TOTAL: N pass, 0 fail` и запиши его в `wiki/deploy-log.md`. Текущая Фаза 4
-   должна по-прежнему проходить trusted capture/proof/review gate.
-3. Запусти `node <Forge>/scripts/build-godot-release.mjs <slug> --root . --json`. Экспорт выполняется
-   только из изолированной копии через Godot `--headless --export-release/--export-debug`; gameplay
-   проверки headless не используют.
-4. Каждый успешный запуск автоматически создаёт новую patch-версию в
-   `Release/<slug>/godot/windows/<vN.N.N>/`: production ZIP (EXE+PCK), debug ZIP
-   (debug EXE+console.exe+PCK), marketing ZIP (только текущее Phase 4 evidence/media) и внешний release manifest. Вся папка версии
-   публикуется одним rename; старые версии не перезаписываются.
-5. Реальный builder создаёт подписанную engine-owned build receipt вне проекта. Запусти
-   `node <Forge>/scripts/godot-release-verify.mjs . --json`: verifier читает ZIP без распаковки на диск,
-   сверяет receipt, хеши/состав/current source/preset/export flags/Phase 4 binding и запрещает test exporter.
-
-Godot C# и подпись Windows пока не выдаются за готовые: это последующие environment-specific lanes.
-Официальные CLI/export требования:
-https://docs.godotengine.org/en/stable/tutorials/export/exporting_projects.html
-
-Следующая фаза: `$phase-9-live`
-
-
-## 🎛️ AI STUDIO 4.67 — release provenance gate
-
-Перед упаковкой:
-- generated gameplay/store assets имеют prompt pack + provenance/art review либо явно помечены как sourced;
-- `.openai_key`, `.elevenlabs_key`, `.pixellab_key`, prompt debug dumps и private refs не попадают в release;
-- approved assets реально присутствуют в build, а `candidates/` не тащатся туда случайно;
-- `$visual-qa` Ф7 не имеет открытых Critical/Major для release flow.
-
-Агентный security/moderation review может идти параллельно, но GREEN определяется только реальными verifiers.
-
-## 📐 Release telemetry
-
-Phase state автоматически обновляет `.forge/metrics/latest.json`, а успешный Phase 8 создаёт карточку
-релиза. Перед финальной сводкой загрузи `$forge-metrics` и покажи coverage: неизвестная стоимость API
-или ещё не полученная модерация должны остаться `unknown`, не `$0`/FAIL. Внешний provider/store факт
-записывается только bounded-командой `scripts/forge-metrics.mjs event ...`.
-
-## Правила фазы (общие)
-- Каждый под-скил сохраняет свои гейты (game-design жёстко стоит без metrics.md и т.д.) — фаза их НЕ обходит.
-- Между шагами: короткая сверка «что сделано» фактом (файл/греп), не заявлением.
-- В конце фазы: сводка (что создано, что требует твоего решения) + команда СЛЕДУЮЩЕЙ фазы.
-- Финал: wiki/_map.md + запись в sessions + node scripts/check-drift.mjs (для движковых правок).
-
-## Перед подачей — проверка секретов
-Если в игре есть бэкенд/платежи/ключи — прогони агента `security-auditor`: ключи и секреты
-в билде, открытые эндпоинты, валидация покупок на сервере. Находки = блокеры подачи.
+Следующая фаза: `$phase-9-live`.

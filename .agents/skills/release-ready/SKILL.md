@@ -10,7 +10,12 @@ description: "Pre-release readiness orchestrator. Runs all per-platform fill-* a
 
 ## Purpose
 
-Before running `/release <platform>` or `/release all`, run this skill to verify ALL prerequisites are in place. It doesn't build anything — it just checks. Output is a red/yellow/green report per platform.
+Before running `$release-all`, run this skill to verify prerequisites for the explicitly selected
+targets in `forge.targets.json`. It doesn't build or publish anything — it produces a
+red/yellow/green report per selected target. The canonical target receipt verifier remains the
+authority for `local` versus `submit` readiness. GREEN here never bypasses Phase 8: until an
+installed target-specific external verifier validates real delivery, canonical submit stays
+`PLATFORM_RELEASE_EXTERNAL_VERIFIER_UNAVAILABLE`.
 
 Goal: eliminate the "oh I forgot the store listing" / "oh the keystore isn't here" / "oh localization is 50% done" surprises that happen AT release time and cost real days.
 
@@ -20,11 +25,12 @@ Goal: eliminate the "oh I forgot the store listing" / "oh the keystore isn't her
 
 - `$release-ready yandex` — check yandex only
 - `$release-ready yandex vk` — check two
-- `$release-ready all` — check all 7 platforms that have WorkProgress dirs
+- `$release-ready all` — check every target explicitly selected in `forge.targets.json`
 - `$release-ready rustore --soft` — documents+assets only (no APK build required) — useful BEFORE wrapper exists
 - `$release-ready rustore --hard` — full check including APK + AppMetrica + RuStore SDK validation
 
-If no argument — check all platforms that have a `WorkProgress/{Project}-<platform>/` directory.
+If no argument — check every target explicitly selected in `forge.targets.json`. Missing or empty
+target selection is a blocker; never infer targets from `WorkProgress/` or `Release/` folders.
 
 ### Soft vs Hard mode (v4.10.29+)
 
@@ -56,13 +62,14 @@ For each platform, the following checks run. Each returns RED (blocker), YELLOW 
 
 | Check | Blocker criteria |
 |---|---|
-| WorkProgress dir exists | `WorkProgress/{Project}-<platform>/` present |
-| SDK wrapper integrated | Platform-specific SDK script loaded in index.html |
+| Target selected | Target is present in root `forge.targets.json`; legacy `WorkProgress/` folders never select a storefront |
+| Local candidate + receipt | Current SemVer candidate and `forge.platform-release-receipt` exist for the selected target |
+| SDK wrapper integrated | Every `requiredIntegrations` entry from the installed target profile has target-specific runtime evidence; Web-only checks do not substitute native evidence |
 | Debug code not in production | No `debugcheck.js`, `cheats-base.js`, `?debug=1` accessible |
 | Localization coverage | Platform-required languages present (Yandex needs 13, others optional) |
 | No console.log left | Grep for `console.log\|console.debug` — should be near-zero |
-| index.html entry exists | `WorkProgress/{Project}-<platform>/index.html` present |
-| **Runtime test passes (MANDATORY)** | For **Yandex**: `node platforms/yandex/scripts/runtime-test.mjs WorkProgress/{Project}-yandex/` exit 0 — this copy has Probe A (REQ-4.4 ad-gesture), Probe C (lang), Probe D (pause), **Probe E (REQ-1.19.2 ready-timing, un-gameable)**, **Probe F (REQ-1.10.1 multi-viewport overflow)**, **Probe G (REQ-1.10.3 UI-over-canvas overlap)**. For other platforms: `node platforms/<p>/scripts/runtime-test.mjs` (or `scripts/runtime-test.mjs` for the generic behavioral test). ⚠️ Do NOT use the generic `scripts/runtime-test.mjs` for a Yandex release — it lacks Probe A/E and will silently miss 4.4 and 1.19 (the genetic-lab/samogonshchik miss). |
+| Web entry exists | Web-family candidate has root `index.html`; this check is N/A for Android and Windows families |
+| **Runtime test passes (MANDATORY)** | Use the engine-appropriate trusted runtime verifier. For **Yandex Web**, additionally run `platforms/yandex/scripts/runtime-test.mjs` with Probe A/E/F/G. Godot native targets require native playtest/release evidence; a browser run cannot substitute it. |
 | **Store listing schema valid (MANDATORY for stores with listings)** | `node scripts/check-store-listing.mjs StoreData/` exit 0 — all store-listing-{lang}.json files conform to canonical schema, no forbidden fields, all required fields present |
 | **SETUP_GUIDE valid (MANDATORY for Yandex)** | `node scripts/check-setup-guide.mjs <yandex-release-dir>/` exit 0 — all 17 sections present, no placeholders, no invalid tags/categories, references reference/ data, consistent with store-listing JSON |
 | **AppMetrica integration valid (MANDATORY for RuStore hard mode)** | `node scripts/check-appmetrica.mjs platforms/rustore/` exit 0 — `mobmetricalib` dependency, API key UUID (not placeholder), manifest meta-data + permissions, `AppMetrica.activate()` + `enableActivityAutoTracking()` calls present. RuStore featured consideration requires analytics. |
@@ -243,7 +250,8 @@ Even on a GREEN automated result, print:
   □ Облачные сохранения отмечены в черновике, если используются (1.11)
   □ Покупки убраны из черновика, если кода покупок нет (1.13)
 ```
-GREEN means "all AUTO checks pass" — it never means the MANUAL list is done. State this explicitly.
+GREEN means "all AUTO checks pass" — it never means the MANUAL list is done, submission is possible,
+or Phase 8 may complete. State this explicitly.
 
 ### Step 4: Aggregate all-platform summary
 
@@ -267,8 +275,8 @@ If checking multiple platforms, end with:
   Recommended order:
     1. Fix RED blockers (yandex store listing, max legal entity)
     2. Re-run $release-ready yandex max
-    3. Ship GREEN platforms via /release all
-    4. Ship YELLOW platforms with explicit acknowledgment of warnings
+    3. Build local candidates for GREEN platforms via $release-all
+    4. Keep Phase 8 on STOP until each selected target has an installed external delivery verifier
 ═══════════════════════════════════════
 ```
 
@@ -308,8 +316,9 @@ For YELLOW warnings, explain what the warning is about and what the user's optio
 
 - `$gate <platform>` — runs JUST the pre-submit validators, no extra checks
 - `$fill-yandex`, `$fill-vk`, `$fill-rustore` — store listing helpers (what release-ready tells user to run when listing is incomplete)
-- `/release <platform>` — actual build (what to run AFTER release-ready is GREEN)
-- `/release all` — multi-platform build (after release-ready shows all GREEN)
+- `/release <platform>` — historical/local build route; GREEN does not authorize submission
+- `/release all` — historical multi-platform local build route; canonical Phase 8 remains blocked
+  until a target-specific external delivery verifier is installed
 - `$credentials-check` — deeper security audit (keystore, API keys, env vars)
 
 ## When to use vs alternatives
@@ -324,5 +333,5 @@ Use `$gate <platform>` when:
 - You're iterating on code fixes and want fast feedback
 
 Use `/release <platform>` directly when:
-- You've already run `$release-ready` and got GREEN
-- Or you're in a rush and willing to catch blockers at build time
+- You need a local candidate after `$release-ready` GREEN
+- You understand it does not authorize upload, submission or Phase 8 completion

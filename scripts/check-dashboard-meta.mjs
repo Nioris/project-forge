@@ -37,11 +37,16 @@ if (!dash.includes('./new-project.bat ')) fail('dashboard project wizard still l
 if (!dash.includes("var ENGINES=[") || !dash.includes("{id:'web',label:'Web / HTML5'") || !dash.includes("{id:'godot',label:'Godot 4 · эксперимент'")) {
   fail('dashboard lacks the stable web / experimental Godot engine registry');
 }
-if (!dash.includes('var SCHEMA_VERSION = 6;') || !dash.includes("if (KNOWN_ENGINES.indexOf(p.engine) < 0) { p.engine = 'web'")) {
+if (!dash.includes('var SCHEMA_VERSION = 7;') || !dash.includes("if (KNOWN_ENGINES.indexOf(p.engine) < 0) { p.engine = 'web'")) {
   fail('dashboard does not migrate legacy projects to engine=web');
 }
 if (!dash.includes('data-group="engine"') || !dash.includes("--engine '+engine")) {
   fail('dashboard project wizard does not select/pass the engine profile');
+}
+if (!dash.includes('var FORGE_TARGET_PLATFORMS =') || !dash.includes("return ' --platform '+id")
+  || !dash.includes("{id:'google-play'") || !dash.includes("{id:'appgallery'")
+  || !dash.includes("{id:'crazygames'") || !dash.includes("{id:'taptap'")) {
+  fail('dashboard project wizard does not persist the complete storefront target selection');
 }
 if (!dash.includes("if(d.type==='app'&&d.engine==='godot')")) {
   fail('dashboard does not reject app + Godot');
