@@ -1,4 +1,4 @@
-# Project Forge v4.68.72 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.73 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -509,7 +509,10 @@ then audit the last five each release.
 
 ---
 
+## v4.68.73 changelog (package-safe fixtures)
+
+Installed-package Godot fixture regression now passes.
+
 ## v4.68.72 changelog (storefront-aware release matrix)
 
-`forge.targets.json` now drives immutable, hash-bound Web/Android/Windows candidates per storefront.
-Local packaging never overwrites; submit is read-only and requires real signing, runtime and delivery.
+`forge.targets.json` drives immutable storefront candidates; submit requires real external evidence.

@@ -54,8 +54,9 @@ AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как расс�
 
 ## Current Status
 
-### Version: v4.68.72 (current source line)
+### Version: v4.68.73 (current source line)
 
+- 2026-08-31: **v4.68.73** — installed-copy Godot regression now builds its test-only template archives from package-safe fixture sources and is verified from an extracted Forge package.
 - 2026-08-30: **v4.68.72** — explicit storefront profiles, coherent Godot Web/Android/Windows bases, immutable per-target receipts and separate local/submit gates cover eight primary plus two evaluated platforms without claiming external publication.
 - 2026-08-30: **v4.68.71** — Godot debug ZIP now requires and hash-binds the standard `.console.exe` wrapper; builder and verifier enforce the same exact binary set before an engine-owned receipt may authorize release.
 - 2026-08-30: **v4.68.70** — Godot Windows export uses a process-tree-bounded 10-minute ceiling and reports dedicated actionable timeout diagnostics instead of hiding a killed cold start behind the engine banner.

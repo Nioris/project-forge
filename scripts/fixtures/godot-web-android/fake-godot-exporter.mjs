@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Test-only exporter for the Web/Android builder. */
 import fs from 'node:fs'; import path from 'node:path';
-const args = process.argv.slice(2); if (args.includes('--version')) { console.log('4.7.fixture.web-android'); process.exit(0); }
+const args = process.argv.slice(2); if (args.includes('--version')) { console.log(process.env.FORGE_GODOT_WEB_ANDROID_TEST_VERSION || '4.7.fixture.web-android'); process.exit(0); }
 const target = args.at(-1); const mode = process.env.FORGE_GODOT_MULTI_TEST_MODE || 'pass';
 if (mode === 'fail') { console.error('Export failed'); process.exit(1); }
 if (mode === 'timeout') for (;;) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);

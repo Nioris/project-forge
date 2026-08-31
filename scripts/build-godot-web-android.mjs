@@ -117,14 +117,47 @@ function detectGodot() {
   if (check.status !== 0 || check.error) fail('GODOT_MULTI_TOOLCHAIN', 'Godot editor is unavailable', true);
   return { command, prefix, version: String(check.stdout || check.stderr || '').trim().split(/\r?\n/u).find(Boolean) || null, testHarness: prefix.length > 0 };
 }
-function templateSource(godot) {
+function materializeFixtureTemplates(version, runtime) {
+  const fixtureVersion = String(version || '').trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(fixtureVersion)) {
+    fail('GODOT_MULTI_TEMPLATE_VERSION', `test-harness returned an unsafe fixture template version: ${fixtureVersion || '(empty)'}`, true);
+  }
+  const runtimeRoot = path.resolve(String(runtime || ''));
+  const bundled = path.resolve(FIXTURES, 'export_templates', fixtureVersion);
+  const source = path.resolve(runtimeRoot, 'fixture-export-templates', fixtureVersion);
+  if (!inside(FIXTURES, bundled) || !inside(runtimeRoot, source)) {
+    fail('GODOT_MULTI_TEMPLATES', 'fixture template path escapes its trusted runtime boundary', true);
+  }
+  if (!fs.existsSync(bundled) || !fs.lstatSync(bundled).isDirectory() || fs.lstatSync(bundled).isSymbolicLink()) {
+    fail('GODOT_MULTI_TEMPLATES', `packaged fixture template source is missing: ${bundled}`, true);
+  }
+  fs.mkdirSync(source, { recursive: true });
+  // The package manifest intentionally excludes nested *.zip files.  Build the
+  // three tiny test-only archives from non-ZIP fixture inputs in the ephemeral
+  // runtime rather than depending on ZIPs that are absent after installation.
+  for (const name of ['android_debug.apk', 'android_release.apk']) {
+    const input = path.join(bundled, name);
+    if (!fs.existsSync(input) || !fs.lstatSync(input).isFile() || fs.lstatSync(input).isSymbolicLink()) {
+      fail('GODOT_MULTI_TEMPLATES', `packaged fixture template is missing or unsafe: ${name}`, true);
+    }
+    fs.copyFileSync(input, path.join(source, name), fs.constants.COPYFILE_EXCL);
+  }
+  const webSeed = path.join(runtime, 'fixture-web-template');
+  fs.mkdirSync(webSeed, { recursive: true });
+  fs.writeFileSync(path.join(webSeed, 'template.txt'), 'Project Forge test-only Web export template\n', 'utf8');
+  zip(webSeed, path.join(source, 'web_release.zip'));
+  zip(webSeed, path.join(source, 'web_nothreads_release.zip'));
+  zip(path.join(FIXTURES, 'android-source'), path.join(source, 'android_source.zip'));
+  return source;
+}
+function templateSource(godot, runtime = null) {
   const editorVersion = String(godot.version || '').trim();
   const version = godot.testHarness
     ? editorVersion
     : godotTemplateVersion(editorVersion);
   if (!version) fail('GODOT_MULTI_TEMPLATE_VERSION', `Godot returned an unsupported template version: ${editorVersion || '(empty)'}`, true);
   const source = godot.testHarness
-    ? path.join(FIXTURES, 'export_templates', version)
+    ? materializeFixtureTemplates(version, runtime)
     : path.join(String(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming')), 'Godot', 'export_templates', version);
   if (!fs.existsSync(source) || !fs.lstatSync(source).isDirectory() || fs.lstatSync(source).isSymbolicLink()) {
     fail('GODOT_MULTI_TEMPLATES', `matching official Godot export templates are missing: ${source}`, true);
@@ -236,12 +269,12 @@ try {
   if (!godot.testHarness && (!engineMinSdk || spec.android.minSdk < engineMinSdk)) {
     fail('GODOT_MULTI_ANDROID_SDK_LEVELS', `Godot ${godot.version} requires gradle_build/min_sdk >= ${engineMinSdk || 'a known supported level'}`);
   }
-  const templates = templateSource(godot);
+  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-web-android-'));
+  const templates = templateSource(godot, temporary);
   const webVersion = path.join(spec.root, godot.testHarness ? 'qa' : 'Release', slug, 'godot', 'web', version);
   const androidVersion = path.join(spec.root, godot.testHarness ? 'qa' : 'Release', slug, 'godot', 'android', version);
   safeOutput(spec.root, webVersion); safeOutput(spec.root, androidVersion);
   if (fs.existsSync(webVersion) || fs.existsSync(androidVersion)) fail('GODOT_MULTI_IMMUTABLE', `version ${version} already exists in Web or Android output`);
-  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-web-android-'));
   const isolated = path.join(temporary, 'source'); copyGodotImplementation(spec.implementationRoot, isolated);
   const runtimeEnv = isolatedGodotUserEnv(temporary);
   const gradleUserHome = path.resolve(String(process.env.FORGE_GRADLE_USER_HOME || path.join(os.homedir(), '.gradle')).trim());
