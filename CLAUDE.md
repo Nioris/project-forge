@@ -1,4 +1,4 @@
-# Project Forge v4.68.74 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.75 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -508,6 +508,10 @@ then audit the last five each release.
 
 ---
 
+## v4.68.75 changelog (same-volume Android publish)
+
+Android artifacts now use a same-volume sibling stage, avoiding cross-drive Windows `EXDEV`.
+
 ## v4.68.74 changelog (external signing vault)
 
 Forge now provisions stable Android package/signing identity outside projects, signs immutable Godot
@@ -517,7 +521,3 @@ from Git, and prefers production Android bases when packaging storefront candida
 ## v4.68.73 changelog (package-safe fixtures)
 
 Installed-package Godot fixture regression now passes.
-
-## v4.68.72 changelog (storefront-aware release matrix)
-
-`forge.targets.json` drives immutable storefront candidates; submit requires real external evidence.

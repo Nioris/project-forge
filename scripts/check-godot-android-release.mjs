@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUILDER = path.join(ROOT, 'scripts', 'build-godot-android-release.mjs');
+const BUILDER_SOURCE = fs.readFileSync(BUILDER, 'utf8');
 const SECURITY = path.join(ROOT, 'scripts', 'forge-security.mjs');
 const SHIM = path.join(ROOT, 'scripts', 'fixtures', 'godot-web-android', 'fake-godot-exporter.mjs');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-android-release-'));
@@ -34,6 +35,7 @@ try {
 
   const clean = project('clean');
   const first = run(clean); const manifest = first.result?.manifest && fs.existsSync(first.result.manifest) ? JSON.parse(fs.readFileSync(first.result.manifest, 'utf8')) : null;
+  ok(/mkdtempSync\(path\.join\(outputParent, `\.forge-stage-/u.test(BUILDER_SOURCE) && !/renameSync\(stageOutput, output\)/u.test(BUILDER_SOURCE), 'final publish staging is created on the project volume to prevent cross-device EXDEV');
   ok(first.output.status === 1 && first.result?.status === 'test_harness' && first.result.artifacts?.length === 2, 'exports immutable release APK and AAB through the isolated test harness', JSON.stringify(first.result?.issues || []));
   ok(manifest?.android?.exportMode === 'release' && /^[a-f0-9]{64}$/u.test(manifest?.android?.signing?.certificateSha256 || '') && !/storePassword|keyPassword|keystorePath/iu.test(JSON.stringify(manifest || {})), 'production manifest binds package/certificate without vault secrets or private paths');
   const replay = run(clean); ok(replay.result?.issues?.some(item => item.code === 'GODOT_ANDROID_RELEASE_IMMUTABLE'), 'refuses to overwrite an immutable production version');

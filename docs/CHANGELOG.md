@@ -4980,6 +4980,10 @@ verifier enforce identical exact production/debug sets and reject incompatible w
 Godot Windows release export now uses a process-tree-bounded 10-minute ceiling. A timeout terminates the
 complete child tree and reports bounded stdout plus stderr context under a dedicated infrastructure code.
 
+## v4.68.72 changelog (storefront-aware release matrix)
+
+`forge.targets.json` drives immutable storefront candidates; submit requires real external evidence.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

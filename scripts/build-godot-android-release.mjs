@@ -128,6 +128,7 @@ function parseArgs(argv) { const result = { root: null, slug: null, version: nul
 const parsed = parseArgs(process.argv.slice(2));
 const result = { schemaVersion: 1, kind: 'forge.godot-android-production-build', status: 'failed', slug: parsed.slug, version: parsed.version, projectRoot: null, artifacts: [], manifest: null, issues: [] };
 let temporary = null;
+let publishStage = null;
 let security = null;
 let signingMaterial = null;
 try {
@@ -162,12 +163,18 @@ try {
   const signatures = [apk, aab].map(file => ({ file, ...verifyAndroidProductionSignature(file, { minSdk: spec.minSdk }) }));
   for (const signature of signatures) { if (!signature.ok) fail(signature.code || 'GODOT_ANDROID_RELEASE_SIGNATURE', signature.message || 'Android release signing verification failed'); if (signature.certificateSha256 !== signing.certificateSha256) fail('GODOT_ANDROID_RELEASE_CERTIFICATE', 'Android release artifact certificate does not match the vault binding'); }
   if (snapshotTree(spec.source) !== spec.sourceHash) fail('GODOT_ANDROID_RELEASE_SOURCE_MUTATED', 'source changed during isolated export');
-  const stageOutput = path.join(temporary, 'publish'); fs.mkdirSync(stageOutput); for (const file of [apk, aab]) fs.copyFileSync(file, path.join(stageOutput, path.basename(file)), fs.constants.COPYFILE_EXCL);
+  // The final rename must stay on the project's volume. os.tmpdir() may be on
+  // C: while the project lives on F:, where renameSync correctly fails EXDEV.
+  // Keep secret-bearing build work in os.tmpdir(), but copy only verified
+  // public artifacts into a same-volume sibling stage before the atomic rename.
+  const outputParent = path.dirname(output); safeOutput(root, outputParent); fs.mkdirSync(outputParent, { recursive: true }); safeOutput(root, outputParent);
+  publishStage = fs.mkdtempSync(path.join(outputParent, `.forge-stage-${parsed.slug}-${parsed.version}-`)); safeOutput(root, publishStage);
+  for (const file of [apk, aab]) fs.copyFileSync(file, path.join(publishStage, path.basename(file)), fs.constants.COPYFILE_EXCL);
   const manifest = { schemaVersion: 1, kind: 'forge.godot-android-production-manifest', slug: parsed.slug, version: parsed.version, createdAt: new Date().toISOString(), engine: { name: 'godot', version: godot.version, testHarness: godot.testHarness }, sourceSnapshotSha256: spec.sourceHash, applicationIcon: { resource: spec.icon.resource, sha256: spec.icon.sha256 }, android: { packageId: signing.packageId, versionCode: spec.versionCode, versionName: spec.versionName, minSdk: spec.minSdk, targetSdk: spec.targetSdk, exportMode: 'release', signing: { certificateSha256: signing.certificateSha256, vaultId: security.vaultId || null }, customBuildTemplate: 'official-archive-installed-in-isolated-source', gradle: { ...templateInfo, cache: 'external-user-home' }, artifacts: [apk, aab].map(file => ({ file: path.basename(file), format: path.extname(file).slice(1), sha256: sha256File(file), bytes: fs.statSync(file).size, certificateSha256: signing.certificateSha256 })) } };
-  fs.writeFileSync(path.join(stageOutput, `${parsed.slug}-${parsed.version}.android-production-manifest.json`), `${JSON.stringify(manifest, null, 2)}\n`);
-  fs.mkdirSync(path.dirname(output), { recursive: true }); if (fs.existsSync(output)) fail('GODOT_ANDROID_RELEASE_IMMUTABLE', `refusing to overwrite existing Android production release: ${parsed.version}`); fs.renameSync(stageOutput, output);
+  fs.writeFileSync(path.join(publishStage, `${parsed.slug}-${parsed.version}.android-production-manifest.json`), `${JSON.stringify(manifest, null, 2)}\n`);
+  if (fs.existsSync(output)) fail('GODOT_ANDROID_RELEASE_IMMUTABLE', `refusing to overwrite existing Android production release: ${parsed.version}`); fs.renameSync(publishStage, output); publishStage = null;
   result.status = godot.testHarness ? 'test_harness' : 'local_verified'; result.artifacts = [apk, aab].map(file => path.join(output, path.basename(file))); result.manifest = path.join(output, `${parsed.slug}-${parsed.version}.android-production-manifest.json`);
 } catch (error) { result.issues.push({ code: error.code || 'GODOT_ANDROID_RELEASE_INTERNAL', message: redact(error.message || String(error), signingMaterial ? [signingMaterial.storePassword, signingMaterial.keyPassword] : []).slice(0, 1000) }); result.status = error.environment ? 'environment_failure' : 'failed'; }
-finally { if (signingMaterial) { signingMaterial.storePassword = ''; signingMaterial.keyPassword = ''; } if (temporary) fs.rmSync(temporary, { recursive: true, force: true }); }
+finally { if (signingMaterial) { signingMaterial.storePassword = ''; signingMaterial.keyPassword = ''; } if (publishStage && inside(result.projectRoot || '', publishStage) && path.basename(publishStage).startsWith(`.forge-stage-${parsed.slug}-${parsed.version}-`)) fs.rmSync(publishStage, { recursive: true, force: true }); if (temporary) fs.rmSync(temporary, { recursive: true, force: true }); }
 if (parsed.json) console.log(JSON.stringify(result, null, 2)); else console.log(`${result.status}: ${result.issues.map(item => item.code).join(', ') || result.artifacts.join(', ')}`);
 process.exitCode = result.status === 'local_verified' ? 0 : result.status === 'environment_failure' ? 2 : 1;
