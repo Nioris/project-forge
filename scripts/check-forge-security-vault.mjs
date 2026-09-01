@@ -22,6 +22,10 @@ function throwsCode(action, code) { try { action(); return false; } catch (error
 function project(name) { const dir = path.join(root, name); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'index.html'), '<!doctype html>'); return dir; }
 
 try {
+  const embedded = project('embedded-vault');
+  const embeddedData = path.join(embedded, 'forge-data');
+  check(throwsCode(() => initializeProjectSecurity({ projectRoot: embedded, dataRoot: embeddedData }), 'FORGE_SECURITY_DATA_ROOT_INSIDE_PROJECT')
+    && !fs.existsSync(embeddedData), 'rejects a caller-selected vault inside the project before writing any security data');
   const a = project('same-name'); const bParent = path.join(root, 'other'); fs.mkdirSync(bParent); const b = path.join(bParent, 'same-name'); fs.mkdirSync(b); fs.writeFileSync(path.join(b, 'index.html'), '<!doctype html>');
   check(throwsCode(() => initializeProjectSecurity({ projectRoot: a }), 'FORGE_SECURITY_PUBLISHER_PROFILE_REQUIRED'), 'fails closed until a publisher namespace is explicitly configured');
   setPublisherProfile('com.example.forge');

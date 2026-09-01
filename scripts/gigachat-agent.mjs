@@ -31,7 +31,7 @@ const val = flag => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] 
 const FULL = argv.includes('--full');
 const PROJECT = resolve(val('--project') || '.');
 const ENGINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const AUDITED_FORGE_VERSION = '4.68.75';
+const AUDITED_FORGE_VERSION = '4.68.76';
 const CONTRACT_VERSION = '6.3.12-storefront-release-2026-08-30';
 const MODEL = val('--model') || process.env.FORGE_GIGACHAT_MODEL || 'GigaChat-3-Ultra';
 const ONE_SHOT = val('--prompt');

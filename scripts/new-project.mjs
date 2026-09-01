@@ -82,7 +82,7 @@ try {
   writeFileSync(join(dir, 'assets', 'style', 'STYLE-BIBLE.md'), '# STYLE BIBLE\n\nStatus: draft — approve in Phase 4 before mass generation.\n');
 } catch {}
 writeFileSync(join(dir, '.gitignore'),
-  'node_modules/\noutput/\nhandoff/\nscreens/video/\nscreens/review/\nassets/bible/\nassets/refs/\nassets/target/\nbackend/node_modules/\n.forge/runs/\n.forge/metrics/\n.forge/*.tmp\nwiki/diagnostics/forge-events*.jsonl\n.*_key\n.*_token\n*.key\n*.pem\n*.jks\n*.keystore\n*.p12\n*.pfx\n*.secret\npepk_out.zip\nSIGNING_CREDENTIALS.md\nStoreData/signing/\nsecurity/\n.env\n');
+  'node_modules/\noutput/\nhandoff/\nscreens/video/\nscreens/review/\nassets/bible/\nassets/refs/\nassets/target/\nbackend/node_modules/\nforge-data/\n.forge/runs/\n.forge/metrics/\n.forge/*.tmp\nwiki/diagnostics/forge-events*.jsonl\n.*_key\n.*_token\n*.key\n*.pem\n*.jks\n*.keystore\n*.p12\n*.pfx\n*.secret\npepk_out.zip\nSIGNING_CREDENTIALS.md\nStoreData/signing/\nsecurity/\n.env\n');
 
 console.log(`Created ${type} project (${engine}, ${engineDefinition.status}): ${dir}`);
 console.log('Syncing universal Forge runtime (Claude/Codex/generic agents)...\n');

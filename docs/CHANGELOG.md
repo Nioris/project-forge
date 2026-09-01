@@ -4984,6 +4984,16 @@ complete child tree and reports bounded stdout plus stderr context under a dedic
 
 `forge.targets.json` drives immutable storefront candidates; submit requires real external evidence.
 
+## v4.68.73 changelog (package-safe fixtures)
+
+Installed-package Godot fixture regression now passes.
+
+## v4.68.74 changelog (external signing vault)
+
+Forge now provisions stable Android package/signing identity outside projects, signs immutable Godot
+APK/AAB releases without exposing credentials, verifies the physical certificate, blocks secret files
+from Git, and prefers production Android bases when packaging storefront candidates.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

@@ -54,8 +54,9 @@ AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как расс�
 
 ## Current Status
 
-### Version: v4.68.75 (current source line)
+### Version: v4.68.76 (current source line)
 
+- 2026-09-01: **v4.68.76** — vault roots inside a project now fail before writes; existing managed ignore blocks self-refresh and exclude `forge-data/` without changing user rules.
 - 2026-09-01: **v4.68.75** — production Android publication now stages verified APK/AAB on the project volume before atomic rename, preventing cross-drive Windows `EXDEV`.
 - 2026-09-01: **v4.68.74** — external DPAPI signing vault creates stable package/key/password identity; isolated Godot APK/AAB production builds are certificate-verified and project Git rejects private signing material.
 - 2026-08-31: **v4.68.73** — installed-copy Godot regression now builds its test-only template archives from package-safe fixture sources and is verified from an extracted Forge package.

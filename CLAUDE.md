@@ -1,4 +1,4 @@
-# Project Forge v4.68.75 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.76 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -498,7 +498,9 @@ See `wiki/decisions/035-evidence-bound-visual-acceptance.md`.
 
 Forge generates Android package/signing identity once. The public binding is versioned in
 `forge.identity.json`; the private key and DPAPI-encrypted password remain outside every project in
-`forge-data/security/`. Missing, moved, corrupted or mismatched vault state blocks instead of rekeying.
+`forge-data/security/`. The vault root must remain outside the project; an override that places it inside
+the repository fails before any security data is written. Missing, moved, corrupted or mismatched vault
+state blocks instead of rekeying.
 A locally signed artifact is not evidence of store upload or moderation.
 
 ### Adding lessons
@@ -508,16 +510,11 @@ then audit the last five each release.
 
 ---
 
+## v4.68.76 changelog (vault location invariant)
+
+Forge now rejects any security data root inside a project before writing files. Existing managed
+`.gitignore` blocks are refreshed in place and include `forge-data/`, while user-authored ignore rules remain.
+
 ## v4.68.75 changelog (same-volume Android publish)
 
 Android artifacts now use a same-volume sibling stage, avoiding cross-drive Windows `EXDEV`.
-
-## v4.68.74 changelog (external signing vault)
-
-Forge now provisions stable Android package/signing identity outside projects, signs immutable Godot
-APK/AAB releases without exposing credentials, verifies the physical certificate, blocks secret files
-from Git, and prefers production Android bases when packaging storefront candidates.
-
-## v4.68.73 changelog (package-safe fixtures)
-
-Installed-package Godot fixture regression now passes.

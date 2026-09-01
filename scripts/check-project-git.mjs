@@ -39,6 +39,12 @@ try {
   const ignore = fs.readFileSync(path.join(project, '.gitignore'), 'utf8');
   check(ignore.includes('custom-cache/') && ignore.match(/Project Forge managed secrets/g)?.length === 2,
     'managed ignores are appended without destroying project rules');
+  fs.writeFileSync(path.join(project, '.gitignore'), ignore.replace('forge-data/\n', ''), 'utf8');
+  checkpointProjectGit({ projectRoot: project, message: 'forge: refresh managed ignores' });
+  const repairedIgnore = fs.readFileSync(path.join(project, '.gitignore'), 'utf8');
+  check(repairedIgnore.includes('custom-cache/') && repairedIgnore.includes('forge-data/')
+    && repairedIgnore.match(/Project Forge managed secrets/g)?.length === 2,
+  'existing managed ignore block is refreshed without destroying project rules');
   check(!git('ls-files', '--error-unmatch', '.forge/runs/pending.json').stdout.trim(),
     'late Git initialization keeps durable Task runs outside project history');
   check(git('check-ignore', '-q', '.forge/metrics/latest.json').status === 0

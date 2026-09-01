@@ -62,6 +62,9 @@ Android release identity is provisioned with `forge-security.mjs`. Only the publ
 external security vault. On Windows the credential envelope uses CurrentUser DPAPI. A project move,
 OS-account change or reinstall can make the local envelope unavailable, so create an approved
 encrypted backup before the first store upload and never copy an unencrypted keystore into Git/CI.
+Forge refuses a `FORGE_DATA_DIR` located inside the project before creating any vault data. Managed
+project `.gitignore` blocks also exclude `forge-data/` as defense in depth, but ignore rules never replace
+the external-vault requirement.
 
 ## If a credential is exposed
 

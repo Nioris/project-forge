@@ -27,6 +27,7 @@ assets/bible/
 assets/refs/
 assets/target/
 backend/node_modules/
+forge-data/
 wiki/diagnostics/forge-events*.jsonl
 wiki/diagnostics/codex-cost/*.json
 .forge/runs/
@@ -282,7 +283,13 @@ export function configureWorkspaceGitPolicy(workspaceRoot, owner) {
 function ensureManagedIgnore(root) {
   const file = path.join(root, '.gitignore');
   const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-  if (current.includes('# >>> Project Forge managed secrets and generated data')) return false;
+  const managed = /# >>> Project Forge managed secrets and generated data[\s\S]*?# <<< Project Forge managed secrets and generated data\r?\n?/u;
+  if (managed.test(current)) {
+    const next = current.replace(managed, IGNORE_BLOCK);
+    if (next === current) return false;
+    fs.writeFileSync(file, next, 'utf8');
+    return true;
+  }
   const separator = current && !current.endsWith('\n') ? '\n' : '';
   fs.writeFileSync(file, current + separator + IGNORE_BLOCK, 'utf8');
   return true;

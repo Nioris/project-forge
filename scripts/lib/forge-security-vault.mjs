@@ -39,6 +39,12 @@ function inside(root, candidate) {
   const rel = path.relative(path.resolve(root), path.resolve(candidate));
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
+function assertExternalDataRoot(project, dataRoot) {
+  // A caller-controlled FORGE_DATA_DIR must never turn the project itself into
+  // the private vault.  Ignore rules are defense in depth, not a substitute
+  // for keeping signing material physically outside every project repository.
+  if (inside(project, dataRoot)) fail('FORGE_SECURITY_DATA_ROOT_INSIDE_PROJECT');
+}
 function now() { return new Date().toISOString(); }
 function normalProjectBinding(project) { return sha256(process.platform === 'win32' ? project.toLowerCase() : project); }
 
@@ -234,6 +240,7 @@ function readCredentials(vault, metadata) {
   return parsed;
 }
 function loadIdentityAndVault(project, dataRoot) {
+  assertExternalDataRoot(project, dataRoot);
   const idFile = identityPath(project); if (!fs.existsSync(idFile)) fail('FORGE_SECURITY_IDENTITY_MISSING');
   assertNoSymlink(project, idFile); const identity = readJson(idFile, 'FORGE_SECURITY_IDENTITY_INVALID');
   if (!validIdentity(identity)) fail('FORGE_SECURITY_IDENTITY_INVALID');
@@ -257,6 +264,7 @@ function loadIdentityAndVault(project, dataRoot) {
 export function initializeProjectSecurity({ projectRoot = process.cwd(), dataRoot = forgeDataRoot() } = {}) {
   const project = existingDirectory(projectRoot, 'FORGE_SECURITY_PROJECT_UNAVAILABLE');
   const root = path.resolve(dataRoot); const security = path.join(root, 'security');
+  assertExternalDataRoot(project, root);
   mkdirSecure(root, root); mkdirSecure(security, root);
   return withInitLock(root, () => {
     const idFile = identityPath(project);
