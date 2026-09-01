@@ -56,6 +56,24 @@ if (!Array.isArray(CATS)) {
 
 const cleanSrc = readFileSync(CLEAN, 'utf8');
 
+const findCheck = (name) => {
+  for (const cat of CATS) {
+    const found = (cat.checks || []).find((check) => check.name === name);
+    if (found) return found;
+  }
+  throw new Error(`Missing debugcheck contract: ${name}`);
+};
+
+const contractFailures = [];
+let contractCount = 0;
+const expectResult = (name, source, expected, label) => {
+  contractCount++;
+  let got;
+  try { got = findCheck(name).test(source); }
+  catch (e) { got = `(threw: ${e.message})`; }
+  if (got !== expected) contractFailures.push({ label, name, expected, got });
+};
+
 // Categories that are RUNTIME (need a live browser DOM/probe) — can't be judged in Node, skip them.
 // Identified by the convention used in debugcheck: title contains "Runtime", "(v2.4)", or is the
 // runtime-detection group. The fixture test only validates STATIC source checks.
@@ -89,4 +107,109 @@ if (falsePositives.length) {
   process.exit(1);
 }
 console.log('✓ No false positives — every static check passes (or warns on) the clean fixture.');
+
+// Contract regressions: a token in an unrelated place must never turn a broken integration green.
+expectResult(
+  'Only Yandex ID authorization (п.1.2)',
+  `google.accounts.id.initialize({client_id:'third-party'}); google.accounts.id.prompt();`,
+  false,
+  'explicit Google login is rejected'
+);
+expectResult(
+  'Only Yandex ID authorization (п.1.2)',
+  `// google.accounts.id.prompt();\nconst analyticsLabel = 'google analytics';`,
+  true,
+  'comments and analytics text do not trigger auth rejection'
+);
+expectResult(
+  'Yandex ID dialog is user-initiated (п.1.2)',
+  `YaGames.init().then(async sdk => { await sdk.auth.openAuthDialog(); });`,
+  'warn',
+  'automatic login dialog is not green'
+);
+const goodAuth = `<button id="login">Войти</button><p>Войдите, чтобы сохранять прогресс в облаке и продолжить на другом устройстве</p>
+  <script>document.getElementById('login').addEventListener('click', function(){ ysdk.auth.openAuthDialog(); });<\/script>`;
+expectResult('Yandex ID dialog is user-initiated (п.1.2)', goodAuth, true, 'click-bound login passes');
+expectResult('Authorization offer explains its benefit (п.1.2.1)', goodAuth, true, 'benefit copy passes');
+expectResult(
+  'Authorization offer explains its benefit (п.1.2.1)',
+  `<button>Войти</button><script>button.onclick=function(){ysdk.auth.openAuthDialog();};<\/script>`,
+  'warn',
+  'bare login CTA does not explain benefit'
+);
+
+const tokenOnlyAudio = `const ac = new AudioContext(); document.addEventListener('visibilitychange', function(){});`;
+expectResult('visibilitychange actually mutes (п.1.3)', tokenOnlyAudio, 'warn', 'empty visibility handler is not green');
+expectResult('Window blur/pagehide mutes sound (п.1.3)', tokenOnlyAudio, 'warn', 'missing blur handler is not green');
+expectResult(
+  'visibilitychange actually mutes (п.1.3)',
+  `// AudioContext and visibilitychange are mentioned only in documentation`,
+  true,
+  'audio words in comments stay N/A'
+);
+const goodAudio = `const ac = new AudioContext(); function suspendAudio(){ac.suspend();}
+  document.addEventListener('visibilitychange', function(){if(document.hidden){suspendAudio();}});
+  window.addEventListener('blur', suspendAudio); window.addEventListener('pagehide', suspendAudio);`;
+expectResult('visibilitychange actually mutes (п.1.3)', goodAudio, true, 'visibility mute passes');
+expectResult('Window blur/pagehide mutes sound (п.1.3)', goodAudio, true, 'blur mute passes');
+expectResult(
+  'Window blur/pagehide mutes sound (п.1.3)',
+  `const ac = new AudioContext(); window.addEventListener('blur', function(){ac.resume();});`,
+  false,
+  'explicit resume on blur fails'
+);
+
+expectResult(
+  'Keyboard uses physical codes (п.1.6.2.4)',
+  `addEventListener('keydown', e => { if(e.key === 'w') move(); }); addEventListener('keyup', e => console.log(e.code === 'KeyW'));`,
+  'warn',
+  'unrelated event.code cannot hide event.key WASD'
+);
+expectResult(
+  'Keyboard uses physical codes (п.1.6.2.4)',
+  `addEventListener('keydown', e => { if(e.code === 'KeyW' || e.code === 'ArrowUp') move(); });`,
+  true,
+  'physical code passes'
+);
+
+expectResult(
+  'Rotation does not reset progress (п.1.9)',
+  `window.addEventListener('orientationchange', function(){ resetGame(); });`,
+  'warn',
+  'destructive rotation without save/restore warns'
+);
+expectResult(
+  'Rotation does not reset progress (п.1.9)',
+  `function fit(){} window.addEventListener('orientationchange', fit);`,
+  true,
+  'non-destructive rotation passes'
+);
+expectResult(
+  'Canvas resizes on orientation change (п.1.6.1.3/1.10.1)',
+  `<canvas></canvas><script>window.addEventListener('resize', fit);<\/script>`,
+  'warn',
+  'canvas with resize only is not green'
+);
+expectResult(
+  'Canvas resizes on orientation change (п.1.6.1.3/1.10.1)',
+  `<canvas></canvas><script>window.addEventListener('resize', fit); window.addEventListener('orientationchange', function(){});<\/script>`,
+  'warn',
+  'empty orientation handler is not green'
+);
+expectResult(
+  'Canvas resizes on orientation change (п.1.6.1.3/1.10.1)',
+  `<canvas></canvas><script>window.addEventListener('resize', fit); window.addEventListener('orientationchange', fit);<\/script>`,
+  true,
+  'canvas resize plus orientation passes'
+);
+
+console.log(`Ran ${contractCount} focused debugcheck contract regressions.`);
+if (contractFailures.length) {
+  console.error(`\n✗ ${contractFailures.length} DEBUGCHECK CONTRACT REGRESSION(S):`);
+  for (const f of contractFailures) {
+    console.error(`   - ${f.label} [${f.name}] → expected ${JSON.stringify(f.expected)}, got ${JSON.stringify(f.got)}`);
+  }
+  process.exit(1);
+}
+console.log('✓ Debugcheck contract regressions pass — broken integrations cannot pass on token presence alone.');
 process.exit(0);

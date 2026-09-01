@@ -4994,6 +4994,15 @@ Forge now provisions stable Android package/signing identity outside projects, s
 APK/AAB releases without exposing credentials, verifies the physical certificate, blocks secret files
 from Git, and prefers production Android bases when packaging storefront candidates.
 
+## v4.68.75 changelog (same-volume Android publish)
+
+Android artifacts now use a same-volume sibling stage, avoiding cross-drive Windows `EXDEV`.
+
+## v4.68.76 changelog (vault location invariant)
+
+Forge now rejects any security data root inside a project before writing files. Existing managed
+`.gitignore` blocks are refreshed in place and include `forge-data/`, while user-authored ignore rules remain.
+
 ## v4.10.0 changelog (Step 0 Discovery — content-based document classification)
 
 First minor bump after the v4.9 hotfix series. New feature emerged from real user need: "у меня готовый MVP + 6 design документов, /pipeline должен сам понять что это".

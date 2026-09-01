@@ -1,5 +1,5 @@
 /**
- * Yandex Games Debug Checker v2.23
+ * Yandex Games Debug Checker v2.24
  * ─────────────────────────────────
  * Universal overlay that verifies SDK integration.
  * Activation: Press Ctrl+Shift+2 three times.
@@ -15,6 +15,7 @@
  * Before release: remove the script tag and this file.
  *
  * ─────────────────────────────────
+ * v2.24 — Sep 2026: requirements refresh from 18.08.2026: +1.2/1.2.1 Yandex-ID-only auth and benefit copy, +1.3 any-focus-loss audio coverage, stronger 1.6.2.4 physical-key check, +1.9 destructive rotation reset warning, stricter 1.10 rotation binding.
  * v2.23 — Aug 2026: +3.5 brand-word check (Яндекс/Yandex in game texts), +1.8 touch-target static hint, +4.5.1 RV button must state the REWARD not a bare number.
  * v2.22 — Aug 2026: +static check for leftover dev tools in the build (seed field, AI selector, speed, measurement panel) → WARN per REQ-1.15.
  * v2.21 — Jul 2026: Event Timeline VERDICTS the order (click-vs-ready 1.19, lang-vs-click 2.14, lang-vs-ready, ready-vs-init) + ORDER FAIL badge — panel knew the expected order but never checked it.
@@ -64,8 +65,9 @@
  *
  * ─────────────────────────────────
  * NOT YET IMPLEMENTED (intentional gaps — manual verification still required):
- *   B. REQ-1.9 save round-trip — would need a "test save" button that calls
- *      setData → reload guard → compare. Currently manual: play, refresh, check.
+ *   B. REQ-1.9 full save round-trip — v2.24 flags destructive rotation handlers,
+ *      but proving setData → rotate/reload → exact state equality still requires
+ *      a game-specific state contract. Currently manual: play, rotate, refresh, check.
  *   C. REQ-1.13.5 purchase applies — runtime probe could hook purchase().then()
  *      and diff state, but requires per-game knowledge of what "purchased item
  *      arrived" looks like. Currently manual.
@@ -348,6 +350,18 @@ setTimeout(function(){
 // ── Check definitions ───────────────────────────────────────────
 function pat(s,r){return r.test(s);}
 
+function sourceWithoutComments(s){
+  return String(s||'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/^[\t ]*\/\/.*$/gm,'');
+}
+
+function hasAudioSource(s){
+  return pat(sourceWithoutComments(s),/AudioContext|webkitAudioContext|new\s+Audio\s*\(|<audio\b|Howl\s*\(|Tone\./i);
+}
+
+function hasAudioPauseAction(s){
+  return pat(s,/\.suspend\s*\(|\.pause\s*\(|suspendAudio|pauseAudio|pauseAppAudio|muteAll|muteSound|muteAudio|setMuted|volume\s*=\s*0/i);
+}
+
 function extractBlock(s,startRegex){
   var m=s.match(startRegex);
   if(!m)return null;
@@ -369,9 +383,52 @@ var CATS=[
     {name:'GameplayAPI.stop()',desc:'Called on pause/end',
       test:function(s){return pat(s,/GameplayAPI[\s\S]{0,4}stop\s*\(/);}},
   ]},
+  {id:'auth',title:'Authorization',icon:'\u{1F511}',checks:[
+    {name:'Only Yandex ID authorization (п.1.2)',desc:'No third-party identity provider or custom OAuth flow in the game.',
+      test:function(s){
+        var c=sourceWithoutComments(s);
+        var explicit=pat(c,/firebase\s*\.\s*auth\s*\(|GoogleAuthProvider|google\s*\.\s*accounts\s*\.\s*id\s*\.(?:initialize|prompt|renderButton)|FB\s*\.\s*login\s*\(|VKID\s*\.\s*(?:Auth|Config)|VKWebAppGetAuthToken|AppleID\s*\.\s*auth|auth0\s*\.\s*(?:loginWithRedirect|authorize)|discord(?:app)?\.com\/(?:api\/)?oauth2\/authorize|steamcommunity\.com\/openid/i);
+        if(explicit)return false;
+        return pat(c,/\/api\/auth\/|oauth2\/authorize|openid\/login/i)?'warn':true;
+      },warnText:'Найден собственный/generic OAuth endpoint. Проверь вручную: в Яндекс Играх допустима только авторизация через Яндекс ID, запрошенная через SDK.',
+      failText:'Найдена сторонняя авторизация. Удали Google/Facebook/VK/Apple/Auth0/Discord/Steam login: допустим только Яндекс ID через SDK Яндекс Игр.'},
+    {name:'Yandex ID dialog is user-initiated (п.1.2)',desc:'auth.openAuthDialog() must follow an explicit click/tap, never run automatically at startup.',
+      test:function(s){
+        var c=sourceWithoutComments(s);
+        if(!pat(c,/openAuthDialog\s*\(/))return true;
+        var direct=pat(c,/(?:onclick\s*=|addEventListener\s*\(\s*['"](?:click|pointerup|touchend)['"])[\s\S]{0,700}openAuthDialog\s*\(/i);
+        var named=c.match(/function\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{[\s\S]{0,500}?openAuthDialog\s*\(/i);
+        var bound=named&&new RegExp("addEventListener\\s*\\(\\s*['\"](?:click|pointerup|touchend)['\"]\\s*,\\s*"+named[1].replace(/[$]/g,'\\$&'), 'i').test(c);
+        return direct||bound?true:'warn';
+      },warnText:'auth.openAuthDialog() найден, но checker не видит привязку к click/tap. Не открывай авторизацию автоматически при загрузке — вызывай её только из явного действия игрока.'},
+    {name:'Authorization offer explains its benefit (п.1.2.1)',desc:'The login prompt says what the player gains: cloud progress, sync or leaderboard identity.',
+      test:function(s){
+        var c=sourceWithoutComments(s);
+        if(!pat(c,/openAuthDialog\s*\(/))return true;
+        return pat(c,/сохран[а-яё]{0,12}[^<\n]{0,50}прогресс|синхрониз|облачн(?:ое|ые|ая)[^<\n]{0,30}(?:сохран|прогресс)|друг(?:ом|их)[^<\n]{0,30}устройств|таблиц[^<\n]{0,20}лидер|save[^<\n]{0,30}progress|cloud[^<\n]{0,30}save|sync[^<\n]{0,30}(?:progress|device)|leaderboard/i)?true:'warn';
+      },warnText:'Предложение входа не объясняет пользу. Добавь нейтральный текст вроде «Войдите, чтобы сохранять прогресс в облаке и продолжать на другом устройстве».'},
+  ]},
   {id:'sound',title:'Sound Management',icon:'\u{1F50A}',checks:[
-    {name:'visibilitychange',desc:'Mute when tab hidden',
-      test:function(s){return pat(s,/visibilitychange/);}},
+    {name:'visibilitychange actually mutes (п.1.3)',desc:'Hidden tab must call an audio pause/mute path, not merely register the event name.',
+      test:function(s){
+        if(!hasAudioSource(s))return true;
+        var c=sourceWithoutComments(s),block=extractBlock(c,/(?:addEventListener\s*\(\s*['"]visibilitychange['"]|onvisibilitychange\s*=)/i);
+        if(!block)return 'warn';
+        var resumes=pat(block,/\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
+        if(resumes&&!hasAudioPauseAction(block))return false;
+        return pat(block,/document\s*\.\s*hidden|visibilityState/i)&&hasAudioPauseAction(block)?true:'warn';
+      },warnText:'Игра использует звук, но checker не подтверждает document.hidden/visibilityState + suspend/mute/pause внутри visibilitychange. Одного имени события недостаточно.',
+      failText:'Обработчик visibilitychange возобновляет звук без остановки при скрытии вкладки. При потере фокуса нужен suspend/mute/pause (п.1.3).'},
+    {name:'Window blur/pagehide mutes sound (п.1.3)',desc:'Switching to another window or system overlay must mute/pause audio too.',
+      test:function(s){
+        if(!hasAudioSource(s))return true;
+        var c=sourceWithoutComments(s),block=extractBlock(c,/(?:addEventListener\s*\(\s*['"](?:blur|pagehide|freeze)['"]|on(?:blur|pagehide)\s*=)/i);
+        if(!block)return 'warn';
+        var resumes=pat(block,/\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
+        if(resumes&&!hasAudioPauseAction(block))return false;
+        return hasAudioPauseAction(block)?true:'warn';
+      },warnText:'Нет подтверждённого mute/pause на window.blur/pagehide. Одного visibilitychange недостаточно: п.1.3 требует остановить звук при любой потере фокуса.',
+      failText:'Обработчик blur/pagehide возобновляет звук вместо остановки. На любой потере фокуса нужен suspend/mute/pause (п.1.3).'},
     {name:'game_api_pause',desc:'SDK pause handler',
       test:function(s){return pat(s,/game_api_pause/);}},
     {name:'game_api_resume',desc:'SDK resume handler',
@@ -417,6 +474,17 @@ var CATS=[
         }
         return all?true:'warn';
       },warnText:'localStorage.setItem found \u2014 verify dev-mode only'},
+    {name:'Rotation does not reset progress (п.1.9)',desc:'Orientation handlers must not reload/reset the run unless state is saved and restored.',
+      test:function(s){
+        var c=sourceWithoutComments(s);
+        var block=extractBlock(c,/(?:addEventListener\s*\(\s*['"]orientationchange['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"])/i);
+        if(!block)return true;
+        var destructive=pat(block,/location\s*\.\s*reload\s*\(|resetGame\s*\(|restartGame\s*\(|newGame\s*\(|initGame\s*\(|(?:score|level|stage|round)\s*=\s*(?:0|1)\b|clear(?:Progress|Save|State)\s*\(/i);
+        if(!destructive)return true;
+        var saves=pat(c,/\.setData\s*\(|save(?:Progress|Game|State)\s*\(|snapshot|serialize/i);
+        var restores=pat(c,/\.getData\s*\(|load(?:Progress|Game|State)\s*\(|restore|deserialize/i);
+        return saves&&restores?true:'warn';
+      },warnText:'Обработчик поворота перезапускает/обнуляет игру, но checker не видит связку save+restore. Поворот экрана не должен терять текущий прогресс (п.1.9).'},
   ]},
   {id:'payments',title:'In-App Purchases',icon:'\u{1F4B0}',optional:true,checks:[
     {name:'getPayments()',desc:'Payments init',
@@ -781,14 +849,16 @@ var CATS=[
         var gate = pat(s,/inputEnabled|inputLocked|acceptInput|canPlay|isReady|readyFired/i);
         return gate ? true : 'warn';
       },warnText:'Обработчики ввода вешаются без видимого гейта (inputEnabled/isReady и т.п.). Проверь рантайм-строку «ВВОД ПРИНЯТ ДО ready()» в консоли: если клик проходит раньше ready(), это отказ по 1.19.'},
-    {name:'Keyboard via e.code, not e.key (ru-раскладка)',desc:'Управление через e.key==="w" ломается в русской раскладке (там "ц"). Движение — только e.code==="KeyW" (физическая клавиша).',
+    {name:'Keyboard uses physical codes (п.1.6.2.4)',desc:'WASD movement must use event.code (physical keys), not layout-dependent event.key/keyCode.',
       test:function(s){
-        if(!pat(s,/keydown|keyup/i))return true; // нет клавиатуры → N/A
-        var badKey = pat(s,/\.key\s*(===?|==)\s*['"][wasd]['"]/i) || pat(s,/case\s*['"][wasd]['"]\s*:/i);
-        if(!badKey)return true;
-        var hasCode = pat(s,/\.code\s*(===?|==)\s*['"]Key[WASD]['"]/);
-        return hasCode ? true : 'warn';
-      },warnText:'Найдено сравнение e.key с "w/a/s/d" без e.code — в русской раскладке управление МЕРТВО (e.key даёт "ц"). Замени на e.code==="KeyW" и т.д. (физические клавиши, любая раскладка) + продублируй стрелками.'},
+        var c=sourceWithoutComments(s);
+        if(!pat(c,/keydown|keyup/i))return true;
+        var direct=pat(c,/\.key\s*(?:===?|==)\s*['"][wasd]['"]/i);
+        var switched=pat(c,/switch\s*\([^)]*\.key[^)]*\)\s*\{[\s\S]{0,500}?case\s*['"][wasd]['"]\s*:/i);
+        var lowered=pat(c,/\.key\s*\.\s*toLowerCase\s*\(\s*\)[\s\S]{0,180}?(?:['"][wasd]['"]|includes\s*\(\s*['"]wasd['"])/i);
+        var deprecated=pat(c,/\.(?:keyCode|which)\s*(?:===?|==)\s*(?:65|68|83|87)\b/);
+        return direct||switched||lowered||deprecated?'warn':true;
+      },warnText:'Найден layout-dependent путь WASD через event.key/keyCode. Даже если где-то ещё есть event.code, этот путь сломается в другой раскладке. Используй event.code === "KeyW/KeyA/KeyS/KeyD" и продублируй стрелками.'},
     {name:'No OS-shortcut key handlers (п.1.6.2.6)',desc:'Desktop games must not bind Ctrl/Alt/Meta+key combos that collide with OS/browser shortcuts.',
       test:function(s){
         // WARN if a keydown handler checks ctrlKey/metaKey/altKey together with a letter key (likely an OS combo).
@@ -874,19 +944,22 @@ var CATS=[
       },warnText:'Possible profanity detected in the source/UI text (п.8.2.4 — no obscene language in any language). Review and replace; if it is a false match (clean homograph), ignore.'},
     {name:'Canvas resizes on orientation change (п.1.6.1.3/1.10.1)',desc:'A <canvas>/WebGL game must re-fit on orientationchange + fullscreenchange, not only window resize — else it deforms / clips on mobile rotate & fullscreen-exit',
       test:function(s){
-        // Only relevant to canvas/WebGL games that have a resize handler.
-        if(!pat(s,/<canvas|getContext\s*\(\s*("|')(webgl|2d)|THREE\.|renderer\.setSize/i))return true; // not a canvas game → N/A
-        var bindsResize=pat(s,/addEventListener\s*\(\s*("|')resize/);
-        if(!bindsResize)return true; // no resize handling at all — different problem, not this check
-        // It binds window.resize; does it ALSO handle orientationchange OR fullscreenchange OR a
-        // ResizeObserver / visualViewport listener (any of which catches mobile rotate/fullscreen-exit)?
-        var handlesOrientation = pat(s,/orientationchange/)
-                               || pat(s,/fullscreenchange/)
-                               || pat(s,/screen\.orientation/)
-                               || pat(s,/ResizeObserver/)
-                               || pat(s,/visualViewport/);
-        return handlesOrientation ? true : 'warn';
-      },warnText:'Canvas game binds window "resize" but not orientationchange/fullscreenchange. On mobile, rotating or exiting fullscreen may not fire resize in time → the scene clips (п.1.10.1) or deforms (п.1.6.1.3). Add: window.addEventListener("orientationchange", resize) and a fullscreenchange handler (or a ResizeObserver on the canvas container).'},
+        var c=sourceWithoutComments(s);
+        if(!pat(c,/<canvas|getContext\s*\(\s*(?:"|')(?:webgl|2d)|THREE\.|renderer\.setSize/i))return true;
+        var bindsResize=pat(c,/addEventListener\s*\(\s*['"]resize['"]/i);
+        var resizeNamed=c.match(/addEventListener\s*\(\s*['"]resize['"]\s*,\s*([A-Za-z_$][\w$]*)/i);
+        var shared=false;
+        if(resizeNamed){
+          var cb=resizeNamed[1].replace(/[$]/g,'\\$&');
+          shared=new RegExp("(?:orientationchange|fullscreenchange)['\"]\\s*,\\s*"+cb+"\\b",'i').test(c)
+              || new RegExp("screen\\s*\\.\\s*orientation[\\s\\S]{0,100}['\"]change['\"]\\s*,\\s*"+cb+"\\b",'i').test(c)
+              || new RegExp("visualViewport[\\s\\S]{0,100}['\"]resize['\"]\\s*,\\s*"+cb+"\\b",'i').test(c);
+        }
+        var orientationBlock=extractBlock(c,/(?:addEventListener\s*\(\s*['"](?:orientationchange|fullscreenchange)['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"]|visualViewport[\s\S]{0,80}addEventListener\s*\(\s*['"]resize['"])/i);
+        var activeOrientation=orientationBlock&&pat(orientationBlock,/(?:fit|resize|layout|reflow|setSize|updateViewport|canvas\s*\.\s*(?:width|height)|style\s*\.\s*(?:width|height))\s*(?:\(|=)/i);
+        var activeObserver=pat(c,/ResizeObserver\s*\(\s*(?:[A-Za-z_$][\w$]*(?:fit|resize|layout|reflow)[\w$]*|[^)]{0,240}(?:setSize|updateViewport|canvas\s*\.\s*(?:width|height)))/i);
+        return bindsResize&&(shared||activeOrientation||activeObserver)?true:'warn';
+      },warnText:'Canvas/WebGL-сцена не имеет подтверждённой связки resize + orientation/fullscreen/ResizeObserver. После поворота интерфейс может обрезаться или деформироваться (п.1.6.1.3/1.10.1).'},
     {name:'ready() not tuned to pass the checker (integrity)',desc:'No magic delay / debugcheck-targeting right before ready() — ready() must reflect real interactivity, not a tuned timer',
       test:function(s){
         // Anti-gaming: a fixed setTimeout immediately before LoadingAPI.ready(), or a comment

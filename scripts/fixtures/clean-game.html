@@ -45,6 +45,8 @@ function getAC(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContex
 function suspendAudio(){ if(AC) AC.suspend(); }
 function resumeAudio(){ if(AC) AC.resume(); }
 document.addEventListener('visibilitychange', function(){ if(document.hidden){ suspendAudio(); } else { resumeAudio(); } });
+window.addEventListener('blur', suspendAudio);
+window.addEventListener('pagehide', suspendAudio);
 
 // --- save (cloud + local) ---
 function saveProgress(){ if(window.player){ player.setData({s:1}); } }

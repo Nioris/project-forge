@@ -1,8 +1,9 @@
 # Yandex Games — requirements coverage map
 
-**Source of truth.** Every Yandex requirement (doc last-changed **2026-07-01**) mapped to how Forge
+**Source of truth.** Every Yandex requirement (doc last-changed **2026-08-18**) mapped to how Forge
 verifies it. Status legend:
 - **AUTO** — a Forge check fails the release if violated (debugcheck / validator / runtime probe).
+- **AUTO-WARN** — a conservative static signal is surfaced to the reviewer but does not pretend to prove runtime behavior or hard-block an engine/bundled abstraction.
 - **MANUAL** — cannot be proven statically; surfaced in `/release-ready` as a manual-check item.
 - **N/A-policy** — not applicable under our fixed policy (ads-only, no IAP, no auth, RU/web).
 
@@ -14,14 +15,15 @@ the Yandex page changed since the baseline; THIS file checks whether Forge cover
 | # | Требование | Status | How |
 |---|---|---|---|
 | 1.1 | SDK встроен | AUTO | debugcheck SDK tag + YaGames.init |
-| 1.2 | Без сторонней авторизации; Яндекс ID опционально | AUTO/N/A | no third-party auth; we don't add auth |
-| 1.2.1/1.2.2 | Авторизация по клику; гостевой вход | N/A-policy | no auth flow added |
-| 1.3 | Звук стоп при сворачивании | AUTO | debugcheck visibilitychange + AudioContext suspend |
+| 1.2 | Без сторонней авторизации; Яндекс ID опционально | AUTO-WARN | debugcheck v2.24: явный сторонний provider = FAIL; generic OAuth endpoint = WARN; отсутствие авторизации допустимо |
+| 1.2.1 | Авторизация по клику с объяснением пользы | AUTO-WARN | debugcheck v2.24: `openAuthDialog()` без click/tap и без текста о cloud-save/sync/leaderboard = WARN |
+| 1.2.2 | Гостевой вход | MANUAL | проверяется в реальном пользовательском потоке; статический анализ не доказывает, что игра полностью играбельна без входа |
+| 1.3 | Звук стоп при любой потере фокуса | AUTO-WARN + MANUAL | debugcheck v2.24: `visibilitychange` с actual pause/mute и `blur`/`pagehide`; ручной прогон подтверждает поведение в браузере/оверлеях |
 | 1.4 | Платежи только через SDK | N/A-policy | no IAP |
 | 1.5 | (Упразднён 07.2026, слит в 4.1) | N/A | see 4.1 |
 | 1.6.1.1 | Мобайл: полноэкранный режим | **AUTO (new v4.21)** | debugcheck: requestFullscreen OR fullscreen meta/CSS |
 | 1.6.1.2 | Клавиатура на тап по input | AUTO | debugcheck keyboard check (v2.11) |
-| 1.6.1.3 | Не деформируется при повороте/ресайзе | AUTO | debugcheck v2.12 + runtime Probe F/resize |
+| 1.6.1.3 | Не деформируется при повороте/ресайзе | AUTO-WARN + MANUAL | debugcheck v2.24 требует resize + orientation/fullscreen path для canvas; runtime Probe F и ручной тест на устройстве подтверждают результат |
 | 1.6.1.5 | Полное управление жестами | MANUAL | gameplay-level; manual on touch device |
 | 1.6.1.6 | Нет системного плеера (мобайл) | AUTO | debugcheck v2.13 music-via-WebAudio |
 | 1.6.1.7 | Нет WebGL-уведомления | AUTO | debugcheck WebGL-notice |
@@ -29,20 +31,20 @@ the Yandex page changed since the baseline; THIS file checks whether Forge cover
 | 1.6.2.1 | Десктоп: поле растягивается до края | AUTO | debugcheck 1.6.2.1 |
 | 1.6.2.2 | Десктоп: длинная сторона ≤ 2× короткой | **AUTO (new v4.21)** | runtime Probe F: canvas aspect ≤ 2:1 |
 | 1.6.2.3 | Десктоп: не деформируется при ресайзе | AUTO | shares debugcheck v2.12 canvas-resize |
-| 1.6.2.4 | Десктоп: мышь/клавиатура по умолчанию | MANUAL | input-method; manual |
+| 1.6.2.4 | Десктоп: мышь/клавиатура по умолчанию | AUTO-WARN + MANUAL | debugcheck v2.24 предупреждает о WASD через раскладкозависимый `event.key`/`keyCode`; полнота управления проверяется вручную |
 | 1.6.2.5 | Нет системного плеера (десктоп) | AUTO | debugcheck v2.13 music-via-WebAudio |
 | 1.6.2.6 | Нет ОС-горячих клавиш | **AUTO (new v4.21)** | debugcheck: warn on Ctrl/Alt/Meta+key handlers |
 | 1.6.2.7 | Взаимодействие с полем не выделяет | AUTO | debugcheck contextmenu/selection |
 | 1.6.3.x | ТВ (фуллскрин, стрелки, Back/OK, нет IAP/ссылок) | MANUAL | TV env; manual unless TV declared |
 | 1.7 | Нет абсолютных S3-URL | AUTO | debugcheck no-S3 + check-external-cdn |
 | 1.8 | Размеры элементов/кнопок для тапа | AUTO | debugcheck touch-target ≥44px |
-| 1.9 | Сохранение прогресса (+ при повороте) | AUTO | debugcheck save-before-ad + player.setData |
-| 1.10.1 | Не выходит за экран при ресайзе | AUTO | runtime Probe F (6 разрешений) |
+| 1.9 | Сохранение прогресса (+ при повороте) | AUTO-WARN + MANUAL | debugcheck v2.24 предупреждает, если orientation handler перезапускает/чистит игру без видимой save+restore связки; полный save → rotate → restore round-trip обязателен вручную |
+| 1.10.1 | Не выходит за экран при ресайзе | AUTO-WARN + MANUAL | runtime Probe F (6 разрешений) и debugcheck v2.24 canvas resize/orientation heuristic; реальные разрешения и поворот проверяются вручную |
 | 1.10.2 | Нет браузерного скролла / swipe-refresh | AUTO | scroll-prevention validator + debugcheck |
 | 1.10.3 | Элементы не накладываются | AUTO | runtime Probe G (UI-over-canvas) |
 | 1.10.4 | Управление одной рукой, без лишних скроллов | MANUAL | gameplay-level; manual |
 | 1.11 | Облачные сохранения отмечены в черновике | MANUAL | console draft flag; checklist |
-| 1.12 | Подключена РСЯ | AUTO | ad-rules |
+| 1.12 | Подключена РСЯ | AUTO + MANUAL | ad-rules проверяют интеграцию в коде; состояние монетизации в Консоли/договоре статически не доказуемо и проверяется вручную |
 | 1.13.x | IAP: консумирование, валюта из SDK, цена | AUTO/N/A | iap-flow validator; N/A if no IAP |
 | 1.13.6 | Покупки в игре = вкладка Инап-покупки в Консоли (пустая вкладка → покупок в игре НЕТ) | MANUAL | console-side parity; the parkour case, formalized 07.2026 |
 | 1.14 | Нет ошибок/вылетов/зависаний | MANUAL+AUTO | runtime smoke (no console errors); deep = manual |

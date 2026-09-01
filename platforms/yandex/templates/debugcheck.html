@@ -93,7 +93,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1
   <div class="logo">&#x1F3AE;</div>
   <div>
     <h1>Yandex Games Debug Checker</h1>
-    <div class="subtitle">Static + Runtime verification &bull; v1.0</div>
+    <div class="subtitle">Static + Runtime verification &bull; v2.24 &bull; requirements baseline: 2026-08-18</div>
   </div>
 </div>
 
@@ -159,10 +159,55 @@ const CATEGORIES = [
     ]
   },
   {
+    id: 'auth', title: 'Authorization', icon: '\u{1F511}',
+    checks: [
+      { id:'auth_yandex_only', name:'Only Yandex ID authorization (п.1.2)', desc:'No third-party identity provider or custom OAuth flow',
+        test: s => {
+          const c = sourceWithoutComments(s);
+          const thirdParty = pat(c, /firebase\s*\.\s*auth\s*\(|GoogleAuthProvider|google\s*\.\s*accounts\s*\.\s*id\s*\.(?:initialize|prompt|renderButton)|FB\s*\.\s*login\s*\(|VKID\s*\.\s*(?:Auth|Config)|VKWebAppGetAuthToken|AppleID\s*\.\s*auth|auth0\s*\.\s*(?:loginWithRedirect|authorize)|discord(?:app)?\.com\/(?:api\/)?oauth2\/authorize|steamcommunity\.com\/openid/i);
+          if(thirdParty) return false;
+          return pat(c, /\/api\/auth\/|oauth2\/authorize|openid\/login/i) ? 'warn' : true;
+        },
+        warnText:'Generic OAuth/auth endpoint found. Verify manually: Yandex Games may use only Yandex ID requested through the SDK.',
+        failText:'Third-party authorization found. Remove Google/Facebook/VK/Apple/Auth0/Discord/Steam login; only Yandex ID through the Yandex Games SDK is allowed.' },
+      { id:'auth_click', name:'Yandex ID dialog is user-initiated (п.1.2)', desc:'openAuthDialog() must follow an explicit click/tap',
+        test: s => {
+          const c = sourceWithoutComments(s);
+          if(!pat(c, /openAuthDialog\s*\(/)) return true;
+          const direct = pat(c, /(?:onclick\s*=|addEventListener\s*\(\s*['"](?:click|pointerup|touchend)['"])[\s\S]{0,700}openAuthDialog\s*\(/i);
+          const named = c.match(/function\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{[\s\S]{0,500}?openAuthDialog\s*\(/i);
+          const bound = !!(named && new RegExp("addEventListener\\s*\\(\\s*['\\\"](?:click|pointerup|touchend)['\\\"]\\s*,\\s*" + named[1].replace(/[$]/g, '\\$&'), 'i').test(c));
+          return direct || bound ? true : 'warn';
+        }, warnText:'openAuthDialog() found, but its click/tap binding was not detected. Never request authorization automatically at startup.' },
+      { id:'auth_benefit', name:'Authorization offer explains the benefit (п.1.2.1)', desc:'The prompt mentions cloud progress, sync or identity benefit',
+        test: s => {
+          const c = sourceWithoutComments(s);
+          if(!pat(c, /openAuthDialog\s*\(/)) return true;
+          return pat(c, /сохран[а-яё]{0,12}[^<\n]{0,50}прогресс|синхрониз|облачн(?:ое|ые|ая)[^<\n]{0,30}(?:сохран|прогресс)|друг(?:ом|их)[^<\n]{0,30}устройств|таблиц[^<\n]{0,20}лидер|save[^<\n]{0,30}progress|cloud[^<\n]{0,30}save|sync[^<\n]{0,30}(?:progress|device)|leaderboard/i) ? true : 'warn';
+        }, warnText:'The login offer does not explain its benefit. Add neutral copy such as: “Sign in to save progress in the cloud and continue on another device.”' },
+    ]
+  },
+  {
     id: 'sound', title: 'Sound Management', icon: '\u{1F50A}',
     checks: [
-      { id:'snd_vis', name:'visibilitychange handler', desc:'Mute when tab hidden',
-        test: s => pat(s, /visibilitychange/) },
+      { id:'snd_vis', name:'visibilitychange actually mutes (п.1.3)', desc:'Hidden tab must call a pause/mute path',
+        test: s => {
+          if(!hasAudioSource(s)) return true;
+          const block = extractBlock(sourceWithoutComments(s), /(?:addEventListener\s*\(\s*['"]visibilitychange['"]|onvisibilitychange\s*=)/i, 900);
+          if(!block) return 'warn';
+          const resumes = pat(block, /\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
+          if(resumes && !hasAudioPauseAction(block)) return false;
+          return pat(block, /document\s*\.\s*hidden|visibilityState/i) && hasAudioPauseAction(block) ? true : 'warn';
+        }, warnText:'Game audio exists, but document.hidden/visibilityState plus an actual pause/mute inside visibilitychange was not detected.', failText:'visibilitychange resumes audio without stopping it while hidden. Pause/mute sound on focus loss (п.1.3).' },
+      { id:'snd_focus', name:'Window blur/pagehide actually mutes (п.1.3)', desc:'Any focus loss must pause or mute audio',
+        test: s => {
+          if(!hasAudioSource(s)) return true;
+          const block = extractBlock(sourceWithoutComments(s), /(?:addEventListener\s*\(\s*['"](?:blur|pagehide|freeze)['"]|on(?:blur|pagehide)\s*=)/i, 900);
+          if(!block) return 'warn';
+          const resumes = pat(block, /\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
+          if(resumes && !hasAudioPauseAction(block)) return false;
+          return hasAudioPauseAction(block) ? true : 'warn';
+        }, warnText:'No confirmed pause/mute on window.blur/pagehide. visibilitychange alone is insufficient: sound must stop on any focus loss.', failText:'blur/pagehide resumes audio instead of stopping it. Pause/mute sound on any focus loss (п.1.3).' },
       { id:'snd_pause', name:'game_api_pause handler', desc:'Mute when SDK pauses game',
         test: s => pat(s, /game_api_pause/) },
       { id:'snd_resume', name:'game_api_resume handler', desc:'Unmute when SDK resumes',
@@ -235,6 +280,17 @@ const CATEGORIES = [
           }
           return allGuarded ? true : 'warn';
         }, warnText: 'localStorage.setItem found — verify it\'s dev-mode only' },
+      { id:'sv_rotation', name:'Rotation does not reset progress (п.1.9)', desc:'Orientation handlers must not restart the run without save + restore',
+        test: s => {
+          const c = sourceWithoutComments(s);
+          const block = extractBlock(c, /(?:addEventListener\s*\(\s*['"]orientationchange['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"])/i, 1000);
+          if(!block) return true;
+          const destructive = pat(block, /location\s*\.\s*reload\s*\(|resetGame\s*\(|restartGame\s*\(|newGame\s*\(|initGame\s*\(|(?:score|level|stage|round)\s*=\s*(?:0|1)\b|clear(?:Progress|Save|State)\s*\(/i);
+          if(!destructive) return true;
+          const saves = pat(c, /\.setData\s*\(|save(?:Progress|Game|State)\s*\(|snapshot|serialize/i);
+          const restores = pat(c, /\.getData\s*\(|load(?:Progress|Game|State)\s*\(|restore|deserialize/i);
+          return saves && restores ? true : 'warn';
+        }, warnText:'The orientation handler restarts or clears the game, but a matching save + restore path was not detected. Rotation must not lose current progress (п.1.9).' },
     ]
   },
   {
@@ -296,6 +352,34 @@ const CATEGORIES = [
         test: s => pat(s, /overflow\s*:\s*hidden/) || pat(s, /overscroll-behavior/) },
       { id:'ux_fullscreen', name:'Fullscreen capability', desc:'fullscreen request available',
         test: s => pat(s, /requestFullscreen|fullscreen\.request/) },
+      { id:'ux_keyboard_code', name:'Keyboard uses physical codes (п.1.6.2.4)', desc:'Use event.code / KeyboardEvent.code for WASD-style controls',
+        test: s => {
+          const c = sourceWithoutComments(s);
+          if(!pat(c, /keydown|keyup/i)) return true;
+          const direct = pat(c, /\.key\s*(?:===?|==)\s*['"][wasd]['"]/i);
+          const switched = pat(c, /switch\s*\([^)]*\.key[^)]*\)\s*\{[\s\S]{0,500}?case\s*['"][wasd]['"]\s*:/i);
+          const lowered = pat(c, /\.key\s*\.\s*toLowerCase\s*\(\s*\)[\s\S]{0,180}?(?:['"][wasd]['"]|includes\s*\(\s*['"]wasd['"])/i);
+          const deprecated = pat(c, /\.(?:keyCode|which)\s*(?:===?|==)\s*(?:65|68|83|87)\b/);
+          return direct || switched || lowered || deprecated ? 'warn' : true;
+        }, warnText:'event.key/keyCode WASD handling found. It depends on keyboard layout even if event.code exists elsewhere; use event.code for physical controls.' },
+      { id:'ux_canvas_orientation', name:'Canvas handles resize and orientation (п.1.10)', desc:'Responsive canvas must also react to orientation/fullscreen changes',
+        test: s => {
+          const c = sourceWithoutComments(s);
+          if(!pat(c, /<canvas\b|getContext\s*\(/i)) return true;
+          const bindsResize = pat(c, /addEventListener\s*\(\s*['"]resize['"]/i);
+          const resizeNamed = c.match(/addEventListener\s*\(\s*['"]resize['"]\s*,\s*([A-Za-z_$][\w$]*)/i);
+          let shared = false;
+          if(resizeNamed) {
+            const cb = resizeNamed[1].replace(/[$]/g, '\\$&');
+            shared = new RegExp("(?:orientationchange|fullscreenchange)['\"]\\s*,\\s*" + cb + "\\b", 'i').test(c)
+              || new RegExp("screen\\s*\\.\\s*orientation[\\s\\S]{0,100}['\"]change['\"]\\s*,\\s*" + cb + "\\b", 'i').test(c)
+              || new RegExp("visualViewport[\\s\\S]{0,100}['\"]resize['\"]\\s*,\\s*" + cb + "\\b", 'i').test(c);
+          }
+          const orientationBlock = extractBlock(c, /(?:addEventListener\s*\(\s*['"](?:orientationchange|fullscreenchange)['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"]|visualViewport[\s\S]{0,80}addEventListener\s*\(\s*['"]resize['"])/i, 900);
+          const activeOrientation = orientationBlock && pat(orientationBlock, /(?:fit|resize|layout|reflow|setSize|updateViewport|canvas\s*\.\s*(?:width|height)|style\s*\.\s*(?:width|height))\s*(?:\(|=)/i);
+          const activeObserver = pat(c, /ResizeObserver\s*\(\s*(?:[A-Za-z_$][\w$]*(?:fit|resize|layout|reflow)[\w$]*|[^)]{0,240}(?:setSize|updateViewport|canvas\s*\.\s*(?:width|height)))/i);
+          return bindsResize && (shared || activeOrientation || activeObserver) ? true : 'warn';
+        }, warnText:'Canvas found without a confirmed resize + orientation/fullscreen response. Test rotation on a real device: layout must not crop, distort or lose progress.' },
     ]
   },
   {
@@ -367,7 +451,12 @@ const CATEGORIES = [
       { id:'q_no_ext_ads', name:'No external ad networks', desc:'Only Yandex SDK ads allowed',
         test: s => !pat(s, /googletag|doubleclick|adsbygoogle|facebook.*pixel|analytics\.js/) },
       { id:'q_no_ext_auth', name:'No third-party auth', desc:'Only Yandex ID allowed',
-        test: s => !pat(s, /firebase.*auth|google.*sign[_-]?in|facebook.*login|auth0/) },
+        test: s => {
+          const c = sourceWithoutComments(s);
+          const thirdParty = pat(c, /firebase\s*\.\s*auth\s*\(|GoogleAuthProvider|google\s*\.\s*accounts\s*\.\s*id\s*\.(?:initialize|prompt|renderButton)|FB\s*\.\s*login\s*\(|VKID\s*\.\s*(?:Auth|Config)|VKWebAppGetAuthToken|AppleID\s*\.\s*auth|auth0\s*\.\s*(?:loginWithRedirect|authorize)|discord(?:app)?\.com\/(?:api\/)?oauth2\/authorize|steamcommunity\.com\/openid/i);
+          if(thirdParty) return false;
+          return pat(c, /\/api\/auth\/|oauth2\/authorize|openid\/login/i) ? 'warn' : true;
+        }, warnText:'Generic OAuth/auth endpoint found. Verify that it is not a third-party login.', failText:'Third-party authorization found; only Yandex ID is allowed.' },
     ]
   },
 ];
@@ -381,6 +470,18 @@ function pat(s, regex) {
 function removeComments(s) {
   // Remove single-line and multi-line comments (rough)
   return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+function sourceWithoutComments(s) {
+  return String(s || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[\t ]*\/\/.*$/gm, '');
+}
+
+function hasAudioSource(s) {
+  return pat(sourceWithoutComments(s), /AudioContext|webkitAudioContext|new\s+Audio\s*\(|<audio\b|Howl\s*\(|Tone\./i);
+}
+
+function hasAudioPauseAction(s) {
+  return pat(s, /\.suspend\s*\(|\.pause\s*\(|suspendAudio|pauseAudio|pauseAppAudio|muteAll|muteSound|muteAudio|setMuted|volume\s*=\s*0/i);
 }
 
 function extractBlock(s, startRegex, depth=200) {

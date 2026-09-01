@@ -1,4 +1,4 @@
-# Project Forge v4.68.76 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.77 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -510,11 +510,9 @@ then audit the last five each release.
 
 ---
 
-## v4.68.76 changelog (vault location invariant)
+## v4.68.77 changelog (Yandex debug checker v2.24)
 
-Forge now rejects any security data root inside a project before writing files. Existing managed
-`.gitignore` blocks are refreshed in place and include `forge-data/`, while user-authored ignore rules remain.
-
-## v4.68.75 changelog (same-volume Android publish)
-
-Android artifacts now use a same-volume sibling stage, avoiding cross-drive Windows `EXDEV`.
+The Yandex checker now follows the 2026-08-18 requirements baseline: Yandex-ID-only authorization,
+benefit copy and user-initiated login, real audio pause on any focus loss, layout-independent physical
+keys, rotation-safe progress warnings and active canvas reflow evidence. Nineteen contract regressions
+prevent event-name or unrelated-token false PASS results; exact runtime state remains a manual gate.
