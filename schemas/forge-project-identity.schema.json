@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projectforge.local/schemas/forge-project-identity.schema.json",
+  "title": "Project Forge public project identity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "projectId", "vaultId", "createdAt", "android"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.project-identity" },
+    "projectId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "vaultId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "createdAt": { "type": "string", "format": "date-time", "maxLength": 40 },
+    "android": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publisherNamespace", "packageId", "keyAlias", "certificateSha256"],
+      "properties": {
+        "publisherNamespace": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$", "maxLength": 120 },
+        "packageId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$", "maxLength": 180 },
+        "keyAlias": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$", "maxLength": 80 },
+        "certificateSha256": { "type": "string", "pattern": "^[A-F0-9]{64}$" }
+      }
+    }
+  }
+}

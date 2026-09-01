@@ -23,10 +23,10 @@ type: reference
 - WebView кеширует старые файлы — при тестировании УДАЛЯТЬ старый APK перед установкой нового
 
 ### Подпись
-- Keystore PKCS12: `keytool -genkey -v -keystore name.keystore -storetype PKCS12 -alias name -keyalg RSA -keysize 2048 -validity 10000`
-- `android/keystore.properties` — НЕ коммитить в git
-- `build.gradle` читает keystore.properties через `Properties().load()`
-- Для RuStore нужен pepk: `java -jar pepk.jar --keystore=name.keystore --alias=name --output=pepk_out.zip`
+- Signing identity создаёт только `forge-security`: PKCS12 RSA-3072, стабильный package ID и certificate fingerprint.
+- Keystore и зашифрованные пароли живут во внешнем `forge-data/security/<project>/`, а не в `android/`, `.env`, Markdown или Gradle properties.
+- Release builder получает signing material из vault только на время изолированной сборки и не печатает его в командной строке/логах.
+- PEPK и store enrollment остаются отдельными внешними шагами; их результаты не должны содержать пароль или приватный ключ в проекте.
 
 ---
 

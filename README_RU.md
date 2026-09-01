@@ -6,7 +6,7 @@
 
 Project Forge даёт нескольким AI-агентам один общий процесс: одинаковые фазы, состояние проекта, skills, STOP-points и проверки.
 
-**Текущая версия исходников:** `v4.68.73`
+**Текущая версия исходников:** `v4.68.74`
 
 | Агент | Авторизация | Статус |
 |---|---|---|
@@ -42,17 +42,13 @@ Forge — не отдельный чат. Это runtime вокруг терми
 
 ## Платформы релиза
 
-| Канонический ID | Платформа |
-|---|---|
-| `yandex` | Yandex Games |
-| `vk` | VK Mini Apps |
-| `telegram` | Telegram Mini App |
-| `ok` | OK.ru |
-| `max` | MAX messenger |
-| `rustore` | RuStore |
-| `web` | собственный HTTPS/PWA-хостинг |
-| `steam` | Steam |
-| `vkplay` | VK Play |
+Основные цели: `yandex`, `vk`, `telegram`, `rustore`, `google-play`, `appgallery`, `vkplay`, `steam`.
+Рассматриваемые цели: `crazygames`, `taptap`. Старые `ok`, `max` и `web` остаются только legacy-
+адаптерами и не считаются storefront ID в `forge.targets.json`.
+
+Для Godot одна версия получает отдельные Web/local Android, production-signed Android и Windows
+базовые артефакты. Затем `build-all-platforms.mjs --level local` формирует отдельный кандидат каждой
+выбранной витрины. Ни один универсальный ZIP не считается доказательством готовности всех платформ.
 
 ## 9 фаз
 
@@ -215,7 +211,7 @@ reviewer не читает их до собственной проверки т�
 
 ## Терминальный launcher
 
-В `v4.68.73` обычная авторизация и API-профили остаются разделены.
+В `v4.68.74` обычная авторизация и API-профили остаются разделены.
 
 ```bash
 # Claude — существующий аккаунт/подписка
@@ -289,8 +285,25 @@ node scripts/audit-forge-diagnostics.mjs --since all --json
       openai.key
       gigachat.key
       gigasearch.key       # опционально, только для настроенного production GigaSearch
+    security/
+      publisher-profile.json
+      <project>--<vault-id>/ # ключ подписи и зашифрованные пароли вне проекта
   my-game/
 ```
+
+Один раз задайте namespace издателя. После этого production-сборщик Android сам создаёт и навсегда
+закрепляет package ID, alias, сильный пароль и RSA-3072 PKCS12 signing key:
+
+```powershell
+node scripts/forge-security.mjs profile set-publisher dev.example
+node scripts/build-godot-android-release.mjs my-game v1.0.0 --root <путь-к-проекту>
+node scripts/forge-security.mjs validate --project <путь-к-проекту>
+```
+
+Vault находится вне проекта и Git. В `forge.identity.json` остаются только публичные стабильные поля и
+SHA-256 сертификата. Forge не печатает пароли и не передаёт их аргументами процессов; на Windows они
+шифруются DPAPI для текущего пользователя ОС. До первой загрузки в магазин signing identity необходимо
+сохранить поддерживаемым зашифрованным способом: потеря ключа делает обновление того же package невозможным.
 
 Проверить настроенные provider'ы без вывода значений ключей:
 
@@ -373,7 +386,7 @@ dashboard.html    локальный Dashboard
 - [GUIDE.md](GUIDE.md) — полное руководство
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — справочник команд
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.73.md](RELEASE_NOTES_v4.68.73.md) — изменения текущей версии
+- [RELEASE_NOTES_v4.68.74.md](RELEASE_NOTES_v4.68.74.md) — изменения текущей версии
 - [SECURITY.md](SECURITY.md) — правила по секретам и безопасности
 - [CONTRIBUTING.md](CONTRIBUTING.md) — правила contribution
 - [ROADMAP.md](ROADMAP.md) — публичное направление развития

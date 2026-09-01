@@ -115,9 +115,12 @@ function inspectBaseVersion(projectRoot, slug, version, wanted) {
     inputs.web = artifactAt(web, manifest.web?.artifact, 'BUILD_ALL_BASE_ARTIFACT', 'Web base artifact');
   }
   if (wanted.androidApk || wanted.androidAab) {
-    const android = path.join(base, 'android', version);
+    const productionAndroid = path.join(base, 'android-release', version);
+    const localAndroid = path.join(base, 'android', version);
+    const production = fs.statSync(productionAndroid, { throwIfNoEntry: false })?.isDirectory() === true;
+    const android = production ? productionAndroid : localAndroid;
     if (!fs.statSync(android, { throwIfNoEntry: false })?.isDirectory()) return null;
-    const androidManifest = manifestAt(android, `${slug}-${version}.android-manifest.json`, 'forge.godot-web-android-local-manifest', slug, version);
+    const androidManifest = manifestAt(android, production ? `${slug}-${version}.android-production-manifest.json` : `${slug}-${version}.android-manifest.json`, production ? 'forge.godot-android-production-manifest' : 'forge.godot-web-android-local-manifest', slug, version);
     coherence(androidManifest, 'Android');
     const artifacts = new Map((androidManifest.android?.artifacts || []).map(item => [item?.format, item?.file]));
     if (wanted.androidApk) inputs.androidApk = artifactAt(android, artifacts.get('apk'), 'BUILD_ALL_BASE_ARTIFACT', 'Android APK base artifact');
@@ -146,7 +149,7 @@ function discoverCoherentBase(projectRoot, selection) {
     const godot = path.join(release, entry.name, 'godot');
     if (!fs.statSync(godot, { throwIfNoEntry: false })?.isDirectory()) continue;
     const versions = new Set();
-    for (const family of ['web', 'android', 'windows']) {
+    for (const family of ['web', 'android-release', 'android', 'windows']) {
       const familyRoot = path.join(godot, family);
       if (!fs.statSync(familyRoot, { throwIfNoEntry: false })?.isDirectory()) continue;
       for (const versionEntry of fs.readdirSync(familyRoot, { withFileTypes: true })) {

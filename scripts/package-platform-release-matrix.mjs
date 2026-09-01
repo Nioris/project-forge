@@ -143,22 +143,27 @@ function requireGodotBaseProvenance(projectRoot, inputs, slug, version, sourceSn
     }
   };
 
-  let multi = null;
-  if (inputs.web || inputs.androidApk || inputs.androidAab) {
-    const anchor = inputs.web || inputs.androidApk || inputs.androidAab;
-    const suffix = inputs.web ? 'web' : 'android';
-    const file = path.join(path.dirname(anchor), `${slug}-${version}.${suffix}-manifest.json`);
-    multi = readJsonManifest(file, `${suffix} base manifest`).value;
-    assertCommon(multi, `${suffix} base manifest`, 'forge.godot-web-android-local-manifest');
-  }
+  let webManifest = null;
   if (inputs.web) {
-    if (multi.web?.artifact !== path.basename(inputs.web) || multi.web?.sha256 !== sha256(inputs.web)) {
+    const file = path.join(path.dirname(inputs.web), `${slug}-${version}.web-manifest.json`);
+    webManifest = readJsonManifest(file, 'Web base manifest').value;
+    assertCommon(webManifest, 'Web base manifest', 'forge.godot-web-android-local-manifest');
+    if (webManifest.web?.artifact !== path.basename(inputs.web) || webManifest.web?.sha256 !== sha256(inputs.web)) {
       fail('PLATFORM_PACKAGE_BASE_HASH', 'Web artifact does not match its trusted base manifest');
     }
   }
+  let androidManifest = null;
+  if (inputs.androidApk || inputs.androidAab) {
+    const anchor = inputs.androidApk || inputs.androidAab;
+    const productionFile = path.join(path.dirname(anchor), `${slug}-${version}.android-production-manifest.json`);
+    const localFile = path.join(path.dirname(anchor), `${slug}-${version}.android-manifest.json`);
+    const production = fs.existsSync(productionFile);
+    androidManifest = readJsonManifest(production ? productionFile : localFile, production ? 'Android production base manifest' : 'Android local base manifest').value;
+    assertCommon(androidManifest, production ? 'Android production base manifest' : 'Android local base manifest', production ? 'forge.godot-android-production-manifest' : 'forge.godot-web-android-local-manifest');
+  }
   for (const field of ['androidApk', 'androidAab']) {
     if (!inputs[field]) continue;
-    const fact = multi.android?.artifacts?.find(item => item.file === path.basename(inputs[field]));
+    const fact = androidManifest.android?.artifacts?.find(item => item.file === path.basename(inputs[field]));
     if (!fact || fact.sha256 !== sha256(inputs[field]) || fact.bytes !== fs.statSync(inputs[field]).size) {
       fail('PLATFORM_PACKAGE_BASE_HASH', `${field} artifact does not match its trusted base manifest`);
     }

@@ -12,7 +12,7 @@ Pipeline для Android APK/AAB в RuStore.
 
 ## Prerequisites (обязательно)
 
-- [ ] Keystore `.jks` с паролями
+- [ ] `forge-security validate --project .` подтверждает внешний signing vault; Forge сам создаёт package ID, PKCS12 key и пароль один раз
 - [ ] Иконка 512×512+ png
 - [ ] Reklama (опционально): Yandex Ads Block ID
 - [ ] Analytics (опционально): AppMetrica API Key или MyTracker
@@ -56,7 +56,7 @@ cp app/build/outputs/apk/debug/app-debug.apk ../../../Release/{Project}/rustore/
 
 # Release AAB (для RuStore)
 ./gradlew bundleRelease
-# signing через keystore конфиг в app/build.gradle
+# signing только через Forge vault/materialization; секреты не записываются в build.gradle
 cp app/build/outputs/bundle/release/app-release.aab ../../../Release/{Project}/rustore/
 ```
 
@@ -85,8 +85,8 @@ Release/{Project}/rustore/
 
 ## Non-Negotiable
 
-- [ ] Реальный keystore, не debug-keystore
+- [ ] Реальный Forge vault key, не debug-keystore; certificate fingerprint совпадает с публичной project identity
 - [ ] Иконки заменены во ВСЕХ `mipmap-*` директориях (не стандартная Capacitor)
-- [ ] Signing конфиг не коммитится в git
-- [ ] `build.gradle` использует signingConfig `release`
+- [ ] Keystore/пароль не находятся в проекте, `.env`, Gradle properties или логах
+- [ ] Release builder получает signing material только из внешнего `forge-data/security`
 - [ ] APK протестирован на реальном устройстве ДО заливки AAB в RuStore

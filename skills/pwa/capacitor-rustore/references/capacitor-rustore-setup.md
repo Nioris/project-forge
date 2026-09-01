@@ -15,8 +15,9 @@ const config: CapacitorConfig = {
   },
   android: {
     buildOptions: {
-      keystorePath: process.env.KEYSTORE_PATH || 'release.jks',
-      keystoreAlias: process.env.KEYSTORE_ALIAS || 'release',
+      // Forge release builder injects these only into an isolated build process.
+      keystorePath: process.env.KEYSTORE_PATH,
+      keystoreAlias: process.env.KEYSTORE_ALIAS,
       keystorePassword: process.env.KEYSTORE_PASSWORD,
       keystoreAliasPassword: process.env.KEY_PASSWORD,
       releaseType: 'AAB',
@@ -74,62 +75,17 @@ rustorePublish {
 }
 ```
 
-## rustore-credentials.json
+## RuStore API credentials
 
-```json
-{
-  "key_id": "YOUR_KEY_ID",
-  "client_secret": "YOUR_CLIENT_SECRET"
-}
-```
+Не хранить `rustore-credentials.json` в проекте. Forge получает `key_id` из публичного platform profile, извлекает `client_secret` из внешнего secret store и материализует файл только в изолированной build-папке на время публикации.
+
+Если ключ отсутствует, сохранить его через защищённый ввод: `node <forge-engine>/scripts/forge-secrets.mjs set rustore --stdin`.
 
 Get credentials at: https://console.rustore.ru → API
 
-## CI Build & Publish (GitHub Actions)
+## CI Build & Publish
 
-```yaml
-name: Build & Publish to RuStore
-on:
-  push:
-    tags: ['v*']
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - uses: actions/setup-java@v4
-        with: { distribution: 'temurin', java-version: '17' }
-
-      - name: Install and build web
-        run: |
-          corepack enable
-          pnpm install --frozen-lockfile
-          pnpm build
-
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.jks
-
-      - name: Build AAB
-        working-directory: android
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew bundleRelease
-
-      - name: Create RuStore credentials
-        run: |
-          echo '{"key_id":"${{ secrets.RUSTORE_KEY_ID }}","client_secret":"${{ secrets.RUSTORE_SECRET }}"}' > android/rustore-credentials.json
-
-      - name: Publish to RuStore
-        working-directory: android
-        run: ./gradlew publishReleaseRustore
-```
+CI разрешён только через поддерживаемый зашифрованный экспорт Forge vault либо аппаратный/облачный signing service с независимой проверкой fingerprint. Не копировать base64-keystore и пароли в workflow и не придумывать неподтверждённую CI-схему. Пока такой backend не настроен, production-подпись и публикация выполняются локальным Forge release coordinator, а CI ограничивается тестами и unsigned/debug сборками.
 
 ## Deep Links (AndroidManifest.xml addition)
 

@@ -387,6 +387,32 @@ safe('godot-web-android-local-release', () => {
   }
 });
 
+safe('forge-security-vault', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-forge-security-vault.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 180_000,
+  });
+  if (r.status !== 0) {
+    err('external security vault regression failed — run scripts/check-forge-security-vault.mjs');
+  } else {
+    ok.push('release identity is generated once in an external OS-protected vault without exposing secrets');
+  }
+});
+
+safe('godot-android-production-release', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-godot-android-release.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 180_000,
+  });
+  if (r.status !== 0) {
+    err('Godot Android production signing regression failed — run scripts/check-godot-android-release.mjs');
+  } else {
+    ok.push('Godot Android release artifacts are immutable, vault-signed and certificate-verified');
+  }
+});
+
 safe('storefront-platform-profiles', () => {
   const r = spawnSync(process.execPath, ['scripts/check-platform-profile.mjs'], {
     cwd: ROOT,

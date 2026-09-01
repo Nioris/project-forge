@@ -1,4 +1,4 @@
-# Project Forge v4.68.73 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.74 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -52,27 +52,19 @@ set FORGE_ALLOW_PROTECTED_WRITE=1
 
 ## 🔑 КЛЮЧИ API — где лежат и как обращаться
 
-Terminal API profiles use one canonical secrets directory **outside projects**:
-
-| Файл | Для чего |
-|---|---|
-| `../forge-data/secrets/anthropic.key` | Claude API profile |
-| `../forge-data/secrets/openai.key` | Codex API profile + optional OpenAI image batch |
-| `../forge-data/secrets/gigachat.key` | GigaChat terminal agent + image/3D providers |
-| `../forge-data/secrets/gigasearch.key` | Optional production GigaSearch provider; not needed for the no-key fallback |
-| `../forge-data/secrets/deepseek.key` | DeepSeek whole-project profile through OpenCode |
-| `../forge-data/secrets/zai.key` | GLM whole-project profile through OpenCode |
-| `../forge-data/secrets/minimax.key` | MiniMax whole-project profile through OpenCode |
-| `../forge-data/secrets/openrouter.key` | OpenRouter whole-project profile: Qwen, DeepSeek, GLM, Kimi, MiniMax, Gemini, Grok or non-confidential Ox Alpha preview |
-
-Environment variables `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GIGACHAT_AUTH_KEY`, `GIGASEARCH_API_KEY`, `DEEPSEEK_API_KEY`, `ZAI_API_KEY`, `MINIMAX_API_KEY` and `OPENROUTER_API_KEY` have precedence. Legacy project-local key files remain compatibility fallbacks where supported; `.elevenlabs_key` / `.pixellab_key` keep their existing project-local workflow.
+Terminal API keys live only in `../forge-data/secrets/<provider>.key`; exact providers/env precedence
+are defined by `scripts/lib/forge-secrets.mjs`. Legacy local keys are compatibility-only.
 
 Rules:
 1. Never print, log, commit or copy secret values into wiki/config/prompt artifacts.
 2. Use `node scripts/forge-secrets.mjs status` to check presence without revealing values.
 3. Add/update central keys with `forge-secrets.mjs set <provider> --stdin` or `--from-file`; never pass a secret as a command-line argument.
-4. `.forge-ai.json` stores provider settings only, never credentials.
-5. MCP servers remain user-scoped (`-s user`) unless a workflow explicitly requires otherwise.
+4. Config stores settings only; MCP servers remain user-scoped unless explicitly required.
+
+Android: configure publisher namespace once; Forge then owns stable package ID, RSA-3072 PKCS12 key,
+alias/password and certificate verification. Private data stays in `../forge-data/security/`; only public
+`forge.identity.json` belongs in Git. Project-local keystores, `SIGNING_CREDENTIALS.md`, password-bearing
+Gradle/.env files and CLI password arguments are forbidden.
 
 ## 🎛️ AI STUDIO 4.67 — 9 фаз остаются каноническими
 
@@ -502,12 +494,25 @@ User approves the Phase 2 screen graph. Phase 4 generates GPT Image targets, cap
 and hash-binds pixels + reviewer evidence. <6/10 or Critical/Major blocks; CSS/DOM/console cannot substitute.
 See `wiki/decisions/035-evidence-bound-visual-acceptance.md`.
 
+### 25. Release signing identity is durable, external and non-secret in Git
+
+Forge generates Android package/signing identity once. The public binding is versioned in
+`forge.identity.json`; the private key and DPAPI-encrypted password remain outside every project in
+`forge-data/security/`. Missing, moved, corrupted or mismatched vault state blocks instead of rekeying.
+A locally signed artifact is not evidence of store upload or moderation.
+
 ### Adding lessons
 
 Classify lessons as `principle`, `pattern` or `incident`; promote, reference or retain them accordingly,
 then audit the last five each release.
 
 ---
+
+## v4.68.74 changelog (external signing vault)
+
+Forge now provisions stable Android package/signing identity outside projects, signs immutable Godot
+APK/AAB releases without exposing credentials, verifies the physical certificate, blocks secret files
+from Git, and prefers production Android bases when packaging storefront candidates.
 
 ## v4.68.73 changelog (package-safe fixtures)
 

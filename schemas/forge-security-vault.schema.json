@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projectforge.local/schemas/forge-security-vault.schema.json",
+  "title": "Project Forge external security vault metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "vaultId", "projectId", "projectBinding", "createdAt", "identitySha256", "android", "credentials"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.security-vault" },
+    "vaultId": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "projectId": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "projectBinding": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "createdAt": { "type": "string", "format": "date-time", "maxLength": 40 },
+    "identitySha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "android": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packageId", "keyAlias", "certificateSha256", "keystoreFile"],
+      "properties": {
+        "packageId": { "type": "string", "maxLength": 180 },
+        "keyAlias": { "type": "string", "maxLength": 80 },
+        "certificateSha256": { "type": "string", "pattern": "^[A-F0-9]{64}$" },
+        "keystoreFile": { "const": "android/release.p12" }
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "file"],
+      "properties": {
+        "backend": { "enum": ["windows-dpapi-current-user", "plaintext-test"] },
+        "file": { "const": "private/credentials.json" }
+      }
+    }
+  }
+}

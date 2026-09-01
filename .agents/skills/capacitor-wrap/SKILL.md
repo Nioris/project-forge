@@ -66,10 +66,13 @@ cd android
 ./gradlew bundleRelease    # → bundle/release/app-release.aab
 ```
 
-### 7. Sign
-```bash
-keytool -genkey -v -keystore release.keystore -alias {appid} -keyalg RSA -keysize 2048 -validity 10000
-# Add signingConfigs to build.gradle
+### 7. Production signing
+
+Не создавать keystore внутри проекта вручную. Перед release-сборкой вызвать Forge security preflight: он один раз создаст стабильные package ID, RSA-3072 PKCS12 key, alias и пароль во внешнем защищённом vault, а builder передаст их сборщику только на время изолированной сборки.
+
+```powershell
+node <forge-engine>/scripts/forge-security.mjs init --project .
+node <forge-engine>/scripts/forge-security.mjs validate --project .
 ```
 
 ## Common Fixes
@@ -88,3 +91,4 @@ keytool -genkey -v -keystore release.keystore -alias {appid} -keyalg RSA -keysiz
 - [ ] Back button handled
 - [ ] No white flash (splash configured)
 - [ ] Debug APK verified working
+- [ ] Release APK/AAB signed by the pinned Forge identity; no signing material exists in the project

@@ -29,7 +29,9 @@ Validate it before building with `node scripts/platform-profile.mjs check <proje
 unknown, duplicate or empty targets fail closed. Changing this manifest changes release scope and
 requires checking the whole selected target matrix again. All ten installed adapters can create and
 verify a local target-family candidate. That `implemented` status means **local adapter
-implemented**; it does not claim Forge can sign, host, upload, submit or publish. Production
+implemented**; it does not claim Forge can host, upload, submit or publish. Forge can create and
+independently verify a local Android production signature from its external security vault, but
+that signature alone is not evidence of a store account, upload or submission. Production
 submission remains unavailable until an installed, target-specific external verifier/uploader adapter
 validates the external evidence declared by the target profile.
 
@@ -40,6 +42,7 @@ profiles, then let the coordinator package and verify the storefront matrix:
 
 ```powershell
 node scripts/build-godot-web-android.mjs <slug> <vN.N.N> --root <project-root>
+node scripts/build-godot-android-release.mjs <slug> <vN.N.N> --root <project-root>
 node scripts/build-godot-release.mjs <slug> <vN.N.N> --root <project-root>
 node scripts/build-all-platforms.mjs <project-root> --level local
 ```
@@ -47,7 +50,9 @@ node scripts/build-all-platforms.mjs <project-root> --level local
 At `local`, `build-all-platforms.mjs` reads only `forge.targets.json`, selects one latest coherent
 Godot base set and invokes the canonical per-target packager when that version has no storefront
 matrix yet. Adjacent engine manifests, one version, one source snapshot and the recorded artifact
-hashes must agree. More than one eligible release slug is an error, not a guess. An existing matrix
+hashes must agree. Android storefront inputs should come from the production manifest in
+`godot/android-release/`; its APK/AAB certificate must match `forge.identity.json` and the external
+vault. More than one eligible release slug is an error, not a guess. An existing matrix
 is immutable: it is verified as-is and never silently repaired or overwritten. Build a newer version
 after any source, target or candidate change.
 
@@ -80,7 +85,8 @@ node scripts/build-all-platforms.mjs <project-root> --level submit --json
 ```
 
 - `local` verifies the candidate, source snapshot and registry consistency for the entire selected
-  matrix. It does not prove hosting, upload, account access, IDs, signing enrollment, credentials,
+  matrix. For production Android bases it also verifies the physical signature and pinned
+  certificate. It does not prove hosting, upload, account access, store IDs, signing enrollment,
   console state or moderation.
 - `submit` is unavailable by design until the selected target has an installed target-specific
   external verifier/uploader adapter. Until then it returns

@@ -6,7 +6,7 @@ tags: [playbook, rustore, publishing, release, reusable]
 
 Пошаговый пайплайн публикации любого Android-приложения в RuStore. Не привязан к конкретному проекту. При работе над приложением — используй как чек-лист и подставляй свои значения.
 
-Для проекта-специфичных параметров (названия keystore, SKU, ID из Консоли) создавай отдельный документ в репо проекта (например, `StoreData/signing/SIGNING_CREDENTIALS.md` + `wiki/rustore-publishing-playbook.md`), который ссылается на этот плейбук.
+Для проекта-специфичных публичных параметров (package ID, SKU, ID из Консоли, SHA-256 сертификата) можно создать документ в репозитории проекта. Приватный ключ, keystore и пароли создаёт Forge и хранит только во внешнем vault `<forge-data>/security/`, вне проекта и Git.
 
 ---
 
@@ -22,13 +22,15 @@ tags: [playbook, rustore, publishing, release, reusable]
 
 ## 1. Подготовка репозитория проекта
 
-- [ ] Создать `StoreData/` (или аналог) для артефактов магазина. Добавить в `.gitignore`:
+- [ ] Создать `StoreData/` (или аналог) только для несекретных материалов магазина. Проверить, что `.gitignore` содержит:
   ```
   StoreData/signing/
   *.jks
   *.keystore
   *.pem
   SIGNING_CREDENTIALS.md
+  StoreData/signing/
+  security/
   ```
 - [ ] `.env.example` шаблон без реальных значений; `.env` — в gitignore.
 - [ ] `public/privacy.html` (или аналог) написан и задеплоен на **publicly accessible URL без VPN-блокировок** — проверить через [check-host.net](https://check-host.net).
@@ -109,98 +111,20 @@ tags: [playbook, rustore, publishing, release, reusable]
 
 ---
 
-## 4. Release keystore + Google Play App Signing (опционально, если публикация в оба стора)
+## 4. Release identity и Google Play App Signing
 
-Один keystore для RuStore + Google Play — одно место секретов, одна стратегия бэкапа. Если только RuStore — достаточно keystore, PEPK не нужен.
+Forge создаёт release identity один раз и затем переиспользует её для всех обновлений приложения:
 
-### Генерация keystore
-```bash
-keytool -genkeypair -v \
-  -keystore <path>/<app>-release.jks \
-  -alias <app> \
-  -keyalg RSA -keysize 2048 -validity 10000 \
-  -storepass '<strong-random-24-chars>' \
-  -keypass '<another-strong-random>' \
-  -dname "CN=<Display Name>, O=<Org>, L=<City>, C=RU"
+```powershell
+node <forge-engine>/scripts/forge-security.mjs init --project .
+node <forge-engine>/scripts/forge-security.mjs validate --project .
 ```
 
-Валидность 10 000 дней (~27 лет) — стандарт. Пароли ≥24 символов, генерировать через `crypto.randomBytes(18).toString('base64')`.
+Команда генерирует стабильный reverse-DNS package ID, RSA-3072 PKCS12 key, alias и криптографически стойкий пароль. Приватные данные сохраняются в защищённом внешнем vault `<forge-data>/security/`; в `forge.identity.json` остаются только публичные идентификаторы и SHA-256 сертификата.
 
-### Fingerprints
-```bash
-keytool -list -v -keystore <path>/<app>-release.jks -storepass '<password>' | grep -E "SHA1|SHA256"
-```
+Нельзя вручную создавать project-local keystore, передавать пароли через аргументы командной строки, записывать их в Gradle properties, `.env`, Markdown, логи или CI-конфигурацию. Release builder Forge кратковременно материализует ключ в изолированной папке, передаёт секреты только дочернему процессу и после сборки удаляет рабочий материал.
 
-Записать оба в `SIGNING_CREDENTIALS.md` — пригодятся для Console и debug.
-
-### Google Play App Signing (PEPK) — только если Google Play
-
-PEPK шифрует приватный ключ keystore и передаёт Google. Скачивается в Play Console → Setup → App integrity → «Export and upload a key from Java keystore» — там же публичный encryption key для твоего developer-аккаунта.
-
-```bash
-java -jar pepk.jar \
-  --keystore=<path>/<app>-release.jks \
-  --alias=<app> \
-  --output=<path>/pepk_out.zip \
-  --keystore-pass=<store-pass> \
-  --key-pass=<key-pass> \
-  --encryptionkey=<hex-from-play-console> \
-  --include-cert
-```
-
-**Pitfalls pepk:**
-- Требует **Java 11+** — JDK 8 даёт `UnsupportedClassVersionError`. Использовать JBR из Android Studio.
-- `System.console()` = null при pipe stdin — передавать пароли **только через CLI-флаги** (`--keystore-pass`, `--key-pass`).
-- `--rsa-aes-encryption` и `--encryptionkey` **взаимоисключающие** — для hex-ключа Google используем `--encryptionkey` без флага RSA-AES.
-- Публичный download URL `gstatic.com/play-apps-publisher-rapid/signing-tool/prod/pepk.jar` часто перехватывается локальными VPN/антивирусами — качать через чистый VPS по scp.
-
-На выходе: `pepk_out.zip` (содержит `encryptedPrivateKey` + `certificate.pem`) — загружается в Google Play Console при enrollment в App Signing.
-
-### Gradle интеграция
-
-В `android/app/build.gradle`:
-```gradle
-android {
-  signingConfigs {
-    release {
-      def ksPath = project.findProperty('<APP>_KEYSTORE_PATH')
-      if (ksPath) {
-        storeFile file(ksPath)
-        storePassword project.findProperty('<APP>_KEYSTORE_PASSWORD')
-        keyAlias project.findProperty('<APP>_KEY_ALIAS')
-        keyPassword project.findProperty('<APP>_KEY_PASSWORD')
-      }
-    }
-  }
-  buildTypes {
-    release {
-      if (project.hasProperty('<APP>_KEYSTORE_PATH')) {
-        signingConfig signingConfigs.release
-      }
-    }
-  }
-}
-```
-
-Переменные живут в `~/.gradle/gradle.properties` (вне репо):
-```properties
-<APP>_KEYSTORE_PATH=<abs-path>/<app>-release.jks
-<APP>_KEYSTORE_PASSWORD=<password>
-<APP>_KEY_ALIAS=<alias>
-<APP>_KEY_PASSWORD=<key-password>
-```
-
-Условие `if (project.hasProperty(...))` → на машинах без keystore debug-сборка продолжает работать.
-
-### BACKUP — обязательно
-
-До первой загрузки:
-- [ ] keystore на USB + облако (1Password / Bitwarden / ProtonDrive)
-- [ ] pepk_out.zip на USB + облако (если Google Play)
-- [ ] Пароли — в password manager
-- [ ] Убедиться что `.gitignore` действительно ловит keystore: `git check-ignore <path>/<app>-release.jks`
-
-**Утеря keystore = невозможность обновлять приложение ни в одном сторе.** Новый keystore = новое приложение (юзеры потеряют данные).
+До первой публикации обязательно сделать поддерживаемый Forge зашифрованный backup vault на отдельный носитель. Утеря release key означает невозможность выпустить обновление с той же подписью. PEPK для Google Play создаётся отдельной безопасной командой Forge после получения encryption key в Play Console; `pepk_out.zip` также является чувствительным экспортным артефактом и не попадает в Git.
 
 ---
 
@@ -224,7 +148,7 @@ RuStore присваивает `APPLICATION_ID` **после** загрузки 
 1. «Мои приложения» → «Создать приложение» → «Приложение» (или «Игра»)
 2. Заполнить карточку копипастом из листинг-документа
 3. Загрузить AAB из § 5
-4. После сохранения — в URL появится `/apps/<NUMERIC_ID>/...`. Это **`APPLICATION_ID`**. Записать в `SIGNING_CREDENTIALS.md`
+4. После сохранения — в URL появится `/apps/<NUMERIC_ID>/...`. Это публичный **`APPLICATION_ID`**; записать его в проектный playbook или store listing без каких-либо секретов.
 
 ---
 
@@ -270,7 +194,7 @@ RuStore присваивает `APPLICATION_ID` **после** загрузки 
 - [ ] Записать `companyId` (из URL `/companies/<NUM>/` или из профиля компании)
 - [ ] Записать `keyId` (числовой ID ключа в списке «API RuStore» после закрытия модалки)
 
-**Примечание:** `companyId` — legacy, для самого вызова `/public/auth/` **не используется**, но пишется в SIGNING_CREDENTIALS для референса. Для подписи нужен только `keyId`.
+**Примечание:** `companyId` — legacy, для самого вызова `/public/auth/` **не используется**. Публичные ID можно хранить в project playbook; приватный PEM и любые токены — только через централизованное хранилище секретов Forge. Для подписи нужен `keyId`.
 
 ---
 
@@ -496,30 +420,23 @@ Sandbox-endpoint `/public/sandbox/v2/purchase/` нужен только для Q
 
 ---
 
-## Шаблон SIGNING_CREDENTIALS.md для нового проекта
+## Шаблон публичной signing identity
 
-Хранить в `StoreData/signing/SIGNING_CREDENTIALS.md`, gitignored:
+При необходимости хранить в репозитории только несекретную справку, например `StoreData/SIGNING_PUBLIC.md`:
 
 ```markdown
-# <App> — Signing & RuStore Credentials
+# <App> — Public release identity
 
-## Android Keystore
-- Файл: <path>/<app>-release.jks
-- Keystore password: <...>
+## Android signing
+- Package ID: <reverse-dns-id>
 - Key alias: <...>
-- Key password: <...>
-- SHA-1: <...>
 - SHA-256: <...>
-- Валидность до: <YYYY-MM-DD>
-
-## Google Play App Signing (если применимо)
-- pepk_out.zip: <path>
-- certificate.pem: <path>
+- Vault ID: <non-secret-id>
 
 ## RuStore
 - Application ID: <numeric>
 - Company ID: <numeric>
 - API Key ID: <numeric>
-- API private key PEM: <path>/rustore-api.pem
-- JWS public key (Pay SDK): <path>/rustore-paysdk-public.pem
 ```
+
+Keystore, пароли, приватные PEM, токены и экспорт PEPK в таком документе запрещены. Их наличие в проекте является блокером release gate.

@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPlatformRegistry, readPlatformTargets } from './platform-profile.mjs';
@@ -174,6 +175,35 @@ function androidSignerTool() {
   }
   return null;
 }
+function unsafeCmdArgument(value) {
+  return /[\r\n\0"&|<>()^%!]/u.test(String(value || ''));
+}
+function runWindowsBatch(command, args) {
+  // Node cannot directly execute a .bat on Windows. Do not use shell:true or
+  // interpolate a candidate path into a command string: receipt paths are
+  // untrusted. A one-use fixed batch program receives only prevalidated args.
+  if (unsafeCmdArgument(command) || args.some(unsafeCmdArgument)) {
+    return { status: null, error: { code: 'UNSAFE_BATCH_ARGUMENT', message: 'unsafe Windows batch argument' }, stdout: '', stderr: '' };
+  }
+  if (args.length > 24) return { status: null, error: { code: 'UNSAFE_BATCH_ARGUMENT', message: 'too many Windows batch arguments' }, stdout: '', stderr: '' };
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-apksigner-'));
+  const script = path.join(directory, 'run.cmd');
+  try {
+    const fields = args.map((_, index) => `"%FORGE_APKSIGNER_ARG_${index}%"`).join(' ');
+    fs.writeFileSync(script, `@echo off\r\nsetlocal DisableDelayedExpansion\r\ncall "%FORGE_APKSIGNER_TOOL%" ${fields}\r\nexit /b %errorlevel%\r\n`, { encoding: 'ascii', flag: 'wx' });
+    const env = { ...process.env, FORGE_APKSIGNER_TOOL: command };
+    for (const [index, value] of args.entries()) env[`FORGE_APKSIGNER_ARG_${index}`] = value;
+    return spawnSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', script], { encoding: 'utf8', windowsHide: true, env });
+  } catch (error) {
+    return { status: null, error, stdout: '', stderr: '' };
+  } finally {
+    try { fs.rmSync(directory, { recursive: true, force: true }); } catch {}
+  }
+}
+export function runAndroidSigner(command, args) {
+  if (process.platform === 'win32' && /\.bat$/iu.test(command)) return runWindowsBatch(command, args);
+  return spawnSync(command, args, { encoding: 'utf8', windowsHide: true });
+}
 function javaTool(name) {
   const suffix = process.platform === 'win32' ? '.exe' : '';
   const candidates = [
@@ -190,15 +220,19 @@ export function extractAndroidCertificateSha256(output) {
   const match = String(output || '').match(/(?:certificate\s+SHA-?256\s+digest|SHA256)\s*:\s*([A-Fa-f0-9:]{32,})/iu);
   return match ? normalizeCertificateSha256(match[1]) : null;
 }
-export function verifyAndroidProductionSignature(file) {
+export function verifyAndroidProductionSignature(file, { minSdk = null } = {}) {
   const tool = androidSignerTool();
   const extension = path.extname(file).toLowerCase();
   if (extension === '.apk') {
     if (!tool) return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_SIGNER_TOOL', message: 'APK submit verification requires the local apksigner tool' };
-    const result = spawnSync(tool, ['verify', '--verbose', '--print-certs', file], { encoding: 'utf8', windowsHide: true });
+    const args = ['verify', '--verbose', '--print-certs'];
+    if (Number.isInteger(minSdk) && minSdk >= 1 && minSdk <= 100) args.push('--min-sdk-version', String(minSdk));
+    args.push(file);
+    const result = runAndroidSigner(tool, args);
     const output = `${result.stdout || ''}\n${result.stderr || ''}`;
-    if (result.error && result.error.code === 'ENOENT') return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_SIGNER_TOOL', message: 'APK submit verification requires the local apksigner tool' };
-    if (result.error || result.status !== 0) return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_UNSIGNED', message: 'APK candidate is not verified as production-signed by apksigner' };
+    if (result.error && ['ENOENT', 'UNSAFE_BATCH_ARGUMENT'].includes(result.error.code)) return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_SIGNER_TOOL', message: 'APK submit verification requires a safe local apksigner invocation' };
+    if (result.error) return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_SIGNER_TOOL', message: `APK submit verification could not run apksigner: ${String(result.error.code || result.error.message || 'unknown').slice(0, 120)}` };
+    if (result.status !== 0) return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_UNSIGNED', message: `APK candidate is not verified as production-signed by apksigner: ${String(output).replace(/\s+/gu, ' ').slice(-500)}` };
     const certificateSha256 = extractAndroidCertificateSha256(output);
     if (!certificateSha256) return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_CERTIFICATE', message: 'apksigner did not report a SHA-256 signing certificate fingerprint' };
     if (/Android Debug/iu.test(output)) return { ok: false, code: 'PLATFORM_RELEASE_ANDROID_DEBUG_CERT', message: 'APK uses the standard Android Debug certificate' };

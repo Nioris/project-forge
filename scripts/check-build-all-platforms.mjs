@@ -47,6 +47,17 @@ function fixture(name, slug, version, targets = ['yandex', 'steam']) {
   });
   return root;
 }
+function addAndroidBase(root, slug, version, family, marker) {
+  const hash = computePlatformSourceSnapshot(root, 'godot'); const directory = path.join(root, 'Release', slug, 'godot', family, version); fs.mkdirSync(directory, { recursive: true });
+  const production = family === 'android-release'; const suffix = production ? 'release' : 'debug';
+  const apk = `${slug}-${version}-${suffix}.apk`; const aab = `${slug}-${version}-${suffix}.aab`;
+  zip(path.join(directory, apk), { 'AndroidManifest.xml': `${marker}-apk` }); zip(path.join(directory, aab), { 'base/manifest/AndroidManifest.xml': `${marker}-aab` });
+  writeJson(path.join(directory, production ? `${slug}-${version}.android-production-manifest.json` : `${slug}-${version}.android-manifest.json`), {
+    schemaVersion: 1, kind: production ? 'forge.godot-android-production-manifest' : 'forge.godot-web-android-local-manifest', slug, version, sourceSnapshotSha256: hash,
+    engine: { name: 'godot', testHarness: false }, android: { artifacts: [apk, aab].map(file => ({ file, format: path.extname(file).slice(1), sha256: sha256(path.join(directory, file)), bytes: fs.statSync(path.join(directory, file)).size })) },
+  });
+  return { apk: path.join(directory, apk), aab: path.join(directory, aab) };
+}
 function run(root, level = 'local') {
   const command = spawnSync(process.execPath, ['scripts/build-all-platforms.mjs', root, '--level', level, '--json'], { cwd: ROOT, encoding: 'utf8' });
   let value = null; try { value = JSON.parse(command.stdout); } catch {}
@@ -72,6 +83,14 @@ try {
   const submit = run(submitRoot, 'submit');
   expect(submit.status === 1 && submit.value?.packaged === false && !fs.existsSync(path.join(submitRoot, 'Release', 'submit-game', 'storefront')),
     'submit verification never creates a local matrix', submit.stderr || submit.stdout);
+
+  const androidRoot = fixture('production-android', 'android-game', 'v3.0.0', ['google-play']);
+  addAndroidBase(androidRoot, 'android-game', 'v3.0.0', 'android', 'debug-local');
+  const signed = addAndroidBase(androidRoot, 'android-game', 'v3.0.0', 'android-release', 'production-signed');
+  const android = run(androidRoot);
+  const googleCandidate = path.join(androidRoot, 'Release', 'android-game', 'storefront', 'v3.0.0', 'google-play', 'android-game-v3.0.0-google-play.aab');
+  expect(android.status === 0 && android.value?.base?.version === 'v3.0.0' && fs.existsSync(googleCandidate) && sha256(googleCandidate) === sha256(signed.aab),
+    'coordinator prefers the production Android base over same-version local/debug artifacts', android.stderr || android.stdout);
 
   const ambiguous = fixture('ambiguous', 'one-game', 'v1.0.0');
   fixture('ambiguous', 'two-game', 'v1.0.0');

@@ -42,9 +42,15 @@ wiki/diagnostics/codex-cost/*.json
 .*_token
 *.key
 *.pem
+*.jks
+*.keystore
 *.p12
 *.pfx
 *.secret
+pepk_out.zip
+SIGNING_CREDENTIALS.md
+StoreData/signing/
+security/
 # <<< Project Forge managed secrets and generated data
 `;
 
@@ -288,7 +294,10 @@ function sensitiveName(rel) {
   if (name === '.env.example') return false;
   return name === '.env' || name.startsWith('.env.') || name === '.npmrc' || name === 'id_rsa'
     || /^\..*_(?:key|token)$/.test(name)
-    || /\.(?:key|pem|p12|pfx|secret)$/.test(name);
+    || name === 'signing_credentials.md' || name === 'pepk_out.zip'
+    || p.startsWith('storedata/signing/') || p.includes('/storedata/signing/')
+    || p.startsWith('security/') || p.includes('/security/')
+    || /\.(?:key|pem|jks|keystore|p12|pfx|secret)$/.test(name);
 }
 
 const SECRET_CONTENT = [

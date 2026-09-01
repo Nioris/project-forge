@@ -54,8 +54,9 @@ AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как расс�
 
 ## Current Status
 
-### Version: v4.68.73 (current source line)
+### Version: v4.68.74 (current source line)
 
+- 2026-09-01: **v4.68.74** — external DPAPI signing vault creates stable package/key/password identity; isolated Godot APK/AAB production builds are certificate-verified and project Git rejects private signing material.
 - 2026-08-31: **v4.68.73** — installed-copy Godot regression now builds its test-only template archives from package-safe fixture sources and is verified from an extracted Forge package.
 - 2026-08-30: **v4.68.72** — explicit storefront profiles, coherent Godot Web/Android/Windows bases, immutable per-target receipts and separate local/submit gates cover eight primary plus two evaluated platforms without claiming external publication.
 - 2026-08-30: **v4.68.71** — Godot debug ZIP now requires and hash-binds the standard `.console.exe` wrapper; builder and verifier enforce the same exact binary set before an engine-owned receipt may authorize release.

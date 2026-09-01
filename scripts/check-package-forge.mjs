@@ -62,6 +62,20 @@ try {
   });
   check(unpacked.status === 0 && installedGodotCheck.status === 0,
     'packaged Forge regenerates test-only Godot template ZIPs at runtime and passes its installed regression');
+  const installedSecurityCheck = spawnSync(process.execPath, [path.join(extracted, 'scripts', 'check-forge-security-vault.mjs')], {
+    cwd: extracted,
+    encoding: 'utf8',
+    timeout: 180_000,
+  });
+  check(installedSecurityCheck.status === 0,
+    'packaged Forge passes the external vault, real keytool and Windows DPAPI regression');
+  const installedAndroidReleaseCheck = spawnSync(process.execPath, [path.join(extracted, 'scripts', 'check-godot-android-release.mjs')], {
+    cwd: extracted,
+    encoding: 'utf8',
+    timeout: 180_000,
+  });
+  check(installedAndroidReleaseCheck.status === 0,
+    'packaged Forge creates and verifies isolated production-signed Android fixtures');
 
   const installedHarness = path.join(temp, 'installed-godot-harness');
   seedInstalledGodotHarness(installedHarness);

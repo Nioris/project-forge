@@ -592,6 +592,7 @@ RELEASE_NOTES_v4.68.70.md
 RELEASE_NOTES_v4.68.71.md
 RELEASE_NOTES_v4.68.72.md
 RELEASE_NOTES_v4.68.73.md
+RELEASE_NOTES_v4.68.74.md
 RELEASE_NOTES_v4.68.8.md
 RELEASE_NOTES_v4.68.9.md
 ROADMAP.md
@@ -769,6 +770,8 @@ schemas/agent-profile.schema.json
 schemas/agent-result.schema.json
 schemas/ai-prompt.schema.json
 schemas/engine-profile.schema.json
+schemas/forge-project-identity.schema.json
+schemas/forge-security-vault.schema.json
 schemas/forge-targets.schema.json
 schemas/godot-export.schema.json
 schemas/godot-playtest.schema.json
@@ -797,6 +800,7 @@ scripts/audit-forge-diagnostics.mjs
 scripts/backup-data.mjs
 scripts/bind-phase4-visual-evidence.mjs
 scripts/build-all-platforms.mjs
+scripts/build-godot-android-release.mjs
 scripts/build-godot-release.mjs
 scripts/build-godot-web-android.mjs
 scripts/build-release.sh
@@ -826,7 +830,9 @@ scripts/check-engine-profiles.mjs
 scripts/check-execution-contract.mjs
 scripts/check-external-cdn.mjs
 scripts/check-forge-diagnostics.mjs
+scripts/check-forge-security-vault.mjs
 scripts/check-gacha-integration.mjs
+scripts/check-godot-android-release.mjs
 scripts/check-godot-native-playtest.mjs
 scripts/check-godot-native-release.mjs
 scripts/check-godot-phase4-evidence.mjs
@@ -903,6 +909,7 @@ scripts/forge-search-doctor.mjs
 scripts/forge-search-selftest.mjs
 scripts/forge-secret-helper.mjs
 scripts/forge-secrets.mjs
+scripts/forge-security.mjs
 scripts/forge-sync-spec.mjs
 scripts/forge-workflow.mjs
 scripts/forge.ps1
@@ -928,6 +935,7 @@ scripts/integrate-gacha.mjs
 scripts/lib/codex-cost-report.mjs
 scripts/lib/forge-search.mjs
 scripts/lib/forge-secrets.mjs
+scripts/lib/forge-security-vault.mjs
 scripts/lib/gigachat-api.mjs
 scripts/lib/godot-android-project.mjs
 scripts/lib/godot-gradle.mjs

@@ -6,7 +6,7 @@
 
 Project Forge gives several terminal AI agents one shared workflow: the same phases, project state, skills, STOP-points and verification gates.
 
-**Current source version:** `v4.68.73`
+**Current source version:** `v4.68.74`
 
 | Host | Auth modes | Status |
 |---|---|---|
@@ -66,8 +66,9 @@ they are **not** IDs permitted in `forge.targets.json` and must not be treated a
 }
 ```
 
-For Godot projects, build one immutable version with `build-godot-web-android.mjs` (Web/Android) and
-`build-godot-release.mjs` (Windows), then run `build-all-platforms.mjs --level local`. The coordinator
+For Godot projects, build one immutable version with `build-godot-web-android.mjs` (Web/local Android),
+`build-godot-android-release.mjs` (production-signed Android) and `build-godot-release.mjs` (Windows),
+then run `build-all-platforms.mjs --level local`. The coordinator
 reads only `forge.targets.json`, creates a missing per-storefront matrix from one coherent base set and
 verifies every hash-bound receipt. It never overwrites an existing version. `--level submit` is
 read-only and passes only after actual signing, console/hosting/uploader evidence; a release is never
@@ -238,7 +239,7 @@ Examples:
 
 ## Terminal launcher
 
-`v4.68.73` keeps separate normal-account and API profiles.
+`v4.68.74` keeps separate normal-account and API profiles.
 
 ```bash
 # Claude — existing account/subscription
@@ -346,8 +347,26 @@ Recommended workspace layout:
       openai.key
       gigachat.key
       gigasearch.key       # optional; only for a configured production GigaSearch endpoint
+    security/
+      publisher-profile.json
+      <project>--<vault-id>/ # OS-protected signing key and encrypted passwords
   my-game/
 ```
+
+Configure the publisher namespace once. Android production builds then provision a stable package ID,
+alias, strong password and RSA-3072 PKCS12 signing key automatically:
+
+```powershell
+node scripts/forge-security.mjs profile set-publisher dev.example
+node scripts/build-godot-android-release.mjs my-game v1.0.0 --root <project-root>
+node scripts/forge-security.mjs validate --project <project-root>
+```
+
+The vault is outside the project and Git. The project-owned `forge.identity.json` contains only public,
+stable identity fields and the certificate SHA-256 fingerprint. Forge never prints signing passwords or
+passes them as command-line arguments. On Windows they are encrypted for the current OS user with DPAPI.
+Back up the signing identity through an approved encrypted workflow before the first store upload: losing
+the key prevents future updates under the same package identity.
 
 Check configured providers without printing secret values:
 
@@ -430,7 +449,7 @@ dashboard.html    local Forge dashboard
 - [GUIDE.md](GUIDE.md) — full guide
 - [СПРАВОЧНИК-КОМАНД.md](СПРАВОЧНИК-КОМАНД.md) — command reference
 - [FORGE.md](FORGE.md) — universal runtime contract
-- [RELEASE_NOTES_v4.68.73.md](RELEASE_NOTES_v4.68.73.md) — current release notes
+- [RELEASE_NOTES_v4.68.74.md](RELEASE_NOTES_v4.68.74.md) — current release notes
 - [SECURITY.md](SECURITY.md) — credentials and security rules
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guide
 - [ROADMAP.md](ROADMAP.md) — public development direction

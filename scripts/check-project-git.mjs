@@ -44,6 +44,15 @@ try {
   check(git('check-ignore', '-q', '.forge/metrics/latest.json').status === 0
     && !git('ls-files', '--error-unmatch', '.forge/metrics/latest.json').stdout.trim(),
   'local product telemetry stays outside project history');
+  for (const sensitive of [
+    'release.jks', 'release.keystore', 'release.p12', 'release.pfx', 'pepk_out.zip',
+    'StoreData/signing/SIGNING_CREDENTIALS.md', 'security/local-vault.json',
+  ]) {
+    const absolute = path.join(project, ...sensitive.split('/'));
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, 'fixture-only\n', 'utf8');
+    check(git('check-ignore', '-q', sensitive).status === 0, `${sensitive} is excluded from project Git`);
+  }
   const checkpointState = readPhaseGitCheckpoint(project, 1);
   check(git('check-ignore', '-q', '.forge/git-checkpoints.json').status === 0
     && git('check-ignore', '-q', '.forge/git-checkpoints.lock').status === 0

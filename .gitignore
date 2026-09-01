@@ -1,8 +1,17 @@
 # Project Forge secrets and local state
 forge-data/
 **/forge-data/secrets/
+**/forge-data/security/
 secrets/
+security/
 *.key
+*.jks
+*.keystore
+*.p12
+*.pfx
+pepk_out.zip
+SIGNING_CREDENTIALS.md
+StoreData/signing/
 .openai_key
 .anthropic_key
 .gigachat_key

@@ -9,8 +9,17 @@ Do not commit real values from any of these locations or categories:
 ```text
 forge-data/
 forge-data/secrets/
+forge-data/security/
 secrets/
 *.key
+*.jks
+*.keystore
+*.p12
+*.pfx
+pepk_out.zip
+SIGNING_CREDENTIALS.md
+StoreData/signing/
+security/
 .env
 .env.*
 .openai_key
@@ -34,6 +43,9 @@ Documentation may contain obvious placeholders such as `sk-ant-xxxxxxx`; placeho
       anthropic.key
       openai.key
       gigachat.key
+    security/
+      publisher-profile.json
+      <project>--<vault-id>/
   projects/
 ```
 
@@ -44,6 +56,12 @@ node scripts/forge-secrets.mjs status
 ```
 
 to inspect provider configuration without printing secret values.
+
+Android release identity is provisioned with `forge-security.mjs`. Only the public
+`forge.identity.json` belongs in the project; signing keys and encrypted passwords stay in the
+external security vault. On Windows the credential envelope uses CurrentUser DPAPI. A project move,
+OS-account change or reinstall can make the local envelope unavailable, so create an approved
+encrypted backup before the first store upload and never copy an unencrypted keystore into Git/CI.
 
 ## If a credential is exposed
 

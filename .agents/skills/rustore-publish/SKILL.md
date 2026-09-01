@@ -8,7 +8,7 @@ description: "Prepare for RuStore: listing, keystore, AAB, API key, server recei
 
 Полный пайплайн публикации Android-приложения в RuStore от чистой папки до релиза, **плюс** универсальные паттерны для анонимной авторизации + E2E-шифрованной cloud sync (применимы к любому приложению, не только RuStore).
 
-**Использовать:** как чек-лист при публикации любого приложения в RuStore. Для каждого нового проекта создавать проектный `wiki/rustore-publishing-playbook.md`, который ссылается на эту универсальную инструкцию и содержит проект-специфичные значения (Application ID, SKU, названия keystore).
+**Использовать:** как чек-лист при публикации любого приложения в RuStore. Для каждого нового проекта создавать проектный `wiki/rustore-publishing-playbook.md`, который содержит только несекретные значения (Application ID, SKU, certificate fingerprint). Keystore и пароли создаёт Forge во внешнем security vault.
 
 ---
 
@@ -51,11 +51,7 @@ StoreData/
   feature-graphic.png        — 1024×500 (опционально)
   RUSTORE_LISTING.md         — карточка по PLAYBOOK.md § 2
   IAP_PRODUCTS.md            — SKU-и (если есть покупки)
-  signing/
-    <app>-release.jks        — release keystore
-    SIGNING_CREDENTIALS.md   — пароли, fingerprints, IDs
-    rustore-api.pem          — private key для Public API
-    pepk_out.zip             — если Google Play (опционально)
+  signing-public.md          — только package ID, alias и certificate fingerprints
 
 public/privacy.html          — 152-ФЗ-совместимая политика
 ```
@@ -73,7 +69,8 @@ public/privacy.html          — 152-ФЗ-совместимая политик�
 - [ ] Чувствительные разрешения — пояснение для **каждого** sensitive permission
 - [ ] Запрашиваемые данные — Да/Нет для **каждого** пункта [официального справочника](https://www.rustore.ru/help/developers/publishing-and-verifying-apps/app-publication/new-version-app/declare-app-permissions/data-categories)
 - [ ] Для health/finance/legal — явный дисклеймер «не медицинское / не финансовая консультация»
-- [ ] Keystore забэкаплен (USB + облако) **до** первой загрузки
+- [ ] Forge security vault экспортирован в пользовательскую зашифрованную резервную копию **до** первой загрузки
+- [ ] В проекте отсутствуют keystore, private key, пароли и `SIGNING_CREDENTIALS.md`
 
 ---
 

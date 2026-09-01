@@ -267,6 +267,15 @@ try {
   ok(!wrongSignatureResult.ok && codes(wrongSignatureResult).includes('PLATFORM_RELEASE_SIGNATURE'),
     'renamed non-ZIP payload is rejected by file signature');
 
+  if (process.platform === 'win32') {
+    const spacedApk = path.join(temp, 'apk path with spaces.apk'); zip(spacedApk);
+    const spacedResult = verifyAndroidProductionSignature(spacedApk, { minSdk: 24 });
+    ok(spacedResult.code !== 'PLATFORM_RELEASE_ANDROID_SIGNER_TOOL', 'Windows apksigner batch invocation supports a candidate path with spaces');
+    const marker = path.join(temp, 'must-not-exist.txt'); const metacharApk = `${path.join(temp, 'bad.apk')} & echo injected > ${marker} & rem .apk`;
+    const metacharResult = verifyAndroidProductionSignature(metacharApk, { minSdk: 24 });
+    ok(metacharResult.code === 'PLATFORM_RELEASE_ANDROID_SIGNER_TOOL' && !fs.existsSync(marker), 'Windows apksigner refuses metacharacter paths without command injection');
+  }
+
   const unsigned = fixture('unsigned-android');
   selection(unsigned, ['google-play']);
   receipt(unsigned, 'google-play', 'v3.0.0', {

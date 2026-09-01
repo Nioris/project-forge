@@ -49,6 +49,18 @@ function makeGodotBase(root, slug, version, { webFiles = { 'index.html': '<html>
   });
   return { web, apk, aab, windows };
 }
+function makeGodotProductionAndroidBase(root, slug, version) {
+  const directory = path.join(root, 'Release', slug, 'godot', 'android-release', version);
+  const apk = path.join(directory, `${slug}-${version}-release.apk`); const aab = path.join(directory, `${slug}-${version}-release.aab`);
+  makeZip(apk, { 'AndroidManifest.xml': 'production fixture apk' }); makeZip(aab, { 'base/manifest/AndroidManifest.xml': 'production fixture aab' });
+  const sourceSnapshotSha256 = computePlatformSourceSnapshot(root, 'godot');
+  json(path.join(directory, `${slug}-${version}.android-production-manifest.json`), {
+    schemaVersion: 1, kind: 'forge.godot-android-production-manifest', slug, version,
+    engine: { name: 'godot', version: 'fixture', testHarness: false }, sourceSnapshotSha256,
+    android: { packageId: 'com.forge.production', signing: { certificateSha256: 'a'.repeat(64), vaultId: 'public-vault-id' }, artifacts: [apk, aab].map(file => ({ file: path.basename(file), format: path.extname(file).slice(1), sha256: hash(file), bytes: fs.statSync(file).size, certificateSha256: 'a'.repeat(64) })) },
+  });
+  return { apk, aab };
+}
 try {
   const root = fixture('matrix', ['yandex', 'vk', 'telegram', 'crazygames', 'google-play', 'rustore', 'appgallery', 'taptap', 'steam', 'vkplay']);
   const { web, apk, aab, windows } = makeGodotBase(root, 'fixture-game', 'v1.2.3');
@@ -89,6 +101,12 @@ try {
   ok(yandexReceipt.integrations.every(item => item.status === 'blocked') && yandexReceipt.blockers.some(item => item === 'integration:not-runtime-verified:yandex-games-sdk'), 'HTML marker never pretends external SDK runtime verification passed');
   let immutable = false; try { packagePlatformReleaseMatrix({ projectRoot: root, slug: 'fixture-game', version: 'v1.2.3', web, androidApk: apk, androidAab: aab, windows }); } catch (error) { immutable = error.code === 'PLATFORM_PACKAGE_IMMUTABLE'; }
   ok(immutable, 'existing release matrix is never overwritten');
+  const production = fixture('production-android-base', ['google-play', 'rustore']); const productionBase = makeGodotProductionAndroidBase(production, 'production-game', 'v2.0.0');
+  const productionPackaged = packagePlatformReleaseMatrix({ projectRoot: production, slug: 'production-game', version: 'v2.0.0', androidApk: productionBase.apk, androidAab: productionBase.aab });
+  ok(productionPackaged.ok && productionPackaged.targets.length === 2, 'accepts the independent production-signed Android manifest as storefront provenance');
+  const productionTampered = fixture('production-android-tampered', ['rustore']); const productionTamperedBase = makeGodotProductionAndroidBase(productionTampered, 'production-tampered', 'v2.0.0'); fs.appendFileSync(productionTamperedBase.apk, 'tamper');
+  let productionTamperRejected = false; try { packagePlatformReleaseMatrix({ projectRoot: productionTampered, slug: 'production-tampered', version: 'v2.0.0', androidApk: productionTamperedBase.apk }); } catch (error) { productionTamperRejected = error.code === 'PLATFORM_PACKAGE_BASE_HASH'; }
+  ok(productionTamperRejected, 'rejects a production Android artifact changed after its signed manifest');
   const bad = fixture('bad-web', ['yandex']); const noIndex = makeGodotBase(bad, 'bad-game', 'v1.0.0', { webFiles: { 'sub/index.html': 'wrong root' } }).web;
   let rejected = false; try { packagePlatformReleaseMatrix({ projectRoot: bad, slug: 'bad-game', version: 'v1.0.0', web: noIndex }); } catch (error) { rejected = error.code === 'PLATFORM_PACKAGE_WEB_ARCHIVE'; }
   ok(rejected && !fs.existsSync(path.join(bad, 'Release', 'bad-game', 'storefront', 'v1.0.0')), 'unsafe Web layout fails without a partial matrix');
