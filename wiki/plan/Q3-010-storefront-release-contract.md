@@ -47,18 +47,22 @@ files:
 - [x] Local build verification and submit-ready verification are separate states; account IDs, bot setup,
   signing keys, hosted URLs and uploader receipts remain explicit blockers.
 - [x] Godot can route real Windows, Web and Android exports when matching official templates/toolchains exist.
-- [ ] Circuit Courier produces the maximum honest local matrix; each unavailable store result names the exact blocker.
+- [x] Circuit Courier produced a v1.1.2 ten-target local matrix with explicit external blockers (historical result).
+- [ ] Reconcile that matrix with current sources after the v1.1.3 production Android identity/export change.
 - [x] Adversarial regressions cover cross-family substitution, missing target manifest, unsigned Android,
   missing hosted URL/SDK initialization and mixed-version target artifacts.
-- [ ] Generated Claude/Codex surfaces, drift checks, package verification, installed sync and GitHub main pass.
+- [x] Engine surfaces, packaging and installed sync were released through the v4.68.77 baseline.
 
 ## Current environment facts
 
-- Circuit Courier is Godot 4.7/GDScript with Windows, Web and Android presets.
-- Its gameplay supports keyboard, portrait D-pad and board swipe; fresh portrait/desktop evidence passes.
-- The machine has Android SDK through API 36 and Android Studio JBR 21, but no configured release keystore.
-- Matching official Godot 4.7 Web/Android/Windows templates are installed; the real v1.1.0 matrix is the
-  remaining proof. Android artifacts remain debug/local until an external production keystore is provided.
+- The pilot has Windows, Web and Android presets. Its v1.1.2 matrix used Godot 4.6.3; the separately
+  recorded production Android v1.1.3 base used 4.7.stable. Preserve each artifact's actual engine identity.
+- Production APK/AAB and their public signing binding exist (pilot commit `f0efc11`). Private material
+  is in the external Forge vault, not missing or awaiting regeneration.
+- Read-only verification on 2026-09-05 reports `PLATFORM_RELEASE_SOURCE_STALE` for all ten v1.1.2
+  receipts. The old summary's local PASS is historical, not current-source acceptance.
+- No new device test, SDK-container test, upload or moderation is claimed by this audit. Do not replace
+  the matrix manifest with an Android-only base or call all ten targets released.
 
 ## Release truth levels
 

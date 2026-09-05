@@ -76,8 +76,15 @@ machine-readable progression state, а сами артефакты остают�
 ## Процедура (спринт за спринтом)
 1. Возьми спринт 1 (самый ценный по retention-математике: обычно D1-контент → D2-D7).
 2. **Пиши код в файлы игры.** Дисциплина $do: диагноз → правка → проверка фактом.
-3. После КАЖДОГО спринта запускай verifier/playtest выбранного engine profile. Для `web` это
-   `node scripts/playtest.mjs <игра>` — игра жива, фича видна на скриншотах (01≠04).
+3. После КАЖДОГО спринта запускай verifier/playtest выбранного engine profile. Для `web` сначала
+   обнови корневой `forge.web.playtest.json`, затем запусти
+   `node <Forge>/scripts/playtest.mjs . --contract`. Контракт проходит реальные click/key
+   действия через обычный player launch (без QA query) и сверяет read-only `__FORGE_PLAYTEST__`
+   production observer, требует
+   минимум две смены экрана и один негативный no-change шаг. Скриншоты — только evidence UI;
+   они не являются player action. Если игра заявляет persistence, ставь `persistence.mode: required`
+   и проверь reload в том же прогоне. Обычный `playtest.mjs <игра>` остаётся диагностическим smoke,
+   но не закрывает фазу.
    Для native engine используй только его adapter; capability отсутствует → infrastructure block.
    Сломал — чини до перехода к следующему.
 4. Отметь таск в wiki/plan/ как done, короткая запись в sessions.
@@ -105,6 +112,9 @@ machine-readable progression state, а сами артефакты остают�
   узле `forge_visual_states`, `forge_visual_show_state`, `forge_visual_current_state`,
   `forge_visual_tick_proof`. Создавать фальшивый browser bridge нельзя. Список обязан точно совпасть
   с Phase 2 inventory — иначе Ф4 не сможет доказать полноту экранов и фактический переход;
+- **production playtest observer** для `web`: в обычном запуске, без query, выставить read-only
+  `window.__FORGE_PLAYTEST__` только с `listStates()` и `currentState()`. В нём не должно быть
+  `showState`/setter: Phase 3/5/7 проверяют реальные действия игрока, а не QA force-state;
 - RV-хуки по утверждённой карте монетизации (каждый = своя награда и момент);
 - гача-мета модуль (механики из GDD: pity видим, шансы показаны, дубли конвертятся);
 - **бэкенд мультиплеера**, если он утверждён на Ф2: взять шаблон командой

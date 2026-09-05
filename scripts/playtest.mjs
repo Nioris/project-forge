@@ -16,6 +16,17 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, extname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+// Phase acceptance uses the declared runner below.  Keep the old random-input
+// smoke path for diagnosis, but never let its screenshots masquerade as player
+// actions or a core-flow proof.
+if (process.argv.includes('--contract')) {
+  const runner = fileURLToPath(new URL('./web-playtest-runner.mjs', import.meta.url));
+  const forwarded = process.argv.slice(2).filter(value => value !== '--contract');
+  const child = spawnSync(process.execPath, [runner, ...forwarded], { stdio: 'inherit', windowsHide: true });
+  process.exit(child.status == null ? 1 : child.status);
+}
 
 const argv = process.argv.slice(2);
 const dir = resolve(argv.find(a => !a.startsWith('--')) || '.');

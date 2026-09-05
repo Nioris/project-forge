@@ -12,6 +12,7 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
+import { runInNewContext } from 'node:vm';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -55,6 +56,15 @@ if (!Array.isArray(CATS)) {
 }
 
 const cleanSrc = readFileSync(CLEAN, 'utf8');
+const htmlSource = readFileSync(join(ROOT, 'platforms/yandex/templates/debugcheck.html'), 'utf8');
+const htmlScript = htmlSource.slice(htmlSource.indexOf('<script>') + 8, htmlSource.lastIndexOf('</script>'));
+const htmlContext = { window: { addEventListener: noop } };
+runInNewContext(htmlScript + '\n;globalThis.checkerCategories = CATEGORIES;', htmlContext, { timeout: 1000 });
+const htmlAliases = {
+  'Authorization offer explains its benefit (п.1.2.1)': 'Authorization offer explains the benefit (п.1.2.1)',
+  'Window blur/pagehide mutes sound (п.1.3)': 'Window blur/pagehide actually mutes (п.1.3)',
+  'Canvas resizes on orientation change (п.1.6.1.3/1.10.1)': 'Canvas handles resize and orientation (п.1.10)',
+};
 
 const findCheck = (name) => {
   for (const cat of CATS) {
@@ -72,6 +82,13 @@ const expectResult = (name, source, expected, label) => {
   try { got = findCheck(name).test(source); }
   catch (e) { got = `(threw: ${e.message})`; }
   if (got !== expected) contractFailures.push({ label, name, expected, got });
+  // Standalone HTML is shipped too: every contract must mean the same thing there.
+  const htmlName = htmlAliases[name] || name;
+  const htmlCheck = htmlContext.checkerCategories.flatMap(cat => cat.checks).find(ch => ch.name === htmlName);
+  let htmlGot;
+  try { htmlGot = htmlCheck.test(source); }
+  catch (e) { htmlGot = `(threw: ${e.message})`; }
+  if (htmlGot !== expected) contractFailures.push({ label: label + ' (HTML)', name: htmlName, expected, got: htmlGot });
 };
 
 // Categories that are RUNTIME (need a live browser DOM/probe) — can't be judged in Node, skip them.
@@ -203,7 +220,32 @@ expectResult(
   'canvas resize plus orientation passes'
 );
 
-console.log(`Ran ${contractCount} focused debugcheck contract regressions.`);
+expectResult('Window blur/pagehide mutes sound (п.1.3)',
+  `const ac=new AudioContext(); window.addEventListener('blur', function(){}); function unrelated(){ac.suspend();}`,
+  'warn', 'unrelated pause after an empty blur handler cannot pass');
+expectResult('Window blur/pagehide mutes sound (п.1.3)',
+  `const ac=new AudioContext(); window.addEventListener('blur', function(){ac.resume();}); window.addEventListener('pagehide', function(){ac.suspend();});`,
+  false, 'pagehide pause cannot hide a broken blur handler');
+expectResult('visibilitychange actually mutes (п.1.3)',
+  `const ac=new AudioContext(); document.addEventListener('visibilitychange', function(){}); if(document.hidden) ac.suspend();`,
+  'warn', 'top-level mute cannot pass an empty visibility handler');
+expectResult('Window blur/pagehide mutes sound (п.1.3)',
+  `const ac=new AudioContext(); window.addEventListener('blur', function(){ console.log('ac.suspend()'); });`,
+  'warn', 'a quoted mute is not an action');
+expectResult('Canvas resizes on orientation change (п.1.6.1.3/1.10.1)',
+  `<canvas></canvas><script>window.addEventListener('resize', fit); window.addEventListener('orientationchange', function(){}); fit();<\/script>`,
+  'warn', 'unrelated fit call cannot pass an empty orientation handler');
+expectResult('Window blur/pagehide mutes sound (п.1.3)',
+  'const ac=new AudioContext(); window.onblur = () => { if(ac) { ac.suspend(); } };',
+  true, 'nested arrow assignment mutes audio');
+expectResult('Window blur/pagehide mutes sound (п.1.3)',
+  'const ac=new AudioContext(); window.addEventListener("blur", () => {' + 'let unused=0;'.repeat(160) + ' ac.suspend(); });',
+  true, 'valid long handlers do not depend on an 800-character window');
+expectResult('Window blur/pagehide mutes sound (п.1.3)',
+  'const ac=new AudioContext(); window.addEventListener("blur", () => { /* ac.suspend() */ });',
+  'warn', 'commented-out mute is not an action');
+console.log('Standalone HTML checker contracts are verified alongside the overlay.');
+console.log(`Ran ${contractCount} focused debugcheck contract regressions on both surfaces.`);
 if (contractFailures.length) {
   console.error(`\n✗ ${contractFailures.length} DEBUGCHECK CONTRACT REGRESSION(S):`);
   for (const f of contractFailures) {

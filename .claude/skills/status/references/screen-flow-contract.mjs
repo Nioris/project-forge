@@ -13,8 +13,37 @@ export const FORGE_GODOT_VISUAL_ADAPTER_KIND = 'godot-runtime';
 export const FORGE_GODOT_VISUAL_PROTOCOL = 'forge-godot-visual-v1';
 export const DEDICATED_TARGET_ARCHETYPES = new Set(['start', 'home', 'hq', 'map', 'gameplay', 'result']);
 
+// Web Phase 4 captures default to the two player-facing layouts below. A state may
+// declare capture.mobileViewport / capture.desktopViewport when its actual gameplay
+// needs a different orientation (for example a landscape card battle on a phone).
+// The declaration is part of the approved screen inventory, so a later capture cannot
+// silently choose a more convenient viewport.
+export const DEFAULT_WEB_CAPTURE_VIEWPORTS = Object.freeze({
+  mobile: Object.freeze({ width: 412, height: 915 }),
+  desktop: Object.freeze({ width: 1920, height: 1080 }),
+});
+
 const SAFE_ID = /^[a-z0-9][a-z0-9_-]{1,63}$/u;
 const ALLOWED_TARGET_POLICIES = new Set(['dedicated', 'inherited']);
+
+function validViewport(value) {
+  return value && typeof value === 'object'
+    && Number.isInteger(value.width) && Number.isInteger(value.height)
+    && value.width >= 320 && value.width <= 8192
+    && value.height >= 320 && value.height <= 8192;
+}
+
+/**
+ * Return the exact approved Web capture dimensions for one state/viewport.
+ * Godot uses forge.godot.visual.json as its native renderer contract; callers for
+ * Web use this helper to keep screen-flow, capture and target validation aligned.
+ */
+export function webCaptureViewport(state, viewport) {
+  if (!Object.hasOwn(DEFAULT_WEB_CAPTURE_VIEWPORTS, viewport)) throw new Error(`Unknown Web capture viewport: ${viewport}`);
+  const declared = state?.capture?.[`${viewport}Viewport`];
+  if (declared === undefined || declared === null) return { ...DEFAULT_WEB_CAPTURE_VIEWPORTS[viewport] };
+  return { width: declared.width, height: declared.height };
+}
 
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -129,6 +158,12 @@ export function validateScreenFlow({ root = process.cwd(), rel = SCREEN_FLOW_PAT
     if (typeof state?.visualDescription !== 'string' || state.visualDescription.trim().length < 40) failures.push(`screen flow state "${id}" needs a concrete visualDescription`);
     if (state?.required !== true) failures.push(`screen flow state "${id}" must be required; omit non-player-visible/transient states instead`);
     if (state?.capture?.adapterState !== id) failures.push(`screen flow state "${id}" capture.adapterState must equal its id`);
+    for (const viewport of ['mobile', 'desktop']) {
+      const declared = state?.capture?.[`${viewport}Viewport`];
+      if (declared !== undefined && declared !== null && !validViewport(declared)) {
+        failures.push(`screen flow state "${id}" capture.${viewport}Viewport must contain integer width/height within 320..8192`);
+      }
+    }
     if (!ALLOWED_TARGET_POLICIES.has(state?.targetPolicy)) failures.push(`screen flow state "${id}" targetPolicy must be dedicated or inherited`);
     if (DEDICATED_TARGET_ARCHETYPES.has(state?.archetype) && state?.targetPolicy !== 'dedicated') {
       failures.push(`core screen "${id}" (${state.archetype}) requires a dedicated GPT Image target`);

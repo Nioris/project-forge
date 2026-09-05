@@ -6,5 +6,5 @@
     { "path": "wiki/testing.md", "minBytes": 120 },
     { "path": "wiki/qa/phase-7-report.md", "minBytes": 120 }
   ],
-  "projectChecks": ["engine-playtest-capability", "non-placeholder-evidence", "implementation-source", "clean-playtest-report", "clean-local-stage-report", "godot-native-playtest"]
+  "projectChecks": ["engine-playtest-capability", "non-placeholder-evidence", "implementation-source", "clean-playtest-report", "web-playtest-proof", "clean-local-stage-report", "phase-4-visual-evidence", "godot-native-playtest"]
 }

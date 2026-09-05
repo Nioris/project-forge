@@ -196,6 +196,7 @@
 .agents/skills/status/references/task-scope-guard.mjs
 .agents/skills/status/references/verifier-runner.mjs
 .agents/skills/status/references/visual-receipts.mjs
+.agents/skills/status/references/web-playtest-contract.mjs
 .agents/skills/status/references/workflow-state.mjs
 .agents/skills/status/references/workflows/change.json
 .agents/skills/status/references/workflows/diagnose.json
@@ -458,6 +459,7 @@
 .claude/skills/status/references/task-scope-guard.mjs
 .claude/skills/status/references/verifier-runner.mjs
 .claude/skills/status/references/visual-receipts.mjs
+.claude/skills/status/references/web-playtest-contract.mjs
 .claude/skills/status/references/workflow-state.mjs
 .claude/skills/status/references/workflows/change.json
 .claude/skills/status/references/workflows/diagnose.json
@@ -596,6 +598,7 @@ RELEASE_NOTES_v4.68.74.md
 RELEASE_NOTES_v4.68.75.md
 RELEASE_NOTES_v4.68.76.md
 RELEASE_NOTES_v4.68.77.md
+RELEASE_NOTES_v4.68.78.md
 RELEASE_NOTES_v4.68.8.md
 RELEASE_NOTES_v4.68.9.md
 ROADMAP.md
@@ -618,6 +621,7 @@ docs/BUILD_KNOWLEDGE.md
 docs/CHANGELOG.md
 docs/CHECKLIST.md
 docs/CODEX-INTEGRATION.md
+docs/FORGE-QUALITY-AUDIT-2026-09-05.md
 docs/FirstDeployServer.md
 docs/GIGACHAT-INTEGRATION-RESULTS-4.68.26.md
 docs/GIGACHAT-ISSUES-AND-FIXES-4.68.26.md
@@ -787,6 +791,7 @@ schemas/run-result.schema.json
 schemas/skill-contract.schema.json
 schemas/store-listing.schema.json
 schemas/task.schema.json
+schemas/web-playtest.schema.json
 schemas/workflow.schema.json
 scripts/adapt-skill-to-forge.mjs
 scripts/ai-studio-init.mjs
@@ -877,6 +882,7 @@ scripts/check-task-scope-guard.mjs
 scripts/check-task-verifier-runner.mjs
 scripts/check-universal-agent-runtime.mjs
 scripts/check-update-surface.mjs
+scripts/check-web-playtest.mjs
 scripts/check-workspace-discipline.mjs
 scripts/codex-phase.mjs
 scripts/codex-pipeline.mjs
@@ -906,6 +912,10 @@ scripts/fixtures/godot-web-android/android-source/settings.gradle
 scripts/fixtures/godot-web-android/export_templates/4.7.fixture.web-android/android_debug.apk
 scripts/fixtures/godot-web-android/export_templates/4.7.fixture.web-android/android_release.apk
 scripts/fixtures/godot-web-android/fake-godot-exporter.mjs
+scripts/fixtures/web-playtest/broken/forge.web.playtest.json
+scripts/fixtures/web-playtest/broken/game/index.html
+scripts/fixtures/web-playtest/pass/forge.web.playtest.json
+scripts/fixtures/web-playtest/pass/game/index.html
 scripts/forge-agent.mjs
 scripts/forge-metrics.mjs
 scripts/forge-search-doctor.mjs
@@ -994,6 +1004,8 @@ scripts/validate-ai-prompt.mjs
 scripts/verify-i18n.mjs
 scripts/verify-vk.mjs
 scripts/verify.sh
+scripts/web-playtest-contract.mjs
+scripts/web-playtest-runner.mjs
 setup.bat
 setup.ps1
 setup.sh
@@ -1142,6 +1154,7 @@ wiki/decisions/036-engine-capability-adapter-boundary.md
 wiki/decisions/036-engine-profile-authority.md
 wiki/decisions/_template.md
 wiki/deploy-log.md
+wiki/diagnostics/forge-events.jsonl
 wiki/features/_template.md
 wiki/i18n-status.md
 wiki/performance.md
@@ -1166,6 +1179,7 @@ wiki/plan/Q3-007-godot-test-and-release.md
 wiki/plan/Q3-008-cost-aware-assets.md
 wiki/plan/Q3-009-godot-pilot-release.md
 wiki/plan/Q3-010-storefront-release-contract.md
+wiki/plan/Q3-011-game-quality-audit.md
 wiki/plan/README.md
 wiki/plan/_template.md
 wiki/plan/v4.8-roadmap.md

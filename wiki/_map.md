@@ -12,7 +12,7 @@ AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как расс�
 ### Кому нужно
 
 - Solo-разработчики и микро-команды которые делают игры/приложения и хотят релизить на несколько платформ без ручного 18-touchpoint refactor'а на каждую
-- Yandex Games / Telegram Mini App focus — российская специфика учтена (13 языков, юр. требования, RuStore)
+- Yandex Games / Telegram Mini App focus — локализация по выбранным рынкам, платформенные требования и RuStore
 - Тем кто работает с Claude Code как primary IDE и хочет structured persistent memory через wiki/
 
 ### Почему Forge a thing
@@ -46,7 +46,7 @@ AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как расс�
 - **9 hooks** — workspace-discipline, plan-check, wiki-audit, session-start, status-line, stop-flush, post-tool-capture, block-dangerous, phase-visual-claim-gate
 - **21 agents** — platform builders + design/art/QA/security/research/AI Studio specialist roles
 - **Dashboard** — `dashboard.html` для project tracking + quick prompt copy
-- **i18n foundation** — runtime ru+en architecture from day 1 (v4.7.6)
+- **i18n foundation** — runtime localization architecture; language scope follows the approved project/markets
 - **Workspace discipline** — 3-folder enforcement (GameIntegration/WorkProgress/Release) (v4.7.7)
 - **Context-aware advisor** — reads wiki/ before formulating prompts (v4.7.5)
 - **Storefront release contract** — engine artifact family + immutable per-target receipt + separate
@@ -54,7 +54,9 @@ AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как расс�
 
 ## Current Status
 
-### Version: v4.68.77 (current source line)
+### Version: v4.68.78 (current source line)
+
+- 2026-09-05: **v4.68.78** — quality audit: real-input web proof, current Phase 4 revalidation, state-aware viewport capture, isolated diagnostic outputs, 7/10 visual floor, checker v2.25 and reconciled pilot/storefront memory.
 
 - 2026-09-01: **v4.68.77** — Yandex debug checker v2.24 enforces Yandex-ID-only auth signals, real any-focus audio pause, physical-key input and rotation/canvas safeguards with 19 contract regressions.
 - 2026-09-01: **v4.68.76** — vault roots inside a project now fail before writes; existing managed ignore blocks self-refresh and exclude `forge-data/` without changing user rules.
@@ -527,10 +529,12 @@ AppGallery, VK Play, Steam; CrazyGames и TapTap ведутся как расс�
 
 ### Next
 
-1. Ship, install and synchronize the v4.68.59 certificate-noise and terminal-block repair.
-2. Explicitly reopen Q3-009 Phase 3 and require the installed restricted-session native construct gate to pass.
-3. Continue the end-to-end native Godot pilot through Phase 8 without an early GitHub push.
-4. Start Q3-008 only if the real pilot exposes an asset/runtime need.
+1. Finish Q3-011 quality-contract audit/release; see `wiki/_current.md` and the 2026-09-05 audit report.
+2. Validate one real game with genuine input evidence and the stricter 7/10 visual floor.
+3. Add GDD feature/test traceability, full Godot player routes and normal/QA presentation parity.
+4. Reconcile Circuit Courier's stale v1.1.2 ten-target receipts with current v1.1.3 Android source.
+   Production identity already exists: reuse it, then collect actual device/store evidence.
+5. Start Q3-008 only if the pilot exposes an asset/runtime need. Do not restart completed Q3-009.
 
 ### Existing v4.8 backlog — priority order
 

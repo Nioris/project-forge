@@ -68,7 +68,7 @@ machine-readable progression state, а сами артефакты остают�
   capture + MovieWriter proof из `/godot-engine` → `references/godot-visual-qa.md`. Browser capture,
   `--headless`, fixture shim и ручной PNG не являются доказательством Godot.
 
-Независимый reviewer, state coverage, сравнение с target frame, порог 6/10 и запрет
+Независимый reviewer, state coverage, сравнение с target frame, порог 7/10 и запрет
 self-review одинаковы для всех движков; меняется способ получения достоверного кадра.
 
 
@@ -204,7 +204,9 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
 ## 📸 Перед сдачей — самооценка по кадрам
 Запусти capture adapter выбранного engine profile и оцени КАЖДЫЙ экран баллом по ui-review
 §самооценка (мобильный 412 + десктоп). Для `web`: `node <движок>/scripts/screens-shoot.mjs .`.
-Для native engine браузерную команду не использовать. Ниже 6/10 — в работу, не показывать.
+Для native engine браузерную команду не использовать. Ниже 7/10 — в работу, не показывать.
+Это внутренний стандарт Forge, а не требование платформы; целевой уровень 8/10 не позволяет
+поднимать фактическую оценку без новых пикселей и новой независимой рецензии.
 
 ## 🔒 Исполняемый визуальный gate (обязателен для `complete`)
 
@@ -255,7 +257,7 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
    пользователя и не должен создавать STOP.
    Подписанный REJECT обязателен для текущего repair-cycle: builder не оспаривает его через
    второй review, не вызывает reviewer-subagent и не переписывает QA. Даже если одна формулировка
-   кажется спорной, исправь все Major и все критерии ниже 6, создай новые pixels/proof и снова
+   кажется спорной, исправь все Major и все критерии ниже 7, создай новые pixels/proof и снова
    передай их parent host. Для Phase 4 policy устанавливает builder `maxSubagents=0`; независимый
    reviewer является отдельной parent-owned host-сессией, а не фазовым subagent.
    При перезапуске pipeline уже подписанный PASS/REJECT восстанавливается из durable evidence:
@@ -265,7 +267,7 @@ npx skills add vercel-labs/agent-skills --skill web-interface-guidelines -g -y
 
 Gate отклоняет фазу, если: пропущено состояние из утверждённого screen-flow; нет пары 412px + desktop для каждого;
 кадр устарел после правки UI; есть overflow/runtime error; reviewer совпадает с builder session;
-не открыт/не оценён хотя бы один кадр; любой критерий или target distance ниже 6/10; reviewer не
+не открыт/не оценён хотя бы один кадр; любой критерий или target distance ниже 7/10; reviewer не
 назвал 2 совпадения + 3 конкретных расхождения с целью; остался Critical/Major; хеши
 скриншота, target frame, style bible или отчёта не совпадают. В Godot также блокируют browser
 substitution, test harness, несвязанный/битый AVI index, статичный MJPEG, неполный proof review и

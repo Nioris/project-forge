@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inspectPng } from './png-integrity.mjs';
 import { findImageProvenance } from './image-provenance.mjs';
-import { SCREEN_FLOW_PATH, validateScreenFlow } from './screen-flow-contract.mjs';
+import { SCREEN_FLOW_PATH, validateScreenFlow, webCaptureViewport } from './screen-flow-contract.mjs';
 import { verifyVisualReceipt } from './visual-receipts.mjs';
 import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
 import { resolveTrustedForgeEngineRoot } from './forge-engine-root.mjs';
@@ -40,7 +40,9 @@ export const PHASE4_TARGET_FRAME_PATH = 'assets/target/target-frame.png';
 export const PHASE4_SCREEN_TARGETS_PATH = 'assets/target/screens/manifest.json';
 export const PHASE4_STYLE_BIBLE_PATH = 'assets/style/STYLE-BIBLE.md';
 export const PHASE4_VISUAL_SCHEMA_VERSION = 1;
-export const PHASE4_MIN_SCORE = 6;
+// Forge product-quality policy, not a platform requirement. Reviewers must report their
+// observed score honestly; 8/10 remains the desired bar, while 7/10 is the minimum PASS.
+export const PHASE4_MIN_SCORE = 7;
 
 const RENDER_INPUT_EXTENSIONS = new Set([
   '.html', '.css', '.js', '.mjs', '.ts', '.tsx', '.jsx', '.vue', '.svelte', '.json',
@@ -332,18 +334,20 @@ function validateCaptureManifest(root, manifestPath, screenFlow, failures) {
     if (Number(item.width) !== dimensions.width || Number(item.height) !== dimensions.height) {
       failures.push(`capture dimensions do not match PNG pixels: ${item.file}`);
     }
-    if (viewport === 'mobile' && dimensions.width !== 412) failures.push(`mobile capture must be exactly 412px wide: ${item.file}`);
-    if (viewport === 'desktop' && (dimensions.width < 1280 || dimensions.height < 720)) {
-      failures.push(`desktop capture must be at least 1280x720: ${item.file}`);
+    const flowState = screenFlow?.flow?.states?.find(candidate => candidate.id === state);
+    const expectedViewport = ['mobile', 'desktop'].includes(viewport) ? webCaptureViewport(flowState, viewport) : null;
+    if (expectedViewport && (dimensions.width !== expectedViewport.width || dimensions.height !== expectedViewport.height)) {
+      failures.push(`${viewport} capture must match approved ${expectedViewport.width}x${expectedViewport.height} viewport for state "${state}": ${item.file}`);
     }
     const actualHash = sha256File(screenshot.absolute);
     if (item.sha256 !== actualHash) failures.push(`capture SHA-256 does not match screenshot: ${item.file}`);
     if (!Number.isFinite(Number(item.contentHeightRatio)) || Number(item.contentHeightRatio) > 1.05) {
       failures.push(`capture clips or overflows its viewport: ${item.file}`);
     }
-    const expectedAdapterState = screenFlow?.flow?.states?.find(candidate => candidate.id === state)?.capture?.adapterState;
+    const expectedAdapterState = flowState?.capture?.adapterState;
     if (item.stateProof?.mechanism !== 'forge-runtime-adapter' || item.stateProof?.requestedState !== state
-      || item.stateProof?.adapterState !== expectedAdapterState || item.stateProof?.reportedState !== expectedAdapterState) {
+      || item.stateProof?.adapterState !== expectedAdapterState || item.stateProof?.reportedState !== expectedAdapterState
+      || (expectedViewport && (Number(item.stateProof?.viewport?.width) !== expectedViewport.width || Number(item.stateProof?.viewport?.height) !== expectedViewport.height))) {
       failures.push(`capture has no runtime adapter proof for state "${state}": ${item.file}`);
     }
     captures.push({ ...item, state, viewport, file: screenshot.normalized, sha256: actualHash, ...dimensions });
@@ -710,8 +714,14 @@ function validateScreenTargets(root, descriptor, masterTargetHash, screenFlow, f
       }
       const dimensions = pngDimensions(targetFile.absolute);
       if (!dimensions || dimensions.width < 512 || dimensions.height < 512) failures.push(`screen target is not a dimensioned PNG of at least 512px: ${reference.path}`);
-      else if (viewport === 'mobile' && dimensions.width >= dimensions.height) failures.push(`mobile screen target must be portrait: ${reference.path}`);
-      else if (viewport === 'desktop' && dimensions.width <= dimensions.height) failures.push(`desktop screen target must be landscape: ${reference.path}`);
+      else {
+        const expectedViewport = webCaptureViewport(flowState, viewport);
+        const expectedLandscape = expectedViewport.width > expectedViewport.height;
+        const actualLandscape = dimensions.width > dimensions.height;
+        if (dimensions.width === dimensions.height || actualLandscape !== expectedLandscape) {
+          failures.push(`${viewport} screen target orientation must match approved ${expectedViewport.width}x${expectedViewport.height} viewport: ${reference.path}`);
+        }
+      }
       const actualHash = sha256File(targetFile.absolute);
       if (reference.sha256 !== actualHash) failures.push(`screen target SHA-256 does not match: ${reference.path}`);
       if (item.mode === 'dedicated') {

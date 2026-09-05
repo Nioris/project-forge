@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "verifiers": [
+    { "id": "web-playtest", "script": "scripts/check-web-playtest.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 120000, "phases": [], "category": "forge-regression" },
     { "id": "agent-contracts", "script": "scripts/check-agent-contracts.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },
     { "id": "ai-studio", "script": "scripts/check-ai-studio.mjs", "public": true, "scope": "project", "mutates": false, "timeoutMs": 30000, "phases": [2, 4, 5, 7, 8], "category": "project-verification" },
     { "id": "api-terminal-profiles", "script": "scripts/check-api-terminal-profiles.mjs", "public": false, "scope": "engine", "mutates": false, "timeoutMs": 30000, "phases": [], "category": "forge-regression" },

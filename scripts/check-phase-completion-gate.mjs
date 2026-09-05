@@ -27,6 +27,7 @@ const ROOT = process.cwd();
 const phaseState = path.join(ROOT, '.claude', 'skills', 'status', 'references', 'phase-state.mjs');
 const phaseVisualClaimHook = path.join(ROOT, '.claude', 'hooks', 'phase-visual-claim-gate.mjs');
 const screenTargetsScript = path.join(ROOT, 'scripts', 'screen-targets.mjs');
+const screensShootScript = path.join(ROOT, 'scripts', 'screens-shoot.mjs');
 const bindVisualEvidenceScript = path.join(ROOT, 'scripts', 'bind-phase4-visual-evidence.mjs');
 const recordVisualReviewScript = path.join(ROOT, 'scripts', 'record-phase4-visual-review.mjs');
 const openaiImageScript = path.join(ROOT, 'scripts', 'openai-image.mjs');
@@ -134,7 +135,9 @@ function writeScreenFlow(root) {
     states: FLOW_STATES.map(([id, label, archetype, targetPolicy, inheritFrom]) => ({
       id, label, archetype, required: true, targetPolicy, inheritFrom,
       visualDescription: `${label} has a concrete player goal, primary focal area, responsive navigation hierarchy, and an explicit route to the next state.`,
-      capture: { adapterState: id },
+      capture: id === 'battle'
+        ? { adapterState: id, mobileViewport: { width: 915, height: 412 } }
+        : { adapterState: id },
     })),
     transitions: [
       { from: 'start', to: 'hq', trigger: 'continue' },
@@ -167,7 +170,8 @@ function writePhase4Fixture(root, mutate = () => {}) {
   for (const [state, label, archetype, mode, inheritedFrom] of FLOW_STATES) {
     if (mode === 'inherited') continue;
     const references = {};
-    for (const [viewport, width, height, variant] of [['mobile', 800, 1400, 21], ['desktop', 1600, 900, 22]]) {
+    for (const [viewport, defaultWidth, defaultHeight, variant] of [['mobile', 800, 1400, 21], ['desktop', 1600, 900, 22]]) {
+      const [width, height] = state === 'battle' && viewport === 'mobile' ? [1400, 800] : [defaultWidth, defaultHeight];
       const rel = `assets/target/screens/${state}-${viewport}.png`;
       const packRel = `assets/prompts/screen-${state}-${viewport}.json`;
       writeBuffer(root, rel, png(width, height, variant + screenTargetStates.length * 10));
@@ -211,17 +215,22 @@ function writePhase4Fixture(root, mutate = () => {}) {
   };
   write(root, 'assets/target/screens/manifest.json', JSON.stringify(screenTargetManifest, null, 2));
   writeBuffer(root, 'assets/ui/scene.png', png(1024, 1024, 91));
-  write(root, 'WorkProgress/demo/index.html', '<!doctype html><link rel="stylesheet" href="styles.css"><main class="game"></main>');
-  write(root, 'WorkProgress/demo/styles.css', '.game{background-image:url("../../assets/ui/scene.png");min-height:100vh;color:#fff;}');
+  writeBuffer(root, 'WorkProgress/demo/scene.png', png(1024, 1024, 91));
+  write(root, 'WorkProgress/demo/index.html', `<!doctype html><link rel="stylesheet" href="styles.css"><main class="game"></main><script>
+    const states=${JSON.stringify(FLOW_STATES.map(([id]) => id))}; let current=states[0];
+    window.__FORGE_VISUAL_QA__={listStates(){return states},showState(state){current=state;document.body.dataset.forgeState=state},currentState(){return current}};
+  </script>`);
+  write(root, 'WorkProgress/demo/styles.css', '.game{background-image:url("scene.png");min-height:100vh;color:#fff;}');
 
   const frames = [];
   for (const [index, [state]] of FLOW_STATES.entries()) {
-    for (const [viewport, width, height, variant] of [['mobile', 412, 915, 101], ['desktop', 1920, 1080, 102]]) {
+    for (const [viewport, defaultWidth, defaultHeight, variant] of [['mobile', 412, 915, 101], ['desktop', 1920, 1080, 102]]) {
+      const [width, height] = state === 'battle' && viewport === 'mobile' ? [915, 412] : [defaultWidth, defaultHeight];
       const rel = `WorkProgress/demo/screens/review/${viewport}-${String(index + 1).padStart(2, '0')}-${state}.png`;
       writeBuffer(root, rel, png(width, height, variant + index * 10));
       frames.push({
         state, viewport, file: rel, width, height, contentHeightRatio: 1, sha256: sha256File(path.join(root, rel)),
-        stateProof: { mechanism: 'forge-runtime-adapter', requestedState: state, adapterState: state, reportedState: state },
+        stateProof: { mechanism: 'forge-runtime-adapter', requestedState: state, adapterState: state, reportedState: state, viewport: { width, height } },
       });
     }
   }
@@ -248,7 +257,7 @@ function writePhase4Fixture(root, mutate = () => {}) {
     builder: capture.builder, reviewer: { id: 'visual-qa', sessionId: 'review-session-2', mode: 'independent' },
     reviewedAt: new Date(Date.parse(capturedAt) + 1000).toISOString(),
     coverage: { expectedStates: stateIds, capturedStates: stateIds, missingStates: [], complete: true },
-    minimumScore: 6, verdict: 'pass',
+    minimumScore: 7, verdict: 'pass',
     summary: 'Independent review opened every native mobile and desktop frame and compared it to the state-specific approved target; composition, hierarchy, readability, style, and responsiveness all meet the acceptance floor.',
     verification: { command: 'node ../project-forge/scripts/screens-shoot.mjs .', exitCode: 0 },
     reviews: frames.map(frame => ({
@@ -475,10 +484,12 @@ try {
   write(p3, 'WorkProgress/demo/index.html', '<!doctype html><style>canvas{display:block}</style><canvas></canvas><script>requestAnimationFrame(()=>{});</script>');
   write(p3, 'WorkProgress/demo/playtest-out/report.json', JSON.stringify({ rafAlive: true, errors: [], actions: ['clicked start'] }));
   result = validatePhaseCompletion({ root: p3, phase: 3, evidence: ['wiki/plan/02-development-plan.md', 'wiki/testing.md'] });
-  check(result.ok, 'Phase 3 requires implementation plus a clean machine playtest report');
+  check(!result.ok && result.failures.some(item => /Web playtest contract rejected/u.test(item)),
+    'Phase 3 rejects a static requestAnimationFrame canvas and an editable legacy playtest report');
   write(p3, 'WorkProgress/demo/playtest-out/report.json', JSON.stringify({ rafAlive: true, errors: ['boom'], actions: ['clicked start'] }));
   result = validatePhaseCompletion({ root: p3, phase: 3, evidence: ['wiki/plan/02-development-plan.md', 'wiki/testing.md'] });
-  check(!result.ok && result.failures.some(item => /zero runtime errors/.test(item)), 'Phase 3 rejects counterfeit PASS text when playtest JSON has errors');
+  check(!result.ok && result.failures.some(item => /Web playtest contract rejected/u.test(item)),
+    'Phase 3 still rejects counterfeit PASS text when a report is edited after the fact');
 
   const p4Evidence = ['wiki/design/target-frame.md', 'wiki/design/screen-flow.json', 'assets/target/target-frame.png', 'assets/target/screens/manifest.json', 'assets/style/STYLE-BIBLE.md', 'wiki/qa/phase-4-visual-review.md', 'wiki/qa/phase-4-visual-evidence.json'];
   const p4CssOnly = path.join(tmp, 'phase-4-css-only');
@@ -600,6 +611,24 @@ func _draw():
   result = validatePhaseCompletion({ root: p4, phase: 4, evidence: p4Evidence });
   check(result.ok, 'Phase 4 accepts only integrated art plus complete independent mobile/desktop visual evidence');
 
+  const canonicalCaptureBeforeDiagnostic = fs.readFileSync(path.join(p4, 'WorkProgress/demo/screens/review/capture-manifest.json'));
+  const webDiagnostic = spawnSync(process.execPath, [screensShootScript, path.join(p4, 'WorkProgress/demo'), '--project-root', p4, '--diagnostic'], {
+    cwd: ROOT, encoding: 'utf8', timeout: 60_000,
+  });
+  const webDiagnosticManifestPath = path.join(p4, 'WorkProgress/demo/screens/qa/phase-7-visual/capture-manifest.json');
+  const webDiagnosticManifest = fs.existsSync(webDiagnosticManifestPath) ? JSON.parse(fs.readFileSync(webDiagnosticManifestPath, 'utf8')) : null;
+  const battleMobile = webDiagnosticManifest?.captures?.find(item => item.state === 'battle' && item.viewport === 'mobile');
+  const webDiagnosticEvidenceValid = validatePhaseCompletion({ root: p4, phase: 4, evidence: p4Evidence }).ok;
+  const webDiagnosticOk = webDiagnostic.status === 0
+    && webDiagnosticManifest?.captureMode === 'forge-runtime-adapter-diagnostic'
+    && webDiagnosticManifest?.captureReceiptId === null
+    && battleMobile?.width === 915 && battleMobile?.height === 412
+    && battleMobile?.stateProof?.viewport?.width === 915 && battleMobile?.stateProof?.viewport?.height === 412
+    && fs.readFileSync(path.join(p4, 'WorkProgress/demo/screens/review/capture-manifest.json')).equals(canonicalCaptureBeforeDiagnostic)
+    && webDiagnosticEvidenceValid;
+  check(webDiagnosticOk,
+    `Phase 7 web diagnostic capture preserves Phase 4 evidence and honours an approved landscape mobile viewport${webDiagnosticOk ? '' : ` (exit=${webDiagnostic.status}; stderr=${String(webDiagnostic.stderr || '').trim().slice(0, 300)}; evidence=${webDiagnosticEvidenceValid})`}`);
+
   const openaiReferenceDryRun = spawnSync(process.execPath, [
     openaiImageScript,
     '--project', '.',
@@ -683,14 +712,14 @@ func _draw():
   check(!result.ok && result.failures.some(item => /same builder session/u.test(item)), 'Phase 4 rejects builder self-acceptance');
 
   const p4LowScore = path.join(tmp, 'phase-4-low-score');
-  writePhase4Fixture(p4LowScore, ({ evidence }) => { evidence.reviews[0].scores.composition = 5; });
+  writePhase4Fixture(p4LowScore, ({ evidence }) => { evidence.reviews[0].scores.composition = 6; });
   result = validatePhaseCompletion({ root: p4LowScore, phase: 4, evidence: p4Evidence });
-  check(!result.ok && result.failures.some(item => /below 6\/10/u.test(item)), 'Phase 4 rejects any frame criterion below 6/10');
+  check(!result.ok && result.failures.some(item => /below 7\/10/u.test(item)), 'Phase 4 rejects any frame criterion below 7/10');
 
   const p4FarFromTarget = path.join(tmp, 'phase-4-far-from-target');
-  writePhase4Fixture(p4FarFromTarget, ({ evidence }) => { evidence.reviews[0].targetComparison.distanceScore = 4; });
+  writePhase4Fixture(p4FarFromTarget, ({ evidence }) => { evidence.reviews[0].targetComparison.distanceScore = 6; });
   result = validatePhaseCompletion({ root: p4FarFromTarget, phase: 4, evidence: p4Evidence });
-  check(!result.ok && result.failures.some(item => /target distance is below 6\/10/u.test(item)), 'Phase 4 rejects a frame that is too far from the approved target');
+  check(!result.ok && result.failures.some(item => /target distance is below 7\/10/u.test(item)), 'Phase 4 rejects a frame that is too far from the approved target');
 
   const p4NoComparison = path.join(tmp, 'phase-4-no-target-comparison');
   writePhase4Fixture(p4NoComparison, ({ evidence }) => { evidence.reviews[0].targetComparison.differences = ['Only one difference was named.']; });
@@ -879,7 +908,41 @@ func _draw():
     ysdk.adv.showRewardedVideo(); addEventListener('pointerdown',()=>{});
   </script>`);
   result = validatePhaseCompletion({ root: p5, phase: 5, evidence: ['.forge-ai.json', 'wiki/qa/phase-5-tech.md'] });
-  check(result.ok, 'Phase 5 accepts only source-backed SDK/mobile/ads lifecycle evidence');
+  check(!result.ok && result.failures.some(item => /Web playtest contract rejected/u.test(item)),
+    'Phase 5 rejects SDK lifecycle words in source unless a current browser run observed them');
+
+  const p5YandexPointerOnly = path.join(tmp, 'phase-5-yandex-pointer-only');
+  fs.cpSync(path.join(ROOT, 'scripts', 'fixtures', 'web-playtest', 'pass'), p5YandexPointerOnly, { recursive: true });
+  write(p5YandexPointerOnly, '.forge-ai.json', '{}\n');
+  write(p5YandexPointerOnly, 'wiki/qa/phase-5-tech.md', prose('Phase 5 technical gate', 'Current browser runtime verification is recorded for the selected storefront.'));
+  write(p5YandexPointerOnly, 'forge.targets.json', JSON.stringify({ schemaVersion: 1, kind: 'forge.target-selection', targets: ['yandex'] }));
+  const yandexPointerContractPath = path.join(p5YandexPointerOnly, 'forge.web.playtest.json');
+  const yandexPointerContract = JSON.parse(fs.readFileSync(yandexPointerContractPath, 'utf8'));
+  yandexPointerContract.tech = { required: ['pointer-input'] };
+  fs.writeFileSync(yandexPointerContractPath, JSON.stringify(yandexPointerContract, null, 2));
+  const yandexPointerRun = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'web-playtest-runner.mjs'), p5YandexPointerOnly], { encoding: 'utf8', timeout: 120_000 });
+  result = validatePhaseCompletion({ root: p5YandexPointerOnly, phase: 5, evidence: ['.forge-ai.json', 'wiki/qa/phase-5-tech.md'] });
+  check(yandexPointerRun.status === 0 && !result.ok
+    && result.failures.some(item => /Yandex Phase 5 contract must declare SDK lifecycle facts/u.test(item)),
+  'Phase 5 rejects a selected Yandex target whose self-selected technical contract proves pointer input only');
+
+  yandexPointerContract.tech.required = ['sdk-init', 'loading-ready', 'gameplay-start', 'gameplay-stop', 'pointer-input'];
+  fs.writeFileSync(yandexPointerContractPath, JSON.stringify(yandexPointerContract, null, 2));
+  const yandexFullRun = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'web-playtest-runner.mjs'), p5YandexPointerOnly], { encoding: 'utf8', timeout: 120_000 });
+  result = validatePhaseCompletion({ root: p5YandexPointerOnly, phase: 5, evidence: ['.forge-ai.json', 'wiki/qa/phase-5-tech.md'] });
+  check(yandexFullRun.status === 0 && result.ok,
+    `Phase 5 accepts current real-input proof of selected Yandex lifecycle (local mock)${result.ok ? '' : `: ${result.failures.join('; ')}`}`);
+  write(p5YandexPointerOnly, 'wiki/plan/02-development-plan.md', prose('Development plan', 'Core player route and save reload are implemented and verified.'));
+  write(p5YandexPointerOnly, 'wiki/testing.md', prose('Testing', 'Real controls and negative input were exercised by the trusted browser runner.'));
+  result = validatePhaseCompletion({ root: p5YandexPointerOnly, phase: 3, evidence: ['wiki/plan/02-development-plan.md', 'wiki/testing.md'] });
+  check(result.ok, `Phase 3 accepts actual input evidence at the contract-selected game root${result.ok ? '' : `: ${result.failures.join('; ')}`}`);
+  const boundReportPath = path.join(p5YandexPointerOnly, 'game', 'playtest-out', 'report.json');
+  const boundReport = JSON.parse(fs.readFileSync(boundReportPath, 'utf8'));
+  boundReport.steps[0].beforeVisualSha256 = 'a'.repeat(64);
+  fs.writeFileSync(boundReportPath, JSON.stringify(boundReport));
+  result = validatePhaseCompletion({ root: p5YandexPointerOnly, phase: 3, evidence: ['wiki/plan/02-development-plan.md', 'wiki/testing.md'] });
+  check(!result.ok && result.failures.some(item => /receipt is invalid/u.test(item)),
+    'Phase 3 rejects edited real-input proof even when contract and source hashes remain current');
 
   const p6 = path.join(tmp, 'phase-6-valid');
   write(p6, 'SETUP_GUIDE.md', prose('SETUP GUIDE', 'Console upload languages listing category rating ads screenshots video checklist references.'));
@@ -917,7 +980,8 @@ func _draw():
   write(p7, 'WorkProgress/demo/playtest-out/report.json', JSON.stringify({ rafAlive: true, errors: [], actions: ['clicked start'] }));
   write(p7, 'WorkProgress/demo/stage-out/rt.json', JSON.stringify({ errors: [], rt: { _readyCalled: true, _i18nRead: 'ru' } }));
   result = validatePhaseCompletion({ root: p7, phase: 7, evidence: ['wiki/testing.md', 'wiki/qa/phase-7-report.md'] });
-  check(result.ok, 'Phase 7 accepts concrete reports backed by clean playtest and local-stage JSON');
+  check(!result.ok && result.failures.some(item => /Web playtest contract rejected/u.test(item)),
+    'Phase 7 rejects stale editable QA reports without current browser playtest proof');
   fs.mkdirSync(path.join(tmp, 'phase-7-directory', 'wiki', 'qa'), { recursive: true });
   result = validatePhaseCompletion({ root: path.join(tmp, 'phase-7-directory'), phase: 7, evidence: ['wiki/qa'] });
   check(!result.ok && result.failures.some(item => /not a regular file/.test(item)), 'Phase 7 no longer accepts a directory as completion evidence');

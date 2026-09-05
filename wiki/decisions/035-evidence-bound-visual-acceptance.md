@@ -24,7 +24,7 @@ Phase 4 completion requires three independent enforcement layers:
    freshness, runtime state-transition proof, complete Phase 2 inventory coverage and a different reviewer
    session. Engine-adjacent HMAC receipts outside the project make later capture/review evidence edits
    detectable. Every frame receives
-   five scores and concrete critique; any score below 6/10 or open Critical/Major defect rejects completion.
+   five scores and concrete critique; any score below 7/10 or open Critical/Major defect rejects completion.
 4. A native Godot route replaces browser capture with a production-inert runtime adapter, isolated
    rendered state capture and a deterministic MovieWriter proof. It binds capture + proof + current
    implementation snapshots, validates each MJPEG frame and final `idx1`, requires motion in both the
@@ -40,6 +40,10 @@ critique and reviewer identity when capture, targets, style bible or native proo
 silently attach an old judgment to new pixels.
 
 ## Consequences
+
+2026-09-05 amendment: raise Forge's internal floor from 6 to 7/10 (aspirational 8+); old 6/10 reviews
+remain historical, not silently upgraded. Capture uses each approved state's exact viewport/orientation.
+Diagnostic captures never overwrite accepted Phase 4 artifacts. Phase 7 revalidates current Phase 4.
 
 - Phase 4 cannot be closed by prose or presence-only media checks.
 - Weak hosts may need a separate clean reviewer call/session before completion.

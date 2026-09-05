@@ -5,6 +5,7 @@ import path from 'node:path';
 import { readTrustedProjectEngine } from '../.claude/skills/status/references/project-engine.mjs';
 import {
   captureReceiptPayload,
+  PHASE4_MIN_SCORE,
   proofReceiptPayload,
   sha256File,
 } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
@@ -97,7 +98,7 @@ try {
       missingStates: capture.missingStates || [],
       complete: !capture.missingStates?.length && (capture.states || []).length === (capture.requestedStates || []).length,
     },
-    minimumScore: 6,
+    minimumScore: PHASE4_MIN_SCORE,
     verdict: 'reject',
     summary: '',
     verification: {

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "forge.web-playtest",
+  "gameRoot": "game",
+  "adapter": { "global": "__FORGE_PLAYTEST__" },
+  "initialState": "menu",
+  "steps": [
+    { "id": "start", "action": { "kind": "click", "x": 0.5, "y": 0.5 }, "expect": { "state": "play", "changed": true } },
+    { "id": "finish", "action": { "kind": "key", "key": "Space" }, "expect": { "state": "result", "changed": true } },
+    { "id": "outside", "action": { "kind": "click", "x": 0.02, "y": 0.02 }, "expect": { "state": "result", "changed": false } }
+  ],
+  "persistence": { "mode": "none" }
+}

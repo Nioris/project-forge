@@ -1,199 +1,42 @@
 # Data Flow
 
-## Overview
+Architecture snapshot: 2026-09-05. Nine-phase runtime, not the obsolete seven-step bootstrap.
 
-Forge transforms a user's "I want to make a game/app and release on N platforms" into actual builds for those platforms. Workflow uses 3-folder discipline (GameIntegration → WorkProgress → Release).
+## Project work
 
-## Master flow
+1. Project creation records engine, storefronts and host/provider configuration.
+2. Status resolves phase markers, open STOPs and pending Git checkpoints. Wiki context cannot substitute for a passed contract.
+3. Phase 1 analyses the brief; Phase 2 approves GDD, plan and the screen/transition inventory.
+4. Phase 3 builds the core. Web scenarios exercise actual controls and observe changes; screenshots/forced visual states are not player actions. Godot uses native construct/playtest.
+5. Phase 4 generates reference-bound blueprints, implements art/UI and captures each state at approved viewports. Independent review scores those exact pixels against targets. Any score below 7/10 or open Critical/Major defect blocks.
+6. Phases 5–7 establish technical behavior, polish and tests. Diagnostic captures use separate outputs. Phase 7 rechecks current Phase 4 acceptance.
+7. Phase 8 builds immutable artifacts for every selected target. Phase 9 handles post-release work; neither phase invents platform publication evidence.
 
-```
-USER REQUEST
-  │
-  │ "сделай игру X для Yandex+VK+Telegram"
-  │
-  ▼
-┌─────────────────────────────────────┐
-│  /start  OR  /analyze-game          │  ← orchestrator skills
-│                                     │
-│  Phase 0a: research-references      │  ← search competitors via web_search
-│  Phase 0b: skill-discovery          │  ← /find-or-make-skill for specialized needs
-│  Step 0:   workspace setup          │  ← mkdir -p WorkProgress/{Project}
-│  Step 1-7: vision → stack → wiki    │
-│            → first feature          │
-└─────────────────────────────────────┘
-  │
-  ▼
-WorkProgress/{Project}/
-  │
-  │  ALL active edits happen here
-  │  (workspace-discipline hook blocks
-  │   writes to GameIntegration/ and
-  │   Release/ subpaths)
-  │
-  ▼
-┌─────────────────────────────────────┐
-│  Development sessions               │
-│                                     │
-│  /continue ← wiki/_current.md       │
-│  /improve, /deepen-game, /polish-app│
-│  /i18n-foundation                   │
-│  /research-references (as needed)   │
-│  /find-or-make-skill (as needed)    │
-│                                     │
-│  hook'и работают:                   │
-│   - plan-check before write         │
-│   - workspace-discipline before write│
-│   - wiki-audit before stop          │
-│   - post-tool-capture for tracking  │
-│                                     │
-│  wiki/ updated continuously         │
-└─────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────┐
-│  Pre-release validation             │
-│                                     │
-│  /release-ready <platform>          │
-│  /gate <platform>                   │
-│  /credentials-check                 │
-│  node scripts/check-*.mjs           │
-└─────────────────────────────────────┘
-  │
-  │  All green
-  │
-  ▼
-┌─────────────────────────────────────┐
-│  Release pipelines                  │
-│                                     │
-│  /release-yandex   → Release/X/yandex/   (3 ZIPs + 13 langs)
-│  /release-vk       → Release/X/vk/       (bundle + manifest)
-│  /release-telegram → Release/X/telegram/ (HTTPS bundle + bot)
-│  /release-rustore  → Release/X/rustore/  (AAB + Pay SDK)
-│  /release-steam    → Release/X/steam/    (Electron + SteamPipe)
-│  /release-vkplay   → Release/X/vkplay/   (iframe + signed auth)
-│  /release-all      → all in parallel via Agent Teams (experimental)
-│                                     │
-│  workspace-discipline hook bypassed │
-│  via FORGE_ALLOW_PROTECTED_WRITE=1  │
-│  (set automatically by release-*    │
-│   skills internally)                │
-└─────────────────────────────────────┘
-  │
-  ▼
-Release/{Project}/{platform}/
-  │
-  │  Final artifacts (read-only)
-  │  - .zip / .aab / .exe / etc.
-  │  - manifests, store listings
-  │  - submit-ready
-  │
-  ▼
-USER UPLOADS to platform store
-```
+Commands execute through bounded Tasks, installed verifier authority and durable STOP/repair state.
+A missing capability is a blocker, not permission to fabricate a PASS.
 
-## Memory flow (wiki/)
+## Workspace and trust
 
-```
-SESSION START
-  ↓
-session-start hook reads:
-  - wiki/_current.md  (active task, blockers)
-  - wiki/_map.md      (vision, status, backlog)
-  - latest wiki/sessions/YYYY/MM/DD.md
-  ↓
-Claude has context for the work
-  ↓
-WORK IN PROGRESS
-  ↓
-post-tool-capture hook records:
-  - Significant operations to wiki/sessions/YYYY/MM/DD.md
-  ↓
-SESSION END
-  ↓
-stop-flush hook updates:
-  - Wiki audit (block stop if wiki out of sync)
-  - Notes for next session
-```
+Imported material: `GameIntegration/`; active game: `WorkProgress/<project>/`; distributions:
+`Release/<project>/`. Engine authoring uses its own repository. Project-local evidence is input, not
+authority: external engine-owned receipts bind source/contract/capture. Full access to the engine and
+secret store is inside the host trust boundary; receipts are not an external security service.
 
-## Skills loading flow
+Local Git checkpoints preserve development. The configured private remote lifecycle has explicit
+checkpoint recovery. Signing identity is generated once in the external vault; only public bindings enter Git.
 
-```
-Claude Code starts
-  ↓
-Reads .claude/settings.json
-  ↓
-Discovers .claude/skills/*/SKILL.md
-  ↓
-Each skill registered as /name slash-command
-  ↓
-User types /skill-name
-  ↓
-Claude loads SKILL.md content as instructions
-  ↓
-Skill may reference ./skills/{category}/{name}/SKILL.md (knowledge base)
-  ↓
-Claude reads those for technical depth
-```
+## Release truth
 
-## Hooks event flow
+`local-verified` proves declared artifact/profile checks only. Missing IDs, hosting, device/container
+tests, enrollment or upload evidence remain external blockers. `submit-ready` needs its own evidence;
+only a storefront receipt establishes `published`. Source changes invalidate source-bound receipts.
+An Android-only base never silently replaces an older ten-target matrix.
 
-```
-USER ACTION (e.g. asks Claude to edit a file)
-  ↓
-Claude decides to call Edit/Write/MultiEdit tool
-  ↓
-PreToolUse hooks fire (in order):
-  1. workspace-discipline.mjs ← blocks if GameIntegration/ or Release/{X}/
-  2. plan-check.mjs           ← warns if no plan in wiki/plan/
-  ↓
-If both pass (exit 0) → tool executes
-  ↓
-PostToolUse hook fires:
-  - post-tool-capture.mjs ← logs to wiki/sessions/
-  ↓
-Eventually, user wants to /stop session
-  ↓
-Stop hooks fire:
-  - stop-flush.mjs ← runs wiki-audit
-    - blocks stop if wiki/_current.md not updated since session start
-    - blocks stop if wiki/_map.md stale
-  ↓
-If clean → session ends, state saved
-```
+## Feedback and engine release
 
-## Platform completeness flow (the meta-audit)
+Issues → local diagnostic evidence/owner → bounded repair/regression → verified resolution.
+Unresolved logs are not active defect counts; unknown costs/moderation cannot become zero.
+Update current memory when facts change, retain historical decisions separately.
 
-```
-Developer adds a new platform (e.g. v4.7.0 added Steam + VK Play)
-  ↓
-Touches ~18 files per platform (validators, scripts, templates,
-  release/fill/sdk skills, agent, cross-refs in 4 orchestrators,
-  dashboard, setup, README, GUIDE, workflow)
-  ↓
-Without script-enforced check, drift guaranteed (lesson #17)
-  ↓
-node scripts/check-platform-completeness.mjs runs:
-  ↓
-For each platform, 18 checks:
-  - platforms/{p}/README.md exists
-  - platforms/{p}/scripts/pre-submit.mjs exists
-  - platforms/{p}/validators/ has files
-  - platforms/{p}/templates/ has files
-  - .claude/skills/release-{p}/ exists
-  - .claude/skills/fill-{p}/ exists
-  - .claude/skills/{p}-sdk-integration/ exists
-  - .claude/agents/{p}-builder.md exists
-  - release-all skill mentions {p}
-  - release-ready skill mentions {p}
-  - gate skill mentions {p}
-  - advisor catalog mentions {p}
-  - dashboard.html PLATFORMS list
-  - dashboard.html getBuildPrompt branch
-  - setup.sh platform matrix
-  - setup.sh validation loop
-  - README.md mentions {p}
-  - GUIDE.md mentions {p}
-  - .github/workflows/release.yml matrix
-  ↓
-PERFECT (all green) OR DRIFT report
-```
+Canonical edit → generated adapters → contract/browser-fixture/drift checks → immutable ZIP → updater
+→ managed sibling sync. Engine checks do not prove every existing game was played, reviewed or published.

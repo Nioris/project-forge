@@ -1,7 +1,7 @@
 ---
 id: Q3-009
 title: Godot pilot and Forge release
-status: in_progress
+status: completed
 started: "2026-08-26"
 deps: [Q3-007]
 files:
@@ -47,13 +47,17 @@ files:
 
 ## Acceptance criteria
 
-- [ ] Пилот проходит Фазы 1–8 без browser verifier substitution.
-- [ ] Зафиксированы ошибки Forge и их владельцы.
-- [ ] Снимки, видео, playtest и release artifacts проверены независимо.
-- [ ] Каждый corrective runtime release проходит собственные регрессии до установки; финальный статус
+- [x] Пилот проходит Фазы 1–8 без browser verifier substitution.
+- [x] Зафиксированы ошибки Forge и их владельцы.
+- [x] Снимки, видео, playtest и release artifacts проверены независимо.
+- [x] Каждый corrective runtime release проходит собственные регрессии до установки; финальный статус
   Q3-009 и заявленная pilot-ready версия публикуются только после полного GREEN Фаз 1–8.
 
 ## Notes
+
+Reconciled 2026-09-05: the native Windows pilot reached v1.0.2 with the duplicate-result-CTA hotfix.
+This closes the original pilot scope, not current ten-storefront acceptance. Broader v1.1.x builds and
+external store/device evidence belong to Q3-010; do not restart from this plan's old checklist.
 
 Godot C# не заявляется как Web/Yandex target; для web остаются HTML/Babylon paths.
 

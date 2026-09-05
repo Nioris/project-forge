@@ -31,6 +31,7 @@ import { recordVisualReceipt } from '../.claude/skills/status/references/visual-
 
 const argv = process.argv.slice(2);
 const jsonMode = argv.includes('--json');
+const diagnostic = argv.includes('--diagnostic');
 const projectRoot = path.resolve(argv.find(value => !value.startsWith('--')) || '.');
 const result = {
   schemaVersion: 1,
@@ -62,7 +63,7 @@ function commandText(command, args) {
 try {
   const contract = readGodotVisualContract(projectRoot);
   const builder = currentVisualRuntimeIdentity();
-  if (!builder) {
+  if (!builder && !diagnostic) {
     issue('GODOT_VISUAL_IDENTITY', 'Native Phase 4 capture requires a Forge/Codex/Claude host session identity', {}, true);
   }
 
@@ -78,7 +79,9 @@ try {
     const godotUserEnv = isolatedGodotUserEnv(isolated.tempRoot);
     const startedAt = new Date().toISOString();
     const runId = createVisualRunId(new Date(startedAt));
-    const reviewRoot = path.join(projectRoot, 'screens', 'review');
+    const reviewRoot = diagnostic
+      ? path.join(projectRoot, 'screens', 'qa', 'phase-7-visual')
+      : path.join(projectRoot, 'screens', 'review');
     const mediaRoot = path.join(reviewRoot, 'godot', runId);
     fs.mkdirSync(mediaRoot, { recursive: true });
     const captures = [];
@@ -202,17 +205,19 @@ try {
 
     const capturedAt = new Date().toISOString();
     const captureId = computeVisualCaptureId({ capturedAt, captures });
-    const manifestRel = 'screens/review/capture-manifest.json';
+    const manifestRel = diagnostic
+      ? 'screens/qa/phase-7-visual/capture-manifest.json'
+      : 'screens/review/capture-manifest.json';
     const manifest = {
       schemaVersion: 1,
       kind: 'forge.visual-capture',
       generatedBy: 'godot-screens-shoot.mjs',
-      captureMode: 'forge-godot-runtime-adapter',
+      captureMode: diagnostic ? 'forge-godot-runtime-adapter-diagnostic' : 'forge-godot-runtime-adapter',
       startedAt,
       capturedAt,
       captureId,
       captureReceiptId: null,
-      builder,
+      builder: builder || null,
       engine: result.engine,
       screenFlow: { path: SCREEN_FLOW_PATH, sha256: sha256File(contract.screenFlow.file) },
       stateAdapter: {
@@ -235,7 +240,7 @@ try {
       statePixelCollisions,
       captures,
     };
-    if (!missingStates.length && !runtimeErrors.length && captures.length === contract.screenFlow.ids.length * 2) {
+    if (!diagnostic && !missingStates.length && !runtimeErrors.length && captures.length === contract.screenFlow.ids.length * 2) {
       try {
         const receipt = recordVisualReceipt({
           projectRoot,

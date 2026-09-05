@@ -87,7 +87,9 @@ node <движок>/scripts/check-phase4-visual-evidence.mjs .
 приёмку в builder-сеансе. Receipt выявляет последующую правку project evidence; процесс с полным
 shell-доступом остаётся доверенной host-границей.
 
-Любой балл ниже 6, Critical/Major, отсутствующий state/viewport или несовпавший хеш означает
+Любой балл ниже 7, Critical/Major, отсутствующий state/viewport или несовпавший хеш означает
 `REJECT`: вернуть builder-у замечания, после исправлений обязательно сделать новый capture run.
+Это внутренний порог Forge, не требование платформы. Цель 8/10 не заменяет фактическую оценку
+reviewer-а: если кадр набрал 7, его можно принять только как 7.
 Для Godot `proofReview.samplesReviewed` — массив SHA-256 **строк** в точном порядке `proof.samples`,
 не массив объектов с `frame/state/sha256`.

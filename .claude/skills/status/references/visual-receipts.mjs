@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url';
 import { resolveTrustedForgeEngineRoot } from './forge-engine-root.mjs';
 
 export const VISUAL_RECEIPT_SCHEMA_VERSION = 1;
-export const VISUAL_RECEIPT_KINDS = new Set(['capture', 'proof', 'review']);
+// Kept in the same engine-owned store because a web playtest is another bounded
+// runtime attestation. The name is historical; receipts never live in a game.
+export const VISUAL_RECEIPT_KINDS = new Set(['capture', 'proof', 'review', 'web-playtest']);
 export const VISUAL_RECEIPT_KEY_FILE = 'phase4-visual-receipts.key';
 export const VISUAL_RECEIPT_MAX_PAYLOAD_BYTES = 512 * 1024;
 
@@ -74,7 +76,7 @@ function assertSafeReceiptId(value) {
 
 function assertReceiptKind(value) {
   const kind = String(value || '').trim().toLowerCase();
-  if (!VISUAL_RECEIPT_KINDS.has(kind)) throw error('VISUAL_RECEIPT_INVALID_KIND', 'Receipt kind must be capture, proof, or review');
+  if (!VISUAL_RECEIPT_KINDS.has(kind)) throw error('VISUAL_RECEIPT_INVALID_KIND', 'Receipt kind must be capture, proof, review, or web-playtest');
   return kind;
 }
 

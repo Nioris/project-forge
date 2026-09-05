@@ -1,4 +1,4 @@
-# Project Forge v4.68.77 — Multi-Platform Project Bootstrapper
+# Project Forge v4.68.78 — Multi-Platform Project Bootstrapper
 
 You are a senior architect. User drops sources in `GameIntegration/`, describes platforms, and you produce builds for all of them in `Release/{Project}/{platform}/`.
 
@@ -491,7 +491,7 @@ blocks raw shell. Codex shell/external CLIs still require a worktree + accepted 
 ### 24. Visual acceptance is bound to current pixels and an independent review
 
 User approves the Phase 2 screen graph. Phase 4 generates GPT Image targets, captures each state,
-and hash-binds pixels + reviewer evidence. <6/10 or Critical/Major blocks; CSS/DOM/console cannot substitute.
+and hash-binds pixels + reviewer evidence. <7/10 or Critical/Major blocks; CSS/DOM/console cannot substitute.
 See `wiki/decisions/035-evidence-bound-visual-acceptance.md`.
 
 ### 25. Release signing identity is durable, external and non-secret in Git
@@ -510,9 +510,9 @@ then audit the last five each release.
 
 ---
 
-## v4.68.77 changelog (Yandex debug checker v2.24)
+## v4.68.78 changelog (Evidence-based game quality)
 
-The Yandex checker now follows the 2026-08-18 requirements baseline: Yandex-ID-only authorization,
-benefit copy and user-initiated login, real audio pause on any focus loss, layout-independent physical
-keys, rotation-safe progress warnings and active canvas reflow evidence. Nineteen contract regressions
-prevent event-name or unrelated-token false PASS results; exact runtime state remains a manual gate.
+Web phase acceptance requires real player-input proof bound to source/contract and external receipts.
+Visual capture follows approved viewport orientation; diagnostics preserve Phase 4 evidence and Phase 7
+rechecks it. The internal floor is 7/10. Checker v2.25 rejects unrelated handler tokens. Current memory
+distinguishes the completed native pilot, stale storefront matrix and existing production Android identity.

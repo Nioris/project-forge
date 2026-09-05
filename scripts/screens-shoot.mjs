@@ -5,13 +5,15 @@
  * и десктоп 1920, кладёт рядом лист index.html со всеми кадрами в один взгляд.
  *
  * Usage (Phase 4): node <движок>/scripts/screens-shoot.mjs <игра> --project-root <project>
+ * Phase 7 diagnostic: add --diagnostic. It writes under screens/qa/phase-7-visual
+ * and deliberately never replaces the signed Phase 4 capture manifest.
  * Legacy diagnostic only: add --states "штаб,карта,бой,итог" (cannot satisfy Phase 4).
  *        [--mobile 412x915] [--desktop 1920x1080]
  * Скрипт НЕ оценивает качество — он создаёт неизменяемый capture-manifest с хешами,
  * размерами, coverage и runtime errors. Независимый reviewer заполняет review-template.
  */
-import { existsSync, mkdirSync, writeFileSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve, basename, dirname, relative } from 'node:path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, statSync, realpathSync } from 'node:fs';
+import { join, resolve, basename, dirname, relative, isAbsolute } from 'node:path';
 import { createServer } from 'node:http';
 import { extname } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -20,18 +22,20 @@ import {
   captureReceiptPayload,
   computeVisualCaptureId,
   currentVisualRuntimeIdentity,
+  PHASE4_MIN_SCORE,
   sha256File,
 } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
-import { FORGE_VISUAL_QA_GLOBAL, FORGE_VISUAL_QA_QUERY, SCREEN_FLOW_PATH, validateScreenFlow } from '../.claude/skills/status/references/screen-flow-contract.mjs';
+import { FORGE_VISUAL_QA_GLOBAL, FORGE_VISUAL_QA_QUERY, SCREEN_FLOW_PATH, validateScreenFlow, webCaptureViewport } from '../.claude/skills/status/references/screen-flow-contract.mjs';
 import { recordVisualReceipt } from '../.claude/skills/status/references/visual-receipts.mjs';
 
 const dir = resolve(process.argv[2] || '.');
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i >= 0 ? process.argv[i + 1] : d; };
 const legacyStates = arg('states', '').split(',').map(s => s.trim()).filter(Boolean);
+const diagnostic = process.argv.includes('--diagnostic');
 const [mw, mh] = arg('mobile', '412x915').split('x').map(Number);
 const [dw, dh] = arg('desktop', '1920x1080').split('x').map(Number);
 if (!existsSync(join(dir, 'index.html'))) { console.error('[X] Нет index.html в', dir); process.exit(2); }
-const OUT = join(dir, 'screens', 'review'); mkdirSync(OUT, { recursive: true });
+const serverRoot = realpathSync(dir);
 
 const normalize = value => String(value || '').replaceAll('\\', '/');
 const findProjectRoot = start => {
@@ -47,32 +51,69 @@ const projectRoot = resolve(arg('project-root', findProjectRoot(dir)));
 const relativeToProject = file => normalize(relative(projectRoot, file));
 const slug = value => String(value || 'state').normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/gu, '').toLowerCase() || 'state';
 const screenFlow = validateScreenFlow({ root: projectRoot });
-const strictPhase4 = legacyStates.length === 0;
-if (strictPhase4 && !screenFlow.ok) {
-  console.error(`[X] Strict Phase 4 capture requires approved ${SCREEN_FLOW_PATH}: ${screenFlow.failures.join('; ')}`);
+const strictRuntimeCapture = legacyStates.length === 0;
+const canonicalPhase4 = strictRuntimeCapture && !diagnostic;
+const OUT = diagnostic ? join(dir, 'screens', 'qa', 'phase-7-visual') : join(dir, 'screens', 'review');
+mkdirSync(OUT, { recursive: true });
+if (strictRuntimeCapture && !screenFlow.ok) {
+  console.error(`[X] Runtime state capture requires approved ${SCREEN_FLOW_PATH}: ${screenFlow.failures.join('; ')}`);
   process.exit(2);
 }
 const builder = currentVisualRuntimeIdentity();
-if (strictPhase4 && !builder) {
+if (canonicalPhase4 && !builder) {
   console.error('[X] Strict Phase 4 capture requires a Forge/Codex/Claude host session identity. Anonymous shell capture cannot close Phase 4.');
   process.exit(2);
 }
-const requestedStates = strictPhase4 ? screenFlow.ids : ['start', ...legacyStates];
+const requestedStates = strictRuntimeCapture ? screenFlow.ids : ['start', ...legacyStates];
 const startedAt = new Date().toISOString();
 
 const MIME = { '.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png',
   '.jpg':'image/jpeg','.mp3':'audio/mpeg','.json':'application/json','.webp':'image/webp','.svg':'image/svg+xml' };
+const bounded = async (operation, timeoutMs) => new Promise(resolve => {
+  let finished = false;
+  const finish = value => { if (!finished) { finished = true; clearTimeout(timer); resolve(value); } };
+  const timer = setTimeout(() => finish(false), timeoutMs);
+  Promise.resolve(operation).then(() => finish(true), () => finish(false));
+});
+async function closeOwnedBrowser(browser) {
+  if (await bounded(browser.close(), 5_000)) return true;
+  // Puppeteer owns this process. Killing it is safe and prevents a stalled browser
+  // shutdown from withholding already-captured diagnostic evidence.
+  try { browser.process?.()?.kill('SIGKILL'); } catch {}
+  return bounded(browser.close(), 1_000);
+}
+async function closeOwnedServer(server, sockets) {
+  if (!server.listening) return true;
+  const requestClose = () => new Promise(resolve => { try { server.close(() => resolve()); } catch { resolve(); } });
+  const closed = bounded(requestClose(), 2_000);
+  if (await closed) return true;
+  for (const socket of sockets) { try { socket.destroy(); } catch {} }
+  return bounded(requestClose(), 1_000);
+}
 const server = createServer((req, res) => {
-  const requestPath = decodeURIComponent(req.url.split('?')[0]);
+  let requestPath;
+  try { requestPath = decodeURIComponent(req.url.split('?')[0]); }
+  catch { res.writeHead(400); res.end(); return; }
   if (requestPath === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (requestPath === '/sdk.js') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end('window.YaGames=window.YaGames||undefined;'); return; }
   const u = requestPath.replace(/^\/+/, '') || 'index.html';
-  try { const b = readFileSync(join(dir, u));
-    res.writeHead(200, { 'Content-Type': MIME[extname(u)] || 'application/octet-stream' }); res.end(b);
+  try {
+    const lexical = resolve(serverRoot, u);
+    const relativePath = relative(serverRoot, lexical);
+    if (isAbsolute(relativePath) || relativePath.startsWith('..')) { res.writeHead(403); res.end(); return; }
+    const file = realpathSync(lexical);
+    const realRelative = relative(serverRoot, file);
+    if (isAbsolute(realRelative) || realRelative.startsWith('..') || !statSync(file).isFile()) { res.writeHead(403); res.end(); return; }
+    res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' }); res.end(readFileSync(file));
   } catch { res.writeHead(404); res.end(); }
 });
+const serverSockets = new Set();
+server.on('connection', socket => {
+  serverSockets.add(socket);
+  socket.on('close', () => serverSockets.delete(socket));
+});
 
-server.listen(0, async () => {
+server.listen(0, '127.0.0.1', async () => {
   const port = server.address().port;
   const loadPup = async () => {
     try { const mod=await import('puppeteer'); return mod.default||mod; }
@@ -102,12 +143,12 @@ server.listen(0, async () => {
       if (!/favicon\.ico(?:\?|$)/u.test(request.url())) runtimeErrors.push({ viewport: label, type: 'requestfailed', message: `${request.method()} ${request.url()} — ${request.failure()?.errorText || 'failed'}`.slice(0, 500) });
     });
     await page.setViewport({ width: w, height: h, isMobile: label === 'mobile', hasTouch: label === 'mobile' });
-    const qaSuffix = strictPhase4 ? `?${FORGE_VISUAL_QA_QUERY}` : '';
+    const qaSuffix = strictRuntimeCapture ? `?${FORGE_VISUAL_QA_QUERY}` : '';
     await page.goto(`http://127.0.0.1:${port}/index.html${qaSuffix}`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(()=>{});
     await new Promise(r => setTimeout(r, 1800));
 
     let i = 1;
-    const shoot = async (name, stateProof) => {
+    const shoot = async (name, stateProof, dimensions = { width: w, height: h }) => {
       const f = join(OUT, `${label}-${String(i).padStart(2,'0')}-${slug(name)}.png`);
       await page.screenshot({ path: f, fullPage: false });
       // высота контента vs экран — ловит «не влезает в мобильный»
@@ -117,8 +158,8 @@ server.listen(0, async () => {
         viewport: label,
         file: relativeToProject(f),
         displayFile: basename(f),
-        width: w,
-        height: h,
+        width: dimensions.width,
+        height: dimensions.height,
         contentHeightRatio: over,
         sha256: sha256File(f),
         stateProof,
@@ -126,7 +167,7 @@ server.listen(0, async () => {
       i++;
     };
 
-    if (strictPhase4) {
+    if (strictRuntimeCapture) {
       const adapterStates = await page.evaluate(globalName => {
         const adapter = window[globalName];
         if (!adapter || typeof adapter.listStates !== 'function' || typeof adapter.showState !== 'function' || typeof adapter.currentState !== 'function') return null;
@@ -142,6 +183,8 @@ server.listen(0, async () => {
           runtimeErrors.push({ viewport: label, type: 'visual-adapter-inventory', message: `adapter states ${JSON.stringify(actual)} differ from approved screen flow ${JSON.stringify(expected)}` });
         }
         for (const state of screenFlow.states) {
+          const dimensions = webCaptureViewport(state, label);
+          await page.setViewport({ width: dimensions.width, height: dimensions.height, isMobile: label === 'mobile', hasTouch: label === 'mobile' });
           let reportedState = null;
           try {
             reportedState = await page.evaluate(async ({ globalName, adapterState }) => {
@@ -160,7 +203,8 @@ server.listen(0, async () => {
             requestedState: state.id,
             adapterState: state.capture.adapterState,
             reportedState,
-          });
+            viewport: dimensions,
+          }, dimensions);
         }
       }
     } else {
@@ -180,9 +224,7 @@ server.listen(0, async () => {
         await shoot(st, { mechanism: 'legacy-text-click', requestedState: st, adapterState: null, reportedState: null });
       }
     }
-    await page.close();
   }
-  await browser.close(); server.close();
 
   const capturedAt = new Date().toISOString();
   const captureId = computeVisualCaptureId({ capturedAt, captures: shots });
@@ -192,14 +234,14 @@ server.listen(0, async () => {
     schemaVersion: 1,
     kind: 'forge.visual-capture',
     generatedBy: 'screens-shoot.mjs',
-    captureMode: strictPhase4 ? 'forge-runtime-adapter' : 'legacy-text-click',
+    captureMode: strictRuntimeCapture ? (diagnostic ? 'forge-runtime-adapter-diagnostic' : 'forge-runtime-adapter') : 'legacy-text-click',
     startedAt,
     capturedAt,
     captureId,
     captureReceiptId: null,
-    builder,
-    screenFlow: strictPhase4 ? { path: SCREEN_FLOW_PATH, sha256: sha256File(screenFlow.file) } : null,
-    stateAdapter: strictPhase4 ? { global: FORGE_VISUAL_QA_GLOBAL, query: FORGE_VISUAL_QA_QUERY } : null,
+    builder: builder || null,
+    screenFlow: strictRuntimeCapture ? { path: SCREEN_FLOW_PATH, sha256: sha256File(screenFlow.file) } : null,
+    stateAdapter: strictRuntimeCapture ? { global: FORGE_VISUAL_QA_GLOBAL, query: FORGE_VISUAL_QA_QUERY } : null,
     projectRoot: '.',
     gameRoot: relativeToProject(dir) || '.',
     command: [process.execPath, ...process.argv.slice(1)].join(' '),
@@ -209,11 +251,15 @@ server.listen(0, async () => {
       mobile: { width: mw, height: mh },
       desktop: { width: dw, height: dh },
     },
+    stateViewports: strictRuntimeCapture ? Object.fromEntries(screenFlow.states.map(state => [state.id, {
+      mobile: webCaptureViewport(state, 'mobile'),
+      desktop: webCaptureViewport(state, 'desktop'),
+    }])) : null,
     missingStates,
     runtimeErrors,
     captures: shots.map(({ displayFile, ...item }) => item),
   };
-  if (strictPhase4) {
+  if (canonicalPhase4) {
     try {
       const receipt = recordVisualReceipt({
         projectRoot,
@@ -227,6 +273,7 @@ server.listen(0, async () => {
   }
   writeFileSync(join(OUT, 'capture-manifest.json'), `${JSON.stringify(captureManifest, null, 2)}\n`);
 
+  if (canonicalPhase4) {
   const bound = rel => {
     const file = join(projectRoot, rel);
     return existsSync(file) && statSync(file).isFile() ? { path: rel, sha256: sha256File(file) } : { path: rel, sha256: '' };
@@ -255,7 +302,7 @@ server.listen(0, async () => {
     reviewer: { id: '', sessionId: '', mode: 'independent' },
     reviewedAt: '',
     coverage: { expectedStates: requestedStates, capturedStates, missingStates, complete: missingStates.length === 0 && capturedStates.length === requestedStates.length },
-    minimumScore: 6,
+    minimumScore: PHASE4_MIN_SCORE,
     verdict: 'reject',
     summary: '',
     verification: { command: captureManifest.command, exitCode: missingStates.length || runtimeErrors.length ? 1 : 0 },
@@ -278,6 +325,7 @@ server.listen(0, async () => {
     })),
   };
   writeFileSync(join(OUT, 'phase-4-visual-evidence.template.json'), `${JSON.stringify(reviewTemplate, null, 2)}\n`);
+  }
 
   const rows = shots.map(s => `<figure><img src="${s.displayFile}"><figcaption>
     <b>${s.state}</b> · ${s.viewport}${s.contentHeightRatio > 1.05 ? ` · <span class="warn">не влезает: ${s.contentHeightRatio} экрана</span>` : ''}
@@ -300,7 +348,14 @@ figcaption{padding:8px 11px;font-size:12px}.warn{color:#e05252;font-weight:600}
   if (missingStates.length) console.log(`  [X] Не сняты состояния: ${missingStates.map(s => `${s.state}/${s.viewport}`).join(', ')}`);
   if (runtimeErrors.length) console.log(`  [X] Runtime/browser errors: ${runtimeErrors.length}`);
   console.log(`     Capture manifest: ${join(OUT, 'capture-manifest.json')}`);
-  console.log(`     Review template: ${join(OUT, 'phase-4-visual-evidence.template.json')}`);
-  console.log('     Дальше: независимый reviewer открывает каждый кадр, пишет критику и только затем формирует Phase 4 evidence.');
+  if (canonicalPhase4) {
+    console.log(`     Review template: ${join(OUT, 'phase-4-visual-evidence.template.json')}`);
+    console.log('     Дальше: независимый reviewer открывает каждый кадр, пишет критику и только затем формирует Phase 4 evidence.');
+  } else if (diagnostic) {
+    console.log('     Diagnostic capture does not create or alter Phase 4 receipts/evidence.');
+  }
+  const browserClosed = await closeOwnedBrowser(browser);
+  const serverClosed = await closeOwnedServer(server, serverSockets);
+  if (!browserClosed || !serverClosed) console.warn('  ⚠️  Browser/local server cleanup exceeded its bounded deadline; owned processes were terminated.');
   if (bad.length || missingStates.length || runtimeErrors.length) process.exitCode = 1;
 });

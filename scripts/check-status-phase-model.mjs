@@ -322,7 +322,11 @@ try {
   w(pMixed,'wiki/testing.md','# Testing\n\nАвтоматический сценарий запускает матч, разыгрывает карту, передаёт ход и проверяет отсутствие ошибок. Отчёт фиксирует живой requestAnimationFrame и пустой список консольных ошибок. Ручная проверка подтверждает читаемость руки, кнопки окончания хода и экрана результата на портретном экране.\n');
   w(pMixed,'GameIntegration/runtime.js',`<meta name="viewport"><style>*{touch-action:none}</style>\nYaGames.init();\nLoadingAPI.ready();\nconst language = ysdk.environment.i18n.lang;\nconst I18N = {};\n`);
   w(pMixed,'WorkProgress/runtime.js','export const startMatch = () => ({ turn: 1, playerHealth: 20, enemyHealth: 20 });\n');
-  w(pMixed,'playtest-out/report.json',JSON.stringify({rafAlive:true,errors:[],actions:['start','play-card','end-turn']}));
+  // Phase 3 must be backed by an actual bounded browser run and engine-owned
+  // receipt, not the former editable raf/actions JSON fixture.
+  fs.cpSync(path.join(ROOT,'scripts','fixtures','web-playtest','pass'),pMixed,{recursive:true});
+  const mixedPlaytest=spawnSync(process.execPath,[path.join(ROOT,'scripts','web-playtest-runner.mjs'),pMixed],{encoding:'utf8',timeout:120_000});
+  if(mixedPlaytest.status!==0) throw new Error(mixedPlaytest.stderr||mixedPlaytest.stdout||'mixed fixture browser playtest failed');
   phase(pMixed,'complete','1','wiki/features/game-analysis.md','wiki/architecture/metrics.md','wiki/design/brief.md');
   phase(pMixed,'complete','2','wiki/design/gdd.md','wiki/plan/02-development-plan.md','wiki/design/screen-flow.json');
   phase(pMixed,'complete','3','wiki/plan/02-development-plan.md','wiki/testing.md');

@@ -9,7 +9,16 @@ tags: [tech-debt]
 
 ## Critical (blocks features or causes bugs)
 
-(none currently — major issues addressed in v4.7.x track)
+Current audit (2026-09-05): see `docs/FORGE-QUALITY-AUDIT-2026-09-05.md`. Historical items below are not
+proof that current runtime/game quality has no defects.
+
+- [ ] **GDD feature-to-test traceability** — bind approved feature IDs to code/runtime acceptance;
+  smoke and document length alone do not prove the entire intended game exists.
+- [ ] **Godot full player route** — require win/loss/retry/progression/persistence, beyond native smoke.
+- [ ] **Normal-launch / QA-capture parity** — prove normal controls reach the same layout/content as
+  forced-state art capture; add production-entry evidence for the key route.
+- [ ] **Circuit Courier target freshness** — v1.1.2 receipts are stale after v1.1.3 signing/export changes.
+  Rebuild/reverify one coherent matrix without rekeying the production identity.
 
 ## Should fix (quality/performance impact)
 

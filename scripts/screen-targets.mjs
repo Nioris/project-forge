@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pngDimensions, sha256File } from '../.claude/skills/status/references/phase-4-visual-evidence.mjs';
 import { findImageProvenance } from '../.claude/skills/status/references/image-provenance.mjs';
-import { SCREEN_FLOW_PATH, validateScreenFlow } from '../.claude/skills/status/references/screen-flow-contract.mjs';
+import { SCREEN_FLOW_PATH, validateScreenFlow, webCaptureViewport } from '../.claude/skills/status/references/screen-flow-contract.mjs';
 
 const args = process.argv.slice(2);
 const projectRoot = path.resolve(args[0] && !args[0].startsWith('--') ? args[0] : '.');
@@ -33,13 +33,16 @@ function safeFile(rel) {
   return { path: normalized, absolute };
 }
 
-function imageBinding(rel, viewport) {
+function imageBinding(rel, viewport, expectedViewport) {
   const file = safeFile(rel);
   if (!/(?:^|\/)assets\/target\/screens\/.+\.png$/u.test(file.path)) throw new Error(`${viewport} target must be a PNG under assets/target/screens/: ${file.path}`);
   const dimensions = pngDimensions(file.absolute);
   if (!dimensions || dimensions.width < 512 || dimensions.height < 512) throw new Error(`${viewport} target must be a dimensioned PNG of at least 512px`);
-  if (viewport === 'mobile' && dimensions.width >= dimensions.height) throw new Error('mobile target must be portrait');
-  if (viewport === 'desktop' && dimensions.width <= dimensions.height) throw new Error('desktop target must be landscape');
+  const expectedLandscape = expectedViewport.width > expectedViewport.height;
+  const actualLandscape = dimensions.width > dimensions.height;
+  if (actualLandscape !== expectedLandscape || dimensions.width === dimensions.height) {
+    throw new Error(`${viewport} target orientation must match approved ${expectedViewport.width}x${expectedViewport.height} viewport`);
+  }
   const sha256 = sha256File(file.absolute);
   const provenance = findImageProvenance({ projectRoot, outputPath: file.path, outputSha256: sha256, state, viewport });
   if (!provenance) throw new Error(`${viewport} target lacks hash-bound GPT Image/GigaChat provenance for state "${state}"`);
@@ -74,8 +77,8 @@ try {
     mode = 'inherited';
   } else {
     references = {
-      mobile: imageBinding(option('mobile'), 'mobile'),
-      desktop: imageBinding(option('desktop'), 'desktop'),
+      mobile: imageBinding(option('mobile'), 'mobile', webCaptureViewport(flowState, 'mobile')),
+      desktop: imageBinding(option('desktop'), 'desktop', webCaptureViewport(flowState, 'desktop')),
     };
     mode = 'dedicated';
   }

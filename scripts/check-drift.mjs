@@ -25,9 +25,11 @@ import { execSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import * as cpModule from 'node:child_process';
 
-const ROOT = process.cwd();
+// Audit the installed engine, even when invoked from a managed game or the workspace parent.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 const STRICT = process.argv.includes('--strict');
 
@@ -602,7 +604,7 @@ safe('dashboard-phase-list', () => {
 // Guard: skill description length (Claude Code listing cap 1536).
 safe('skill-description-cap', () => {
   try {
-    const r = execSync(`node "${path.join(ROOT,'scripts','check-skill-descriptions.mjs')}"`, {encoding:'utf8'});
+    const r = execSync(`node "${path.join(ROOT,'scripts','check-skill-descriptions.mjs')}"`, {cwd:ROOT,encoding:'utf8'});
     if (/✗/.test(r)) err('skill descriptions exceed the 1536-char listing cap — see check-skill-descriptions.mjs');
     else ok.push('skill descriptions fit listing cap');
   } catch (e) { err('skill-description guard: ' + (e.stdout || e.message).toString().split('\n')[0]); }
@@ -648,8 +650,18 @@ safe('project-git-lifecycle', () => {
 
 safe('phase-completion-gate', () => {
   const r = spawnSync(process.execPath, ['scripts/check-phase-completion-gate.mjs'], { cwd: ROOT, encoding: 'utf8' });
-  if (r.status !== 0) err('phase completion evidence gate regression failed — run scripts/check-phase-completion-gate.mjs');
+  if (r.status !== 0) {
+    const details = [r.stdout, r.stderr].filter(Boolean).join('\n').split(/\r?\n/)
+      .filter(line => /✗|Error:|\[BLOCKED\]|FAIL:|timed out/u.test(line)).slice(-8).join(' | ');
+    err(`phase completion evidence gate regression failed — run scripts/check-phase-completion-gate.mjs${details ? `: ${details.slice(0, 2000)}` : ` (exit ${r.status}, signal ${r.signal || 'none'})`}`);
+  }
   else ok.push('all 9 phase contracts reject missing, irrelevant and counterfeit completion evidence');
+});
+
+safe('web-playtest-runtime-contract', () => {
+  const r = spawnSync(process.execPath, ['scripts/check-web-playtest.mjs'], { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
+  if (r.status !== 0) err('real-input web playtest regression failed — run scripts/check-web-playtest.mjs');
+  else ok.push('web playtest proves real inputs and rejects dead controls plus unbound reports');
 });
 
 safe('durable-execution-graph', () => {

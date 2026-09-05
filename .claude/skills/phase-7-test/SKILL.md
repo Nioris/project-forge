@@ -63,9 +63,10 @@ capability. Browser reports не подтверждают Godot, а native Godot
 1. `/test-game` целиком: ЭТАП 1 (verify+smoke) → ЭТАП 1.5 (playtest: скрипт ИГРАЕТ, 4 скриншота —
    **смотреть глазами**, 01≈04 = мёртвый инпут) → ЭТАП 1.6 (local-stage --ai: rt.json,
    факты _i18nRead/readyCalled).
-1z. **Кадры и самооценка**: `node <движок>/scripts/screens-shoot.mjs .` — сними все экраны
+1z. **Кадры и самооценка**: `node <движок>/scripts/screens-shoot.mjs . --diagnostic` — сними все экраны
    на мобильном 412 и десктопе, оцени каждый баллом (ui-review §самооценка), приложи вердикт.
-   Скрипт сам пометит экраны, не влезающие в мобильный.
+   Скрипт сам пометит экраны, не влезающие в мобильный. `--diagnostic` пишет только в
+   `screens/qa/phase-7-visual/` и не заменяет подписанный capture/receipt Фазы 4.
 1a00. **Баланс** (`/gameplay-balance`): прогони тупую и умную политики, дай
    exploratory_ratio с вердиктом. mono_dominant или tied → дефект ДИЗАЙНА, возврат в Ф2,
    не чинить числами. Стенда нет — построй (он же нужен для поздних стадий).
@@ -88,6 +89,8 @@ capability. Browser reports не подтверждают Godot, а native Godot
 1. Убедись, что Ф5 уже приняла строгий `forge.godot.playtest.json` и точную установленную копию
    `ForgePlaytestQA.gd`; не ослабляй ожидания ради PASS.
 2. Запусти `node <Forge>/scripts/godot-playtest.mjs . --json` без `--headless`.
+2a. Для свежей самооценки экранов запусти `node <Forge>/scripts/godot-screens-shoot.mjs . --diagnostic`.
+    Этот отчёт хранится в `screens/qa/phase-7-visual/` и не трогает signed evidence Фазы 4.
 3. PASS требует два новых реальных процесса с одним изолированным user data root: первый вызывает
    реальные `Input.action_press/release`, сверяет состояние после каждого шага и сохраняет; второй
    загружает save и обязан вернуть точное сохранённое состояние. Source до/после идентичен,

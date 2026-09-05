@@ -1,5 +1,5 @@
 /**
- * Yandex Games Debug Checker v2.24
+ * Yandex Games Debug Checker v2.25
  * ─────────────────────────────────
  * Universal overlay that verifies SDK integration.
  * Activation: Press Ctrl+Shift+2 three times.
@@ -15,6 +15,7 @@
  * Before release: remove the script tag and this file.
  *
  * ─────────────────────────────────
+ * v2.25 — Sep 2026: event checks stop at the actual handler boundary; unrelated statements and quoted/commented actions cannot grant PASS. Overlay and standalone HTML share contract regressions.
  * v2.24 — Sep 2026: requirements refresh from 18.08.2026: +1.2/1.2.1 Yandex-ID-only auth and benefit copy, +1.3 any-focus-loss audio coverage, stronger 1.6.2.4 physical-key check, +1.9 destructive rotation reset warning, stricter 1.10 rotation binding.
  * v2.23 — Aug 2026: +3.5 brand-word check (Яндекс/Yandex in game texts), +1.8 touch-target static hint, +4.5.1 RV button must state the REWARD not a bare number.
  * v2.22 — Aug 2026: +static check for leftover dev tools in the build (seed field, AI selector, speed, measurement panel) → WARN per REQ-1.15.
@@ -362,6 +363,38 @@ function hasAudioPauseAction(s){
   return pat(s,/\.suspend\s*\(|\.pause\s*\(|suspendAudio|pauseAudio|pauseAppAudio|muteAll|muteSound|muteAudio|setMuted|volume\s*=\s*0/i);
 }
 
+// EVENT_HANDLER_SCAN_START — keep both standalone checker surfaces identical.
+/** Blank strings/comments without changing offsets; templates are deliberately opaque. */
+function maskHandlerText(s){
+  return String(s).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g,function(m){return m.replace(/[^\r\n]/g,' ');});
+}
+/** Extract only this event registration/assignment, never unrelated statements after it. */
+function extractEventBlock(s,startRegex){
+  var m=s.match(startRegex);
+  if(!m)return null;
+  var raw=s.slice(m.index),masked=maskHandlerText(raw);
+  var call=masked.indexOf('addEventListener');
+  var start=call>=0&&call<m[0].length?masked.indexOf('(',call):-1;
+  var assignment=start<0,depth=0,braces=0,brackets=0;
+  if(assignment)start=masked.indexOf('=');
+  if(start<0)return null;
+  for(var i=start;i<Math.min(masked.length,start+20000);i++){
+    var ch=masked[i];
+    if(ch==='(')depth++;
+    else if(ch===')'){
+      depth--;
+      if(!assignment&&depth===0)return masked.slice(0,i+1);
+    }else if(ch==='{')braces++;
+    else if(ch==='}')braces--;
+    else if(ch==='[')brackets++;
+    else if(ch===']')brackets--;
+    else if(assignment&&ch===';'&&depth===0&&braces===0&&brackets===0)return masked.slice(0,i);
+    if(depth<0||braces<0||brackets<0)return null;
+  }
+  return assignment&&depth===0&&braces===0&&brackets===0?masked:null;
+}
+// EVENT_HANDLER_SCAN_END
+
 function extractBlock(s,startRegex){
   var m=s.match(startRegex);
   if(!m)return null;
@@ -412,7 +445,7 @@ var CATS=[
     {name:'visibilitychange actually mutes (п.1.3)',desc:'Hidden tab must call an audio pause/mute path, not merely register the event name.',
       test:function(s){
         if(!hasAudioSource(s))return true;
-        var c=sourceWithoutComments(s),block=extractBlock(c,/(?:addEventListener\s*\(\s*['"]visibilitychange['"]|onvisibilitychange\s*=)/i);
+        var c=sourceWithoutComments(s),block=extractEventBlock(c,/(?:addEventListener\s*\(\s*['"]visibilitychange['"]|onvisibilitychange\s*=)/i);
         if(!block)return 'warn';
         var resumes=pat(block,/\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
         if(resumes&&!hasAudioPauseAction(block))return false;
@@ -422,7 +455,7 @@ var CATS=[
     {name:'Window blur/pagehide mutes sound (п.1.3)',desc:'Switching to another window or system overlay must mute/pause audio too.',
       test:function(s){
         if(!hasAudioSource(s))return true;
-        var c=sourceWithoutComments(s),block=extractBlock(c,/(?:addEventListener\s*\(\s*['"](?:blur|pagehide|freeze)['"]|on(?:blur|pagehide)\s*=)/i);
+        var c=sourceWithoutComments(s),block=extractEventBlock(c,/(?:addEventListener\s*\(\s*['"](?:blur|pagehide|freeze)['"]|on(?:blur|pagehide)\s*=)/i);
         if(!block)return 'warn';
         var resumes=pat(block,/\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
         if(resumes&&!hasAudioPauseAction(block))return false;
@@ -477,7 +510,7 @@ var CATS=[
     {name:'Rotation does not reset progress (п.1.9)',desc:'Orientation handlers must not reload/reset the run unless state is saved and restored.',
       test:function(s){
         var c=sourceWithoutComments(s);
-        var block=extractBlock(c,/(?:addEventListener\s*\(\s*['"]orientationchange['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"])/i);
+        var block=extractEventBlock(c,/(?:addEventListener\s*\(\s*['"]orientationchange['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"])/i);
         if(!block)return true;
         var destructive=pat(block,/location\s*\.\s*reload\s*\(|resetGame\s*\(|restartGame\s*\(|newGame\s*\(|initGame\s*\(|(?:score|level|stage|round)\s*=\s*(?:0|1)\b|clear(?:Progress|Save|State)\s*\(/i);
         if(!destructive)return true;
@@ -955,7 +988,7 @@ var CATS=[
               || new RegExp("screen\\s*\\.\\s*orientation[\\s\\S]{0,100}['\"]change['\"]\\s*,\\s*"+cb+"\\b",'i').test(c)
               || new RegExp("visualViewport[\\s\\S]{0,100}['\"]resize['\"]\\s*,\\s*"+cb+"\\b",'i').test(c);
         }
-        var orientationBlock=extractBlock(c,/(?:addEventListener\s*\(\s*['"](?:orientationchange|fullscreenchange)['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"]|visualViewport[\s\S]{0,80}addEventListener\s*\(\s*['"]resize['"])/i);
+        var orientationBlock=extractEventBlock(c,/(?:addEventListener\s*\(\s*['"](?:orientationchange|fullscreenchange)['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"]|visualViewport[\s\S]{0,80}addEventListener\s*\(\s*['"]resize['"])/i);
         var activeOrientation=orientationBlock&&pat(orientationBlock,/(?:fit|resize|layout|reflow|setSize|updateViewport|canvas\s*\.\s*(?:width|height)|style\s*\.\s*(?:width|height))\s*(?:\(|=)/i);
         var activeObserver=pat(c,/ResizeObserver\s*\(\s*(?:[A-Za-z_$][\w$]*(?:fit|resize|layout|reflow)[\w$]*|[^)]{0,240}(?:setSize|updateViewport|canvas\s*\.\s*(?:width|height)))/i);
         return bindsResize&&(shared||activeOrientation||activeObserver)?true:'warn';

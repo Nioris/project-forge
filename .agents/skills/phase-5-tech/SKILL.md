@@ -91,6 +91,10 @@ CLI export допускает `--headless`, но техпроверка gameplay
 2. `$yandex-sdk-integration` — порядок: init → detectLang → applyLang → ready ДО инпута;
    **GameplayAPI.start/stop обязателен** (кейс tyl).
 3. `$yandex-ads` + `$bundle-libs` — реклама с паузой/сейвом, либы локально.
+4. Обнови `forge.web.playtest.json` полем `tech.required` и прогони
+   `node <Forge>/scripts/playtest.mjs . --contract`. Для заявленных фактов runner вызывает
+   настоящие действия игрока, наблюдает SDK вызовы в локальном runtime и пишет
+   engine-owned proof. Комментарии, строки и мёртвые ветки с именами SDK не являются техприёмкой.
 
 Следующая фаза: `$phase-6-listing`
 

@@ -21,6 +21,7 @@ import { appendImageProvenance } from '../.claude/skills/status/references/image
 import { pngCrc32 } from '../.claude/skills/status/references/png-integrity.mjs';
 import { recordVisualReceipt } from '../.claude/skills/status/references/visual-receipts.mjs';
 import { screenInventorySha256 } from '../.claude/skills/status/references/screen-flow-contract.mjs';
+import { copyGodotImplementation, snapshotGodotVisualInputs } from './godot-visual-runtime.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPTS = Object.fromEntries(['godot-screens-shoot.mjs', 'godot-proof-video.mjs', 'prepare-godot-phase4-review.mjs', 'bind-phase4-visual-evidence.mjs', 'record-phase4-visual-review.mjs'].map(name => [name, path.join(ROOT, 'scripts', name)]));
@@ -128,6 +129,41 @@ try {
   { const e=read(project,'wiki/qa/phase-4-visual-evidence.json'); check(/godot-screens-shoot\.mjs/u.test(e.verification?.capture?.command || '') && /godot-proof-video\.mjs/u.test(e.verification?.proof?.command || ''), 'binder records canonical Godot producer command provenance'); }
   const recorded=run(SCRIPTS['record-phase4-visual-review.mjs'],project,'review-session-2'); check(recorded.status===0,'independent reviewer receipt recorded from another host identity',recorded.stderr);
   check(evidence(project).ok,'host-attested synthetic Godot policy fixture passes'); check(phase(project).ok,'Phase 4 completion accepts the complete synthetic policy fixture');
+
+  // Fixture/test-looking directories can hold real `res://` production resources. Their changes
+  // must invalidate Phase 4 and survive the isolated native copy.
+  const implementationRoot = file(project, 'WorkProgress/game');
+  const visualBeforeFixtures = snapshotGodotVisualInputs(implementationRoot);
+  write(project, 'WorkProgress/game/fixtures/capture-fixture.gd', 'extends Node\n');
+  const visualAfterFixtures = snapshotGodotVisualInputs(implementationRoot);
+  check(visualBeforeFixtures.sha256 !== visualAfterFixtures.sha256,
+    'Godot fixture sources invalidate the Phase 4 visual snapshot');
+  const copiedImplementation = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-godot-copy-'));
+  try {
+    copyGodotImplementation(implementationRoot, copiedImplementation);
+    check(fs.existsSync(path.join(copiedImplementation, 'fixtures', 'capture-fixture.gd')),
+      'Godot implementation copy retains fixture resources that production scenes can reference');
+  } finally { fs.rmSync(copiedImplementation, { recursive: true, force: true }); }
+  const mainForSnapshot = file(project, 'WorkProgress/game/main.gd');
+  const mainBeforeProductionChange = fs.readFileSync(mainForSnapshot);
+  fs.writeFileSync(mainForSnapshot, `${mainBeforeProductionChange}\n# production visual change\n`);
+  const visualAfterProductionChange = snapshotGodotVisualInputs(implementationRoot);
+  check(visualAfterFixtures.sha256 !== visualAfterProductionChange.sha256,
+    'production Godot source change invalidates the Phase 4 visual snapshot');
+  fs.writeFileSync(mainForSnapshot, mainBeforeProductionChange);
+  check(!evidence(project).ok, 'fixture additions deliberately require a fresh signed Phase 4 review');
+  fs.rmSync(file(project, 'WorkProgress/game/fixtures'), { recursive: true, force: true });
+  check(evidence(project).ok, 'removing the fixture restores the signed Phase 4 evidence baseline');
+
+  const canonicalCaptureBeforeDiagnostic = fs.readFileSync(file(project, 'screens/review/capture-manifest.json'));
+  const diagnosticCapture = run(SCRIPTS['godot-screens-shoot.mjs'], project, 'phase7-diagnostic', ['--diagnostic']);
+  const diagnosticManifest = file(project, 'screens/qa/phase-7-visual/capture-manifest.json');
+  const diagnosticValue = fs.existsSync(diagnosticManifest) ? read(project, 'screens/qa/phase-7-visual/capture-manifest.json') : null;
+  check(diagnosticCapture.status === 0 && diagnosticValue?.captureMode === 'forge-godot-runtime-adapter-diagnostic'
+    && diagnosticValue?.captureReceiptId === null
+    && fs.readFileSync(file(project, 'screens/review/capture-manifest.json')).equals(canonicalCaptureBeforeDiagnostic),
+  'Godot Phase 7 diagnostic capture leaves the canonical Phase 4 manifest untouched', diagnosticCapture.stderr);
+  check(evidence(project).ok, 'Godot diagnostic capture preserves the signed Phase 4 evidence');
 
   // Receipt-bound engine and manifest substitutions.
   mutate(project,()=>{const e=read(project,'wiki/qa/phase-4-visual-evidence.json'); e.captureManifest='screens/review/browser/capture-manifest.json'; json(project,'screens/review/browser/capture-manifest.json',{schemaVersion:1,kind:'forge.visual-capture',generatedBy:'screens-shoot.mjs'}); json(project,'wiki/qa/phase-4-visual-evidence.json',e);},'browser capture manifest substitution is rejected');

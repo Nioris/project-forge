@@ -93,7 +93,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1
   <div class="logo">&#x1F3AE;</div>
   <div>
     <h1>Yandex Games Debug Checker</h1>
-    <div class="subtitle">Static + Runtime verification &bull; v2.24 &bull; requirements baseline: 2026-08-18</div>
+    <div class="subtitle">Static + Runtime verification &bull; v2.25 &bull; requirements baseline: 2026-08-18</div>
   </div>
 </div>
 
@@ -193,7 +193,7 @@ const CATEGORIES = [
       { id:'snd_vis', name:'visibilitychange actually mutes (п.1.3)', desc:'Hidden tab must call a pause/mute path',
         test: s => {
           if(!hasAudioSource(s)) return true;
-          const block = extractBlock(sourceWithoutComments(s), /(?:addEventListener\s*\(\s*['"]visibilitychange['"]|onvisibilitychange\s*=)/i, 900);
+          const block = extractEventBlock(sourceWithoutComments(s), /(?:addEventListener\s*\(\s*['"]visibilitychange['"]|onvisibilitychange\s*=)/i);
           if(!block) return 'warn';
           const resumes = pat(block, /\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
           if(resumes && !hasAudioPauseAction(block)) return false;
@@ -202,7 +202,7 @@ const CATEGORIES = [
       { id:'snd_focus', name:'Window blur/pagehide actually mutes (п.1.3)', desc:'Any focus loss must pause or mute audio',
         test: s => {
           if(!hasAudioSource(s)) return true;
-          const block = extractBlock(sourceWithoutComments(s), /(?:addEventListener\s*\(\s*['"](?:blur|pagehide|freeze)['"]|on(?:blur|pagehide)\s*=)/i, 900);
+          const block = extractEventBlock(sourceWithoutComments(s), /(?:addEventListener\s*\(\s*['"](?:blur|pagehide|freeze)['"]|on(?:blur|pagehide)\s*=)/i);
           if(!block) return 'warn';
           const resumes = pat(block, /\.resume\s*\(|\.play\s*\(|resumeAudio|unmute/i);
           if(resumes && !hasAudioPauseAction(block)) return false;
@@ -283,7 +283,7 @@ const CATEGORIES = [
       { id:'sv_rotation', name:'Rotation does not reset progress (п.1.9)', desc:'Orientation handlers must not restart the run without save + restore',
         test: s => {
           const c = sourceWithoutComments(s);
-          const block = extractBlock(c, /(?:addEventListener\s*\(\s*['"]orientationchange['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"])/i, 1000);
+          const block = extractEventBlock(c, /(?:addEventListener\s*\(\s*['"]orientationchange['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"])/i);
           if(!block) return true;
           const destructive = pat(block, /location\s*\.\s*reload\s*\(|resetGame\s*\(|restartGame\s*\(|newGame\s*\(|initGame\s*\(|(?:score|level|stage|round)\s*=\s*(?:0|1)\b|clear(?:Progress|Save|State)\s*\(/i);
           if(!destructive) return true;
@@ -375,7 +375,7 @@ const CATEGORIES = [
               || new RegExp("screen\\s*\\.\\s*orientation[\\s\\S]{0,100}['\"]change['\"]\\s*,\\s*" + cb + "\\b", 'i').test(c)
               || new RegExp("visualViewport[\\s\\S]{0,100}['\"]resize['\"]\\s*,\\s*" + cb + "\\b", 'i').test(c);
           }
-          const orientationBlock = extractBlock(c, /(?:addEventListener\s*\(\s*['"](?:orientationchange|fullscreenchange)['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"]|visualViewport[\s\S]{0,80}addEventListener\s*\(\s*['"]resize['"])/i, 900);
+          const orientationBlock = extractEventBlock(c, /(?:addEventListener\s*\(\s*['"](?:orientationchange|fullscreenchange)['"]|screen\s*\.\s*orientation[\s\S]{0,80}addEventListener\s*\(\s*['"]change['"]|visualViewport[\s\S]{0,80}addEventListener\s*\(\s*['"]resize['"])/i);
           const activeOrientation = orientationBlock && pat(orientationBlock, /(?:fit|resize|layout|reflow|setSize|updateViewport|canvas\s*\.\s*(?:width|height)|style\s*\.\s*(?:width|height))\s*(?:\(|=)/i);
           const activeObserver = pat(c, /ResizeObserver\s*\(\s*(?:[A-Za-z_$][\w$]*(?:fit|resize|layout|reflow)[\w$]*|[^)]{0,240}(?:setSize|updateViewport|canvas\s*\.\s*(?:width|height)))/i);
           return bindsResize && (shared || activeOrientation || activeObserver) ? true : 'warn';
@@ -483,6 +483,38 @@ function hasAudioSource(s) {
 function hasAudioPauseAction(s) {
   return pat(s, /\.suspend\s*\(|\.pause\s*\(|suspendAudio|pauseAudio|pauseAppAudio|muteAll|muteSound|muteAudio|setMuted|volume\s*=\s*0/i);
 }
+
+// EVENT_HANDLER_SCAN_START — keep both standalone checker surfaces identical.
+/** Blank strings/comments without changing offsets; templates are deliberately opaque. */
+function maskHandlerText(s){
+  return String(s).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g,function(m){return m.replace(/[^\r\n]/g,' ');});
+}
+/** Extract only this event registration/assignment, never unrelated statements after it. */
+function extractEventBlock(s,startRegex){
+  var m=s.match(startRegex);
+  if(!m)return null;
+  var raw=s.slice(m.index),masked=maskHandlerText(raw);
+  var call=masked.indexOf('addEventListener');
+  var start=call>=0&&call<m[0].length?masked.indexOf('(',call):-1;
+  var assignment=start<0,depth=0,braces=0,brackets=0;
+  if(assignment)start=masked.indexOf('=');
+  if(start<0)return null;
+  for(var i=start;i<Math.min(masked.length,start+20000);i++){
+    var ch=masked[i];
+    if(ch==='(')depth++;
+    else if(ch===')'){
+      depth--;
+      if(!assignment&&depth===0)return masked.slice(0,i+1);
+    }else if(ch==='{')braces++;
+    else if(ch==='}')braces--;
+    else if(ch==='[')brackets++;
+    else if(ch===']')brackets--;
+    else if(assignment&&ch===';'&&depth===0&&braces===0&&brackets===0)return masked.slice(0,i);
+    if(depth<0||braces<0||brackets<0)return null;
+  }
+  return assignment&&depth===0&&braces===0&&brackets===0?masked:null;
+}
+// EVENT_HANDLER_SCAN_END
 
 function extractBlock(s, startRegex, depth=200) {
   const m = s.match(startRegex);

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rodrik.dev/project-forge/schemas/web-playtest.schema.json",
+  "title": "Project Forge browser playtest contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "gameRoot", "adapter", "initialState", "steps", "persistence"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "forge.web-playtest" },
+    "gameRoot": { "type": "string", "pattern": "^(?:WorkProgress/)?[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$" },
+    "adapter": {
+      "type": "object", "additionalProperties": false,
+      "required": ["global"],
+      "properties": { "global": { "const": "__FORGE_PLAYTEST__" } }
+    },
+    "initialState": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$" },
+    "steps": {
+      "type": "array", "minItems": 3, "maxItems": 20,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "action", "expect"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$" },
+          "action": {
+            "type": "object", "additionalProperties": false, "required": ["kind"],
+            "properties": {
+              "kind": { "enum": ["click", "key", "platform-event"] },
+              "x": { "type": "number", "minimum": 0, "maximum": 1 },
+              "y": { "type": "number", "minimum": 0, "maximum": 1 },
+              "key": { "type": "string", "minLength": 1, "maxLength": 32 },
+              "event": { "enum": ["game_api_pause", "game_api_resume"] }
+            }
+          },
+          "expect": {
+            "type": "object", "additionalProperties": false, "required": ["state", "changed"],
+            "properties": {
+              "state": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$" },
+              "changed": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object", "additionalProperties": false, "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["none", "required"] },
+        "expectState": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$" }
+      }
+    },
+    "tech": {
+      "type": "object", "additionalProperties": false, "required": ["required"],
+      "properties": {
+        "required": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "enum": ["sdk-init", "loading-ready", "gameplay-start", "gameplay-stop", "ad", "pointer-input"] }
+        }
+      }
+    }
+  }
+}

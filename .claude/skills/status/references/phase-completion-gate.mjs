@@ -15,6 +15,9 @@ import { fileURLToPath } from 'node:url';
 import { validatePhase4VisualEvidence } from './phase-4-visual-evidence.mjs';
 import { validateScreenFlow } from './screen-flow-contract.mjs';
 import { enginePhaseSupport, readTrustedProjectEngine } from './project-engine.mjs';
+import { readTrustedProjectTargets } from './project-targets.mjs';
+import { verifyVisualReceipt } from './visual-receipts.mjs';
+import { WEB_PLAYTEST_PROTOCOL, readWebPlaytestContract, snapshotWebGameSource, webPlaytestReceiptPayload } from './web-playtest-contract.mjs';
 
 const CONTRACT_SCHEMA_VERSION = 1;
 const CONTRACT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'phase-contracts');
@@ -31,6 +34,8 @@ const PROJECT_CHECK_IDS = new Set([
   'non-placeholder-evidence',
   'implementation-source',
   'clean-playtest-report',
+  'web-playtest-proof',
+  'web-playtest-tech',
   'visual-integration',
   'phase-4-visual-evidence',
   'screen-flow-contract',
@@ -138,6 +143,9 @@ function walkFiles(dir, predicate, out = []) {
 
 function hasImplementationSource(root) {
   const roots = [path.join(root, 'WorkProgress'), path.join(root, 'src')];
+  // An explicit, validated web contract may select another project-contained game root.
+  // Its runtime/source-bound proof is independently required by the phase contract.
+  try { roots.push(readWebPlaytestContract(root).gameRoot); } catch {}
   for (const candidate of ['index.html', 'main.js', 'app.js', 'package.json']) {
     if (safeProjectFile(root, candidate)) roots.push(path.join(root, candidate));
   }
@@ -382,10 +390,95 @@ function checkCleanPlaytestReport(root, failures) {
   const reports = projectFiles(root, (file, rel) => /(?:^|\/)playtest-out\/report\.json$/iu.test(rel));
   const clean = reports.some(file => {
     const report = parseJson(file);
+    // The declarative browser runner is the only web report that can become
+    // completion evidence. Its receipt and current-source binding are
+    // verified separately by checkWebPlaytestProof().
+    if (report?.kind === 'forge.web-playtest-report') {
+      return report.status === 'passed'
+        && Array.isArray(report.runtime?.consoleErrors) && report.runtime.consoleErrors.length === 0
+        && Array.isArray(report.steps) && report.steps.length > 0;
+    }
     return report && report.rafAlive === true && Array.isArray(report.errors) && report.errors.length === 0
       && Array.isArray(report.actions) && report.actions.length > 0;
   });
-  if (!clean) failures.push('phase requires a real playtest-out/report.json with rafAlive=true, actions, and zero runtime errors');
+  if (!clean) failures.push('phase requires a clean playtest-out/report.json with observed actions and zero runtime errors');
+}
+
+/**
+ * Browser phase evidence is accepted only when the installed runner issued an
+ * engine-owned receipt for the current contract and current game source.
+ * Project JSON is useful for diagnosis, but never grants completion by itself.
+ */
+function checkWebPlaytestProof(root, failures, { requireTech = false } = {}) {
+  let contract;
+  try { contract = readWebPlaytestContract(root); }
+  catch (error) { failures.push(`Web playtest contract rejected: ${error.message}`); return; }
+  const reportPath = path.join(contract.gameRoot, 'playtest-out', 'report.json');
+  const reportRelative = normalizeRelative(path.relative(root, reportPath));
+  const report = parseJson(reportPath);
+  if (!report || report.kind !== 'forge.web-playtest-report' || report.protocol !== WEB_PLAYTEST_PROTOCOL || report.status !== 'passed') {
+    failures.push('phase requires a passing engine-run browser playtest report');
+    return;
+  }
+  if (report.contract?.path !== contract.fileRelative || report.contract?.sha256 !== contract.hash || report.gameRoot !== contract.gameRootRelative) {
+    failures.push('web playtest report does not bind to the current contract/game root');
+    return;
+  }
+  let currentSnapshot;
+  try { currentSnapshot = snapshotWebGameSource(contract.gameRoot); }
+  catch (error) { failures.push(`web playtest source snapshot failed: ${error.message}`); return; }
+  if (report.sourceSnapshotSha256 !== currentSnapshot) {
+    failures.push('web playtest report is stale for the current game source');
+    return;
+  }
+  const expectedSteps = contract.steps;
+  if (!Array.isArray(report.steps) || report.steps.length !== expectedSteps.length) {
+    failures.push('web playtest report does not cover every declared core-flow step');
+    return;
+  }
+  for (const [index, expected] of expectedSteps.entries()) {
+    const actual = report.steps[index];
+    if (actual?.id !== expected.id || actual?.afterState !== expected.expect.state || actual?.changed !== expected.expect.changed) {
+      failures.push(`web playtest step ${index + 1} does not match its declared observable outcome`);
+      return;
+    }
+    if (expected.expect.changed && (!/^[a-f0-9]{64}$/u.test(String(actual.beforeVisualSha256 || '')) || actual.beforeVisualSha256 === actual.afterVisualSha256)) {
+      failures.push(`web playtest step ${index + 1} lacks evidence that the rendered UI changed`);
+      return;
+    }
+  }
+  if (contract.persistence.mode === 'required' && (report.persistence?.checked !== true || report.persistence?.state !== contract.persistence.expectState)) {
+    failures.push('web playtest did not prove the declared save/reload state');
+    return;
+  }
+  if (!report.receiptId) {
+    failures.push('web playtest report lacks an engine-owned receipt');
+    return;
+  }
+  const receipt = verifyVisualReceipt({ projectRoot: root, kind: 'web-playtest', receiptId: report.receiptId,
+    expectedPayload: webPlaytestReceiptPayload({ reportPath: reportRelative, report }) });
+  if (!receipt.ok) {
+    failures.push(`web playtest receipt is invalid: ${receipt.failure}`);
+    return;
+  }
+  if (requireTech) {
+    if (!contract.tech?.required?.length) {
+      failures.push('Phase 5 requires declared runtime technical facts in forge.web.playtest.json');
+      return;
+    }
+    const missing = contract.tech.required.filter(item => report.runtime?.facts?.[item] !== true);
+    if (missing.length) failures.push(`web playtest did not prove required technical facts: ${missing.join(', ')}`);
+    let targets;
+    try { targets = readTrustedProjectTargets(root); }
+    catch (error) { failures.push(`Phase 5 could not read authoritative platform targets: ${error.message}`); return; }
+    if (targets.configured && targets.targets.includes('yandex')) {
+      const requiredYandexFacts = ['sdk-init', 'loading-ready', 'gameplay-start', 'gameplay-stop'];
+      const missingDeclaration = requiredYandexFacts.filter(item => !contract.tech.required.includes(item));
+      const missingObservation = requiredYandexFacts.filter(item => report.runtime?.facts?.[item] !== true);
+      if (missingDeclaration.length) failures.push(`Yandex Phase 5 contract must declare SDK lifecycle facts: ${missingDeclaration.join(', ')}`);
+      if (missingObservation.length) failures.push(`Yandex Phase 5 browser run did not observe SDK lifecycle facts: ${missingObservation.join(', ')}`);
+    }
+  }
 }
 
 function checkVisualIntegration(root, failures) {
@@ -501,17 +594,9 @@ function checkPhase4VisualEvidence(root, failures) {
 }
 
 function checkTechRuntime(root, failures) {
-  const source = projectSourceText(root);
-  const checks = [
-    [/YaGames\.init\s*\(/u, 'Yandex SDK initialization'],
-    [/LoadingAPI\s*\.\s*ready\s*\(/u, 'LoadingAPI.ready lifecycle'],
-    [/(?:GameplayAPI\s*\.\s*start|startGameplay)\s*\(/u, 'GameplayAPI start lifecycle'],
-    [/(?:GameplayAPI\s*\.\s*stop|stopGameplay)\s*\(/u, 'GameplayAPI stop lifecycle'],
-    [/(?:showRewardedVideo|showRewarded|showFullscreenAdv|showInterstitial)\s*\(/u, 'ads integration'],
-    [/(?:touch-action\s*:|pointerdown|touchstart|safe-area-inset)/iu, 'mobile/touch adaptation'],
-  ];
-  for (const [pattern, label] of checks) if (!pattern.test(source)) failures.push(`Phase 5 requires ${label} in implementation source`);
-
+  // SDK lifecycle is runtime evidence from web-playtest-tech. Source tokens can
+  // live in comments, strings, dead branches, or a copied helper and therefore
+  // never prove that a player can actually start, pause, or return to a game.
   const config = safeProjectFile(root, '.forge-ai.json');
   const parsed = config ? parseJson(config.absolute) : null;
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) failures.push('.forge-ai.json must be valid JSON configuration');
@@ -791,6 +876,8 @@ function runProjectCheck(id, root, contract, evidence, failures, engineSupport, 
   else if (id === 'non-placeholder-evidence') checkNonPlaceholderEvidence(root, contract, failures);
   else if (id === 'implementation-source' && !hasImplementationSource(root)) failures.push(`Phase ${contract.phase} requires real implementation source`);
   else if (id === 'clean-playtest-report') checkCleanPlaytestReport(root, failures);
+  else if (id === 'web-playtest-proof') checkWebPlaytestProof(root, failures);
+  else if (id === 'web-playtest-tech') checkWebPlaytestProof(root, failures, { requireTech: true });
   else if (id === 'visual-integration') {
     if (engineProfile?.engine === 'godot') checkGodotVisualIntegration(root, failures);
     else checkVisualIntegration(root, failures);
@@ -873,7 +960,7 @@ export function validatePhaseCompletion({ root = process.cwd(), phase, evidence 
     } else if (requiredEvidenceReady && Number(contract.phase) === 8 && engineProfile) {
       platformVerification = runPlatformReleaseVerifier(projectRoot, engineProfile, failures);
     }
-    const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'tech-runtime', 'clean-local-stage-report']);
+    const browserOnlyChecks = new Set(['implementation-source', 'clean-playtest-report', 'web-playtest-proof', 'web-playtest-tech', 'tech-runtime', 'clean-local-stage-report']);
     for (const id of contract.projectChecks) {
       if (engineProfile?.implementation !== 'browser' && browserOnlyChecks.has(id)) continue;
       runProjectCheck(id, projectRoot, contract, normalizedEvidence, failures, engineSupport, engineProfile, engineVerification, platformVerification);
